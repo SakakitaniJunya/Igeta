@@ -164,4 +164,25 @@ describe('generate-docs-graph の本文リンク検査', () => {
     const result = run(root, '--check');
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
   });
+
+  it('arc42 を持つ文書が 1 本も無いツリーでは docs/README.md を章別ではなくファイル一覧にする (12 行の _未作成_ を出さない)', () => {
+    for (const d of ['product', 'design', 'adr']) rmSync(join(root, 'docs', d), { recursive: true, force: true });
+    writeDoc(root, 'guides/how-to.md', [
+      '---', 'id: how-to', 'title: 手引き', 'type: guide', 'kind: guide',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', '# 手引き', '',
+    ]);
+    converge(root);
+    const index = readFileSync(join(root, 'docs', 'README.md'), 'utf8');
+    assert.doesNotMatch(index, /_未作成_/);
+    assert.match(index, /\| ファイル \| タイトル \|/);
+    assert.match(index, /\[guides\/\]\(guides\/README\.md\)/);
+  });
+
+  it('ディレクトリ索引は <context>.md を <context>-<aspect>.md より先に並べる', () => {
+    writeDoc(root, 'design/detail/domain/catalog.md', doc('domain-catalog', 'design', 'domain-model', 5, 'catalog'));
+    writeDoc(root, 'design/detail/domain/catalog-pricing.md', doc('domain-catalog-pricing', 'design', 'domain-model', 5, 'catalog / 料金'));
+    converge(root);
+    const index = readFileSync(join(root, 'docs', 'design', 'detail', 'domain', 'README.md'), 'utf8');
+    assert.ok(index.indexOf('[catalog.md]') < index.indexOf('[catalog-pricing.md]'), index);
+  });
 });

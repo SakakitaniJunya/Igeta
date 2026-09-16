@@ -639,12 +639,15 @@ async function buildDirIndexes(allFilesRaw, overrides = new Map()) {
     const entries = (own.get(dir) || [])
       // docs/adr: numbered ADRs are already listed in the ADR index table above
       .filter((f) => !(isAdrDir && meta.get(f).fm.type === "adr" && adrNumber(meta.get(f).fm.id) && meta.get(f).fm.status !== "template"))
-      .sort();
+      // 拡張子を外して比べる。"catalog-pricing.md" < "catalog.md" ('-' < '.') になり、分割元が分割先の後ろに沈むため
+      .sort((a, b) => basename(a, ".md").localeCompare(basename(b, ".md")));
     for (const f of entries) {
       const { fm, title } = meta.get(f);
       rows.push(`| [${basename(f)}](${basename(f)}) | ${cell(title)} | ${cell(fm.type || "—")} | ${cell(fm.status || "—")} |`);
     }
-    const table = isChapterDir
+    // 章別索引は arc42 を持つ文書が配下に 1 本でもあるときだけ。0 本で 12 章の _未作成_ を並べても情報が無い
+    const hasChapterDocs = descendantDocs(dir).some((f) => meta.get(f)?.fm.arc42 !== undefined);
+    const table = isChapterDir && hasChapterDocs
       ? buildArc42Table(
           dir,
           descendantDocs(dir).sort(),

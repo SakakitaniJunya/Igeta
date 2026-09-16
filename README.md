@@ -120,7 +120,7 @@ node scripts/generate-docs-graph.mjs --write
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run scaffold:module` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (57 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (59 件) |
 
 ## ディレクトリ構成
 

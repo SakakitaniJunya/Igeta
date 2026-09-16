@@ -61,7 +61,7 @@ flowchart LR
 | `infra-design` | §7 | `design/basic/infra-design.md` | INF | 200 |
 | `domain-overview` | §5 | `design/detail/domain/overview.md` | — | 200 |
 | `aggregate-map` | §5 | `design/detail/domain/aggregate-map.md` | — | 200 |
-| `domain-model` | §5 | `design/detail/domain/__context__.md` | class 名 | 200 |
+| `domain-model` | §5 | `design/detail/domain/__context__.md` (200 行を超える context は `__context__-<側面>.md` に分割。同じ `code_root` を持たせれば図↔実装検査が 1 つに束ねる) | class 名 | 200 |
 | `sequence-spec` | §6 | `design/detail/sequences/__use-case__.md` | SEQ | 200 |
 | `module-spec` | §5 | `design/detail/modules/__context__.md` | MOD | 200 |
 | `tasks` | — | `design/tasks/__feature__.md` | T (`T001`) | 100 |

@@ -15,7 +15,8 @@ owners: [eng]
 <!--
   docs/README.md と docs/design/README.md の索引は **arc42 章別**で生成される
   (章見出しは「§5 Building Block View (構成要素)」の英日併記、章に文書が無ければ「_未作成_」)。
-  それ以外のディレクトリはファイル一覧の表になる。どちらも手で書かない。
+  ただし配下に arc42 を持つ文書が 1 本も無いうちはファイル一覧の表になる。
+  それ以外のディレクトリは常にファイル一覧の表。どちらも手で書かない。
   章の割り当ては各文書の frontmatter `arc42: <1-12>`。章の解説は docs/explanation/design-doc-standards.md §3。
 -->
 
