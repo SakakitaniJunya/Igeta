@@ -45,8 +45,6 @@ flowchart LR
 
 ## 2. 種類一覧
 
-
-
 | フォルダ (工程) | kind | 何を書くか | arc42 | パス (`templates/docs/` = `docs/`) | ID 接頭辞 | 上限 |
 |---|---|---|---|---|---|---|
 | `product/` 要件定義 | `requirements` | 何を作るか。機能要件 (EARS 記法) と品質目標の要約、制約、ステークホルダー。全設計書の上流 | §1 | `product/01-requirements.md` | REQ | 200 |
