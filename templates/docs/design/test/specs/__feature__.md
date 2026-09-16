@@ -32,7 +32,7 @@ relates_to: [screen-spec, sequence-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [テスト計画](../test-plan.md) / [機能一覧](../../basic/function-list.md) / [API 仕様](../../basic/api/) | FN-* / API-* |
+| 上流 (depends_on) | [テスト計画](../01-test-plan.md) / [機能一覧](../../basic/01-function-list.md) / [API 仕様](../../basic/api/) | FN-* / API-* |
 | 下流 | 実装のテストコード (`*.spec.ts` / Playwright) | — |
 
 ## 1. テストケース一覧

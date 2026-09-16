@@ -32,7 +32,7 @@ relates_to: [operations, infra-design, state-machine]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [業務フロー](../../basic/flows/) / [状態遷移](../state-machines/) | BF-* / STM-* |
-| 下流 | [運用設計](../../ops/operations.md) / [インフラ設計](../../basic/infra-design.md) | OPS-* / INF-* |
+| 下流 | [運用設計](../../ops/01-operations.md) / [インフラ設計](../../basic/08-infra-design.md) | OPS-* / INF-* |
 
 ## 1. ジョブ一覧
 

@@ -32,7 +32,7 @@ relates_to: [sequence-spec, test-spec, messages]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [集約マップ](../domain/aggregate-map.md) / [業務フロー](../../basic/flows/) | class 名 / BF-* |
+| 上流 (depends_on) | [集約マップ](../domain/02-aggregate-map.md) / [業務フロー](../../basic/flows/) | class 名 / BF-* |
 | 下流 | [シーケンス](../sequences/) / [テスト仕様](../../test/specs/) | SEQ-* / TST-* |
 
 ## 1. 状態遷移図

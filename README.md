@@ -43,7 +43,7 @@
 1. **章は国際標準、語彙は日本の現場**
    背骨は [arc42](https://arc42.org/overview) の 12 章。「基本設計」「詳細設計」は arc42 の章への**写像**として扱い、読み手の語彙に合わせる。章はフォルダではなく frontmatter `arc42: <1-12>` に持たせ、索引が章順に並べる。空いた章は索引に「_未作成_」として見える。
 2. **置き場所が型を決める**
-   `templates/docs/` は `docs/` と**同じ階層**。書きたい場所と同じパスのテンプレをコピーすれば、文書の種類 (`kind`)・ID 接頭辞・必須節が自動で決まる。宣言と置き場所が食い違えば違反。
+   `templates/docs/` は `docs/` と**同じ階層**。書きたい場所と同じパスのテンプレをコピーすれば、文書の種類 (`kind`)・ID 接頭辞・必須節が自動で決まる。宣言と置き場所が食い違えば違反。ファイル名の先頭 `NN-` は同じフォルダ内の読む順で、フォルダを開いた瞬間に順番が分かる。
 3. **AS-IS と TO-BE を分ける**
    `design/` は実装前の設計 (TO-BE)、`architecture/` は稼働中の構成 (AS-IS) 専用。混ぜると「どちらが今の姿か」が誰にも分からなくなる。
 
@@ -92,7 +92,7 @@ flowchart LR
 | 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
-33 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](docs/guides/document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/design-doc-standards.md)** にある。
+33 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 
 ## はじめかた
 
@@ -104,7 +104,7 @@ cp -R Igeta/templates Igeta/scripts Igeta/.markdownlint.yaml Igeta/.markdownlint
 
 # 2. 書きたい文書と同じパスのテンプレをコピー (templates/docs/<X> → docs/<X>)
 mkdir -p your-repo/docs/product
-cp Igeta/templates/docs/product/requirements.md your-repo/docs/product/
+cp Igeta/templates/docs/product/01-requirements.md your-repo/docs/product/
 
 # 3. 検査する
 node scripts/check-doc-template.mjs --require-kind
@@ -120,7 +120,7 @@ node scripts/generate-docs-graph.mjs --write
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run scaffold:module` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (59 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (60 件) |
 
 ## ディレクトリ構成
 

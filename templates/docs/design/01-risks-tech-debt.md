@@ -31,8 +31,8 @@ relates_to: [nonfunctional, migration-plan]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [解決戦略](./basic/solution-strategy.md) / [非機能要件](./basic/nonfunctional.md) | SS-* / NFR-* |
-| 下流 | [移行・リリース計画](./ops/migration-plan.md) / Plane issue | MIG-* |
+| 上流 (depends_on) | [解決戦略](./basic/02-solution-strategy.md) / [非機能要件](./basic/03-nonfunctional.md) | SS-* / NFR-* |
+| 下流 | [移行・リリース計画](./ops/02-migration-plan.md) / Plane issue | MIG-* |
 
 ## 1. 技術リスク
 

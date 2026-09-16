@@ -32,7 +32,7 @@ relates_to: [infra-design, test-plan]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [テーブル定義](../basic/tables/) / [運用設計](./operations.md) | TBL-* / OPS-* |
+| 上流 (depends_on) | [テーブル定義](../basic/tables/) / [運用設計](./01-operations.md) | TBL-* / OPS-* |
 | 下流 | 実施記録 / `docs/postmortems/` | — |
 
 ## 1. 移行対象

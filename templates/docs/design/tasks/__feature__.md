@@ -23,7 +23,7 @@ relates_to: [sequence-spec, test-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [機能一覧](../basic/function-list.md) / [シーケンス](../detail/sequences/) / [テーブル定義](../basic/tables/) | FN-* / SEQ-* / TBL-* |
+| 上流 (depends_on) | [機能一覧](../basic/01-function-list.md) / [シーケンス](../detail/sequences/) / [テーブル定義](../basic/tables/) | FN-* / SEQ-* / TBL-* |
 | 下流 | [テスト仕様](../test/specs/) / 実装 | TST-* |
 
 <!--

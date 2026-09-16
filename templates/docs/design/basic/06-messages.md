@@ -31,7 +31,7 @@ relates_to: [api-spec, screen-spec, business-flow]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [横断概念](./crosscutting.md) / [業務フロー](./flows/) | XC-* / BF-* |
+| 上流 (depends_on) | [横断概念](./04-crosscutting.md) / [業務フロー](./flows/) | XC-* / BF-* |
 | 下流 | [API 仕様](./api/) / [画面設計](./screens/) | API-* / SCR-* |
 
 ## 1. エラーメッセージ一覧

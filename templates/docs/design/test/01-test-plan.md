@@ -32,8 +32,8 @@ relates_to: [test-spec, operations]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [非機能要件](../basic/nonfunctional.md) / [機能一覧](../basic/function-list.md) | NFR-* / FN-* |
-| 下流 | [テスト仕様](./specs/) / [運用設計](../ops/operations.md) | TST-* / OPS-* |
+| 上流 (depends_on) | [非機能要件](../basic/03-nonfunctional.md) / [機能一覧](../basic/01-function-list.md) | NFR-* / FN-* |
+| 下流 | [テスト仕様](./specs/) / [運用設計](../ops/01-operations.md) | TST-* / OPS-* |
 
 ## 1. テストピラミッド
 

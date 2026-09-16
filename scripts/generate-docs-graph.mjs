@@ -18,7 +18,7 @@
  *   node scripts/generate-docs-graph.mjs --check      # CI: fail on drift OR hard error
  *   node scripts/generate-docs-graph.mjs --write      # write generated files
  *
- * Spec: docs/guides/document-taxonomy.md
+ * Spec: docs/guides/01-document-taxonomy.md
  */
 
 import { readFile, writeFile, readdir } from "node:fs/promises";
@@ -699,7 +699,7 @@ async function main() {
     "# Docs 依存関係グラフ",
     "",
     `> 自動生成: ${now} (UTC) / ソース: 各 \`docs/**/*.md\` の frontmatter`,
-    `> 規約: docs/guides/document-taxonomy.md 参照`,
+    `> 規約: docs/guides/01-document-taxonomy.md 参照`,
     `> 再生成: \`node scripts/generate-docs-graph.mjs --write\``,
     "",
     "## 凡例",

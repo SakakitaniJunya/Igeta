@@ -296,6 +296,14 @@ describe('check-doc-template', () => {
     assert.match(result.stdout, /kind 未設定 0 本/);
   });
 
+  it('ファイル名の連番 (NN-) は種類の判定で無視する (テンプレと番号が違ってもよい)', () => {
+    writeDoc(root, 'product/01-requirements.md', requirementsDoc());
+    writeDoc(root, 'design/basic/99-function-list.md', functionListDoc().replace('kind: function-list\n', ''));
+    const result = check(root, ['--require-kind']);
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    assert.match(result.stdout, /kind 未設定 0 本/);
+  });
+
   it('frontmatter の kind と置き場所が食い違えば exit 1', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc().replace('kind: function-list', 'kind: nonfunctional'));

@@ -32,8 +32,8 @@ relates_to: [infra-design, crosscutting]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [要件定義書](../../product/requirements.md) / [非機能要件](./nonfunctional.md) | REQ-* / NFR-* |
-| 下流 | [構成要素 (ドメイン / モジュール)](../detail/) / [インフラ設計](./infra-design.md) / [横断概念](./crosscutting.md) | MOD-* / INF-* / XC-* |
+| 上流 (depends_on) | [要件定義書](../../product/01-requirements.md) / [非機能要件](./03-nonfunctional.md) | REQ-* / NFR-* |
+| 下流 | [構成要素 (ドメイン / モジュール)](../detail/) / [インフラ設計](./08-infra-design.md) / [横断概念](./04-crosscutting.md) | MOD-* / INF-* / XC-* |
 
 ## 1. 技術選定の要約
 

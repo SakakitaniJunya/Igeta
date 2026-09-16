@@ -21,7 +21,7 @@ relates_to: [design-doc-standards, docs-index]
 |---|---|---|
 | 上流 | [Igeta の設計思想](../../README.md#設計思想) | — |
 | 下流 | `templates/docs/**` / `scripts/check-doc-template.mjs` / 全設計書 | 全接頭辞 |
-| 参考 | [設計書テンプレが参照した外部標準](../explanation/design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
+| 参考 | [設計書テンプレが参照した外部標準](../explanation/01-design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
 
 ## 1. 章の関連図 (arc42)
 
@@ -41,44 +41,44 @@ flowchart LR
   C12["§12 用語集<br/>glossary"] -.-> C1 & C5
 ```
 
-実線 = 上流→下流 (`depends_on` の向き)。破線 = 横断的に効く。**下流だけを直して上流を直さない更新は禁止**。文書単位の依存グラフは [dependencies.md](../dependencies.md) が自動生成し、章の日本語解説は [設計書の外部標準 §3](../explanation/design-doc-standards.md) にある。
+実線 = 上流→下流 (`depends_on` の向き)。破線 = 横断的に効く。**下流だけを直して上流を直さない更新は禁止**。文書単位の依存グラフは [dependencies.md](../dependencies.md) が自動生成し、章の日本語解説は [設計書の外部標準 §3](../explanation/01-design-doc-standards.md) にある。
 
 ## 2. 種類一覧
 
-**背骨は arc42 12 章**。章はフォルダではなく frontmatter `arc42:` が持ち、README 索引が章順に並べる。テンプレのパス = 配置先のパス。`templates/docs/<X>` を `docs/<X>` へコピーする。`__name__` は雛形で、同階層の実ファイル名に置き換える。
+**背骨は arc42 12 章**。章はフォルダではなく frontmatter `arc42:` が持ち、README 索引が章順に並べる。テンプレのパス = 配置先のパス。`templates/docs/<X>` を `docs/<X>` へコピーする。`__name__` は雛形で、同階層の実ファイル名に置き換える。**ファイル名の先頭は 2 桁の連番** (`01-requirements.md`) で、同じフォルダ内の読む順を表す。固定名の雛形は標準の番号を持ち、そのまま使うと番号が抜けた分だけ「まだ書いていない文書」が見える。`__name__` の雛形は配置先で自分で採番する (`flows/01-reservation.md`)。検査器は `NN-` を無視して種類を判定するので、番号を変えても壊れない。
 
 | kind | arc42 | パス (`templates/docs/` = `docs/`) | ID 接頭辞 | 上限 |
 |---|---|---|---|---|
-| `requirements` | §1 | `product/requirements.md` | REQ | 200 |
-| `function-list` | §1 | `design/basic/function-list.md` | FN | 200 |
+| `requirements` | §1 | `product/01-requirements.md` | REQ | 200 |
+| `function-list` | §1 | `design/basic/01-function-list.md` | FN | 200 |
 | `business-flow` | §6 | `design/basic/flows/__flow__.md` | BF | 200 |
 | `screen-spec` | §5 | `design/basic/screens/__screen-group__.md` | SCR | 200 |
 | `api-spec` | §5 | `design/basic/api/__resource__.md` | API | 200 |
 | `table-spec` | §5 | `design/basic/tables/__context__.md` | TBL | 200 |
-| `solution-strategy` | §4 | `design/basic/solution-strategy.md` | SS | 200 |
-| `nonfunctional` | §10 | `design/basic/nonfunctional.md` | NFR | 200 |
-| `crosscutting` | §8 | `design/basic/crosscutting.md` | XC | 200 |
-| `infra-design` | §7 | `design/basic/infra-design.md` | INF | 200 |
-| `domain-overview` | §5 | `design/detail/domain/overview.md` | — | 200 |
-| `aggregate-map` | §5 | `design/detail/domain/aggregate-map.md` | — | 200 |
+| `solution-strategy` | §4 | `design/basic/02-solution-strategy.md` | SS | 200 |
+| `nonfunctional` | §10 | `design/basic/03-nonfunctional.md` | NFR | 200 |
+| `crosscutting` | §8 | `design/basic/04-crosscutting.md` | XC | 200 |
+| `infra-design` | §7 | `design/basic/08-infra-design.md` | INF | 200 |
+| `domain-overview` | §5 | `design/detail/domain/01-overview.md` | — | 200 |
+| `aggregate-map` | §5 | `design/detail/domain/02-aggregate-map.md` | — | 200 |
 | `domain-model` | §5 | `design/detail/domain/__context__.md` (200 行を超える context は `__context__-<側面>.md` に分割。同じ `code_root` を持たせれば図↔実装検査が 1 つに束ねる) | class 名 | 200 |
 | `sequence-spec` | §6 | `design/detail/sequences/__use-case__.md` | SEQ | 200 |
 | `module-spec` | §5 | `design/detail/modules/__context__.md` | MOD | 200 |
 | `tasks` | — | `design/tasks/__feature__.md` | T (`T001`) | 100 |
-| `test-plan` | §10 | `design/test/test-plan.md` | TSP | 200 |
+| `test-plan` | §10 | `design/test/01-test-plan.md` | TSP | 200 |
 | `test-spec` | §10 | `design/test/specs/__feature__.md` | TST | 200 |
-| `operations` | §7 | `design/ops/operations.md` | OPS | 200 |
-| `migration-plan` | §7 | `design/ops/migration-plan.md` | MIG | 200 |
+| `operations` | §7 | `design/ops/01-operations.md` | OPS | 200 |
+| `migration-plan` | §7 | `design/ops/02-migration-plan.md` | MIG | 200 |
 | `state-machine` | §6 | `design/detail/state-machines/__aggregate__.md` | STM | 200 |
 | `job` | §6 | `design/detail/jobs/__job__.md` | JOB | 200 |
-| `code-definitions` | §8 | `design/basic/code-definitions.md` | CD | 200 |
-| `messages` | §8 | `design/basic/messages.md` | MSG | 200 |
-| `permission-matrix` | §8 | `design/basic/permission-matrix.md` | PRM | 200 |
-| `risks-tech-debt` | §11 | `design/risks-tech-debt.md` | RSK | 200 |
+| `code-definitions` | §8 | `design/basic/05-code-definitions.md` | CD | 200 |
+| `messages` | §8 | `design/basic/06-messages.md` | MSG | 200 |
+| `permission-matrix` | §8 | `design/basic/07-permission-matrix.md` | PRM | 200 |
+| `risks-tech-debt` | §11 | `design/01-risks-tech-debt.md` | RSK | 200 |
 | `adr` | §9 | `adr/NNNN-__slug__.md` | ファイル名の 4 桁 | 150 |
 | `proposal` | — | `proposal/__slug__.md` | — | 200 |
-| `as-is-overview` | §3 | `architecture/overview.md` | ARC | 200 |
-| `glossary` | §12 | `architecture/glossary.md` | — | 200 |
+| `as-is-overview` | §3 | `architecture/01-overview.md` | ARC | 200 |
+| `glossary` | §12 | `architecture/02-glossary.md` | — | 200 |
 | `guide` | — | `guides/__slug__.md` | — | 100 |
 | `explanation` | — | `explanation/__slug__.md` | — | 200 |
 | `tutorial` | — | (テンプレ無し・kind 予約のみ) `guides/__slug__.md` を「学習目標 / 前提 / ステップ / 到達確認」で流用 | — | 100 |
@@ -93,8 +93,8 @@ flowchart LR
 | 論点 | 決定 | 理由 |
 |---|---|---|
 | 要件定義の置き場 | `docs/product/` | 要件定義 =「何を作るか」。設計 (どう作るか) と置き場所を分ける |
-| 実装前の設計書 | `docs/design/basic/` と `docs/design/detail/` | 実装前は全部 TO-BE。AS-IS は稼働後に `architecture/overview.md` へ起こす |
+| 実装前の設計書 | `docs/design/basic/` と `docs/design/detail/` | 実装前は全部 TO-BE。AS-IS は稼働後に `architecture/01-overview.md` へ起こす |
 | 画面 / API / テーブル / シーケンス / モジュール / テスト仕様 | **最初からサブフォルダ**に切る | 件数が伸びる前提の文書群。後からフォルダへ移すと `depends_on` と README 索引が同時に壊れる。1 本目から `flows/` `screens/` `api/` `tables/` `sequences/` `modules/` `test/specs/` に入れる |
 | テスト・運用 | `docs/design/test/` と `docs/design/ops/` | 「本数が少ないうちは flat」にしない。移動コストを後払いしているだけで、閾値を跨いだ瞬間に参照が壊れる |
-| 運用手順書 | 設計は `design/ops/operations.md`、手順は `docs/runbooks/<scenario>.md` (100 行以下) | 方針と手順を同じ文書に混ぜると 100 行に収まらない |
+| 運用手順書 | 設計は `design/ops/01-operations.md`、手順は `docs/runbooks/<scenario>.md` (100 行以下) | 方針と手順を同じ文書に混ぜると 100 行に収まらない |
 | `docs/proposal/` | 独立させる | 対外提案書は設計 Doc と性格が違う。`design/` に混ぜると顧客提出物が設計変更で動く |

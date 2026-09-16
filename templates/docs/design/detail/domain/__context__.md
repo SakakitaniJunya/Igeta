@@ -35,7 +35,7 @@ relates_to: [table-spec, sequence-spec, module-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [要件定義書](../../../product/requirements.md) | REQ-* |
+| 上流 (depends_on) | [要件定義書](../../../product/01-requirements.md) | REQ-* |
 | 下流 | [テーブル定義](../../basic/tables/) / [モジュール仕様](../modules/) | TBL-* / MOD-* |
 
 ## 1. クラス図

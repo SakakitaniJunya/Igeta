@@ -35,7 +35,7 @@ relates_to: [function-list, nonfunctional]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | なし (最上流。一次情報はヒアリング記録) | — |
-| 下流 | [機能一覧](../design/basic/function-list.md) / [非機能要件](../design/basic/nonfunctional.md) | FN-* / NFR-* |
+| 下流 | [機能一覧](../design/basic/01-function-list.md) / [非機能要件](../design/basic/03-nonfunctional.md) | FN-* / NFR-* |
 
 ## 1. 業務要件
 

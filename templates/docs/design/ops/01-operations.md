@@ -32,8 +32,8 @@ relates_to: [migration-plan, test-plan]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [非機能要件](../basic/nonfunctional.md) / [インフラ設計](../basic/infra-design.md) | NFR-* / INF-* |
-| 下流 | `docs/runbooks/` / [ジョブ仕様](../detail/jobs/) / [移行・リリース計画](./migration-plan.md) | MIG-* |
+| 上流 (depends_on) | [非機能要件](../basic/03-nonfunctional.md) / [インフラ設計](../basic/08-infra-design.md) | NFR-* / INF-* |
+| 下流 | `docs/runbooks/` / [ジョブ仕様](../detail/jobs/) / [移行・リリース計画](./02-migration-plan.md) | MIG-* |
 
 ## 1. バックアップ・復旧
 

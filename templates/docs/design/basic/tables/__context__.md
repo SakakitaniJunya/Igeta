@@ -32,7 +32,7 @@ relates_to: [migration-plan, nonfunctional]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [ドメインクラス図](../../detail/domain/) / [API 仕様](../api/) | class 名 / API-* |
-| 下流 | [移行・リリース計画](../../ops/migration-plan.md) / Prisma schema | MIG-* |
+| 下流 | [移行・リリース計画](../../ops/02-migration-plan.md) / Prisma schema | MIG-* |
 
 ## 1. ER 図
 

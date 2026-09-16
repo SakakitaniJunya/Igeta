@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 設計書がテンプレート (templates/docs/*.md) の必須構造を満たしているか検証する。
-// 文書体系の正典は docs/README.md、構造規約は docs/guides/document-taxonomy.md。
+// 文書体系の正典は docs/README.md、構造規約は docs/guides/01-document-taxonomy.md。
 //
 // kind は frontmatter が優先。無ければ **テンプレの配置と同じ docs 上の位置**から決まる
 // (templates/docs/design/basic/tables/__context__.md → docs/design/basic/tables/*.md)。
@@ -180,18 +180,23 @@ function loadTemplates(dir) {
       if (entry.placeholder !== null) errors.push(`${file} 同じ階層に雛形ファイルが 2 枚ある (kind を決められない)`);
       entry.placeholder = data.kind;
     } else {
-      entry.exact.set(name, data.kind);
+      entry.exact.set(withoutSeq(name), data.kind);
     }
   }
   return { registry, byPath, errors };
 }
 
-/** テンプレの配置から既定 kind を引く。完全一致ファイル名 > 雛形 (__name__) の順 */
+/** ファイル名先頭の連番 (01-, 12-) を外す。連番は読む順であって種類ではないので、テンプレと番号が違っても同じ文書 */
+function withoutSeq(name) {
+  return name.replace(/^\d{2}-/, '');
+}
+
+/** テンプレの配置から既定 kind を引く。完全一致ファイル名 (連番抜き) > 雛形 (__name__) の順 */
 function kindFromPath(byPath, docRelPath) {
   const slot = dirname(docRelPath) === '.' ? '' : dirname(docRelPath);
   const entry = byPath.get(slot);
   if (entry === undefined) return null;
-  return entry.exact.get(basename(docRelPath)) ?? entry.placeholder;
+  return entry.exact.get(withoutSeq(basename(docRelPath))) ?? entry.placeholder;
 }
 
 // EARS (Easy Approach to Requirements Syntax): 機能要件は

@@ -16,6 +16,6 @@ owners: [eng]
 
 | ファイル | タイトル | type | status |
 |---|---|---|---|
-| [design-doc-standards.md](design-doc-standards.md) | 設計書テンプレが参照した外部標準 | explanation | active |
+| [01-design-doc-standards.md](01-design-doc-standards.md) | 設計書テンプレが参照した外部標準 | explanation | active |
 
 <!-- AUTOGEN:dir-index:end -->

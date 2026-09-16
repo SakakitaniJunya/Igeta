@@ -31,7 +31,7 @@ relates_to: []
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ドメイン総論](./overview.md) | class 名 |
+| 上流 (depends_on) | [ドメイン総論](./01-overview.md) | class 名 |
 | 下流 | 各コンテキストのクラス図 | class 名 |
 
 ## 1. 集約と境界

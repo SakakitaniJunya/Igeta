@@ -32,8 +32,8 @@ relates_to: [operations, migration-plan]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [非機能要件](./nonfunctional.md) | NFR-* |
-| 下流 | [運用設計](../ops/operations.md) / [移行・リリース計画](../ops/migration-plan.md) | OPS-* / MIG-* |
+| 上流 (depends_on) | [非機能要件](./03-nonfunctional.md) | NFR-* |
+| 下流 | [運用設計](../ops/01-operations.md) / [移行・リリース計画](../ops/02-migration-plan.md) | OPS-* / MIG-* |
 
 ## 1. 構成図
 

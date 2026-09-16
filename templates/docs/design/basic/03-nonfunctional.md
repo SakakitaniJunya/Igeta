@@ -32,8 +32,8 @@ relates_to: [infra-design, operations, test-plan]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [要件定義書](../../product/requirements.md) | REQ-* |
-| 下流 | [インフラ設計](./infra-design.md) / [運用設計](../ops/operations.md) / [テスト計画](../test/test-plan.md) | INF-* / OPS-* / TST-* |
+| 上流 (depends_on) | [要件定義書](../../product/01-requirements.md) | REQ-* |
+| 下流 | [インフラ設計](./08-infra-design.md) / [運用設計](../ops/01-operations.md) / [テスト計画](../test/01-test-plan.md) | INF-* / OPS-* / TST-* |
 
 ## 1. 性能
 

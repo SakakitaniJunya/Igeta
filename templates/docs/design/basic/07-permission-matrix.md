@@ -31,7 +31,7 @@ relates_to: [api-spec, screen-spec, table-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [機能一覧](./function-list.md) / [横断概念](./crosscutting.md) | FN-* / XC-* |
+| 上流 (depends_on) | [機能一覧](./01-function-list.md) / [横断概念](./04-crosscutting.md) | FN-* / XC-* |
 | 下流 | [API 仕様](./api/) / [画面設計](./screens/) / [テーブル定義](./tables/) | API-* / SCR-* / TBL-* |
 
 ## 1. ロール定義

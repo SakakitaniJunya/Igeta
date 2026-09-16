@@ -31,7 +31,7 @@ relates_to: []
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [非機能要件](./nonfunctional.md) | NFR-* |
+| 上流 (depends_on) | [非機能要件](./03-nonfunctional.md) | NFR-* |
 | 下流 | [API 仕様](./api/) / [モジュール仕様](../detail/modules/) | API-* / MOD-* |
 
 ## 1. 認証・認可

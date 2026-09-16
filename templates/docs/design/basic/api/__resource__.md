@@ -32,7 +32,7 @@ relates_to: [table-spec, sequence-spec, test-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [機能一覧](../function-list.md) / [画面設計](../screens/) | FN-* / SCR-* |
+| 上流 (depends_on) | [機能一覧](../01-function-list.md) / [画面設計](../screens/) | FN-* / SCR-* |
 | 下流 | [シーケンス](../../detail/sequences/) / [テーブル定義](../tables/) | SEQ-* / TBL-* |
 
 ## 1. API 一覧
