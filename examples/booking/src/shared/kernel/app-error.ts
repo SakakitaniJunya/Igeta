@@ -1,6 +1,7 @@
 // application 層以降のエラー。NestJS の ExceptionFilter が HTTP に変換する。
 // ドメイン層はこのファイルを import しない (Result<T, DomainError> のみ)。
 
+import { lookupError } from '@/shared/kernel/error-catalog';
 import { DomainError } from '@/shared/kernel/result';
 
 export class AppError extends Error {
@@ -26,13 +27,14 @@ export class UnauthorizedError extends AppError {
   }
 }
 export class ForbiddenError extends AppError {
-  constructor(message = 'forbidden') {
-    super(message, 'FORBIDDEN', 403);
+  // details を受け取るのは雛形との差分。403 / 404 でも原因コードを落とさないため。
+  constructor(message = 'forbidden', details?: Readonly<Record<string, unknown>>) {
+    super(message, 'FORBIDDEN', 403, details);
   }
 }
 export class NotFoundError extends AppError {
-  constructor(message: string) {
-    super(message, 'NOT_FOUND', 404);
+  constructor(message: string, details?: Readonly<Record<string, unknown>>) {
+    super(message, 'NOT_FOUND', 404, details);
   }
 }
 export class ConflictError extends AppError {
@@ -41,6 +43,21 @@ export class ConflictError extends AppError {
   }
 }
 
-/** DomainError → AppError。既定は 409 (業務不変条件の衝突)。個別 code は use case 側で分岐する。 */
-export const toAppError = (error: DomainError): AppError =>
-  new ConflictError(error.message, { code: error.code, ...error.details });
+/**
+ * DomainError → AppError。ステータスは error-catalog.ts の statusCode に従う。
+ * カタログ未登録のコード (外部 adapter 由来など) は 409 とする。
+ * 「知らないコードを 200 や 500 に丸める」ことはしない (原則: サイレント縮退禁止)。
+ */
+export const toAppError = (error: DomainError): AppError => {
+  const details = { code: error.code, ...error.details };
+  switch (lookupError(error.code)?.statusCode) {
+    case 400:
+      return new ValidationError(error.message, details);
+    case 403:
+      return new ForbiddenError(error.message, details);
+    case 404:
+      return new NotFoundError(error.message, details);
+    default:
+      return new ConflictError(error.message, details);
+  }
+};

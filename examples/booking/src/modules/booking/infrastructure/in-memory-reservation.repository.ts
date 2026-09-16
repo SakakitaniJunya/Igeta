@@ -1,25 +1,36 @@
 import { Reservation } from '@/modules/booking/domain/reservation';
+import type { ReservationStatus } from '@/modules/booking/domain/reservation';
 import type { ReservationRepositoryPort } from '@/modules/booking/domain/ports/reservation.repository.port';
 import type { ReservationId } from '@/modules/booking/domain/value-objects/reservation-id';
-import { DomainError, err, ok } from '@/shared/kernel/result';
+import { TimeSlotId } from '@/modules/booking/domain/value-objects/time-slot-id';
+import { domainError } from '@/shared/kernel/error-catalog';
+import { Result, err, ok } from '@/shared/kernel/result';
 import type { TenantId } from '@/shared/kernel/tenant-id';
+
+type Row = { readonly timeSlotId: string; readonly status: ReservationStatus };
 
 /** 学習用。プロセス内だけに保存し、DB・RLS・認証の代わりにはしない。 */
 export class InMemoryReservationRepository implements ReservationRepositoryPort {
-  private readonly rows = new Map<string, Map<string, Reservation>>();
+  private readonly rows = new Map<string, Map<string, Row>>();
 
-  async findById(tenantId: TenantId, id: ReservationId) {
+  async findById(tenantId: TenantId, id: ReservationId): Promise<Result<Reservation | null>> {
     const row = this.rows.get(tenantId.value)?.get(id.value);
-    return ok(row ? Reservation.restore(row.id, row.tenantId, row.status) : null);
+    if (row === undefined) return ok(null);
+    const timeSlotId = TimeSlotId.create(row.timeSlotId);
+    if (!timeSlotId.ok) return timeSlotId;
+    return ok(Reservation.restore(id, tenantId, timeSlotId.value, row.status));
   }
 
-  async save(tenantId: TenantId, reservation: Reservation) {
+  async save(tenantId: TenantId, reservation: Reservation): Promise<Result<void>> {
     if (!tenantId.equals(reservation.tenantId)) {
-      return err(new DomainError('TENANT_MISMATCH', '保存先と予約のテナントが異なる'));
+      return err(domainError('TENANT_MISMATCH', { expected: tenantId.value }));
     }
-    const tenantRows = this.rows.get(tenantId.value) ?? new Map<string, Reservation>();
-    // 保存後のオブジェクト変更が、明示的な save なしに永続状態へ漏れないようコピーする。
-    tenantRows.set(reservation.id.value, Reservation.restore(reservation.id, tenantId, reservation.status));
+    const tenantRows = this.rows.get(tenantId.value) ?? new Map<string, Row>();
+    // 値だけを保存する。保存後にオブジェクトを変更しても、明示的な save なしには反映されない。
+    tenantRows.set(reservation.id.value, {
+      timeSlotId: reservation.timeSlotId.value,
+      status: reservation.status,
+    });
     this.rows.set(tenantId.value, tenantRows);
     return ok(undefined);
   }

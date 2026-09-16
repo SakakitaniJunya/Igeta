@@ -1,7 +1,8 @@
 // テナント境界の値オブジェクト。全業務テーブルの `tenant_id` と RLS の `app.tenant_id` は
 // 必ずこの型を通す。repository は TenantId なしにクエリを組めない。
 
-import { DomainError, Result, err, ok } from '@/shared/kernel/result';
+import { domainError } from '@/shared/kernel/error-catalog';
+import { Result, err, ok } from '@/shared/kernel/result';
 
 const PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
@@ -10,7 +11,7 @@ export class TenantId {
 
   static create(raw: string): Result<TenantId> {
     if (!PATTERN.test(raw)) {
-      return err(new DomainError('TENANT_ID_INVALID', 'tenantId の形式が不正', { raw }));
+      return err(domainError('TENANT_ID_INVALID', { raw }));
     }
     return ok(new TenantId(raw));
   }

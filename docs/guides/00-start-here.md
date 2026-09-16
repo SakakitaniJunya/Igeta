@@ -28,7 +28,7 @@ Igeta は、要件や設計を Markdown に書き、書き方・参照先・実�
 | 場所 | 中身 | 最初の扱い |
 |---|---|---|
 | `docs/guides/` | Igeta の操作手順 | このページ → 実習手順を読む |
-| `examples/booking/docs/` | 記入済みの設計書 | 完成例として読む |
+| `examples/booking/docs/` | 記入済みの設計書 23 本 (arc42 11 章分) | 完成例として読む |
 | `examples/booking/src/` | 設計に対応するコード | 実習の後半で読む |
 | `templates/` | 自分の案件へコピーする雛形 | 案件に着手するときに選ぶ |
 
@@ -51,6 +51,8 @@ Igeta は、要件や設計を Markdown に書き、書き方・参照先・実�
 |---|---|
 | 動作だけ見たい | [実習 §1](02-booking-sample.md#1-起動する) |
 | 設計書の記入例を見たい | [サンプルの要件定義](../../examples/booking/docs/product/01-requirements.md) → [機能一覧](../../examples/booking/docs/design/basic/01-function-list.md) |
+| 23 本の記入例を章順に見たい | [サンプルの読む順番](../../examples/booking/README.md#読む順番) |
+| 技術判断の書き方を見たい | [ADR-0002 枠の定員は確定時に消費する](../../examples/booking/docs/adr/0002-capacity-on-confirmation.md) |
 | コードが何を呼ぶか知りたい | [実習 §2 の呼び出し順](02-booking-sample.md#2-要件をコードまで追う) |
 | 自分の案件で使いたい | [案件ロードマップの段階 1](03-project-roadmap.md#1-設計から運用までの順番) |
 | 書き方やファイルの置き場所を調べたい | [文書体系の種類一覧](01-document-taxonomy.md#2-種類一覧) |

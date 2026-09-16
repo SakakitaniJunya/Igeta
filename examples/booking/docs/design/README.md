@@ -8,7 +8,7 @@ owners: [eng]
 
 # design
 
-> このディレクトリの目的: 予約 CLI の基本設計・詳細設計・テスト仕様をまとめる。
+> このディレクトリの目的: 予約 CLI の基本設計・詳細設計・テスト・リスク・実装タスクをまとめる。
 
 ## 索引
 
@@ -18,15 +18,16 @@ owners: [eng]
 |---|---|
 | **§1 Introduction and Goals** (導入と目標) | [予約 CLI サンプルの機能一覧](basic/01-function-list.md) · → [product/](../product/README.md) |
 | **§2 Constraints** (制約) | _未作成_ |
-| **§3 Context and Scope** (コンテキストと範囲) | _未作成_ |
-| **§4 Solution Strategy** (解決戦略) | _未作成_ |
-| **§5 Building Block View** (構成要素) | [予約 CLI サンプルのクラス図](detail/domain/01-booking.md) |
-| **§6 Runtime View** (実行時ビュー) | _未作成_ |
-| **§7 Deployment View** (配置ビュー) | _未作成_ |
-| **§8 Crosscutting Concepts** (横断概念) | _未作成_ |
-| **§9 Architecture Decisions** (アーキテクチャ決定) | _未作成_ |
-| **§10 Quality Requirements** (品質要求) | [予約 CLI サンプルのテスト仕様](test/specs/01-booking.md) |
-| **§11 Risks and Technical Debt** (リスクと技術的負債) | _未作成_ |
-| **§12 Glossary** (用語集) | _未作成_ |
+| **§3 Context and Scope** (コンテキストと範囲) | → [architecture/](../architecture/README.md) |
+| **§4 Solution Strategy** (解決戦略) | [予約 CLI サンプルの解決戦略](basic/02-solution-strategy.md) |
+| **§5 Building Block View** (構成要素) | [予約 CLI サンプルのドメイン総論](detail/domain/01-overview.md) · [予約 CLI サンプルの集約マップ](detail/domain/02-aggregate-map.md) · [予約 CLI サンプルのクラス図](detail/domain/03-booking.md) · [予約 CLI サンプルのモジュール仕様](detail/modules/01-booking.md) |
+| **§6 Runtime View** (実行時ビュー) | [予約 CLI サンプルのシーケンス仕様](detail/sequences/01-booking.md) · [状態遷移 — 予約](detail/state-machines/01-reservation.md) |
+| **§7 Deployment View** (配置ビュー) | [予約 CLI サンプルの実行環境設計](basic/08-infra-design.md) |
+| **§8 Crosscutting Concepts** (横断概念) | [予約 CLI サンプルの横断概念](basic/04-crosscutting.md) · [予約 CLI サンプルの区分値定義](basic/05-code-definitions.md) · [予約 CLI サンプルのメッセージ定義](basic/06-messages.md) |
+| **§9 Architecture Decisions** (アーキテクチャ決定) | → [adr/](../adr/README.md) |
+| **§10 Quality Requirements** (品質要求) | [予約 CLI サンプルの非機能要件](basic/03-nonfunctional.md) · [予約 CLI サンプルのテスト計画](test/01-test-plan.md) · [予約 CLI サンプルのテスト仕様](test/specs/01-booking.md) |
+| **§11 Risks and Technical Debt** (リスクと技術的負債) | [予約 CLI サンプルのリスクと技術的負債](01-risks-tech-debt.md) |
+| **§12 Glossary** (用語集) | → [architecture/](../architecture/README.md) |
+| arc42 章外 (tutorial / guide / explanation / proposal / runbook / tasks) | [実装タスク — 予約の確定とキャンセル](tasks/01-confirm-reservation.md) |
 
 <!-- AUTOGEN:dir-index:end -->

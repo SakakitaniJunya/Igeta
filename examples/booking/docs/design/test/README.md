@@ -8,7 +8,7 @@ owners: [eng]
 
 # test
 
-> このディレクトリの目的: テスト仕様と実行コードをつなぐ。
+> このディレクトリの目的: テスト計画とテスト仕様を置き、実行コードの TST-ID とつなぐ。
 
 ## 索引
 
@@ -17,5 +17,6 @@ owners: [eng]
 | ファイル | タイトル | type | status |
 |---|---|---|---|
 | [specs/](specs/README.md) | specs — 索引 | dir | — |
+| [01-test-plan.md](01-test-plan.md) | 予約 CLI サンプルのテスト計画 | design | draft |
 
 <!-- AUTOGEN:dir-index:end -->

@@ -22,7 +22,7 @@
     "scaffold:module": "node scripts/scaffold-module.mjs",
     "test:scripts": "node --test scripts/*.test.mjs",
     "sample:booking": "tsx --tsconfig examples/booking/tsconfig.json examples/booking/demo.ts",
-    "sample:test": "tsx --tsconfig examples/booking/tsconfig.json --test examples/booking/booking.test.ts",
+    "sample:test": "tsx --tsconfig examples/booking/tsconfig.json --test examples/booking/booking.test.ts examples/booking/docs-contract.test.ts",
     "sample:typecheck": "tsc -p examples/booking/tsconfig.json",
     "sample:drift": "node scripts/check-domain-diagram-drift.mjs --root examples/booking",
     "sample:deps": "depcruise --config examples/booking/.dependency-cruiser.cjs examples/booking/src",

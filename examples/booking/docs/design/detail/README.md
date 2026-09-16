@@ -8,7 +8,7 @@ owners: [eng]
 
 # detail
 
-> このディレクトリの目的: ドメインの構造と不変条件を定義する。
+> このディレクトリの目的: ドメインの構造と不変条件、状態遷移・実行時の流れ・モジュールの公開面を定義する。
 
 ## 索引
 
@@ -17,5 +17,8 @@ owners: [eng]
 | ファイル | タイトル | type | status |
 |---|---|---|---|
 | [domain/](domain/README.md) | domain — 索引 | dir | — |
+| [modules/](modules/README.md) | modules — 索引 | dir | — |
+| [sequences/](sequences/README.md) | sequences — 索引 | dir | — |
+| [state-machines/](state-machines/README.md) | state-machines — 索引 | dir | — |
 
 <!-- AUTOGEN:dir-index:end -->

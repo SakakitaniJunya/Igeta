@@ -8,7 +8,7 @@ owners: [eng]
 
 # domain
 
-> このディレクトリの目的: クラス図と実装の export の対応を定義する。
+> このディレクトリの目的: コンテキストと集約の境界を決め、クラス図と実装の export の対応を定義する。
 
 ## 索引
 
@@ -16,6 +16,8 @@ owners: [eng]
 
 | ファイル | タイトル | type | status |
 |---|---|---|---|
-| [01-booking.md](01-booking.md) | 予約 CLI サンプルのクラス図 | architecture | draft |
+| [01-overview.md](01-overview.md) | 予約 CLI サンプルのドメイン総論 | architecture | draft |
+| [02-aggregate-map.md](02-aggregate-map.md) | 予約 CLI サンプルの集約マップ | architecture | draft |
+| [03-booking.md](03-booking.md) | 予約 CLI サンプルのクラス図 | architecture | draft |
 
 <!-- AUTOGEN:dir-index:end -->

@@ -8,7 +8,7 @@ owners: [eng]
 
 # docs
 
-> このディレクトリの目的: 架空の予約 CLI の設計書を、要件・機能・クラス図・テストの順に案内する。
+> このディレクトリの目的: 架空の予約 CLI の設計書を arc42 の章順に並べ、要件から運用・判断記録までを案内する。
 
 ## 索引
 
@@ -18,15 +18,16 @@ owners: [eng]
 |---|---|
 | **§1 Introduction and Goals** (導入と目標) | [予約 CLI サンプルの機能一覧](design/basic/01-function-list.md) · [予約 CLI サンプルの要件定義](product/01-requirements.md) |
 | **§2 Constraints** (制約) | _未作成_ |
-| **§3 Context and Scope** (コンテキストと範囲) | _未作成_ |
-| **§4 Solution Strategy** (解決戦略) | _未作成_ |
-| **§5 Building Block View** (構成要素) | [予約 CLI サンプルのクラス図](design/detail/domain/01-booking.md) |
-| **§6 Runtime View** (実行時ビュー) | _未作成_ |
-| **§7 Deployment View** (配置ビュー) | _未作成_ |
-| **§8 Crosscutting Concepts** (横断概念) | _未作成_ |
-| **§9 Architecture Decisions** (アーキテクチャ決定) | _未作成_ |
-| **§10 Quality Requirements** (品質要求) | [予約 CLI サンプルのテスト仕様](design/test/specs/01-booking.md) |
-| **§11 Risks and Technical Debt** (リスクと技術的負債) | _未作成_ |
-| **§12 Glossary** (用語集) | _未作成_ |
+| **§3 Context and Scope** (コンテキストと範囲) | [予約 CLI サンプルの稼働構成 (AS-IS)](architecture/01-overview.md) |
+| **§4 Solution Strategy** (解決戦略) | [予約 CLI サンプルの解決戦略](design/basic/02-solution-strategy.md) |
+| **§5 Building Block View** (構成要素) | [予約 CLI サンプルのドメイン総論](design/detail/domain/01-overview.md) · [予約 CLI サンプルの集約マップ](design/detail/domain/02-aggregate-map.md) · [予約 CLI サンプルのクラス図](design/detail/domain/03-booking.md) · [予約 CLI サンプルのモジュール仕様](design/detail/modules/01-booking.md) |
+| **§6 Runtime View** (実行時ビュー) | [予約 CLI サンプルのシーケンス仕様](design/detail/sequences/01-booking.md) · [状態遷移 — 予約](design/detail/state-machines/01-reservation.md) |
+| **§7 Deployment View** (配置ビュー) | [予約 CLI サンプルの実行環境設計](design/basic/08-infra-design.md) |
+| **§8 Crosscutting Concepts** (横断概念) | [予約 CLI サンプルの横断概念](design/basic/04-crosscutting.md) · [予約 CLI サンプルの区分値定義](design/basic/05-code-definitions.md) · [予約 CLI サンプルのメッセージ定義](design/basic/06-messages.md) |
+| **§9 Architecture Decisions** (アーキテクチャ決定) | [ADR-0001 保存先をプロセス内メモリに限定する](adr/0001-in-memory-persistence.md) · [ADR-0002 枠の定員は確定時に消費する](adr/0002-capacity-on-confirmation.md) |
+| **§10 Quality Requirements** (品質要求) | [予約 CLI サンプルの非機能要件](design/basic/03-nonfunctional.md) · [予約 CLI サンプルのテスト計画](design/test/01-test-plan.md) · [予約 CLI サンプルのテスト仕様](design/test/specs/01-booking.md) |
+| **§11 Risks and Technical Debt** (リスクと技術的負債) | [予約 CLI サンプルのリスクと技術的負債](design/01-risks-tech-debt.md) |
+| **§12 Glossary** (用語集) | [予約 CLI サンプルの用語集](architecture/02-glossary.md) |
+| arc42 章外 (tutorial / guide / explanation / proposal / runbook / tasks) | [実装タスク — 予約の確定とキャンセル](design/tasks/01-confirm-reservation.md) · [Runbook — サンプルの検査が失敗したとき](runbooks/01-check-failure.md) |
 
 <!-- AUTOGEN:dir-index:end -->

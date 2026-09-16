@@ -5,9 +5,11 @@
 export type CreateReservationInput = {
   readonly tenantId: string;
   readonly reservationId: string;
+  readonly timeSlotId: string;
 };
 
 export type CreateReservationOutput = {
   readonly reservationId: string;
+  readonly timeSlotId: string;
   readonly status: string;
 };
