@@ -17,6 +17,17 @@
 
 <!-- markdownlint-enable MD033 -->
 
+## 初めての方へ
+
+**最初に読む：[はじめに — 読む順番と学習ロードマップ](docs/guides/00-start-here.md)**
+
+1. [サンプルを起動する](docs/guides/02-booking-sample.md#1-起動する)
+2. [予約作成の要件をコード・テストまで追う](docs/guides/02-booking-sample.md#2-要件をコードまで追う)
+3. [図を変えて検査の失敗と復旧を体験する](docs/guides/02-booking-sample.md#3-検査を一度失敗させて戻す)
+4. [自分の案件の要件・設計・実装へ進む](docs/guides/03-project-roadmap.md)
+
+学習は約 30〜45 分が目安です。各手順には、操作するファイルと次に進める条件があります。
+
 ## Igeta とは
 
 日本の受託開発・SI の設計書は、Excel や Word で書かれ、更新されないまま実装と離れていくことが多い。Igeta は設計書を **Markdown + Git + CI** に載せ、「書いたら終わり」ではなく**機械で検査され続ける文書**にするための型 (かた) を提供する。
@@ -95,6 +106,15 @@ flowchart LR
 34 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 
 ## はじめかた
+
+**完成例から試す**: [予約サンプルのガイド](docs/guides/02-booking-sample.md) に、arc42 11 章分 (23 本) の記入済み設計書と、DB 不要の実行コードがあります。
+要件定義・機能一覧・ドメイン図・状態遷移・シーケンス・区分値・メッセージ・ADR・テスト計画・リスク・Runbook まで揃っています。
+
+```bash
+npm ci
+npm run sample:booking
+npm run sample:check
+```
 
 Node.js 22 以上が必要。
 

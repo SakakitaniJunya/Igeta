@@ -12,6 +12,9 @@ owners: [eng]
 
 ## 索引
 
+初めての方は **[読む順番と学習ロードマップ](guides/00-start-here.md)** から始めてください。
+実案件に進む際は [要件から運用までのロードマップ](guides/03-project-roadmap.md) を使います。
+
 <!--
   docs/README.md と docs/design/README.md の索引は **arc42 章別**で生成される
   (章見出しは「§5 Building Block View (構成要素)」の英日併記、章に文書が無ければ「_未作成_」)。

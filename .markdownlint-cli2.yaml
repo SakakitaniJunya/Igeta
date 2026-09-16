@@ -2,7 +2,9 @@
 globs:
   - 'docs/**/*.md'
   - 'templates/**/*.md'
+  - 'examples/**/*.md'
   - '*.md'
 ignores:
   - 'node_modules/**'
   - 'docs/dependencies.md'
+  - 'examples/**/docs/dependencies.md'

@@ -20,10 +20,21 @@
     "docs:lint": "markdownlint-cli2",
     "docs:template-check": "node scripts/check-doc-template.mjs --require-kind",
     "scaffold:module": "node scripts/scaffold-module.mjs",
-    "test:scripts": "node --test scripts/*.test.mjs"
+    "test:scripts": "node --test scripts/*.test.mjs",
+    "sample:booking": "tsx --tsconfig examples/booking/tsconfig.json examples/booking/demo.ts",
+    "sample:test": "tsx --tsconfig examples/booking/tsconfig.json --test examples/booking/booking.test.ts examples/booking/docs-contract.test.ts",
+    "sample:typecheck": "tsc -p examples/booking/tsconfig.json",
+    "sample:drift": "node scripts/check-domain-diagram-drift.mjs --root examples/booking",
+    "sample:deps": "depcruise --config examples/booking/.dependency-cruiser.cjs examples/booking/src",
+    "sample:docs:graph": "node scripts/sample-docs.mjs --write",
+    "sample:docs:check": "node scripts/sample-docs.mjs --check && node scripts/check-doc-template.mjs --docs examples/booking/docs --require-kind",
+    "sample:check": "npm run sample:docs:check && npm run sample:typecheck && npm run sample:test && npm run sample:drift && npm run sample:deps"
   },
   "devDependencies": {
+    "@types/node": "^22.20.3",
     "dependency-cruiser": "^16.10.0",
-    "markdownlint-cli2": "^0.18.1"
+    "markdownlint-cli2": "^0.18.1",
+    "tsx": "^4.23.13",
+    "typescript": "~5.9.3"
   }
 }
