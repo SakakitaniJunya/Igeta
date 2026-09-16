@@ -116,11 +116,11 @@ node scripts/generate-docs-graph.mjs --write
 | コマンド | 検査内容 | 落ちる条件 |
 |---|---|---|
 | `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 |
-| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 自動生成索引が古い |
+| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run scaffold:module` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (50 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (54 件) |
 
 ## ディレクトリ構成
 
