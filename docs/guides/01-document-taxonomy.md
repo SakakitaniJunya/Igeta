@@ -159,7 +159,10 @@ docs/
 │   ├── 01-overview.md                稼働中の構成図と外部システム (ARC)
 │   └── 02-glossary.md                用語集 — 業務用語 ↔ コード識別子
 ├── proposal/NN-<slug>.md             顧客への提案書。accepted → ADR へ
-├── guides/NN-<slug>.md               書き方・進め方の手引き (how-to)
+├── guides/                           書き方・進め方の手引き (how-to)
+│   ├── 01-document-taxonomy.md       文書体系 (このファイル)
+│   ├── 02-implementation-order.md    実装順序と各ステップの DoD
+│   └── NN-<slug>.md                  その他の手引き
 ├── explanation/NN-<slug>.md          調査・背景 — 決定の材料 (決定は adr/)
 └── runbooks/NN-<シナリオ>.md          運用手順書。1 手順 1 コマンド (RUN)
 ```
@@ -197,6 +200,7 @@ docs/
 | `architecture/` 現行構成 (AS-IS) | `as-is-overview` | 稼働中の構成 (C4 L1 / L2) と外部システムとの契約。稼働後に起こす | §3 | `architecture/01-overview.md` | ARC | 200 |
 | `architecture/` 現行構成 (AS-IS) | `glossary` | ユビキタス言語。業務用語 ↔ コード識別子 | §12 | `architecture/02-glossary.md` | — | 200 |
 | `proposal/` 対外提案 | `proposal` | 顧客に提出する提案書 (背景〜設計〜代替案を 1 枚で)。accepted → ADR へ昇格 | — | `proposal/__slug__.md` | — | 200 |
+| `guides/` 手引き | `implementation-order` | 実装順序と各ステップの DoD。scaffold 前に読む。§1 の着手順の表だけプロジェクトで埋める | — | `guides/02-implementation-order.md` | — | 100 |
 | `guides/` 手引き | `guide` | how-to。手順を 100 行以内で | — | `guides/__slug__.md` | — | 100 |
 | `guides/` 手引き | `tutorial` | 学習者向け。テンプレ無し・kind 予約のみ。`guides/__slug__.md` を「学習目標 / 前提 / ステップ / 到達確認」で流用 | — | (`guides/__slug__.md`) | — | 100 |
 | `explanation/` 背景 | `explanation` | 決定の材料になる調査・背景。決定そのものは `adr/` に書く | — | `explanation/__slug__.md` | — | 200 |

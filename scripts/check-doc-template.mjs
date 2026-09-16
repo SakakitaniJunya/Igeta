@@ -257,6 +257,7 @@ const ARC42_BY_KIND = new Map([
   ['tasks', null],
   ['proposal', null],
   ['guide', null],
+  ['implementation-order', null],
   ['explanation', null],
   ['runbook', null],
 ]);

@@ -9,7 +9,7 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
-depends_on: [domain-aggregate-map]
+depends_on: [aggregate-map]
 relates_to: [sequence-spec, test-spec, messages]
 ---
 

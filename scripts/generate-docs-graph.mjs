@@ -455,7 +455,7 @@ const ARC42_CHAPTERS = [
   [12, "Glossary", "用語集"],
 ];
 // arc42 の外側にある文書種別 (章が無いのが正しい)。章未割当の警告対象から外す。
-const NON_ARC42_KINDS = new Set(["tasks", "proposal", "guide", "explanation", "runbook"]);
+const NON_ARC42_KINDS = new Set(["tasks", "proposal", "guide", "implementation-order", "explanation", "runbook"]);
 
 function firstHeading(content) {
   const m = content.match(/^#\s+(.+)$/m);
