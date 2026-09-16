@@ -1,14 +1,14 @@
 ---
 id: docs-index
-title: docs — Igeta 自身の文書
+title: docs — Igeta 自身の説明書
 type: index
 status: active
 owners: [eng]
 ---
 
-# docs
+# docs — Igeta 自身の説明書
 
-> このディレクトリの目的: Igeta 自身の説明文書。文書体系の正典は guides/document-taxonomy.md。
+> このディレクトリの目的: Igeta 自身の説明書 (雛形の使い方ガイドと外部標準の解説)。**雛形ではない**。雛形は `../templates/docs/` にある。
 
 ## 索引
 

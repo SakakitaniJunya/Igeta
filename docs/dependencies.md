@@ -20,13 +20,9 @@ graph LR
   classDef runbook fill:#fecaca,stroke:#7f1d1d,color:#111
   classDef guide fill:#e9d5ff,stroke:#581c87,color:#111
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
-  adr-index["adr — 索引"]
-  class adr-index index
   design-doc-standards["設計書テンプレが参照した外部標準"]
   class design-doc-standards explanation
-  design-index["design — 索引"]
-  class design-index index
-  docs-index["docs — Igeta 自身の文書"]
+  docs-index["docs — Igeta 自身の説明書"]
   class docs-index index
   document-taxonomy["文書体系 — 設計書の種類・配置・関連"]
   class document-taxonomy guide
@@ -52,8 +48,6 @@ graph LR
 
 | ID | Type | Path |
 |---|---|---|
-| adr-index | index | [`docs/adr/README.md`](adr/README.md) |
-| design-index | index | [`docs/design/README.md`](design/README.md) |
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
 | guides-index | index | [`docs/guides/README.md`](guides/README.md) |
 

@@ -120,22 +120,24 @@ node scripts/generate-docs-graph.mjs --write
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run scaffold:module` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (54 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (57 件) |
 
 ## ディレクトリ構成
 
 ```text
 Igeta/
-├── templates/
-│   ├── docs/               設計書テンプレート 33 種 (docs/ と同じ階層)
+├── templates/              【コピー元】雛形置き場。ここは使う人が自分のリポジトリへコピーする
+│   ├── docs/               設計書の雛形 33 種。コピー先 (your-repo/docs/) と同じフォルダ構成にしてある
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
 │   └── web-feature/        フロントエンド 1 機能分 (ページ・3 状態・文言カタログ)
+├── docs/                   【Igeta 自身の説明書】雛形の使い方ガイドと、採用した外部標準の解説
 ├── scripts/                検査・生成・scaffold (依存ゼロの Node スクリプト + テスト)
-├── docs/                   Igeta 自身の文書 (文書体系ガイド・外部標準の解説)。テンプレで書かれている
 ├── assets/                 ロゴ
 └── .github/workflows/      CI
 ```
+
+**`templates/docs/` と `docs/` の違い**: `templates/docs/` は**雛形** (中身は空欄と記入例)、`docs/` は **Igeta 自身の説明書** (中身のある実物)。使う人がコピーするのは `templates/docs/` だけ。`docs/` の文書も雛形から書いているので、検査が通る実例として読める。
 
 ## 参照した標準
 

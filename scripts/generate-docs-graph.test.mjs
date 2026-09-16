@@ -141,4 +141,27 @@ describe('generate-docs-graph の本文リンク検査', () => {
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
     assert.match(result.stderr, /docs\/design\/basic\/nonfunctional\.md に frontmatter arc42 が無い/);
   });
+
+  it('ADR が 1 本も無いツリーでは docs/adr/README.md を要求しない', () => {
+    rmSync(join(root, 'docs', 'adr'), { recursive: true, force: true });
+    converge(root);
+    assert.equal(existsSync(join(root, 'docs', 'adr')), false, 'docs/adr/ を勝手に作っている');
+    const result = run(root, '--check');
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  });
+
+  it('負例: ADR があるのに docs/adr/README.md が無ければ落ちる (索引を黙って捨てない)', () => {
+    rmSync(join(root, 'docs', 'adr', 'README.md'));
+    const result = run(root, '--write');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /docs\/adr\/README\.md/);
+  });
+
+  it('docs/design/ が無いツリーでは design/README.md を作らない', () => {
+    rmSync(join(root, 'docs', 'design'), { recursive: true, force: true });
+    converge(root);
+    assert.equal(existsSync(join(root, 'docs', 'design')), false, 'docs/design/ を勝手に作っている');
+    const result = run(root, '--check');
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  });
 });

@@ -624,7 +624,8 @@ async function buildDirIndexes(allFilesRaw, overrides = new Map()) {
     return rows;
   };
   // 章別索引を出すディレクトリ。配下の全文書を arc42 章順に並べる。
-  const CHAPTER_DIRS = [DOCS_DIR, join(DOCS_DIR, "design")];
+  // docs/design/ はツリーに在るときだけ対象にする (無いのに README だけ作ると空フォルダが生える)。
+  const CHAPTER_DIRS = [DOCS_DIR, join(DOCS_DIR, "design")].filter((d) => d === DOCS_DIR || existsSync(d));
   const descendantDocs = (d) => allFiles.filter((f) => !isReadme(f) && (f.startsWith(d + sep)));
   const results = [];
   const arc42Warnings = [];
@@ -723,14 +724,17 @@ async function main() {
 
   // ---- generate ADR README index ----
   const adrTable = buildAdrIndexTable(docs);
-  const adrExisting = await readFile(ADR_README, "utf8");
-  const adrOut = spliceAdrReadme(adrExisting, adrTable);
+  // ADR が 1 本も無いツリーでは ADR 索引を作らない。ADR があるのに README が無ければ従来どおり落とす。
+  const hasAdrs = docs.some((d) => d.type === "adr");
+  const adrExisting = hasAdrs ? await readFile(ADR_README, "utf8") : await readFile(ADR_README, "utf8").catch(() => null);
+  const adrOut = adrExisting == null ? null : spliceAdrReadme(adrExisting, adrTable);
+  const adrOverride = adrOut == null ? [] : [[ADR_README, adrOut]];
 
   // ---- per-directory README indexes ----
   // two passes: pass 2 sees the READMEs pass 1 would create/update (titles of new stubs, ADR splice),
   // so the output is a fixed point and --check passes right after --write.
-  const pass1 = await buildDirIndexes(allFiles, new Map([[ADR_README, adrOut]]));
-  const ov = new Map([[ADR_README, adrOut], ...pass1.map((di) => [di.readmePath, di.desired])]);
+  const pass1 = await buildDirIndexes(allFiles, new Map(adrOverride));
+  const ov = new Map([...adrOverride, ...pass1.map((di) => [di.readmePath, di.desired])]);
   const pass2 = await buildDirIndexes(allFiles, ov);
   // .map() は配列を作り直すので arc42Warnings プロパティが落ちる (警告が無言で消えていた)。明示的に引き継ぐ。
   const dirIndexes = pass2.map((di) => ({ ...di, existing: di.readmePath === ADR_README ? adrOut : di.existing }));
@@ -762,7 +766,7 @@ async function main() {
       console.error(`[docs-graph] ${OUTPUT_REL} is out of date. Run: --write`);
       drift = true;
     }
-    if (adrExisting.trim() !== adrOut.trim()) {
+    if (adrOut != null && adrExisting.trim() !== adrOut.trim()) {
       console.error(`[docs-graph] ${ADR_README_REL} ADR 索引が out of date. Run: --write`);
       drift = true;
     }
@@ -782,7 +786,7 @@ async function main() {
     reportWarnings();
     if (failOnErrors()) process.exit(1);
     await writeFile(OUTPUT, depsOut + "\n", "utf8");
-    await writeFile(ADR_README, adrOut, "utf8");
+    if (adrOut != null) await writeFile(ADR_README, adrOut, "utf8");
     let dirWrites = 0;
     for (const di of dirIndexes) {
       if (di.existing == null || di.existing !== di.desired) { await writeFile(di.readmePath, di.desired, 'utf8'); dirWrites++; }
@@ -794,7 +798,7 @@ async function main() {
       for (const p of linkProblems) console.error(`  ❌ ${p}`);
     }
     console.log(
-      `[docs-graph] wrote ${OUTPUT_REL} + ${ADR_README_REL} ADR 索引 (${docs.length} docs).`,
+      `[docs-graph] wrote ${OUTPUT_REL}${adrOut != null ? ` + ${ADR_README_REL} ADR 索引` : ""} (${docs.length} docs).`,
     );
     return;
   }
