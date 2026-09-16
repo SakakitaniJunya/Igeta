@@ -20,7 +20,7 @@ graph LR
   classDef runbook fill:#fecaca,stroke:#7f1d1d,color:#111
   classDef guide fill:#e9d5ff,stroke:#581c87,color:#111
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
-  booking-sample-guide["記入済み予約サンプルで Igeta を試す"]
+  booking-sample-guide["予約サンプルの実習手順 — 起動から変更・検査まで"]
   class booking-sample-guide guide
   design-doc-standards["設計書テンプレが参照した外部標準"]
   class design-doc-standards explanation
@@ -32,17 +32,29 @@ graph LR
   class explanation-index index
   guides-index["guides — 索引"]
   class guides-index index
+  project-roadmap["自分の案件を進めるロードマップ"]
+  class project-roadmap guide
+  start-here["はじめに — 読む順番と学習ロードマップ"]
+  class start-here guide
   document-taxonomy ==> booking-sample-guide
   document-taxonomy ==> design-doc-standards
+  document-taxonomy ==> project-roadmap
+  booking-sample-guide ==> project-roadmap
+  booking-sample-guide -.- start-here
+  booking-sample-guide -.- project-roadmap
   design-doc-standards -.- docs-index
   document-taxonomy -.- design-doc-standards
   document-taxonomy -.- docs-index
+  project-roadmap -.- start-here
+  start-here -.- document-taxonomy
 ```
 ## ドキュメント一覧 (type 別)
 ### guide
 
-- **booking-sample-guide** — [記入済み予約サンプルで Igeta を試す](guides/02-booking-sample.md)
+- **booking-sample-guide** — [予約サンプルの実習手順 — 起動から変更・検査まで](guides/02-booking-sample.md)
 - **document-taxonomy** — [文書体系 — 設計書の種類・配置・関連](guides/01-document-taxonomy.md)
+- **project-roadmap** — [自分の案件を進めるロードマップ](guides/03-project-roadmap.md)
+- **start-here** — [はじめに — 読む順番と学習ロードマップ](guides/00-start-here.md)
 
 ### explanation
 
