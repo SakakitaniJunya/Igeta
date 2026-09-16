@@ -25,3 +25,7 @@ jobs:
         run: npm run docs:check
       - name: テンプレ適合
         run: npm run docs:template-check
+      - name: 記入済み設計書と予約サンプル
+        run: npm run sample:check
+      - name: 予約サンプルの実行
+        run: npm run sample:booking

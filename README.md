@@ -96,6 +96,14 @@ flowchart LR
 
 ## はじめかた
 
+**完成例から試す**: [予約サンプルのガイド](docs/guides/02-booking-sample.md) に、要件定義・機能一覧・クラス図・テスト仕様の記入例と、DB 不要の実行コードがあります。
+
+```bash
+npm ci
+npm run sample:booking
+npm run sample:check
+```
+
 Node.js 22 以上が必要。
 
 ```bash

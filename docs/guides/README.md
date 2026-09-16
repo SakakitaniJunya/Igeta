@@ -17,5 +17,6 @@ owners: [eng]
 | ファイル | タイトル | type | status |
 |---|---|---|---|
 | [01-document-taxonomy.md](01-document-taxonomy.md) | 文書体系 — 設計書の種類・配置・関連 | guide | active |
+| [02-booking-sample.md](02-booking-sample.md) | 記入済み予約サンプルで Igeta を試す | guide | active |
 
 <!-- AUTOGEN:dir-index:end -->

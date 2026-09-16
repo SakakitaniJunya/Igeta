@@ -20,6 +20,8 @@ graph LR
   classDef runbook fill:#fecaca,stroke:#7f1d1d,color:#111
   classDef guide fill:#e9d5ff,stroke:#581c87,color:#111
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
+  booking-sample-guide["記入済み予約サンプルで Igeta を試す"]
+  class booking-sample-guide guide
   design-doc-standards["設計書テンプレが参照した外部標準"]
   class design-doc-standards explanation
   docs-index["docs — Igeta 自身の説明書"]
@@ -30,6 +32,7 @@ graph LR
   class explanation-index index
   guides-index["guides — 索引"]
   class guides-index index
+  document-taxonomy ==> booking-sample-guide
   document-taxonomy ==> design-doc-standards
   design-doc-standards -.- docs-index
   document-taxonomy -.- design-doc-standards
@@ -38,6 +41,7 @@ graph LR
 ## ドキュメント一覧 (type 別)
 ### guide
 
+- **booking-sample-guide** — [記入済み予約サンプルで Igeta を試す](guides/02-booking-sample.md)
 - **document-taxonomy** — [文書体系 — 設計書の種類・配置・関連](guides/01-document-taxonomy.md)
 
 ### explanation
