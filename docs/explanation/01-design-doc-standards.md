@@ -70,7 +70,7 @@ relates_to: [docs-index]
 | §5 | Building Block View | 構成要素 | 静的な分解 (モジュール / クラス / データ構造) と依存関係。**唯一の必須章** | `design/detail/domain/` `modules/` / `design/basic/screens/` `api/` `tables/` |
 | §6 | Runtime View | 実行時ビュー | 重要シナリオでの振る舞い。業務フロー・シーケンス・状態遷移・ジョブ | `design/basic/flows/` / `design/detail/sequences/` `state-machines/` `jobs/` |
 | §7 | Deployment View | 配置ビュー | 実行環境と、構成要素のそこへの割り当て。環境ごとに書く | `design/basic/08-infra-design.md` / `design/ops/` |
-| §8 | Crosscutting Concepts | 横断概念 | 複数の構成要素にまたがる方針 (認証・エラー・ログ・区分値・文言・権限) | `design/basic/04-crosscutting.md` `code-definitions.md` `messages.md` `permission-matrix.md` |
+| §8 | Crosscutting Concepts | 横断概念 | 複数の構成要素にまたがる方針 (認証・エラー・ログ・区分値・文言・権限) | `design/basic/04-crosscutting.md` `code-definitions.md` `messages.md` `permission-matrix.md` `09-i18n.md` |
 | §9 | Architecture Decisions | アーキテクチャ決定 | 重要・高コスト・リスクの高い決定と根拠。形式は ADR | `adr/NNNN-*.md` |
 | §10 | Quality Requirements | 品質要求 | 測定可能な品質シナリオと、その検証手段 | `design/basic/03-nonfunctional.md` / `design/test/` |
 | §11 | Risks and Technical Debt | リスクと技術的負債 | 優先度順のリスク・負債と低減策。台帳の SoT は課題管理ツール | `design/01-risks-tech-debt.md` |

@@ -32,7 +32,7 @@ flowchart LR
   C3["§3 コンテキスト<br/>architecture/overview"] --> C4
   C10["§10 品質要求<br/>nonfunctional / test-plan / test-spec"] --> C4
   C4 --> C5["§5 構成要素<br/>domain / modules / screens / api / tables"]
-  C4 --> C8["§8 横断概念<br/>crosscutting / code-definitions / messages / permission-matrix"]
+  C4 --> C8["§8 横断概念<br/>crosscutting / code-definitions / messages / permission-matrix / i18n"]
   C5 --> C6["§6 実行時ビュー<br/>flows / sequences / state-machines / jobs"]
   C8 --> C5 & C6
   C5 --> C7["§7 配置ビュー<br/>infra-design / operations / migration-plan"]
@@ -74,6 +74,7 @@ flowchart LR
 | `code-definitions` | §8 | `design/basic/05-code-definitions.md` | CD | 200 |
 | `messages` | §8 | `design/basic/06-messages.md` | MSG | 200 |
 | `permission-matrix` | §8 | `design/basic/07-permission-matrix.md` | PRM | 200 |
+| `i18n` | §8 | `design/basic/09-i18n.md` | I18N | 200 |
 | `risks-tech-debt` | §11 | `design/01-risks-tech-debt.md` | RSK | 200 |
 | `adr` | §9 | `adr/NNNN-__slug__.md` | ファイル名の 4 桁 | 150 |
 | `proposal` | — | `proposal/__slug__.md` | — | 200 |

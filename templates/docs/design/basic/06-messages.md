@@ -10,7 +10,7 @@ canonical: true
 owners: [eng]
 created: YYYY-MM-DD
 depends_on: [crosscutting]
-relates_to: [api-spec, screen-spec, business-flow]
+relates_to: [i18n, api-spec, screen-spec, business-flow]
 ---
 
 <!--

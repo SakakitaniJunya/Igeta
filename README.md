@@ -23,7 +23,7 @@
 
 | 提供するもの | 中身 |
 |---|---|
-| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **33 種** |
+| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **34 種** |
 | **検査スクリプト** (`scripts/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/api-*` / `web-feature`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js) |
 
@@ -92,7 +92,7 @@ flowchart LR
 | 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
-33 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+34 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 
 ## はじめかた
 
@@ -127,7 +127,7 @@ node scripts/generate-docs-graph.mjs --write
 ```text
 Igeta/
 ├── templates/              【コピー元】雛形置き場。ここは使う人が自分のリポジトリへコピーする
-│   ├── docs/               設計書の雛形 33 種。コピー先 (your-repo/docs/) と同じフォルダ構成にしてある
+│   ├── docs/               設計書の雛形 34 種。コピー先 (your-repo/docs/) と同じフォルダ構成にしてある
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
 │   └── web-feature/        フロントエンド 1 機能分 (ページ・3 状態・文言カタログ)

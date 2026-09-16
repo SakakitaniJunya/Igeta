@@ -246,6 +246,7 @@ const ARC42_BY_KIND = new Map([
   ['code-definitions', 8],
   ['messages', 8],
   ['permission-matrix', 8],
+  ['i18n', 8],
   ['adr', 9],
   ['nonfunctional', 10],
   ['test-plan', 10],
