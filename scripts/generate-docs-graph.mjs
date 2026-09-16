@@ -582,6 +582,21 @@ async function checkBodyLinks(files) {
   return problems;
 }
 
+// 索引の「説明」列。文書は冒頭の TL;DR (how-to は When to use)、ディレクトリ README は「このディレクトリの目的」から取る。
+// 索引は一覧性が命なので、強調・リンク・コード装飾は剥がして素の文にし、長ければ切る。
+function summaryOf(content) {
+  if (!content) return "";
+  const m = content.match(/^>\s*\*\*(?:TL;DR|When to use)\*\*:\s*(.+)$/m) || content.match(/^>\s*このディレクトリの目的:\s*(.+)$/m);
+  if (!m) return "";
+  const plain = m[1]
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*([^*]*)\*\*/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+  return plain.length > 120 ? plain.slice(0, 119) + "…" : plain;
+}
+
 async function buildDirIndexes(allFilesRaw, overrides = new Map()) {
   let allFiles = allFilesRaw;
   // overrides: path -> content to use instead of disk (ADR README after the ADR-index splice,
@@ -615,8 +630,9 @@ async function buildDirIndexes(allFilesRaw, overrides = new Map()) {
     for (const c of [...(children.get(d) || [])].sort()) {
       if (indexed(c)) {
         const relDir = relative(from, c);
-        const t = meta.get(join(c, "README.md"))?.title || `${basename(c)} — 索引`;
-        rows.push(`| [${relDir}/](${relDir}/README.md) | ${cell(t)} | dir | — |`);
+        const readme = meta.get(join(c, "README.md"));
+        const t = readme?.title || `${basename(c)} — 索引`;
+        rows.push(`| [${relDir}/](${relDir}/README.md) | ${cell(t)} | ${cell(summaryOf(readme?.content) || "—")} | dir | — |`);
       } else {
         rows.push(...descendantRows(from, c)); // pass-through dir: list its indexed descendants
       }
@@ -642,8 +658,8 @@ async function buildDirIndexes(allFilesRaw, overrides = new Map()) {
       // 拡張子を外して比べる。"catalog-pricing.md" < "catalog.md" ('-' < '.') になり、分割元が分割先の後ろに沈むため
       .sort((a, b) => basename(a, ".md").localeCompare(basename(b, ".md")));
     for (const f of entries) {
-      const { fm, title } = meta.get(f);
-      rows.push(`| [${basename(f)}](${basename(f)}) | ${cell(title)} | ${cell(fm.type || "—")} | ${cell(fm.status || "—")} |`);
+      const { fm, title, content } = meta.get(f);
+      rows.push(`| [${basename(f)}](${basename(f)}) | ${cell(title)} | ${cell(summaryOf(content) || "—")} | ${cell(fm.type || "—")} | ${cell(fm.status || "—")} |`);
     }
     // 章別索引は arc42 を持つ文書が配下に 1 本でもあるときだけ。0 本で 12 章の _未作成_ を並べても情報が無い
     const hasChapterDocs = descendantDocs(dir).some((f) => meta.get(f)?.fm.arc42 !== undefined);
@@ -655,7 +671,7 @@ async function buildDirIndexes(allFilesRaw, overrides = new Map()) {
           arc42Warnings,
           allFiles.filter((f) => !isReadme(f) && !f.startsWith(dir + sep)).sort(),
         )
-      : ["| ファイル | タイトル | type | status |", "|---|---|---|---|", ...rows].join("\n");
+      : ["| ファイル | タイトル | 説明 | type | status |", "|---|---|---|---|---|", ...rows].join("\n");
     if (!isChapterDir && rows.length === 0) continue;
     // `existing` は常にディスクの実体を見る。overrides (pass1 の desired) を existing に使うと
     // pass2 で existing === desired となり --write が索引を書かず --check も drift を見逃す
