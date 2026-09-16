@@ -43,6 +43,73 @@ flowchart LR
 
 実線 = 上流→下流 (`depends_on` の向き)。破線 = 横断的に効く。**下流だけを直して上流を直さない更新は禁止**。文書単位の依存グラフは [dependencies.md](../dependencies.md) が自動生成し、章の日本語解説は [設計書の外部標準 §3](../explanation/01-design-doc-standards.md) にある。
 
+**文書単位の関連** (各テンプレの `depends_on` から起こした図。矢印 = 上流 → 下流。上流を直したら矢印の先を全部見直す)
+
+```mermaid
+flowchart TB
+  REQ["要件定義<br/>requirements"]
+
+  subgraph basic["基本設計 design/basic/"]
+    FN["機能一覧<br/>function-list"]
+    NFR["非機能要件<br/>nonfunctional"]
+    SS["解決戦略<br/>solution-strategy"]
+    XC["横断概念<br/>crosscutting"]
+    PRM["権限<br/>permission-matrix"]
+    MSG["メッセージ<br/>messages"]
+    I18N["多言語<br/>i18n"]
+    CD["区分値<br/>code-definitions"]
+    INF["インフラ<br/>infra-design"]
+    BF["業務フロー<br/>business-flow"]
+    SCR["画面<br/>screen-spec"]
+    API["API<br/>api-spec"]
+    TBL["テーブル<br/>table-spec"]
+  end
+
+  subgraph detail["詳細設計 design/detail/"]
+    DOV["ドメイン総論<br/>domain-overview"]
+    CLS["クラス図<br/>domain-model"]
+    AGG["集約マップ<br/>aggregate-map"]
+    STM["状態遷移<br/>state-machine"]
+    SEQ["シーケンス<br/>sequence-spec"]
+    MOD["モジュール<br/>module-spec"]
+    JOB["ジョブ<br/>job"]
+  end
+
+  subgraph test["テスト design/test/"]
+    TSP["テスト計画<br/>test-plan"]
+    TST["テスト仕様<br/>test-spec"]
+  end
+
+  subgraph ops["運用・移行 design/ops/"]
+    OPS["運用設計<br/>operations"]
+    MIG["移行計画<br/>migration-plan"]
+  end
+
+  RSK["リスク・負債<br/>risks-tech-debt"]
+  T["タスク分解<br/>tasks"]
+  PRP["提案書<br/>proposal"]
+  ADR["ADR<br/>adr"]
+
+  REQ --> FN & NFR & SS & BF & DOV & CLS & PRP
+  FN --> BF & SCR & API & PRM & TSP & TST & T
+  NFR --> SS & XC & INF & OPS & TSP
+  SS --> RSK
+  XC --> PRM & MSG & I18N
+  BF --> SCR & JOB
+  SCR --> API
+  API --> TBL & SEQ & TST
+  CLS --> AGG & CD & TBL & SEQ & MOD
+  AGG --> STM
+  SEQ --> MOD
+  INF --> OPS
+  TBL --> MIG
+  OPS --> MIG
+  TSP --> TST
+  ADR -.-> basic & detail
+```
+
+図に無い `glossary` (用語集) / `as-is-overview` (稼働後の構成) / `guide` / `explanation` / `runbook` は、特定の上流を持たない横断・独立の文書。
+
 ## 2. 種類一覧
 
 **背骨は arc42 12 章**。章はフォルダではなく frontmatter `arc42:` が持ち、README 索引が章順に並べる。テンプレのパス = 配置先のパス。`templates/docs/<X>` を `docs/<X>` へコピーする。`__name__` は雛形で、同階層の実ファイル名に置き換える。**ファイル名の先頭は 2 桁の連番** (`01-requirements.md`) で、同じフォルダ内の読む順を表す。固定名の雛形は標準の番号を持ち、そのまま使うと番号が抜けた分だけ「まだ書いていない文書」が見える。`__name__` の雛形は配置先で自分で採番する (`flows/01-reservation.md`)。検査器は `NN-` を無視して種類を判定するので、番号を変えても壊れない。
