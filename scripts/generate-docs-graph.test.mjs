@@ -2,7 +2,7 @@
 // 章別索引 (docs/README.md と docs/design/README.md) の生成だけを検証する。
 // 一時ツリーを DOCS_GRAPH_ROOT で差し替えて実際にスクリプトを起動する。
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,5 +81,64 @@ describe('generate-docs-graph の arc42 章別索引', () => {
     assert.equal(run(root, '--write').status, 0);
     const checked = run(root, '--check');
     assert.equal(checked.status, 0, `${checked.stdout}${checked.stderr}`);
+  });
+});
+
+describe('generate-docs-graph の本文リンク検査', () => {
+  let root;
+  // 索引が収束した状態から本文だけを書き換える (索引 drift と混ざらないようにするため)
+  const converge = (r) => {
+    assert.equal(run(r, '--write').status, 0);
+    assert.equal(run(r, '--write').status, 0);
+    assert.equal(run(r, '--check').status, 0);
+  };
+  const appendBody = (rel, lines) => appendFileSync(join(root, 'docs', rel), `${lines.join('\n')}\n`);
+
+  beforeEach(() => {
+    root = makeRoot();
+    converge(root);
+  });
+
+  it('正例: 実在する相対リンク・外部 URL・アンカーのみ・コードフェンス内・AUTOGEN 区間は通る', () => {
+    appendBody('design/basic/function-list.md', [
+      '本文: [要件定義書](../../product/requirements.md) と [ADR](../../adr/0001-x.md#decision)。',
+      '外部: [arc42](https://arc42.org/overview/) / アンカー: [上へ](#機能一覧)。',
+      'インラインコード: `[x](./nope.md)` は本文リンクではない。',
+      '',
+      '```markdown',
+      '[コードフェンス内の例](./absolutely-missing.md)',
+      '```',
+      '',
+      '<!-- AUTOGEN:sample:start -->',
+      '[生成区間](./generated-missing.md)',
+      '<!-- AUTOGEN:sample:end -->',
+    ]);
+    const result = run(root, '--check');
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  });
+
+  it('負例: 解決できない相対リンクは ERROR (exit 1) で file:line 付きで報告される', () => {
+    appendBody('design/basic/function-list.md', ['下流: [画面設計](./screens/README.md) を参照。']);
+    const result = run(root, '--check');
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /\[link\] docs\/design\/basic\/function-list\.md:\d+ → \.\/screens\/README\.md/);
+  });
+
+  it('doc を直接持たず子ディレクトリだけのディレクトリにも索引 README を作る', () => {
+    writeDoc(root, 'design/detail/domain/overview.md', doc('domain-overview', 'design', 'domain-overview', 5, 'ドメイン概要'));
+    converge(root);
+    const readme = join(root, 'docs', 'design', 'detail', 'README.md');
+    assert.ok(existsSync(readme), 'design/detail/README.md が生成されていない');
+    assert.match(readFileSync(readme, 'utf8'), /\[domain\/\]\(domain\/README\.md\)/);
+  });
+
+  it('arc42 未割当の doc は warning になる', () => {
+    writeDoc(root, 'design/basic/nonfunctional.md', [
+      '---', 'id: nonfunctional', 'title: 非機能要件', 'type: design', 'kind: nonfunctional',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', '# 非機能要件', '',
+    ]);
+    const result = run(root, '--write');
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    assert.match(result.stderr, /docs\/design\/basic\/nonfunctional\.md に frontmatter arc42 が無い/);
   });
 });
