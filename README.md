@@ -23,7 +23,7 @@
 
 | 提供するもの | 中身 |
 |---|---|
-| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **35 種** |
+| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **36 種** |
 | **検査スクリプト** (`scripts/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/api-*` / `web-feature`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js) |
 
@@ -92,7 +92,7 @@ flowchart LR
 | 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
-35 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+36 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 
 ## はじめかた
 
@@ -127,17 +127,17 @@ node scripts/generate-docs-graph.mjs --write
 ```text
 Igeta/
 ├── templates/              【コピー元】雛形置き場。ここは使う人が自分のリポジトリへコピーする
-│   ├── docs/               設計書の雛形 35 種。コピー先 (your-repo/docs/) と同じフォルダ構成にしてある
+│   ├── docs/               設計書の雛形 36 種。コピー先 (your-repo/docs/) と同じフォルダ構成にしてある
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
 │   └── web-feature/        フロントエンド 1 機能分 (ページ・3 状態・文言カタログ)
-├── docs/                   【Igeta 自身の説明書】雛形の使い方ガイドと、採用した外部標準の解説
+├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
 ├── scripts/                検査・生成・scaffold (依存ゼロの Node スクリプト + テスト)
 ├── assets/                 ロゴ
 └── .github/workflows/      CI
 ```
 
-**`templates/docs/` と `docs/` の違い**: `templates/docs/` は**雛形** (中身は空欄と記入例)、`docs/` は **Igeta 自身の説明書** (中身のある実物)。使う人がコピーするのは `templates/docs/` だけ。`docs/` の文書も雛形から書いているので、検査が通る実例として読める。
+**`templates/docs/` と `docs/` の違い**: `templates/docs/` は**雛形** (中身は空欄と記入例)、`docs/` は **Igeta 自身の背景** (なぜこの標準にしたか)。使う人がコピーするのは `templates/docs/` だけで、文書体系ガイドと実装順序ガイドもそこに入っている (全プロジェクトが自分の `docs/guides/` に持つ文書だから)。
 
 ## 参照した標準
 

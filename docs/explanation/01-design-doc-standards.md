@@ -7,7 +7,7 @@ status: active
 canonical: true
 owners: [eng]
 created: 2026-09-16
-depends_on: [document-taxonomy]
+depends_on: []
 relates_to: [docs-index]
 ---
 
@@ -22,7 +22,7 @@ relates_to: [docs-index]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [文書体系](../guides/01-document-taxonomy.md) | 全接頭辞 |
+| 上流 (depends_on) | [文書体系](../../templates/docs/guides/01-document-taxonomy.md) | 全接頭辞 |
 | 下流 | `templates/docs/**` / `scripts/check-doc-template.mjs` | — |
 
 ## 0. 背骨を arc42 にした理由

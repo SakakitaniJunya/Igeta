@@ -24,22 +24,11 @@ graph LR
   class design-doc-standards explanation
   docs-index["docs — Igeta 自身の説明書"]
   class docs-index index
-  document-taxonomy["文書体系 — 設計書の種類・配置・関連"]
-  class document-taxonomy guide
   explanation-index["explanation — 索引"]
   class explanation-index index
-  guides-index["guides — 索引"]
-  class guides-index index
-  document-taxonomy ==> design-doc-standards
   design-doc-standards -.- docs-index
-  document-taxonomy -.- design-doc-standards
-  document-taxonomy -.- docs-index
 ```
 ## ドキュメント一覧 (type 別)
-### guide
-
-- **document-taxonomy** — [文書体系 — 設計書の種類・配置・関連](guides/01-document-taxonomy.md)
-
 ### explanation
 
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
@@ -49,5 +38,4 @@ graph LR
 | ID | Type | Path |
 |---|---|---|
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
-| guides-index | index | [`docs/guides/README.md`](guides/README.md) |
 

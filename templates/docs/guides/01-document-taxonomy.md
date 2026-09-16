@@ -2,13 +2,13 @@
 id: document-taxonomy
 title: 文書体系 — 設計書の種類・配置・関連
 type: guide
-kind: guide
+kind: document-taxonomy
 status: active
 canonical: true
 owners: [eng]
 created: 2026-09-16
 depends_on: []
-relates_to: [design-doc-standards, docs-index]
+relates_to: [implementation-order, docs-index]
 ---
 
 # 文書体系 — 設計書の種類・配置・関連
@@ -19,9 +19,9 @@ relates_to: [design-doc-standards, docs-index]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 | [Igeta の設計思想](../../README.md#設計思想) | — |
+| 上流 | [Igeta の設計思想](https://github.com/SakakitaniJunya/Igeta/blob/main/README.md#設計思想) | — |
 | 下流 | `templates/docs/**` / `scripts/check-doc-template.mjs` / 全設計書 | 全接頭辞 |
-| 参考 | [設計書テンプレが参照した外部標準](../explanation/01-design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
+| 参考 | [設計書テンプレが参照した外部標準](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/01-design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
 
 ## 1. 章の関連図 (arc42)
 
@@ -41,7 +41,7 @@ flowchart LR
   C12["§12 用語集<br/>glossary"] -.-> C1 & C5
 ```
 
-実線 = 上流→下流 (`depends_on` の向き)。破線 = 横断的に効く。**下流だけを直して上流を直さない更新は禁止**。文書単位の依存グラフは [dependencies.md](../dependencies.md) が自動生成し、章の日本語解説は [設計書の外部標準 §3](../explanation/01-design-doc-standards.md) にある。
+実線 = 上流→下流 (`depends_on` の向き)。破線 = 横断的に効く。**下流だけを直して上流を直さない更新は禁止**。文書単位の依存グラフは [dependencies.md](../dependencies.md) が自動生成し、章の日本語解説は [設計書の外部標準 §3](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/01-design-doc-standards.md) にある。
 
 **文書単位の関連** (各テンプレの `depends_on` から起こした図。矢印 = 上流 → 下流。上流を直したら矢印の先を全部見直す)
 
@@ -200,6 +200,7 @@ docs/
 | `architecture/` 現行構成 (AS-IS) | `as-is-overview` | 稼働中の構成 (C4 L1 / L2) と外部システムとの契約。稼働後に起こす | §3 | `architecture/01-overview.md` | ARC | 200 |
 | `architecture/` 現行構成 (AS-IS) | `glossary` | ユビキタス言語。業務用語 ↔ コード識別子 | §12 | `architecture/02-glossary.md` | — | 200 |
 | `proposal/` 対外提案 | `proposal` | 顧客に提出する提案書 (背景〜設計〜代替案を 1 枚で)。accepted → ADR へ昇格 | — | `proposal/__slug__.md` | — | 200 |
+| `guides/` 手引き | `document-taxonomy` | 文書体系 (このファイル)。種類・配置・ID・関連の正典 | — | `guides/01-document-taxonomy.md` | — | 150 |
 | `guides/` 手引き | `implementation-order` | 実装順序と各ステップの DoD。scaffold 前に読む。§1 の着手順の表だけプロジェクトで埋める | — | `guides/02-implementation-order.md` | — | 100 |
 | `guides/` 手引き | `guide` | how-to。手順を 100 行以内で | — | `guides/__slug__.md` | — | 100 |
 | `guides/` 手引き | `tutorial` | 学習者向け。テンプレ無し・kind 予約のみ。`guides/__slug__.md` を「学習目標 / 前提 / ステップ / 到達確認」で流用 | — | (`guides/__slug__.md`) | — | 100 |

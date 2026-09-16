@@ -9,4 +9,4 @@
 | `api-shared-kernel/` | `your-repo/apps/api/` | 初回のみ `--include-kernel` を付ける |
 | `web-feature/` | `your-repo/apps/web/` | `npm run scaffold:module -- --kind web --feature <name>` |
 
-Igeta ルートの `docs/` は雛形ではなく、Igeta 自身の説明書。
+`docs/guides/01-document-taxonomy.md` (文書体系) と `02-implementation-order.md` (実装順序) は中身の入った手引きで、そのままコピーして使う。Igeta ルートの `docs/` は雛形ではなく、Igeta 自身の背景。

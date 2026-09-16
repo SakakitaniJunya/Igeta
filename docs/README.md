@@ -8,7 +8,7 @@ owners: [eng]
 
 # docs — Igeta 自身の説明書
 
-> このディレクトリの目的: Igeta 自身の説明書 (雛形の使い方ガイドと外部標準の解説)。**雛形ではない**。雛形は `../templates/docs/` にある。
+> このディレクトリの目的: Igeta 自身の背景 (採用した外部標準と、採らなかった理由)。**雛形ではない**。雛形と、全プロジェクトが持つ手引き (文書体系・実装順序) は `../templates/docs/` にある。
 
 ## 索引
 
@@ -25,6 +25,5 @@ owners: [eng]
 | ファイル | タイトル | 説明 | type | status |
 |---|---|---|---|---|
 | [explanation/](explanation/README.md) | explanation — 索引 | 背景と根拠。Igeta が採用した外部標準と、採らなかった理由。 | dir | — |
-| [guides/](guides/README.md) | guides — 索引 | 書き方の手引き。設計書を書く前に読む文書体系ガイド。 | dir | — |
 
 <!-- AUTOGEN:dir-index:end -->
