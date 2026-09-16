@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: 検査スクリプトの自己テスト
+        run: npm run test:scripts
+      - name: Markdown 記法
+        run: npm run docs:lint
+      - name: 索引・参照整合性
+        run: npm run docs:check
+      - name: テンプレ適合
+        run: npm run docs:template-check

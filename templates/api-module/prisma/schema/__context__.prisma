@@ -1,0 +1,14 @@
+// __context__ コンテキストの永続モデル。1 コンテキスト = 1 ファイル。
+// EXCLUDE 制約・RLS ポリシーは Prisma スキーマで表現できないため
+// prisma/migrations/<ts>_init___context__/migration.sql に raw SQL で書く。
+
+model __Aggregate__ {
+  id        String   @id @db.VarChar(64)
+  tenantId  String   @map("tenant_id") @db.VarChar(64)
+  status    String   @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([tenantId, status])
+  @@map("__aggregate__s")
+}

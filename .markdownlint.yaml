@@ -1,0 +1,29 @@
+# markdownlint-cli2 (https://github.com/DavidAnson/markdownlint-cli2) の既定ルールを基準に、
+# Igeta の文書規約 (frontmatter 必須 / TL;DR 必須) と構造的に衝突する 5 つだけを外す。理由なしの無効化はしない。
+default: true
+
+# MD041 first-line-heading: 全文書が frontmatter (---) で始まるため必ず落ちる。
+MD041: false
+
+# MD013 line-length: 日本語の設計書は 1 文 = 1 行 + 表が長い。折り返すと表が壊れる。
+MD013: false
+
+# MD025 single-title: H1 が 2 つある = 2 文書が 1 ファイルに入っている、は維持する。
+# ただし既定は frontmatter の `title:` も見出しとして数えるため、全文書が落ちる。
+# frontmatter は数えず、本文の H1 が 1 つであることだけを見る。
+MD025:
+  front_matter_title: ''
+
+# MD032 blanks-around-lists: 原則 11 で必須の TL;DR ブロック
+#   > **TL;DR**: ...
+#   > - bullet
+# は引用内のリストが直前行に接するため必ず落ちる。TL;DR の形は規約側が正。
+MD032: false
+
+# MD036 no-emphasis-as-heading: 表の直前ラベル (**候補から外したもの** 等) に使う。
+# H4 へ昇格させると check-doc-template.mjs の「## 節」単位の必須構成検査と粒度が噛み合わない。
+MD036: false
+
+# MD037 no-space-in-emphasis: ID のワイルドカード表記 (`FN-*` / `API-*` を含む表セル) を
+# 強調記号の開始と誤検出する。ID 接頭辞の表記は document-taxonomy.md 側が正。
+MD037: false

@@ -1,0 +1,13 @@
+// prisma/schema/ 複数ファイル構成 (prismaSchemaFolder)。
+// コンテキストごとの model は prisma/schema/<context>.prisma に置き、ここには置かない。
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [btree_gist]
+}

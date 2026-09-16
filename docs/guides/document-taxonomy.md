@@ -1,0 +1,100 @@
+---
+id: document-taxonomy
+title: 文書体系 — 設計書の種類・配置・関連
+type: guide
+kind: guide
+status: active
+canonical: true
+owners: [eng]
+created: 2026-09-16
+depends_on: []
+relates_to: [design-doc-standards, docs-index]
+---
+
+# 文書体系 — 設計書の種類・配置・関連
+
+> **When to use**: 設計書を書く前に読む。`templates/docs/` は **`docs/` と同じ階層**なので、置きたい場所と同じパスのテンプレをコピーすれば `kind` ・ID 接頭辞・必須節が自動で決まる。
+
+## 関連
+
+| 区分 | 文書 | 対応 ID |
+|---|---|---|
+| 上流 | [Igeta の設計思想](../../README.md#設計思想) | — |
+| 下流 | `templates/docs/**` / `scripts/check-doc-template.mjs` / 全設計書 | 全接頭辞 |
+| 参考 | [設計書テンプレが参照した外部標準](../explanation/design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
+
+## 1. 章の関連図 (arc42)
+
+```mermaid
+flowchart LR
+  C1["§1 導入と目標<br/>requirements / function-list"] --> C4["§4 解決戦略<br/>solution-strategy"]
+  C2["§2 制約<br/>requirements の制約節 + ADR"] --> C4
+  C3["§3 コンテキスト<br/>architecture/overview"] --> C4
+  C10["§10 品質要求<br/>nonfunctional / test-plan / test-spec"] --> C4
+  C4 --> C5["§5 構成要素<br/>domain / modules / screens / api / tables"]
+  C4 --> C8["§8 横断概念<br/>crosscutting / code-definitions / messages / permission-matrix"]
+  C5 --> C6["§6 実行時ビュー<br/>flows / sequences / state-machines / jobs"]
+  C8 --> C5 & C6
+  C5 --> C7["§7 配置ビュー<br/>infra-design / operations / migration-plan"]
+  C9["§9 決定 (ADR)"] -.-> C4 & C5 & C7
+  C5 --> C11["§11 リスクと負債<br/>risks-tech-debt"]
+  C12["§12 用語集<br/>glossary"] -.-> C1 & C5
+```
+
+実線 = 上流→下流 (`depends_on` の向き)。破線 = 横断的に効く。**下流だけを直して上流を直さない更新は禁止**。文書単位の依存グラフは [dependencies.md](../dependencies.md) が自動生成し、章の日本語解説は [設計書の外部標準 §3](../explanation/design-doc-standards.md) にある。
+
+## 2. 種類一覧
+
+**背骨は arc42 12 章**。章はフォルダではなく frontmatter `arc42:` が持ち、README 索引が章順に並べる。テンプレのパス = 配置先のパス。`templates/docs/<X>` を `docs/<X>` へコピーする。`__name__` は雛形で、同階層の実ファイル名に置き換える。
+
+| kind | arc42 | パス (`templates/docs/` = `docs/`) | ID 接頭辞 | 上限 |
+|---|---|---|---|---|
+| `requirements` | §1 | `product/requirements.md` | REQ | 200 |
+| `function-list` | §1 | `design/basic/function-list.md` | FN | 200 |
+| `business-flow` | §6 | `design/basic/flows/__flow__.md` | BF | 200 |
+| `screen-spec` | §5 | `design/basic/screens/__screen-group__.md` | SCR | 200 |
+| `api-spec` | §5 | `design/basic/api/__resource__.md` | API | 200 |
+| `table-spec` | §5 | `design/basic/tables/__context__.md` | TBL | 200 |
+| `solution-strategy` | §4 | `design/basic/solution-strategy.md` | SS | 200 |
+| `nonfunctional` | §10 | `design/basic/nonfunctional.md` | NFR | 200 |
+| `crosscutting` | §8 | `design/basic/crosscutting.md` | XC | 200 |
+| `infra-design` | §7 | `design/basic/infra-design.md` | INF | 200 |
+| `domain-overview` | §5 | `design/detail/domain/overview.md` | — | 200 |
+| `aggregate-map` | §5 | `design/detail/domain/aggregate-map.md` | — | 200 |
+| `domain-model` | §5 | `design/detail/domain/__context__.md` | class 名 | 200 |
+| `sequence-spec` | §6 | `design/detail/sequences/__use-case__.md` | SEQ | 200 |
+| `module-spec` | §5 | `design/detail/modules/__context__.md` | MOD | 200 |
+| `tasks` | — | `design/tasks/__feature__.md` | T (`T001`) | 100 |
+| `test-plan` | §10 | `design/test/test-plan.md` | TSP | 200 |
+| `test-spec` | §10 | `design/test/specs/__feature__.md` | TST | 200 |
+| `operations` | §7 | `design/ops/operations.md` | OPS | 200 |
+| `migration-plan` | §7 | `design/ops/migration-plan.md` | MIG | 200 |
+| `state-machine` | §6 | `design/detail/state-machines/__aggregate__.md` | STM | 200 |
+| `job` | §6 | `design/detail/jobs/__job__.md` | JOB | 200 |
+| `code-definitions` | §8 | `design/basic/code-definitions.md` | CD | 200 |
+| `messages` | §8 | `design/basic/messages.md` | MSG | 200 |
+| `permission-matrix` | §8 | `design/basic/permission-matrix.md` | PRM | 200 |
+| `risks-tech-debt` | §11 | `design/risks-tech-debt.md` | RSK | 200 |
+| `adr` | §9 | `adr/NNNN-__slug__.md` | ファイル名の 4 桁 | 150 |
+| `proposal` | — | `proposal/__slug__.md` | — | 200 |
+| `as-is-overview` | §3 | `architecture/overview.md` | ARC | 200 |
+| `glossary` | §12 | `architecture/glossary.md` | — | 200 |
+| `guide` | — | `guides/__slug__.md` | — | 100 |
+| `explanation` | — | `explanation/__slug__.md` | — | 200 |
+| `tutorial` | — | (テンプレ無し・kind 予約のみ) `guides/__slug__.md` を「学習目標 / 前提 / ステップ / 到達確認」で流用 | — | 100 |
+| `runbook` | — | `runbooks/__scenario__.md` | RUN | 100 |
+
+**必須**: frontmatter に `kind` / `arc42` (章を持つ kind のみ。kind の既定と食い違えば違反) / `depends_on` / `relates_to`、本文冒頭に `> **TL;DR**` (how-to は `> **When to use**`)、`## 関連` 節 (上流・下流を各 1 件以上、表でも箇条書きでも可)、テンプレの `(任意)` でない H2 節すべて。検査は `node scripts/check-doc-template.mjs --require-kind` (要件定義の REQ-1xx は EARS の義務形「〜なければならない」を必須とする)。API 一覧 §1 とテーブル定義 §1/§3 は `<!-- AUTOGEN:* -->` 区間で**手書き禁止**、生成器は OpenAPI 定義を置いた時点で各プロジェクトが用意し、ER 図と列定義は `schema.prisma` + prisma-erd-generator から生成する。`kind` は frontmatter が優先で、無ければ**置き場所から決まる**。両方あって食い違えば違反。
+
+## 3. 配置の決定理由
+
+**`architecture/` は AS-IS 専用、`design/` は TO-BE 専用**を前提に置き場所を決める。
+
+| 論点 | 決定 | 理由 |
+|---|---|---|
+| 要件定義の置き場 | `docs/product/` | 要件定義 =「何を作るか」。設計 (どう作るか) と置き場所を分ける |
+| 実装前の設計書 | `docs/design/basic/` と `docs/design/detail/` | 実装前は全部 TO-BE。AS-IS は稼働後に `architecture/overview.md` へ起こす |
+| 画面 / API / テーブル / シーケンス / モジュール / テスト仕様 | **最初からサブフォルダ**に切る | 件数が伸びる前提の文書群。後からフォルダへ移すと `depends_on` と README 索引が同時に壊れる。1 本目から `flows/` `screens/` `api/` `tables/` `sequences/` `modules/` `test/specs/` に入れる |
+| テスト・運用 | `docs/design/test/` と `docs/design/ops/` | 「本数が少ないうちは flat」にしない。移動コストを後払いしているだけで、閾値を跨いだ瞬間に参照が壊れる |
+| 運用手順書 | 設計は `design/ops/operations.md`、手順は `docs/runbooks/<scenario>.md` (100 行以下) | 方針と手順を同じ文書に混ぜると 100 行に収まらない |
+| `docs/proposal/` | 独立させる | 対外提案書は設計 Doc と性格が違う。`design/` に混ぜると顧客提出物が設計変更で動く |

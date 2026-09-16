@@ -1,0 +1,8 @@
+# 検査対象は設計書とテンプレのみ。生成物 (docs/dependencies.md 等) と node_modules は除く。
+globs:
+  - 'docs/**/*.md'
+  - 'templates/**/*.md'
+  - '*.md'
+ignores:
+  - 'node_modules/**'
+  - 'docs/dependencies.md'

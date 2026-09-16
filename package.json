@@ -1,0 +1,29 @@
+{
+  "name": "igeta",
+  "version": "0.0.0",
+  "description": "日本の設計書を、Markdown で。基本設計・詳細設計を arc42 に載せ CI で検査する設計書テンプレート集",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SakakitaniJunya/Igeta.git"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check:deps": "depcruise --config apps/api/.dependency-cruiser.cjs apps/api/src",
+    "check:domain-drift": "node scripts/check-domain-diagram-drift.mjs",
+    "docs:check": "node scripts/generate-docs-graph.mjs --check",
+    "docs:graph": "node scripts/generate-docs-graph.mjs --write",
+    "docs:lint": "markdownlint-cli2",
+    "docs:template-check": "node scripts/check-doc-template.mjs --require-kind",
+    "scaffold:module": "node scripts/scaffold-module.mjs",
+    "test:scripts": "node --test scripts/*.test.mjs"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^16.10.0",
+    "markdownlint-cli2": "^0.18.1"
+  }
+}
