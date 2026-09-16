@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 MD041 -->
 <p align="center">
   <img src="assets/logo.svg" width="160" alt="Igeta — 丸に井桁">
 </p>
@@ -13,6 +14,8 @@
   <a href="https://github.com/SakakitaniJunya/Igeta/actions/workflows/ci.yml"><img src="https://github.com/SakakitaniJunya/Igeta/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
 </p>
+
+<!-- markdownlint-enable MD033 -->
 
 ## Igeta とは
 
