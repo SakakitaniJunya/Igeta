@@ -45,6 +45,58 @@ flowchart LR
 
 ## 2. 種類一覧
 
+**背骨は arc42 12 章**。章はフォルダではなく frontmatter `arc42:` が持ち、README 索引が章順に並べる。テンプレのパス = 配置先のパス。`templates/docs/<X>` を `docs/<X>` へコピーする。`__name__` は雛形で、同階層の実ファイル名に置き換える。**ファイル名の先頭は 2 桁の連番** (`01-requirements.md`) で、同じフォルダ内の読む順を表す。固定名の雛形は標準の番号を持ち、そのまま使うと番号が抜けた分だけ「まだ書いていない文書」が見える。`__name__` の雛形は配置先で自分で採番する (`flows/01-reservation.md`)。検査器は `NN-` を無視して種類を判定するので、番号を変えても壊れない。
+
+全部置いたときのフォルダ構成。`NN-` は 2 桁の連番、`<…>` は自分で付ける名前。各フォルダの `README.md` (索引) は生成器が作るので書かない。
+
+```text
+docs/
+├── README.md                         全体の索引 (arc42 章順・自動生成)
+├── dependencies.md                   文書間の依存グラフ (自動生成)
+├── product/                          要件定義 — 何を作るか
+│   └── 01-requirements.md            要件定義書 (REQ)。機能要件は EARS 記法
+├── design/                           設計 (TO-BE)。実装前はすべてここ
+│   ├── 01-risks-tech-debt.md         リスクと技術的負債 (RSK)
+│   ├── basic/                        基本設計 (外部設計)
+│   │   ├── 01-function-list.md       機能一覧 (FN)
+│   │   ├── 02-solution-strategy.md   解決戦略 — 技術選定と最上位の分割 (SS)
+│   │   ├── 03-nonfunctional.md       非機能要件 (NFR)
+│   │   ├── 04-crosscutting.md        横断概念 — 認証・エラー・ログ・冪等性 (XC)
+│   │   ├── 05-code-definitions.md    区分値の定義 (CD)
+│   │   ├── 06-messages.md            エラーメッセージ・通知文言 (MSG)
+│   │   ├── 07-permission-matrix.md   権限マトリクス (PRM)
+│   │   ├── 08-infra-design.md        インフラ設計 — 構成図・設定値・費用 (INF)
+│   │   ├── 09-i18n.md                多言語対応 (I18N)
+│   │   ├── flows/NN-<業務>.md         業務フロー。1 業務 1 ファイル (BF)
+│   │   ├── screens/NN-<画面群>.md     画面設計 (SCR)
+│   │   ├── api/NN-<リソース>.md       API 仕様。一覧は OpenAPI から生成 (API)
+│   │   └── tables/NN-<context>.md    テーブル定義。列は schema.prisma から生成 (TBL)
+│   ├── detail/                       詳細設計 (内部設計)
+│   │   ├── domain/                   ドメインクラス図
+│   │   │   ├── 01-overview.md        ドメイン総論 — コンテキスト一覧と関係
+│   │   │   ├── 02-aggregate-map.md   集約マップ — 境界と責務
+│   │   │   └── NN-<context>.md       コンテキストごとのクラス図。実装と CI で照合
+│   │   ├── sequences/NN-<ユースケース>.md  シーケンス (SEQ)
+│   │   ├── state-machines/NN-<集約>.md    状態遷移 (STM)
+│   │   ├── modules/NN-<context>.md   モジュール仕様 — 公開面と port (MOD)
+│   │   └── jobs/NN-<ジョブ>.md         バッチ・定期ジョブ (JOB)
+│   ├── test/                         テスト
+│   │   ├── 01-test-plan.md           テスト計画 (TSP)
+│   │   └── specs/NN-<機能>.md         テスト仕様 (TST)
+│   ├── ops/                          運用・移行
+│   │   ├── 01-operations.md          運用設計 — 監視・バックアップ・障害対応 (OPS)
+│   │   └── 02-migration-plan.md      移行・リリース計画 (MIG)
+│   └── tasks/NN-<機能>.md             実装タスク分解 (T001)
+├── adr/NNNN-<slug>.md                技術判断の記録 (ADR)。4 桁連番・append-only
+├── architecture/                     現行構成 (AS-IS 専用)。稼働後に書く
+│   ├── 01-overview.md                稼働中の構成図と外部システム (ARC)
+│   └── 02-glossary.md                用語集 — 業務用語 ↔ コード識別子
+├── proposal/NN-<slug>.md             顧客への提案書。accepted → ADR へ
+├── guides/NN-<slug>.md               書き方・進め方の手引き (how-to)
+├── explanation/NN-<slug>.md          調査・背景 — 決定の材料 (決定は adr/)
+└── runbooks/NN-<シナリオ>.md          運用手順書。1 手順 1 コマンド (RUN)
+```
+
 | フォルダ (工程) | kind | 何を書くか | arc42 | パス (`templates/docs/` = `docs/`) | ID 接頭辞 | 上限 |
 |---|---|---|---|---|---|---|
 | `product/` 要件定義 | `requirements` | 何を作るか。機能要件 (EARS 記法) と品質目標の要約、制約、ステークホルダー。全設計書の上流 | §1 | `product/01-requirements.md` | REQ | 200 |
