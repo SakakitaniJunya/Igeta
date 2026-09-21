@@ -1,41 +1,61 @@
-// node --test scripts/
+// node --test dist
 // 実 templates/docs/ を一時ディレクトリへコピーして、doc 側だけを fixture で差し替えて検証する。
-import { spawnSync } from 'node:child_process';
 import { cpSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { after, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { ExitCode } from '../core/ExitCode.js';
+import { IGETA_ROOT } from '../core/Paths.js';
+import { Report } from '../core/Report.js';
+import { DocTemplateCheck, type DocTemplateOptions, type DocTemplateResult } from './DocTemplateCheck.js';
 
-const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(SCRIPTS_DIR, '..');
-const SCRIPT = join(SCRIPTS_DIR, 'check-doc-template.mjs');
-const workspaces = [];
+const workspaces: string[] = [];
 
 /** 実 templates/docs/ にある kind 付きテンプレの枚数。件数を手で書くとテンプレ追加のたびに落ちる */
-function templateKindCount() {
-  const files = globSync('**/*.md', { cwd: join(REPO_ROOT, 'templates', 'docs') });
-  return files.filter((file) => /^kind:\s*\S/m.test(readFileSync(join(REPO_ROOT, 'templates', 'docs', file), 'utf8')))
-    .length;
+function templateKindCount(): number {
+  const templates = join(IGETA_ROOT, 'templates', 'docs');
+  return globSync('**/*.md', { cwd: templates }).filter((file) =>
+    /^kind:\s*\S/m.test(readFileSync(join(templates, file), 'utf8')),
+  ).length;
 }
 
-function makeRoot() {
+function makeRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-'));
   workspaces.push(root);
-  cpSync(join(REPO_ROOT, 'templates', 'docs'), join(root, 'templates', 'docs'), { recursive: true });
+  cpSync(join(IGETA_ROOT, 'templates', 'docs'), join(root, 'templates', 'docs'), { recursive: true });
   mkdirSync(join(root, 'docs'), { recursive: true });
   return root;
 }
 
-function writeDoc(root, relPath, content) {
+function writeDoc(root: string, relPath: string, content: string): void {
   const target = join(root, 'docs', relPath);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, content);
 }
 
-const check = (root, args = []) =>
-  spawnSync(process.execPath, [SCRIPT, '--root', root, ...args], { encoding: 'utf8' });
+/**
+ * テンプレは igetaRoot 側から解決される。makeRoot() は実 templates/docs をコピーするので、
+ * 既定では igetaRoot = targetRoot として元スクリプトの --root 1 本と同じ形にする。
+ */
+function check(
+  root: string,
+  options: DocTemplateOptions = {},
+  igetaRoot: string = root,
+): { result: DocTemplateResult; report: Report } {
+  const result = new DocTemplateCheck(options).analyze({ targetRoot: root, igetaRoot });
+  const report = new Report();
+  report.addAll(result.violations);
+  return { result, report };
+}
+
+interface FunctionListDocOptions {
+  readonly related?: string;
+  readonly ids?: string;
+  readonly dependsOn?: string;
+  readonly sections?: readonly string[];
+  readonly tldr?: string;
+}
 
 // kind: function-list の必須節をすべて満たす最小 doc
 function functionListDoc({
@@ -44,7 +64,7 @@ function functionListDoc({
   dependsOn = '[requirements]',
   sections = ['1. 機能一覧', '2. 機能別の状態・権限', '3. カバレッジ確認'],
   tldr = '> **TL;DR**: 最小の機能一覧。',
-} = {}) {
+}: FunctionListDocOptions = {}): string {
   return [
     '---',
     'id: function-list',
@@ -69,7 +89,7 @@ function functionListDoc({
   ].join('\n');
 }
 
-function requirementsDoc() {
+function requirementsDoc(): string {
   return [
     '---',
     'id: requirements',
@@ -100,21 +120,22 @@ after(() => {
   for (const dir of workspaces) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('check-doc-template', () => {
-  let root;
+describe('DocTemplateCheck', () => {
+  let root: string;
   beforeEach(() => {
     root = makeRoot();
   });
 
-  it('テンプレの必須節を満たす doc は exit 0', () => {
+  it('テンプレの必須節を満たす doc は違反なし', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc());
-    const result = check(root);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-    assert.match(result.stdout, new RegExp(`OK {4}kind 登録 ${templateKindCount()} 種 / 検査 2 本`));
+    const { result, report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.equal(result.kindCount, templateKindCount());
+    assert.equal(result.checkedCount, 2);
   });
 
-  it('EARS 記法でない機能要件 (REQ-1xx) は exit 1', () => {
+  it('EARS 記法でない機能要件 (REQ-1xx) は違反', () => {
     writeDoc(root, 'design/basic/function-list.md', functionListDoc());
     writeDoc(
       root,
@@ -124,9 +145,9 @@ describe('check-doc-template', () => {
         ['## 2. 機能要件', '', '| ID | パターン | 要件文 |', '|---|---|---|', '| REQ-101 | Event | 利用者は予約できる |'].join('\n'),
       ),
     );
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /EARS 記法でない: REQ-101/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /EARS 記法でない: REQ-101/);
   });
 
   it('EARS の義務形は「〜できなければならない」等の活用も通す', () => {
@@ -140,28 +161,28 @@ describe('check-doc-template', () => {
           '| REQ-101 | Optional | 機能を有効にしている場合、システムは 0 円で引き換えられなければならない |'].join('\n'),
       ),
     );
-    const result = check(root);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
-  it('arc42 章が kind の既定と食い違えば exit 1', () => {
+  it('arc42 章が kind の既定と食い違えば違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc().replace('arc42: 1', 'arc42: 5'));
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /arc42 章が kind の既定と食い違う: frontmatter=5 \/ kind function-list の既定=1/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /arc42 章が kind の既定と食い違う: frontmatter=5 \/ kind function-list の既定=1/);
   });
 
-  it('--require-kind では design 系 kind の arc42 欠落が exit 1', () => {
+  it('requireKind では design 系 kind の arc42 欠落が違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc().replace('arc42: 1\n', ''));
-    assert.equal(check(root).status, 0, '--require-kind 無しでは欠落を落とさない');
-    const strict = check(root, ['--require-kind']);
-    assert.equal(strict.status, 1, strict.stdout);
-    assert.match(strict.stderr, /frontmatter に arc42 がない \(kind: function-list の既定は 1\)/);
+    assert.equal(check(root).report.exitCode, ExitCode.Ok, 'requireKind 無しでは欠落を落とさない');
+    const strict = check(root, { requireKind: true });
+    assert.equal(strict.report.exitCode, ExitCode.Violation);
+    assert.match(strict.report.format(), /frontmatter に arc42 がない \(kind: function-list の既定は 1\)/);
   });
 
-  it('arc42 章を持たない kind に arc42 を書いたら exit 1', () => {
+  it('arc42 章を持たない kind に arc42 を書いたら違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc());
     writeDoc(
@@ -171,88 +192,88 @@ describe('check-doc-template', () => {
        '> **When to use**: x', '', '## 関連', '',
        '- **上流 (depends_on)**: なし', '- **下流**: 実装', ''].join('\n'),
     );
-    const result = check(root, ['--require-kind']);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /arc42 章を持たない kind: guide/);
+    const { report } = check(root, { requireKind: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /arc42 章を持たない kind: guide/);
   });
 
-  it('必須の H2 節が欠けたら exit 1', () => {
+  it('必須の H2 節が欠けたら違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(
       root,
       'design/basic/function-list.md',
       functionListDoc({ sections: ['1. 機能一覧', '3. カバレッジ確認'] }),
     );
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /必須の節がない: ## 機能別の状態・権限/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /必須の節がない: ## 機能別の状態・権限/);
   });
 
-  it('「関連」節に下流が無ければ exit 1', () => {
+  it('「関連」節に下流が無ければ違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(
       root,
       'design/basic/function-list.md',
       functionListDoc({ related: '| 上流 (depends_on) | [要件定義書](../product/requirements.md) | REQ-001 |' }),
     );
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /「関連」節に下流の行がない/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /「関連」節に下流の行がない/);
   });
 
-  it('ID 接頭辞の桁が違えば exit 1', () => {
+  it('ID 接頭辞の桁が違えば違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc({ ids: 'FN-1' }));
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /ID 形式が不正: FN-1/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /ID 形式が不正: FN-1/);
   });
 
-  it('ID が 1 件も無ければ exit 1', () => {
+  it('ID が 1 件も無ければ違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc({ ids: '(未記入)' }));
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /FN-nnn の ID が 1 件もない/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /FN-nnn の ID が 1 件もない/);
   });
 
-  it('depends_on が存在しない id を指したら exit 1', () => {
+  it('depends_on が存在しない id を指したら違反', () => {
     writeDoc(root, 'design/basic/function-list.md', functionListDoc({ dependsOn: '[requirements]' }));
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /depends_on が存在しない id を指している: requirements/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /depends_on が存在しない id を指している: requirements/);
   });
 
   it('depends_on の external: は外部参照として許す', () => {
     writeDoc(root, 'design/basic/function-list.md', functionListDoc({ dependsOn: '[external:hearing-note]' }));
-    const result = check(root);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
-  it('TL;DR が無ければ exit 1', () => {
+  it('TL;DR が無ければ違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc({ tldr: '普通の段落。' }));
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /TL;DR \/ When to use ブロックがない/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /TL;DR \/ When to use ブロックがない/);
   });
 
-  it('未登録の kind は exit 1', () => {
+  it('未登録の kind は違反', () => {
     writeDoc(root, 'design/basic/x.md', '---\nid: x\nkind: unknown-kind\n---\n\n# x\n');
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /未登録の kind: unknown-kind/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /未登録の kind: unknown-kind/);
   });
 
-  it('kind 未設定は既定では TODO、--require-kind で違反になる', () => {
+  it('kind 未設定は既定では未管理扱い、requireKind で違反になる', () => {
     writeDoc(root, 'architecture/legacy.md', '---\nid: legacy\n---\n\n# 旧文書\n');
     const lenient = check(root);
-    assert.equal(lenient.status, 0, lenient.stderr);
-    assert.match(lenient.stdout, /TODO {2}docs\/architecture\/legacy\.md kind 未設定/);
+    assert.equal(lenient.report.exitCode, ExitCode.Ok, lenient.report.format());
+    assert.deepEqual(lenient.result.unmanaged, [join('docs', 'architecture', 'legacy.md')]);
 
-    const strict = check(root, ['--require-kind']);
-    assert.equal(strict.status, 1, strict.stdout);
-    assert.match(strict.stderr, /kind を決められない/);
+    const strict = check(root, { requireKind: true });
+    assert.equal(strict.report.exitCode, ExitCode.Violation);
+    assert.match(strict.report.format(), /kind を決められない/);
   });
 
   it('domain-model は連番でなく code_root を必須にする', () => {
@@ -278,38 +299,37 @@ describe('check-doc-template', () => {
     ];
     writeDoc(root, 'design/detail/domain/booking.md', base.join('\n'));
     const missing = check(root);
-    assert.equal(missing.status, 1, missing.stdout);
-    assert.match(missing.stderr, /code_root がない/);
+    assert.equal(missing.report.exitCode, ExitCode.Violation);
+    assert.match(missing.report.format(), /code_root がない/);
 
     base.splice(3, 0, 'code_root: apps/api/src/modules/booking');
     writeDoc(root, 'design/detail/domain/booking.md', base.join('\n'));
     const ok = check(root);
-    assert.equal(ok.status, 0, `${ok.stdout}${ok.stderr}`);
+    assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
   });
 
   it('frontmatter に kind が無くても置き場所から決まる', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
-    const doc = functionListDoc().replace('kind: function-list\n', '');
-    writeDoc(root, 'design/basic/function-list.md', doc);
-    const result = check(root, ['--require-kind']);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-    assert.match(result.stdout, /kind 未設定 0 本/);
+    writeDoc(root, 'design/basic/function-list.md', functionListDoc().replace('kind: function-list\n', ''));
+    const { result, report } = check(root, { requireKind: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.equal(result.unmanaged.length, 0);
   });
 
   it('ファイル名の連番 (NN-) は種類の判定で無視する (テンプレと番号が違ってもよい)', () => {
     writeDoc(root, 'product/01-requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/99-function-list.md', functionListDoc().replace('kind: function-list\n', ''));
-    const result = check(root, ['--require-kind']);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-    assert.match(result.stdout, /kind 未設定 0 本/);
+    const { result, report } = check(root, { requireKind: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.equal(result.unmanaged.length, 0);
   });
 
-  it('frontmatter の kind と置き場所が食い違えば exit 1', () => {
+  it('frontmatter の kind と置き場所が食い違えば違反', () => {
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'design/basic/function-list.md', functionListDoc().replace('kind: function-list', 'kind: nonfunctional'));
-    const result = check(root);
-    assert.equal(result.status, 1, result.stdout);
-    assert.match(result.stderr, /kind と置き場所が食い違う: frontmatter=nonfunctional \/ 配置=function-list/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /kind と置き場所が食い違う: frontmatter=nonfunctional \/ 配置=function-list/);
   });
 
   it('「関連」節は箇条書き形式でもよい (ADR の 150 行対策)', () => {
@@ -324,36 +344,49 @@ describe('check-doc-template', () => {
         ...['Status', 'Context', 'Decision Drivers', 'Decision', '却下した選択肢', 'Consequences', 'Confirmation', '再検討トリガ'].flatMap((x) => [`## ${x}`, '', '内容', '']),
       ].join('\n'),
     );
-    const result = check(root, ['--require-kind']);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const { report } = check(root, { requireKind: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
   it('生成物 (AUTOGENERATED) は設計書として検査しない', () => {
     writeDoc(root, 'design/basic/function-list.md', '<!-- AUTOGENERATED BY scripts/x.mjs -->\n# 索引\n');
-    const result = check(root, ['--require-kind']);
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-    assert.match(result.stdout, /検査 0 本/);
+    const { result, report } = check(root, { requireKind: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.equal(result.checkedCount, 0);
   });
 
-  it('テンプレ置き場が無ければ exit 2 (検査不能)', () => {
+  it('テンプレ置き場が無ければ検査不能 (exit 2)', () => {
     const empty = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-empty-'));
     workspaces.push(empty);
     mkdirSync(join(empty, 'docs'), { recursive: true });
-    const result = check(empty);
-    assert.equal(result.status, 2, result.stdout);
-    assert.match(result.stderr, /テンプレ置き場が無い/);
+    const { report } = check(empty);
+    assert.equal(report.exitCode, ExitCode.CannotCheck);
+    assert.match(report.format(), /テンプレ置き場が無い/);
   });
 
-  it('docs が無ければ exit 2', () => {
+  it('docs が無ければ検査不能 (exit 2)', () => {
     rmSync(join(root, 'docs'), { recursive: true });
-    const result = check(root);
-    assert.equal(result.status, 2, result.stdout);
-    assert.match(result.stderr, /docs が無い/);
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.CannotCheck);
+    assert.match(report.format(), /docs が無い/);
   });
 
-  it('不明な引数は exit 2', () => {
-    const result = check(root, ['--yolo']);
-    assert.equal(result.status, 2, result.stdout);
-    assert.match(result.stderr, /不明な引数/);
+  it('不正な設定 (存在しないディレクトリ指定) は検査不能 (exit 2)', () => {
+    // 引数解析は CLI 層へ移したので、クラス側の設定不正はこの形で現れる
+    const { report } = check(root, { docsDir: join(root, 'nope') });
+    assert.equal(report.exitCode, ExitCode.CannotCheck);
+    assert.match(report.format(), /docs が無い/);
+  });
+
+  it('テンプレは igetaRoot 側から解決する (targetRoot に templates/ が無くてもよい)', () => {
+    const bare = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-bare-'));
+    workspaces.push(bare);
+    mkdirSync(join(bare, 'docs'), { recursive: true });
+    writeDoc(bare, 'product/requirements.md', requirementsDoc());
+    writeDoc(bare, 'design/basic/function-list.md', functionListDoc());
+    const { result, report } = check(bare, {}, IGETA_ROOT);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.equal(result.kindCount, templateKindCount());
+    assert.equal(result.checkedCount, 2);
   });
 });

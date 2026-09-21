@@ -23,8 +23,8 @@
 
 | 提供するもの | 中身 |
 |---|---|
-| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **36 種** |
-| **検査スクリプト** (`scripts/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
+| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **39 種** |
+| **検査スクリプト** (`src/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/api-*` / `web-feature`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js) |
 
 ## 名前の由来
@@ -92,24 +92,27 @@ flowchart LR
 | 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
-36 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+39 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 
 ## はじめかた
 
-Node.js 22 以上が必要。
+Node.js 22 以上が必要。**ファイルをコピーしない**。`init` が置くのは配線 (npm script と `.igeta-version`) だけで、検査の実体は Igeta パッケージ側に残る。
 
 ```bash
-# 1. templates/ と scripts/ と lint 設定を自分のリポジトリへコピー
-cp -R Igeta/templates Igeta/scripts Igeta/.markdownlint.yaml Igeta/.markdownlint-cli2.yaml your-repo/
+# 1. 検査配線と docs 骨格を入れる (既存ファイルは上書きしない)
+npx github:SakakitaniJunya/Igeta#v0.1.0 init
+npm install
 
-# 2. 書きたい文書と同じパスのテンプレをコピー (templates/docs/<X> → docs/<X>)
-mkdir -p your-repo/docs/product
-cp Igeta/templates/docs/product/01-requirements.md your-repo/docs/product/
+# 2. 書きたい文書と同じパスの雛形を置く (templates/docs/<X> → docs/<X>)
+mkdir -p docs/product
+cp node_modules/igeta/templates/docs/product/01-requirements.md docs/product/
 
 # 3. 検査する
-node scripts/check-doc-template.mjs --require-kind
-node scripts/generate-docs-graph.mjs --write
+npm run docs:template-check
+npm run docs:graph
 ```
+
+版の固定は `.igeta-version` (semver 1 行)。`npx igeta check` が追従遅れを検出し、`npx igeta upgrade --to <ver>` で書き換える。
 
 ## 検査
 
@@ -119,20 +122,27 @@ node scripts/generate-docs-graph.mjs --write
 | `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
-| `npm run scaffold:module` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査スクリプトのテスト (61 件) |
+| `npm run secret-scan` | 機密混入 | 社内制約 ID / ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致 |
+| `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (75 件) |
+
+いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
 
 ## ディレクトリ構成
 
 ```text
 Igeta/
-├── templates/              【コピー元】雛形置き場。ここは使う人が自分のリポジトリへコピーする
-│   ├── docs/               設計書の雛形 36 種。コピー先 (your-repo/docs/) と同じフォルダ構成にしてある
+├── templates/              雛形置き場。パッケージに同梱され、使う人は `node_modules/igeta/templates/` から取る
+│   ├── docs/               設計書の雛形 39 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
 │   └── web-feature/        フロントエンド 1 機能分 (ページ・3 状態・文言カタログ)
 ├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
-├── scripts/                検査・生成・scaffold (依存ゼロの Node スクリプト + テスト)
+├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
+│   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
+│   ├── checks/             検査 4 種。Check を実装し Violation を返すだけで、exit も print もしない
+│   ├── generators/         コード雛形の展開
+│   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ
 └── .github/workflows/      CI
 ```

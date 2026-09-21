@@ -16,8 +16,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # prepare スクリプトが走るのでここで dist/ が build される
       - run: npm ci
-      - name: 検査スクリプトの自己テスト
+      - name: 機密混入
+        run: npm run secret-scan
+      - name: 型検査
+        run: npx tsc --noEmit
+      - name: 検査コードの自己テスト
         run: npm run test:scripts
       - name: Markdown 記法
         run: npm run docs:lint
