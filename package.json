@@ -1,6 +1,6 @@
 {
   "name": "igeta",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "日本の設計書を、Markdown で。基本設計・詳細設計を arc42 に載せ CI で検査する設計書テンプレート集",
   "license": "MIT",
   "repository": {
@@ -9,21 +9,34 @@
   },
   "private": true,
   "type": "module",
+  "bin": {
+    "igeta": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    ".markdownlint.yaml",
+    ".markdownlint-cli2.yaml"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "check:deps": "depcruise --config apps/api/.dependency-cruiser.cjs apps/api/src",
-    "check:domain-drift": "node scripts/check-domain-diagram-drift.mjs",
-    "docs:check": "node scripts/generate-docs-graph.mjs --check",
-    "docs:graph": "node scripts/generate-docs-graph.mjs --write",
+    "build": "tsc",
+    "prepare": "tsc",
+    "check:domain-drift": "node dist/cli.js domain-drift",
+    "docs:check": "node dist/cli.js docs-check",
+    "docs:graph": "node dist/cli.js docs-graph",
     "docs:lint": "markdownlint-cli2",
-    "docs:template-check": "node scripts/check-doc-template.mjs --require-kind",
-    "scaffold:module": "node scripts/scaffold-module.mjs",
-    "test:scripts": "node --test scripts/*.test.mjs"
+    "docs:template-check": "node dist/cli.js template-check --require-kind",
+    "scaffold": "node dist/cli.js scaffold",
+    "secret-scan": "node dist/cli.js secret-scan",
+    "test:scripts": "tsc && node --test \"dist/**/*.test.js\""
   },
   "devDependencies": {
+    "@types/node": "^22.20.4",
     "dependency-cruiser": "^16.10.0",
-    "markdownlint-cli2": "^0.18.1"
+    "markdownlint-cli2": "^0.18.1",
+    "typescript": "^5.9.3"
   }
 }

@@ -1,31 +1,33 @@
-// node --test scripts/*.test.mjs
+// node --test dist/checks/DocGraphCheck.test.js
 // 章別索引 (docs/README.md と docs/design/README.md) の生成だけを検証する。
-// 一時ツリーを DOCS_GRAPH_ROOT で差し替えて実際にスクリプトを起動する。
-import { spawnSync } from 'node:child_process';
+// 一時ツリーを targetRoot に渡して DocGraphCheck を直接呼ぶ。
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { after, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
-const SCRIPT = join(SCRIPTS_DIR, 'generate-docs-graph.mjs');
-const workspaces = [];
+import { DocGraphCheck } from './DocGraphCheck.js';
+import { IGETA_ROOT } from '../core/Paths.js';
+import { Report } from '../core/Report.js';
+import type { Violation } from '../core/Report.js';
+import type { ExitCode } from '../core/ExitCode.js';
 
-function writeDoc(root, rel, lines) {
+const workspaces: string[] = [];
+
+function writeDoc(root: string, rel: string, lines: readonly string[]): void {
   const target = join(root, 'docs', rel);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, `${lines.join('\n')}\n`);
 }
 
-const doc = (id, type, kind, arc42, title) => [
+const doc = (id: string, type: string, kind: string, arc42: number, title: string): string[] => [
   '---', `id: ${id}`, `title: ${title}`, `type: ${type}`, `kind: ${kind}`,
   `arc42: ${arc42}`, 'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
   '', `# ${title}`, '',
 ];
 
-function makeRoot() {
+function makeRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'yatsu-graph-'));
   workspaces.push(root);
   writeDoc(root, 'product/requirements.md', doc('requirements', 'design', 'requirements', 1, '要件定義書'));
@@ -43,25 +45,39 @@ function makeRoot() {
   return root;
 }
 
-const run = (root, arg) =>
-  spawnSync(process.execPath, [SCRIPT, arg], {
-    encoding: 'utf8',
-    env: { ...process.env, DOCS_GRAPH_ROOT: root },
-  });
+interface RunResult {
+  readonly status: ExitCode;
+  readonly violations: readonly Violation[];
+  readonly warnings: readonly string[];
+  readonly detail: string;
+}
+
+const run = async (root: string, mode: 'write' | 'check'): Promise<RunResult> => {
+  const check = new DocGraphCheck(mode === 'write' ? { write: true } : {});
+  const violations = await check.run({ targetRoot: root, igetaRoot: IGETA_ROOT });
+  const report = new Report();
+  report.addAll(violations);
+  return {
+    status: report.exitCode,
+    violations,
+    warnings: check.warnings,
+    detail: [report.format(), ...check.warnings].join('\n'),
+  };
+};
 
 after(() => {
   for (const dir of workspaces) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('generate-docs-graph の arc42 章別索引', () => {
-  let root;
+describe('DocGraphCheck の arc42 章別索引', () => {
+  let root: string;
   beforeEach(() => {
     root = makeRoot();
   });
 
-  it('別ディレクトリに実在する章はディレクトリ README へのリンクで示し、本当に無い章だけ _未作成_', () => {
-    const result = run(root, '--write');
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  it('別ディレクトリに実在する章はディレクトリ README へのリンクで示し、本当に無い章だけ _未作成_', async () => {
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
     const index = readFileSync(join(root, 'docs', 'design', 'README.md'), 'utf8');
 
     // §9 (ADR) は design/ の外にあるので、ディレクトリ README へのリンク 1 個で示す
@@ -74,32 +90,33 @@ describe('generate-docs-graph の arc42 章別索引', () => {
     assert.doesNotMatch(index, /\*\*§9 Architecture Decisions\*\*[^|]*\|\s*_未作成_\s*\|/);
   });
 
-  it('新規ツリーは --write 2 回で不動点になる (1 回目で README が増えるため)', () => {
-    assert.equal(run(root, '--write').status, 0);
-    // 1 回目の --write が docs/README.md などを新規作成し、それ自体がグラフのノードになる。
+  it('新規ツリーは write 2 回で不動点になる (1 回目で README が増えるため)', async () => {
+    assert.equal((await run(root, 'write')).status, 0);
+    // 1 回目の write が docs/README.md などを新規作成し、それ自体がグラフのノードになる。
     // 既存リポでは README が揃っているので 1 回で収束する。新規ツリーだけ 2 回必要。
-    assert.equal(run(root, '--write').status, 0);
-    const checked = run(root, '--check');
-    assert.equal(checked.status, 0, `${checked.stdout}${checked.stderr}`);
+    assert.equal((await run(root, 'write')).status, 0);
+    const checked = await run(root, 'check');
+    assert.equal(checked.status, 0, checked.detail);
   });
 });
 
-describe('generate-docs-graph の本文リンク検査', () => {
-  let root;
+describe('DocGraphCheck の本文リンク検査', () => {
+  let root: string;
   // 索引が収束した状態から本文だけを書き換える (索引 drift と混ざらないようにするため)
-  const converge = (r) => {
-    assert.equal(run(r, '--write').status, 0);
-    assert.equal(run(r, '--write').status, 0);
-    assert.equal(run(r, '--check').status, 0);
+  const converge = async (r: string): Promise<void> => {
+    assert.equal((await run(r, 'write')).status, 0);
+    assert.equal((await run(r, 'write')).status, 0);
+    assert.equal((await run(r, 'check')).status, 0);
   };
-  const appendBody = (rel, lines) => appendFileSync(join(root, 'docs', rel), `${lines.join('\n')}\n`);
+  const appendBody = (rel: string, lines: readonly string[]): void =>
+    appendFileSync(join(root, 'docs', rel), `${lines.join('\n')}\n`);
 
-  beforeEach(() => {
+  beforeEach(async () => {
     root = makeRoot();
-    converge(root);
+    await converge(root);
   });
 
-  it('正例: 実在する相対リンク・外部 URL・アンカーのみ・コードフェンス内・AUTOGEN 区間は通る', () => {
+  it('正例: 実在する相対リンク・外部 URL・アンカーのみ・コードフェンス内・AUTOGEN 区間は通る', async () => {
     appendBody('design/basic/function-list.md', [
       '本文: [要件定義書](../../product/requirements.md) と [ADR](../../adr/0001-x.md#decision)。',
       '外部: [arc42](https://arc42.org/overview/) / アンカー: [上へ](#機能一覧)。',
@@ -113,80 +130,90 @@ describe('generate-docs-graph の本文リンク検査', () => {
       '[生成区間](./generated-missing.md)',
       '<!-- AUTOGEN:sample:end -->',
     ]);
-    const result = run(root, '--check');
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const result = await run(root, 'check');
+    assert.equal(result.status, 0, result.detail);
   });
 
-  it('負例: 解決できない相対リンクは ERROR (exit 1) で file:line 付きで報告される', () => {
+  it('負例: 解決できない相対リンクは ERROR (exit 1) で file:line 付きで報告される', async () => {
     appendBody('design/basic/function-list.md', ['下流: [画面設計](./screens/README.md) を参照。']);
-    const result = run(root, '--check');
+    const result = await run(root, 'check');
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /\[link\] docs\/design\/basic\/function-list\.md:\d+ → \.\/screens\/README\.md/);
+    const link = result.violations.find((v) => v.message.includes('./screens/README.md'));
+    assert.ok(link, result.detail);
+    assert.match(link.message, /^\[link\] → \.\/screens\/README\.md/);
+    assert.equal(link.file, 'docs/design/basic/function-list.md');
+    assert.ok(typeof link.line === 'number' && link.line > 0, `line が無い: ${String(link.line)}`);
   });
 
-  it('doc を直接持たず子ディレクトリだけのディレクトリにも索引 README を作る', () => {
+  it('doc を直接持たず子ディレクトリだけのディレクトリにも索引 README を作る', async () => {
     writeDoc(root, 'design/detail/domain/overview.md', doc('domain-overview', 'design', 'domain-overview', 5, 'ドメイン概要'));
-    converge(root);
+    await converge(root);
     const readme = join(root, 'docs', 'design', 'detail', 'README.md');
     assert.ok(existsSync(readme), 'design/detail/README.md が生成されていない');
     assert.match(readFileSync(readme, 'utf8'), /\[domain\/\]\(domain\/README\.md\)/);
   });
 
-  it('arc42 未割当の doc は warning になる', () => {
+  it('arc42 未割当の doc は warning になる', async () => {
     writeDoc(root, 'design/basic/nonfunctional.md', [
       '---', 'id: nonfunctional', 'title: 非機能要件', 'type: design', 'kind: nonfunctional',
       'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', '# 非機能要件', '',
     ]);
-    const result = run(root, '--write');
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
-    assert.match(result.stderr, /docs\/design\/basic\/nonfunctional\.md に frontmatter arc42 が無い/);
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
+    assert.ok(
+      result.warnings.some((w) => /docs\/design\/basic\/nonfunctional\.md に frontmatter arc42 が無い/.test(w)),
+      result.detail,
+    );
   });
 
-  it('ADR が 1 本も無いツリーでは docs/adr/README.md を要求しない', () => {
+  it('ADR が 1 本も無いツリーでは docs/adr/README.md を要求しない', async () => {
     rmSync(join(root, 'docs', 'adr'), { recursive: true, force: true });
-    converge(root);
+    await converge(root);
     assert.equal(existsSync(join(root, 'docs', 'adr')), false, 'docs/adr/ を勝手に作っている');
-    const result = run(root, '--check');
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const result = await run(root, 'check');
+    assert.equal(result.status, 0, result.detail);
   });
 
-  it('負例: ADR があるのに docs/adr/README.md が無ければ落ちる (索引を黙って捨てない)', () => {
+  it('負例: ADR があるのに docs/adr/README.md が無ければ落ちる (索引を黙って捨てない)', async () => {
     rmSync(join(root, 'docs', 'adr', 'README.md'));
-    const result = run(root, '--write');
+    const result = await run(root, 'write');
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /docs\/adr\/README\.md/);
+    assert.ok(
+      result.violations.some((v) => v.message.includes('docs/adr/README.md')),
+      result.detail,
+    );
   });
 
-  it('docs/design/ が無いツリーでは design/README.md を作らない', () => {
+  it('docs/design/ が無いツリーでは design/README.md を作らない', async () => {
     rmSync(join(root, 'docs', 'design'), { recursive: true, force: true });
-    converge(root);
+    await converge(root);
     assert.equal(existsSync(join(root, 'docs', 'design')), false, 'docs/design/ を勝手に作っている');
-    const result = run(root, '--check');
-    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const result = await run(root, 'check');
+    assert.equal(result.status, 0, result.detail);
   });
 
-  it('arc42 を持つ文書が 1 本も無いツリーでは docs/README.md を章別ではなくファイル一覧にする (12 行の _未作成_ を出さない)', () => {
+  it('arc42 を持つ文書が 1 本も無いツリーでは docs/README.md を章別ではなくファイル一覧にする (12 行の _未作成_ を出さない)', async () => {
     for (const d of ['product', 'design', 'adr']) rmSync(join(root, 'docs', d), { recursive: true, force: true });
     writeDoc(root, 'guides/how-to.md', [
       '---', 'id: how-to', 'title: 手引き', 'type: guide', 'kind: guide',
       'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', '# 手引き', '',
     ]);
-    converge(root);
+    await converge(root);
     const index = readFileSync(join(root, 'docs', 'README.md'), 'utf8');
     assert.doesNotMatch(index, /_未作成_/);
     assert.match(index, /\| ファイル \| タイトル \|/);
     assert.match(index, /\[guides\/\]\(guides\/README\.md\)/);
   });
 
-  it('ディレクトリ索引は <context>.md を <context>-<aspect>.md より先に並べる', () => {
+  it('ディレクトリ索引は <context>.md を <context>-<aspect>.md より先に並べる', async () => {
     writeDoc(root, 'design/detail/domain/catalog.md', doc('domain-catalog', 'design', 'domain-model', 5, 'catalog'));
     writeDoc(root, 'design/detail/domain/catalog-pricing.md', doc('domain-catalog-pricing', 'design', 'domain-model', 5, 'catalog / 料金'));
-    converge(root);
+    await converge(root);
     const index = readFileSync(join(root, 'docs', 'design', 'detail', 'domain', 'README.md'), 'utf8');
     assert.ok(index.indexOf('[catalog.md]') < index.indexOf('[catalog-pricing.md]'), index);
   });
 
-  it('ディレクトリ索引に各文書の TL;DR を「説明」列として出す (強調・リンク・コードは剥がす)', () => {
+  it('ディレクトリ索引に各文書の TL;DR を「説明」列として出す (強調・リンク・コードは剥がす)', async () => {
     writeDoc(root, 'design/detail/domain/catalog.md', [
       ...doc('domain-catalog', 'design', 'domain-model', 5, 'catalog'),
       '> **TL;DR**: 「何を貸すか」を持つ。**在庫の個体は持たない** (それは [索引](./README.md))。`Item` が集約。',
@@ -198,7 +225,7 @@ describe('generate-docs-graph の本文リンク検査', () => {
       '<!-- AUTOGEN:dir-index:start — generated by scripts/generate-docs-graph.mjs, do not edit by hand -->',
       '<!-- AUTOGEN:dir-index:end -->', '',
     ]);
-    converge(root);
+    await converge(root);
     const domain = readFileSync(join(root, 'docs', 'design', 'detail', 'domain', 'README.md'), 'utf8');
     assert.match(domain, /\| ファイル \| タイトル \| 説明 \|/);
     assert.match(domain, /\[catalog\.md\]\(catalog\.md\) \| catalog \| 「何を貸すか」を持つ。在庫の個体は持たない \(それは 索引\)。Item が集約。 \|/);
