@@ -233,4 +233,14 @@ describe('DocGraphCheck の本文リンク検査', () => {
     const detail = readFileSync(join(root, 'docs', 'design', 'detail', 'README.md'), 'utf8');
     assert.match(detail, /\[domain\/\]\(domain\/README\.md\) \| domain — 索引 \| ドメインクラス図。1 コンテキスト 1 ファイル。 \|/);
   });
+
+  it('生成日付が古いだけでは drift にしない (生成の翌日に必ず赤くなるのを防ぐ)', async () => {
+    await converge(root);
+    const depsPath = join(root, 'docs', 'dependencies.md');
+    const aged = readFileSync(depsPath, 'utf8').replace(/^> 自動生成: .*$/m, '> 自動生成: 2000-01-01 (UTC) / ソース: 各 `docs/**/*.md` の frontmatter');
+    writeFileSync(depsPath, aged);
+
+    const result = await run(root, 'check');
+    assert.equal(result.status, 0, result.detail);
+  });
 });
