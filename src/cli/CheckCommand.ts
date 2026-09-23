@@ -3,7 +3,7 @@ import type { Check, CheckContext } from '../core/Check.js';
 import type { ExitCode } from '../core/ExitCode.js';
 import { Report } from '../core/Report.js';
 import type { ArgSpec, ParsedArgs } from './Args.js';
-import { parseArgs } from './Args.js';
+import { ArgParseError, parseArgs } from './Args.js';
 import type { CommandContext } from './Command.js';
 import { Command } from './Command.js';
 
@@ -29,6 +29,11 @@ export abstract class CheckCommand extends Command {
       valueOptions: ['root', ...(this.argSpec.valueOptions ?? [])],
       boolOptions: this.argSpec.boolOptions ?? [],
     });
+    // 検査コマンドは位置引数を取らない。黙って捨てると `--flag false` が
+    // 「OFF にしたつもりで ON」という無音の取り違えになるため検査不能で落とす。
+    if (args.positional.length > 0) {
+      throw new ArgParseError(`余分な引数: ${args.positional.join(' ')}`);
+    }
     const checkCtx: CheckContext = {
       targetRoot: resolve(args.get('root') ?? ctx.cwd),
       igetaRoot: ctx.igetaRoot,

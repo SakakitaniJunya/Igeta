@@ -100,7 +100,7 @@ Node.js 22 以上が必要。**ファイルをコピーしない**。`init` が�
 
 ```bash
 # 1. 検査配線と docs 骨格を入れる (既存ファイルは上書きしない)
-npx github:SakakitaniJunya/Igeta#v0.1.0 init
+npx github:SakakitaniJunya/Igeta#v0.1.1 init
 npm install
 
 # 2. 書きたい文書と同じパスの雛形を置く (templates/docs/<X> → docs/<X>)
@@ -122,11 +122,16 @@ npm run docs:graph
 | `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
-| `npm run secret-scan` | 機密混入 | 社内制約 ID / ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致 |
+| `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (75 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (79 件) |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
+
+社内制約 ID の検出は `secret-scan --internal-ids` で明示的に有効にしたときだけ走る。非公開リポジトリでは
+規約 ID を本文から参照するのは正当なので既定 OFF、公開リポジトリでは漏洩なので ON にする。Igeta 自身は
+公開なので `package.json` の `secret-scan` スクリプトにこのフラグを入れてある。他の規則 (ローカル絶対パス /
+メール / トークン / 禁止語) は常に走り、このフラグの影響を受けない。
 
 ## ディレクトリ構成
 
