@@ -49,12 +49,36 @@ describe('SecretScanCheck', () => {
     assert.ok(report.isEmpty);
   });
 
-  it('社内制約 ID を検出する', () => {
-    writeFile(root, 'docs/rule.md', '前段\n本リポジトリは C-017 に従う。\n');
+  it('社内制約 ID は既定では検出しない', () => {
+    writeFile(root, 'docs/rule.md', '前段\n本リポジトリは C-123 に従う。\n');
     const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.ok(report.isEmpty);
+  });
+
+  it('社内制約 ID は internalIds で検出する', () => {
+    writeFile(root, 'docs/rule.md', '前段\n本リポジトリは C-123 に従う。\n');
+    const report = runCheck(root, { internalIds: true });
     assert.equal(report.exitCode, ExitCode.Violation, report.format());
-    assert.match(report.format(), /社内制約 ID\): C-017/);
+    assert.match(report.format(), /社内制約 ID\): C-123/);
     assert.match(report.format(), /docs\/rule\.md:2/);
+  });
+
+  it('internalIds の有無に関わらずトークンは検出する', () => {
+    const token = 'ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8';
+    writeFile(root, 'docs/rule.md', `C-123 の配線\nTOKEN=${token}\n`);
+
+    const off = runCheck(root);
+    assert.equal(off.exitCode, ExitCode.Violation, off.format());
+    assert.equal(off.violations.length, 1, off.format());
+    assert.match(off.format(), /トークン\): ghp_A1b2…/);
+    assert.doesNotMatch(off.format(), /社内制約 ID/);
+
+    const on = runCheck(root, { internalIds: true });
+    assert.equal(on.exitCode, ExitCode.Violation, on.format());
+    assert.equal(on.violations.length, 2, on.format());
+    assert.match(on.format(), /トークン\): ghp_A1b2…/);
+    assert.match(on.format(), /社内制約 ID\): C-123/);
   });
 
   it('ローカル絶対パスを検出する', () => {
@@ -138,10 +162,11 @@ describe('SecretScanCheck', () => {
         'path: /Users/your-name/project/app',
         'mail: user@example.com',
         'MAIL=YOUR_ADDRESS@EXAMPLE.COM',
-        '参照: <C-017>',
+        '参照: <C-123>',
       ].join('\n'),
     );
-    const report = runCheck(root);
+    // 制約 ID のプレースホルダも見るため、ここだけ任意規則を有効にする
+    const report = runCheck(root, { internalIds: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
     assert.ok(report.isEmpty);
   });
@@ -153,7 +178,7 @@ describe('SecretScanCheck', () => {
       '| SEC-001 | XC-101 | INF-101 | ARC-001 |\ntask-management-system-v2 を採用する。\n',
     );
     writeFile(root, 'package.json', '{ "devDependencies": { "@types/node": "^22.20.4" } }\n');
-    const report = runCheck(root);
+    const report = runCheck(root, { internalIds: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 

@@ -1,5 +1,6 @@
 // 公開リポジトリに社内情報を出さないための検査。対象リポジトリの全テキストファイルを
-// 走査し、社内制約 ID / ローカル絶対パス / メールアドレス / トークン / 禁止語を検出する。
+// 走査し、ローカル絶対パス / メールアドレス / トークン / 禁止語を検出する。
+// 社内制約 ID は非公開リポジトリでは正当な参照なので、既定 OFF の任意規則として分けてある。
 // 検出パターンそのものを書いてあるため、このファイルと自身のテストは走査対象外。
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
@@ -26,9 +27,8 @@ interface SecretPattern {
   readonly allow?: RegExp;
 }
 
+/** 常に走る規則。どのリポジトリでも漏れてはいけない値だけを置く。 */
 const PATTERNS: readonly SecretPattern[] = [
-  // 社内制約 ID。SEC-001 / XC-101 のような別体系と衝突しないよう直前の英数字を除く。
-  { kind: '社内制約 ID', re: /(?<![A-Za-z0-9_-])C-\d{3}(?!\d)/g, redact: false },
   { kind: 'ローカル絶対パス', re: /\/Users\/[A-Za-z0-9._@%+-]+(?:\/[A-Za-z0-9._@%+-]+)*/g, redact: false },
   {
     kind: 'メールアドレス',
@@ -45,9 +45,21 @@ const PATTERNS: readonly SecretPattern[] = [
   },
 ];
 
+/**
+ * 社内制約 ID。公開リポジトリへ出れば漏洩だが、非公開リポジトリでは規約を指す正当な参照なので
+ * 既定では走らせない。SEC-001 / XC-101 のような別体系と衝突しないよう直前の英数字を除く。
+ */
+const INTERNAL_ID_PATTERN: SecretPattern = {
+  kind: '社内制約 ID',
+  re: /(?<![A-Za-z0-9_-])C-\d{3}(?!\d)/g,
+  redact: false,
+};
+
 export interface SecretScanOptions {
   /** 追加の禁止語リスト (1 行 1 語、# 始まりはコメント)。未指定なら <targetRoot>/deny-list/names.txt を任意で読む */
   readonly denyListPath?: string;
+  /** 社内制約 ID の検出を有効にする (既定 false)。公開リポジトリで有効にする。 */
+  readonly internalIds?: boolean;
 }
 
 function isPlaceholder(value: string, line: string): boolean {
@@ -88,9 +100,13 @@ export class SecretScanCheck implements Check {
 
   readonly #denyListPath: string | undefined;
 
+  readonly #patterns: readonly SecretPattern[];
+
   constructor(options: SecretScanOptions = {}) {
     this.#denyListPath =
       options.denyListPath === undefined ? undefined : resolve(options.denyListPath);
+    this.#patterns =
+      options.internalIds === true ? [...PATTERNS, INTERNAL_ID_PATTERN] : PATTERNS;
   }
 
   run(ctx: CheckContext): readonly Violation[] {
@@ -136,7 +152,7 @@ export class SecretScanCheck implements Check {
       for (let i = 0; i < lines.length; i += 1) {
         const line = lines[i];
         if (line === undefined) continue;
-        violations.push(...scanLine(line, i + 1, relPath, denyWords));
+        violations.push(...scanLine(line, i + 1, relPath, this.#patterns, denyWords));
       }
     }
     return violations;
@@ -147,10 +163,11 @@ function scanLine(
   line: string,
   lineNumber: number,
   file: string,
+  patterns: readonly SecretPattern[],
   denyWords: readonly string[],
 ): readonly Violation[] {
   const found: Violation[] = [];
-  for (const pattern of PATTERNS) {
+  for (const pattern of patterns) {
     pattern.re.lastIndex = 0;
     let matched: RegExpExecArray | null = pattern.re.exec(line);
     while (matched !== null) {

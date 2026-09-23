@@ -78,11 +78,18 @@ export class SecretScanCommand extends CheckCommand {
   override readonly usage = [
     '  --root <dir>        対象リポジトリ (既定: カレントディレクトリ)',
     '  --deny-list <file>  追加の禁止語リスト (既定: <root>/deny-list/names.txt)',
+    '  --internal-ids      社内制約 ID (C- + 3 桁) も検出する。公開リポジトリ向けの任意規則で既定 OFF',
   ];
 
-  protected override readonly argSpec = { valueOptions: ['deny-list'] };
+  protected override readonly argSpec = {
+    valueOptions: ['deny-list'],
+    boolOptions: ['internal-ids'],
+  };
 
   protected createCheck(args: ParsedArgs): Check {
-    return new SecretScanCheck({ denyListPath: args.get('deny-list') });
+    return new SecretScanCheck({
+      denyListPath: args.get('deny-list'),
+      internalIds: args.has('internal-ids'),
+    });
   }
 }
