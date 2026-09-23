@@ -22,6 +22,8 @@ interface SecretPattern {
   readonly re: RegExp;
   /** 生値をメッセージに出さない (トークンは CI ログに残すと危険) */
   readonly redact: boolean;
+  /** 一致しても機密でない値。機械が書く定型値を除くためだけに使う。 */
+  readonly allow?: RegExp;
 }
 
 const PATTERNS: readonly SecretPattern[] = [
@@ -32,6 +34,9 @@ const PATTERNS: readonly SecretPattern[] = [
     kind: 'メールアドレス',
     re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
     redact: false,
+    // git+ssh://git@github.com/... のような VCS URL のユーザ部。lock ファイルに機械が書く値で、
+    // 人のアドレスではない。これを機密扱いにすると init 直後の消費側が必ず赤になる。
+    allow: /^(?:git|hg|svn)@/,
   },
   {
     kind: 'トークン',
@@ -150,7 +155,7 @@ function scanLine(
     let matched: RegExpExecArray | null = pattern.re.exec(line);
     while (matched !== null) {
       const value = matched[0];
-      if (!isPlaceholder(value, line)) {
+      if (!isPlaceholder(value, line) && pattern.allow?.test(value) !== true) {
         found.push({
           severity: 'violation',
           file,
