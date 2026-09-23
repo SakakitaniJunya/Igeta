@@ -31,6 +31,7 @@
     "docs:template-check": "node dist/cli.js template-check --require-kind",
     "scaffold": "node dist/cli.js scaffold",
     "secret-scan": "node dist/cli.js secret-scan",
+    "test": "npm run test:scripts",
     "test:scripts": "tsc && node --test \"dist/**/*.test.js\""
   },
   "devDependencies": {

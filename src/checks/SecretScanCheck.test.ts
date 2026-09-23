@@ -71,6 +71,16 @@ describe('SecretScanCheck', () => {
     assert.match(report.format(), /メールアドレス\): taro\.yamada@creanest\.co\.jp/);
   });
 
+  it('VCS URL のユーザ部はメールアドレスとみなさない', () => {
+    writeFile(
+      root,
+      'package-lock.json',
+      '  "resolved": "git+ssh://git@github.com/acme/tool.git#0123456789abcdef"\n',
+    );
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
   it('トークンらしき文字列を検出する (値は伏せる)', () => {
     writeFile(
       root,
