@@ -1,6 +1,6 @@
 {
   "name": "igeta",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "日本の設計書を、Markdown で。基本設計・詳細設計を arc42 に載せ CI で検査する設計書テンプレート集",
   "license": "MIT",
   "repository": {
