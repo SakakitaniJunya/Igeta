@@ -59,6 +59,9 @@ const NON_ARC42_KINDS = new Set([
   'explanation',
   'runbook',
 ]);
+// 階層の根になれる文書種別 (type / kind のどちらかで判定)。上流も下流も持たなくてよい。
+// 要件定義は全設計書の上流、ADR は決定そのもの、guide / runbook / explanation は横断・独立 (taxonomy §1)。
+const ROOT_KINDS = new Set([...NON_ARC42_KINDS, 'requirements', 'adr', 'index', 'glossary', 'as-is-overview']);
 
 // 本文 Markdown リンクの実在検査 (frontmatter の参照整合性とは別レイヤ)。
 const BODY_LINK_RE = /!?\[[^\]]*\]\(\s*<?([^)<>\s]+)>?(?:\s+"[^"]*")?\s*\)/g;
@@ -77,6 +80,7 @@ interface Doc {
   readonly id: string;
   readonly title: string | undefined;
   readonly type: string | undefined;
+  readonly kind: string | undefined;
   readonly status: string | undefined;
   readonly canonical: string | undefined;
   readonly canonicalFor: string | undefined;
@@ -177,6 +181,7 @@ function toDoc(fm: Frontmatter, path: string, id: string): Doc {
     id,
     title: fmString(fm, 'title'),
     type: fmString(fm, 'type'),
+    kind: fmString(fm, 'kind'),
     status: fmString(fm, 'status'),
     canonical: fmString(fm, 'canonical'),
     canonicalFor: fmString(fm, 'canonical_for'),
@@ -322,6 +327,51 @@ function validate(
   }
 
   return { errors, warnings };
+}
+
+/**
+ * 階層検査。索引は `depends_on` (上流 → 下流) の木として出すので、木に繋がらない文書は
+ * 「索引に足せば何本でも増やせる」状態に戻ってしまう。よって根になれる種別 (ROOT_KINDS) 以外は
+ * 上流を 1 件以上持つか、他の文書の上流であること。`depends_on` の循環も木にならないので落とす。
+ */
+function checkHierarchy(docs: readonly Doc[], byId: ReadonlyMap<string, Doc>): string[] {
+  const errors: string[] = [];
+  const hasDownstream = new Set<string>();
+  for (const d of docs) {
+    for (const up of d.dependsOn) if (byId.has(up)) hasDownstream.add(up);
+    for (const old of d.supersedes) if (byId.has(old)) hasDownstream.add(old);
+  }
+  for (const d of docs) {
+    if (basename(d.path).toLowerCase() === 'readme.md') continue;
+    if (ROOT_KINDS.has(d.type ?? '') || ROOT_KINDS.has(d.kind ?? '')) continue;
+    if (d.dependsOn.some((up) => byId.has(up))) continue;
+    if (d.supersededBy !== undefined && byId.has(d.supersededBy)) continue;
+    if (hasDownstream.has(d.id)) continue;
+    errors.push(
+      `[graph] ${d.id} (${d.path}) が階層に無い: depends_on に上流を 1 件以上書くか、他の文書の depends_on から参照されること (索引への追加は登録にならない)`,
+    );
+  }
+
+  // depends_on の循環 (DFS 3 色)
+  const state = new Map<string, 'visiting' | 'done'>();
+  const stack: string[] = [];
+  const visit = (id: string): void => {
+    state.set(id, 'visiting');
+    stack.push(id);
+    for (const up of byId.get(id)?.dependsOn ?? []) {
+      if (!byId.has(up)) continue;
+      const s = state.get(up);
+      if (s === 'visiting') {
+        errors.push(`[graph] depends_on が循環: ${[...stack.slice(stack.indexOf(up)), up].join(' → ')}`);
+      } else if (s === undefined) {
+        visit(up);
+      }
+    }
+    stack.pop();
+    state.set(id, 'done');
+  };
+  for (const d of docs) if (!state.has(d.id)) visit(d.id);
+  return errors;
 }
 
 function buildMermaid(docs: readonly Doc[], byId: ReadonlyMap<string, Doc>): string {
@@ -624,6 +674,7 @@ class DocGraph {
     assertUniqueAdrNumbers(docs); // throws on duplicate ADR number (id 一致でなくても検出)
     const byAlias = indexAliases(docs, byId); // throws on alias/id collision
     const { errors, warnings } = validate(docs, byId, byAlias);
+    const hierarchyErrors = checkHierarchy(docs, byId);
 
     const depsOut = this.#buildDependencies(docs, byId, warnings);
 
@@ -655,9 +706,9 @@ class DocGraph {
     this.#warnings.push(...warnings);
 
     if (this.#write) {
-      return this.#runWrite(depsOut, adrOut, dirIndexes, errors);
+      return this.#runWrite(depsOut, adrOut, dirIndexes, errors, hierarchyErrors);
     }
-    return this.#runCheck(allFiles, depsOut, adrExisting, adrOut, dirIndexes, errors);
+    return this.#runCheck(allFiles, depsOut, adrExisting, adrOut, dirIndexes, errors, hierarchyErrors);
   }
 
   async #runWrite(
@@ -665,6 +716,7 @@ class DocGraph {
     adrOut: string | null,
     dirIndexes: readonly DirIndex[],
     errors: readonly string[],
+    hierarchyErrors: readonly string[],
   ): Promise<readonly Violation[]> {
     if (errors.length > 0) return errors.map((message) => ({ severity: 'violation', message }));
     await writeFile(this.#output, `${depsOut}\n`, 'utf8');
@@ -672,12 +724,13 @@ class DocGraph {
     for (const di of dirIndexes) {
       if (di.existing === null || di.existing !== di.desired) await writeFile(di.readmePath, di.desired, 'utf8');
     }
-    // 本文リンク検査は「書いた後に」見る (索引 README を作る前に落とすと、
+    // 本文リンク検査と階層検査は「書いた後に」見る (索引 README を作る前に落とすと、
     // 生成器が自分で直せるリンク切れで deadlock するため)。--write では非ブロッキング。
     const linkProblems = await this.#checkBodyLinks(await this.#walk(this.#docsDir));
     for (const p of linkProblems) {
       this.#warnings.push(`[link] ${p.file}:${p.line} → ${p.target} (解決先が存在しない。--check では ERROR)`);
     }
+    for (const e of hierarchyErrors) this.#warnings.push(`${e} (--check では ERROR)`);
     return [];
   }
 
@@ -688,6 +741,7 @@ class DocGraph {
     adrOut: string | null,
     dirIndexes: readonly DirIndex[],
     errors: readonly string[],
+    hierarchyErrors: readonly string[],
   ): Promise<readonly Violation[]> {
     const drift: Violation[] = [];
     const existingDeps = await readFile(this.#output, 'utf8').catch(() => '');
@@ -721,7 +775,7 @@ class DocGraph {
       file: p.file,
       line: p.line,
     }));
-    const hardErrors: Violation[] = errors.map((message) => ({ severity: 'violation', message }));
+    const hardErrors: Violation[] = [...errors, ...hierarchyErrors].map((message) => ({ severity: 'violation', message }));
     return [...drift, ...hardErrors, ...linkViolations];
   }
 
@@ -942,15 +996,95 @@ class DocGraph {
           const relDir = relative(from, c);
           const readme = meta.get(join(c, 'README.md'));
           const t = readme?.title ?? `${basename(c)} — 索引`;
-          rows.push(
-            `| [${relDir}/](${relDir}/README.md) | ${cell(t)} | ${cell(summaryOf(readme?.content) || '—')} | dir | — |`,
-          );
+          const summary = summaryOf(readme?.content);
+          rows.push(`- [${relDir}/](${relDir}/README.md) — **${cell(t)}**${summary ? ` — ${cell(summary)}` : ''}`);
         } else {
           rows.push(...descendantRows(from, c)); // pass-through dir: list its indexed descendants
         }
       }
       return rows;
     };
+    // id → ファイル (ディレクトリ外の上流へリンクするため)
+    const fileById = new Map<string, string>();
+    for (const f of allFiles) {
+      const id = fmString(meta.get(f)?.fm ?? {}, 'id');
+      if (id !== undefined && id !== '' && !fileById.has(id)) fileById.set(id, f);
+    }
+    /**
+     * ディレクトリ直下の文書を `depends_on` の木で出す (親 = 上流)。
+     * 同じディレクトリ内の上流の下にぶら下げ、ディレクトリ外の上流は「← 上流」で示す。
+     * `supersedes` / `superseded_by` は新 → 旧を親子にする (旧は新の履歴)。
+     * 複数の親を持つ文書は各親の下に出す。循環は検査側で落とすが、索引からは消さない。
+     */
+    const treeRows = (dir: string, entries: readonly string[]): string[] => {
+      const fmOf = (f: string): Frontmatter => meta.get(f)?.fm ?? {};
+      const idOf = (f: string): string | undefined => fmString(fmOf(f), 'id');
+      const inDir = new Map<string, string>();
+      for (const f of entries) {
+        const id = idOf(f);
+        if (id !== undefined && id !== '') inDir.set(id, f);
+      }
+      const kids = new Map<string, string[]>();
+      const hasParent = new Set<string>();
+      const attach = (parent: string, child: string): void => {
+        if (parent === child) return;
+        const list = kids.get(parent) ?? [];
+        if (!list.includes(child)) list.push(child);
+        kids.set(parent, list);
+        hasParent.add(child);
+      };
+      for (const f of entries) {
+        const fm = fmOf(f);
+        for (const up of fmList(fm, 'depends_on')) {
+          const p = inDir.get(up);
+          if (p !== undefined) attach(p, f);
+        }
+        for (const old of fmList(fm, 'supersedes')) {
+          const o = inDir.get(old);
+          if (o !== undefined) attach(f, o);
+        }
+        const by = fmString(fm, 'superseded_by');
+        const successor = by === undefined ? undefined : inDir.get(by);
+        if (successor !== undefined) attach(successor, f);
+      }
+      const label = (f: string): string => {
+        const entry = meta.get(f);
+        const fm = fmOf(f);
+        const type = fmString(fm, 'type');
+        const status = fmString(fm, 'status');
+        const summary = summaryOf(entry?.content);
+        const upstream = fmList(fm, 'depends_on')
+          .filter((up) => !inDir.has(up))
+          .map((up) => {
+            const target = fileById.get(up);
+            return target === undefined ? `${up} (未解決)` : `[${up}](${relative(dir, target).split(sep).join('/')})`;
+          });
+        return [
+          `[${basename(f)}](${basename(f)}) — **${cell(entry?.title)}**`,
+          type ? ` \`${cell(type)}\`` : '',
+          status && status !== 'active' ? ` _(${cell(status)})_` : '',
+          summary ? ` — ${cell(summary)}` : '',
+          upstream.length > 0 ? ` ← 上流: ${upstream.join(', ')}` : '',
+        ].join('');
+      };
+      const rendered = new Set<string>();
+      const render = (f: string, depth: number, path: ReadonlySet<string>): string[] => {
+        rendered.add(f);
+        const out = [`${'  '.repeat(depth)}- ${label(f)}`];
+        if (path.has(f)) return out; // 循環: ここで打ち切る (違反は checkHierarchy が出す)
+        const next = new Set(path).add(f);
+        for (const c of kids.get(f) ?? []) out.push(...render(c, depth + 1, next));
+        return out;
+      };
+      const rows: string[] = [];
+      for (const f of entries) if (!hasParent.has(f)) rows.push(...render(f, 0, new Set()));
+      // 循環だけで構成される文書は根が無い。索引から消さず根として出す
+      for (const f of entries) if (!rendered.has(f)) rows.push(...render(f, 0, new Set()));
+      return rows;
+    };
+    const TREE_LEGEND =
+      '> 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。' +
+      '上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。';
     // 章別索引を出すディレクトリ。docs/design/ はツリーに在るときだけ対象にする
     // (無いのに README だけ作ると空フォルダが生える)。
     const chapterDirs = [this.#docsDir, join(this.#docsDir, 'design')].filter(
@@ -982,13 +1116,7 @@ class DocGraph {
         // 拡張子を外して比べる。"catalog-pricing.md" < "catalog.md" ('-' < '.') になり、
         // 分割元が分割先の後ろに沈むため
         .sort((a, b) => basename(a, '.md').localeCompare(basename(b, '.md')));
-      for (const f of entries) {
-        const entry = meta.get(f);
-        if (entry === undefined) continue;
-        rows.push(
-          `| [${basename(f)}](${basename(f)}) | ${cell(entry.title)} | ${cell(summaryOf(entry.content) || '—')} | ${cell(fmString(entry.fm, 'type') || '—')} | ${cell(fmString(entry.fm, 'status') || '—')} |`,
-        );
-      }
+      rows.push(...treeRows(dir, entries.filter((f) => meta.has(f))));
       // 章別索引は arc42 を持つ文書が配下に 1 本でもあるときだけ。
       // 0 本で 12 章の _未作成_ を並べても情報が無い
       const hasChapterDocs = descendantDocs(dir).some((f) => meta.get(f)?.fm['arc42'] !== undefined);
@@ -1001,7 +1129,7 @@ class DocGraph {
               arc42Warnings,
               allFiles.filter((f) => !isReadme(f) && !f.startsWith(dir + sep)).sort(),
             )
-          : ['| ファイル | タイトル | 説明 | type | status |', '|---|---|---|---|---|', ...rows].join('\n');
+          : [TREE_LEGEND, '', ...rows].join('\n');
       if (!isChapterDir && rows.length === 0) continue;
       // `existing` は常にディスクの実体を見る。overrides (pass1 の desired) を existing に使うと
       // pass2 で existing === desired となり --write が索引を書かず --check も drift を見逃す。
