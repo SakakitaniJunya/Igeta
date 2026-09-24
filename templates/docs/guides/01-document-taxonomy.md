@@ -108,13 +108,13 @@ flowchart TB
   ADR -.-> basic & detail
 ```
 
-図に無い `glossary` (用語集) / `as-is-overview` (稼働後の構成) / `guide` / `explanation` / `runbook` は、特定の上流を持たない横断・独立の文書。
+図に無い `glossary` (用語集) / `as-is-overview` (稼働後の構成) / `guide` / `explanation` / `runbook` は、特定の上流を持たない横断・独立の文書。 階層検査で根になれる (上流も下流も無くてよい) のはこれらと `requirements` / `adr` / `index` / `tasks` / `proposal` / `implementation-order` / `document-taxonomy` だけで、他の kind は `depends_on` に上流を 1 件以上持つか、他の文書の上流でなければならない。
 
 ## 2. 種類一覧
 
 **背骨は arc42 12 章**。章はフォルダではなく frontmatter `arc42:` が持ち、README 索引が章順に並べる。テンプレのパス = 配置先のパス。`templates/docs/<X>` を `docs/<X>` へコピーする。`__name__` は雛形で、同階層の実ファイル名に置き換える。**ファイル名の先頭は 2 桁の連番** (`01-requirements.md`) で、同じフォルダ内の読む順を表す。固定名の雛形は標準の番号を持ち、そのまま使うと番号が抜けた分だけ「まだ書いていない文書」が見える。`__name__` の雛形は配置先で自分で採番する (`flows/01-reservation.md`)。検査器は `NN-` を無視して種類を判定するので、番号を変えても壊れない。
 
-全部置いたときのフォルダ構成。`NN-` は 2 桁の連番、`<…>` は自分で付ける名前。各フォルダの `README.md` (索引) は生成器が作るので書かない。索引は `depends_on` の木 (親 = 上流、子 = 下流) で出す。上流も下流も持たない文書 (根になれる `requirements` / `adr` / `guide` / `runbook` / `explanation` / `glossary` を除く) は `docs-check` が落とすので、文書を足すときは必ず `depends_on` で木に繋ぐ。
+全部置いたときのフォルダ構成。`NN-` は 2 桁の連番、`<…>` は自分で付ける名前。各フォルダの `README.md` (索引) は生成器が作るので書かない。索引は `depends_on` の木 (親 = 上流、子 = 下流) で出す。上流も下流も持たない文書と frontmatter `id` の無い文書は `docs-check` が落とすので、文書を足すときは必ず `depends_on` で木に繋ぐ。
 
 ```text
 docs/

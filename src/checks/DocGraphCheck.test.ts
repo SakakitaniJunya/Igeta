@@ -208,7 +208,6 @@ describe('DocGraphCheck の本文リンク検査', () => {
     await converge(root);
     const index = readFileSync(join(root, 'docs', 'README.md'), 'utf8');
     assert.doesNotMatch(index, /_未作成_/);
-    assert.match(index, /階層は frontmatter `depends_on` から生成/);
     assert.match(index, /^- \[guides\/\]\(guides\/README\.md\)/m);
   });
 
@@ -323,9 +322,67 @@ describe('DocGraphCheck の階層索引と配置検査', () => {
     await converge(root);
     const result = await run(root, 'check');
     assert.equal(result.status, 1, result.detail);
-    assert.ok(result.violations.some((v) => /\[graph\] depends_on が循環: fin-(a|b) → fin-(a|b) → fin-(a|b)/.test(v.message)), result.detail);
+    assert.ok(result.violations.some((v) => /\[graph\] 階層が循環 .*: fin-(a|b) → fin-(a|b) → fin-(a|b)/.test(v.message)), result.detail);
     const index = readFileSync(join(root, 'docs', 'business', 'finance', 'README.md'), 'utf8');
     assert.match(index, /\[a\.md\]/);
     assert.match(index, /\[b\.md\]/);
+  });
+
+  it('負例: supersedes と depends_on を混ぜた循環も落ちる (木と検査は同じ辺集合)', async () => {
+    writeDoc(root, 'business/finance/new.md', business('fin-new', '新', ['depends_on: [fin-old]', 'supersedes: [fin-old]']));
+    writeDoc(root, 'business/finance/old.md', business('fin-old', '旧', ['status: superseded', 'superseded_by: fin-new']));
+    await converge(root);
+    const result = await run(root, 'check');
+    assert.equal(result.status, 1, result.detail);
+    assert.ok(result.violations.some((v) => v.message.includes('階層が循環')), result.detail);
+  });
+
+  it('負例: frontmatter id の無い文書は索引に載っても門を通れない (--check で落ちる)', async () => {
+    writeDoc(root, 'business/finance/noid.md', ['---', 'title: id 無し文書', 'type: business', 'status: active', '---', '', '# id 無し文書', '']);
+    writeDoc(root, 'business/finance/nofm.md', ['# frontmatter 無し', '']);
+    await converge(root);
+    const result = await run(root, 'check');
+    assert.equal(result.status, 1, result.detail);
+    for (const f of ['noid.md', 'nofm.md']) {
+      assert.ok(result.violations.some((v) => v.message.includes(`docs/business/finance/${f} に frontmatter id が無い`)), result.detail);
+    }
+  });
+
+  it('aliases で救済された旧 id を上流に書いた文書は配置済みとみなし、索引も現存 id でリンクする', async () => {
+    writeDoc(root, 'business/finance/policy.md', business('fin-policy-v2', '財務方針 v2', ['aliases: [fin-policy]', 'depends_on: [requirements]']));
+    writeDoc(root, 'business/finance/plan.md', business('fin-plan', '収支計画', ['depends_on: [fin-policy]']));
+    writeDoc(root, 'business/grants/sogyo.md', business('grant-sogyo', '創業助成金', ['depends_on: [fin-policy]']));
+    await converge(root);
+    const result = await run(root, 'check');
+    assert.equal(result.status, 0, result.detail);
+    const finance = readFileSync(join(root, 'docs', 'business', 'finance', 'README.md'), 'utf8');
+    assert.match(finance, /^  - \[plan\.md\]/m); // 旧 id 経由でも policy の下にぶら下がる
+    const grants = readFileSync(join(root, 'docs', 'business', 'grants', 'README.md'), 'utf8');
+    assert.match(grants, /← 上流: \[fin-policy-v2\]\(\.\.\/finance\/policy\.md\)/);
+    assert.doesNotMatch(grants, /未解決/);
+  });
+
+  it('親が複数ある文書は最初の親の下に 1 回だけ出し、他の親の下では「上に記載」にする (菱形で部分木を複製しない)', async () => {
+    writeDoc(root, 'business/finance/a.md', business('fin-a', 'A', ['depends_on: [requirements]']));
+    writeDoc(root, 'business/finance/b.md', business('fin-b', 'B', ['depends_on: [fin-a]']));
+    writeDoc(root, 'business/finance/c.md', business('fin-c', 'C', ['depends_on: [fin-a]']));
+    writeDoc(root, 'business/finance/d.md', business('fin-d', 'D', ['depends_on: [fin-b, fin-c]']));
+    writeDoc(root, 'business/finance/e.md', business('fin-e', 'E', ['depends_on: [fin-d]']));
+    await converge(root);
+    assert.equal((await run(root, 'check')).status, 0);
+    const index = readFileSync(join(root, 'docs', 'business', 'finance', 'README.md'), 'utf8');
+    assert.equal(index.match(/\[e\.md\]\(e\.md\)/g)?.length, 1, index);
+    assert.equal(index.match(/\[d\.md\]\(d\.md\) — /g)?.length, 1, index);
+    assert.match(index, /^    - \[d\.md\]\(d\.md\) \(上に記載\)$/m);
+  });
+
+  it('文書の行が無い索引 (子ディレクトリだけ) には階層の凡例を出さない', async () => {
+    writeDoc(root, 'business/finance/policy.md', business('fin-policy', '財務方針', ['depends_on: [requirements]']));
+    await converge(root);
+    const businessIndex = readFileSync(join(root, 'docs', 'business', 'README.md'), 'utf8');
+    assert.doesNotMatch(businessIndex, /階層は frontmatter/);
+    assert.match(businessIndex, /^- \[finance\/\]\(finance\/README\.md\)/m);
+    const finance = readFileSync(join(root, 'docs', 'business', 'finance', 'README.md'), 'utf8');
+    assert.match(finance, /階層は frontmatter/);
   });
 });
