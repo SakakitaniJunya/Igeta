@@ -1,0 +1,40 @@
+# ストアスクリーンショット・パイプライン
+# 利用側の Makefile から `include Makefile.screenshots` するか、中身を貼り付ける。
+
+.PHONY: screenshots screenshots-capture screenshots-capture-ios screenshots-capture-android screenshots-sync screenshots-export screenshots-check screenshots-editor
+
+screenshots: screenshots-capture screenshots-sync screenshots-export
+
+# 撮影: macOS では iOS シミュレータ、それ以外では Android エミュレータを使う
+screenshots-capture:
+ifeq ($(shell uname),Darwin)
+	./scripts/screenshots-capture-ios.sh
+else
+	./scripts/screenshots-capture-android.sh
+endif
+
+screenshots-capture-ios:
+	./scripts/screenshots-capture-ios.sh
+
+screenshots-capture-android:
+	./scripts/screenshots-capture-android.sh
+
+# raw → 額装エディタの入力ディレクトリへ一方向コピー
+screenshots-sync:
+	node scripts/sync-screenshots-raw.mjs
+
+# 合成: store/screenshots/ に最終 PNG を出力
+screenshots-export:
+	node store-screenshots/scripts/export.mjs
+
+# 文言だけ変えたときは撮影なしでここから
+screenshots-regen: screenshots-sync screenshots-export screenshots-check
+
+# レイアウト崩れ検査（撮影不要・DOM 実測）
+screenshots-check:
+	node store-screenshots/scripts/check.mjs
+
+# 手元プレビュー: http://localhost:3000/store-screenshots/index.html
+screenshots-editor:
+	@echo "preview: http://localhost:3000/store-screenshots/index.html"
+	@node -e "import('./store-screenshots/scripts/serve.mjs').then(m=>m.serveRepo(3000))"
