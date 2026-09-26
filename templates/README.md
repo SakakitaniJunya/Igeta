@@ -8,5 +8,6 @@
 | `api-module/` | `your-repo/apps/api/` | `npm run scaffold:module -- --context <name> --aggregate <Name>` |
 | `api-shared-kernel/` | `your-repo/apps/api/` | 初回のみ `--include-kernel` を付ける |
 | `web-feature/` | `your-repo/apps/web/` | `npm run scaffold:module -- --kind web --feature <name>` |
+| `store-screenshots/` | `your-repo/` ルート | 手でコピー。フォルダ構成がコピー先と同じ (`store-screenshots/`・`scripts/`・`Makefile.screenshots`・`app-side/<方式>/`)。iOS/Android ストア提出用スクショの撮影→額装パイプライン |
 
 `docs/guides/01-document-taxonomy.md` (文書体系) と `02-implementation-order.md` (実装順序) は中身の入った手引きで、そのままコピーして使う。Igeta ルートの `docs/` は雛形ではなく、Igeta 自身の背景。

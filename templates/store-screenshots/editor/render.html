@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>render</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0e1116;
+    --paper: #f6f2ea;
+    --accent: #00b2c5;
+    --accent-warm: #ffd60a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #333; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif; }
+
+  .slide { position: relative; overflow: hidden; }
+  .slide[data-bg="ink"]    { background: var(--ink);   --fg: var(--paper); --muted: rgba(246,242,234,.62); --marker: var(--accent-warm); }
+  .slide[data-bg="paper"]  { background: var(--paper); --fg: var(--ink);   --muted: rgba(14,17,22,.55);   --marker: var(--accent); }
+  .slide[data-bg="accent"] { background: var(--accent);--fg: #ffffff;      --muted: rgba(255,255,255,.78); --marker: #073642; }
+  .slide { color: var(--fg); }
+
+  .frame {
+    position: absolute; inset: 40px; pointer-events: none; z-index: 5;
+    border: 22px solid var(--accent-warm); border-radius: 34px;
+  }
+  .slide[data-bg="accent"] .frame { border-color: #ffffff; }
+
+  .stage {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; flex-direction: column;
+    padding: var(--pad-top) var(--pad-x) 0;
+  }
+  .caption { flex: 0 0 auto; }
+  .headline { font-weight: 900; letter-spacing: .02em; }
+  .headline .line { display: block; white-space: nowrap; }
+  .headline .marker {
+    background-image: linear-gradient(transparent 58%, var(--marker) 58%, var(--marker) 92%, transparent 92%);
+  }
+  .subtitle { margin-top: 56px; color: var(--muted); font-weight: 500; line-height: 1.7; }
+  .subtitle .line { display: block; white-space: nowrap; }
+
+  .device-area { flex: 1 1 auto; display: flex; justify-content: center; align-items: flex-start; }
+  .device {
+    background: #101318;
+    border-radius: var(--dev-radius);
+    padding: var(--dev-bezel);
+    box-shadow: 0 60px 120px rgba(0,0,0,.45);
+    overflow: hidden;
+    position: relative;
+  }
+  .device img {
+    display: block; width: 100%; height: 100%;
+    object-fit: cover; object-position: top center;
+    border-radius: calc(var(--dev-radius) - var(--dev-bezel));
+    background: #222;
+  }
+  .device .island {
+    position: absolute; top: calc(var(--dev-bezel) + 26px); left: 50%;
+    transform: translateX(-50%);
+    width: 30%; height: 34px; background: #000; border-radius: 18px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="src/render.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+appId: ${APP_ID}
+---
+# ストアスクリーンショット撮影フロー。
+# scripts/screenshots-capture-{ios,android}.sh から
+#   -e SCENARIO=home -e ANCHOR=ホーム -e OUT=01 -e APPLE_LANG="(ja)"
+# のように渡して使う。
+- launchApp:
+    appId: ${APP_ID}
+    clearState: true
+    arguments:
+      screenshot: ${SCENARIO}
+      AppleLanguages: ${APPLE_LANG}
+      AppleLocale: ${APPLE_LOCALE}
+- extendedWaitUntil:
+    visible:
+      text: ${ANCHOR}
+    timeout: 30000
+# アニメーション・描画の安定待ち
+- wait: 3000
+- takeScreenshot: ${OUT}

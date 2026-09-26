@@ -1,0 +1,14 @@
+# fastlane snapshot の設定。詳細: https://docs.fastlane.tools/actions/snapshot/
+#
+# TODO: scheme / device / 言語は自アプリに合わせる。
+# 言語は scripts/locales.mjs の LOCALES[].snapshot と揃えること。
+
+scheme("YourApp")                       # TODO
+devices(["iPhone 16 Pro Max"])          # TODO: 6.9" 必須カテゴリ
+languages(["ja"])                       # TODO: scripts/locales.mjs と揃える
+
+output_directory("./store/screenshots_raw") # 撮ったままの置き場。下流の sync が読む
+clear_previous_screenshots(true)
+override_status_bar(true)               # 時刻・電波・電池を固定
+stop_after_first_error(false)
+concurrent_simulators(false)            # 状態注入はシナリオ単位の逐次実行

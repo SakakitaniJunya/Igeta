@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>store screenshots editor</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #1a1d23; color: #eee; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 600; }
+  .grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
+  .cell { width: 220px; }
+  .cell iframe { width: 220px; height: 478px; border: 0; border-radius: 8px; background: #fff; }
+  .cell .cap { font-size: 12px; color: #999; margin-top: 6px; }
+  .toolbar { display: flex; gap: 12px; align-items: center; }
+  select { font-size: 14px; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<h1>store screenshots — render preview</h1>
+<div class="toolbar">
+  <label>device <select id="dev"><option value="iphone">iphone 1320×2868</option><option value="android">android 1080×2400</option></select></label>
+  <span id="loc"></span>
+</div>
+<div class="grid" id="grid"></div>
+<script type="module">
+  import { SLIDES } from './src/defaults.mjs';
+  import { LOCALES } from '../scripts/locales.mjs';
+  const grid = document.getElementById('grid');
+  const devSel = document.getElementById('dev');
+  const locSel = document.createElement('select');
+  for (const l of LOCALES) locSel.insertAdjacentHTML('beforeend', `<option>${l.editor}</option>`);
+  document.getElementById('loc').append('locale ', locSel);
+  const SCALE = { iphone: 220 / 1320, android: 220 / 1080 };
+  const DIM = { iphone: [1320, 2868], android: [1080, 2400] };
+  function render() {
+    grid.innerHTML = '';
+    const dev = devSel.value;
+    for (const l of LOCALES.filter((x) => x.editor === locSel.value)) {
+      SLIDES.forEach((s, i) => {
+        const scale = SCALE[dev];
+        const [w, h] = DIM[dev];
+        grid.insertAdjacentHTML('beforeend', `
+          <div class="cell">
+            <iframe src="render.html?slide=${i}&locale=${l.editor}&store=apple&device=${dev}"
+                    style="width:${w}px;height:${h}px;transform:scale(${scale});transform-origin:top left"></iframe>
+            <div class="cap">${String(i + 1).padStart(2, '0')} ${l.editor} ${s.id}</div>
+          </div>`);
+      });
+    }
+  }
+  devSel.onchange = render; locSel.onchange = render;
+  render();
+</script>
+</body>
+</html>
