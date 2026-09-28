@@ -101,7 +101,7 @@ Node.js 22 以上が必要。**ファイルをコピーしない**。`init` が�
 
 ```bash
 # 1. 検査配線と docs 骨格を入れる (既存ファイルは上書きしない)
-npx github:SakakitaniJunya/Igeta#v0.1.1 init
+npx github:SakakitaniJunya/Igeta#v0.2.1 init
 npm install
 
 # 2. 書きたい文書と同じパスの雛形を置く (templates/docs/<X> → docs/<X>)
