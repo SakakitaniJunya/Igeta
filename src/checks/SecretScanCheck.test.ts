@@ -98,11 +98,28 @@ describe('SecretScanCheck', () => {
   it('VCS URL のユーザ部はメールアドレスとみなさない', () => {
     writeFile(
       root,
-      'package-lock.json',
-      '  "resolved": "git+ssh://git@github.com/acme/tool.git#0123456789abcdef"\n',
+      'package.json',
+      '    "tool": "git+ssh://git@github.com/acme/tool.git#0123456789abcdef"\n',
     );
     const report = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  const LOCK_DEPRECATED =
+    '      "deprecated": "This version is no longer supported, contacting dev.maintainer@acme-tools.dev"\n';
+
+  it('lock ファイル内のメールアドレスは報告しない', () => {
+    writeFile(root, 'package-lock.json', LOCK_DEPRECATED);
+    writeFile(root, 'packages/web/package-lock.json', LOCK_DEPRECATED);
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('lock ファイルと同じ内容でも lock 以外のファイルなら報告する', () => {
+    writeFile(root, 'notes.md', LOCK_DEPRECATED);
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /メールアドレス\): dev\.maintainer@acme-tools\.dev/);
   });
 
   it('トークンらしき文字列を検出する (値は伏せる)', () => {

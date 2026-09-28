@@ -9,6 +9,24 @@ import type { Violation } from '../core/Report.js';
 
 const SKIP_DIR = new Set(['.git', 'node_modules', 'dist', 'coverage']);
 
+/**
+ * パッケージマネージャが書く lock ファイル。人が書かないので機密の混入経路にならず、
+ * 依存の deprecated 文言などに保守者のアドレスが入るため走査すると消費側が恒久的に赤になる。
+ */
+const SKIP_FILE = new Set([
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lockb',
+  'Cargo.lock',
+  'poetry.lock',
+  'Pipfile.lock',
+  'composer.lock',
+  'Gemfile.lock',
+  'go.sum',
+]);
+
 /** 自分自身。検出パターンをリテラルで持つので走査から外す。 */
 const SELF_FILES = new Set([
   'src/checks/SecretScanCheck.ts',
@@ -34,8 +52,8 @@ const PATTERNS: readonly SecretPattern[] = [
     kind: 'メールアドレス',
     re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
     redact: false,
-    // git+ssh://git@github.com/... のような VCS URL のユーザ部。lock ファイルに機械が書く値で、
-    // 人のアドレスではない。これを機密扱いにすると init 直後の消費側が必ず赤になる。
+    // git+ssh://git@github.com/... のような VCS URL のユーザ部。package.json の依存指定などに
+    // 機械的に現れる値で、人のアドレスではない。
     allow: /^(?:git|hg|svn)@/,
   },
   {
@@ -87,6 +105,7 @@ function listFiles(root: string): readonly string[] {
         if (SKIP_DIR.has(entry.name)) continue;
         walk(path);
       } else if (entry.isFile()) {
+        if (SKIP_FILE.has(entry.name)) continue;
         found.push(path);
       }
     }
