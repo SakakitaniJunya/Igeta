@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 本体アプリ (__NAME__/__NAME__.entitlements) と同じグループ ID にすること。 -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.__BUNDLE_PREFIX__.app</string>
+	</array>
+</dict>
+</plist>

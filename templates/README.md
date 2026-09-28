@@ -9,5 +9,6 @@
 | `api-shared-kernel/` | `your-repo/apps/api/` | 初回のみ `--include-kernel` を付ける |
 | `web-feature/` | `your-repo/apps/web/` | `npm run scaffold:module -- --kind web --feature <name>` |
 | `store-screenshots/` | `your-repo/` ルート | 手でコピー。フォルダ構成がコピー先と同じ (`store-screenshots/`・`scripts/`・`Makefile.screenshots`・`app-side/<方式>/`)。iOS/Android ストア提出用スクショの撮影→額装パイプライン |
+| `ios-app/` | `your-repo/` のアプリ用ディレクトリ | 手でコピー。`__NAME__` / `__BUNDLE_PREFIX__` を置換して `xcodegen generate` (手順は `ios-app/README.md`)。xcodegen + SwiftUI + SwiftData + Share Extension + XCTest の雛形 |
 
 `docs/guides/01-document-taxonomy.md` (文書体系) と `02-implementation-order.md` (実装順序) は中身の入った手引きで、そのままコピーして使う。Igeta ルートの `docs/` は雛形ではなく、Igeta 自身の背景。
