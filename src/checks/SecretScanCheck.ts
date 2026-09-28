@@ -47,7 +47,13 @@ interface SecretPattern {
 
 /** 常に走る規則。どのリポジトリでも漏れてはいけない値だけを置く。 */
 const PATTERNS: readonly SecretPattern[] = [
-  { kind: 'ローカル絶対パス', re: /\/Users\/[A-Za-z0-9._@%+-]+(?:\/[A-Za-z0-9._@%+-]+)*/g, redact: false },
+  {
+    kind: 'ローカル絶対パス',
+    re: /\/Users\/[A-Za-z0-9._@%+-]+(?:\/[A-Za-z0-9._@%+-]+)*/g,
+    redact: false,
+    // /Users/Shared は macOS が全ユーザー共用に用意する固定ディレクトリで、個人を特定しない。
+    allow: /^\/Users\/Shared(?:\/|$)/,
+  },
   {
     kind: 'メールアドレス',
     re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
