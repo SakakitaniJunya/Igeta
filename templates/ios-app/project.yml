@@ -1,0 +1,73 @@
+# xcodegen のプロジェクト定義。詳細: https://github.com/yonaskolb/XcodeGen
+# 使い方は README.md。`__NAME__` / `__BUNDLE_PREFIX__` はコピー後に一括置換する。
+name: __NAME__
+options:
+  deploymentTarget:
+    iOS: "18.0"
+
+targets:
+  __NAME__:
+    type: application
+    platform: iOS
+    sources:
+      - __NAME__
+    dependencies:
+      - target: __NAME__ShareExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_PREFIX__.app
+        INFOPLIST_FILE: __NAME__/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: __NAME__/__NAME__.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+
+  __NAME__ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - ShareExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_PREFIX__.app.ShareExtension
+        INFOPLIST_FILE: ShareExtension/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+
+  __NAME__Tests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - __NAME__Tests
+    dependencies:
+      - target: __NAME__
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_PREFIX__.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/__NAME__.app/__NAME__"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  __NAME__:
+    build:
+      targets:
+        __NAME__: all
+        __NAME__ShareExtension: all
+        __NAME__Tests:
+          - test
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - __NAME__Tests
+    archive:
+      config: Release

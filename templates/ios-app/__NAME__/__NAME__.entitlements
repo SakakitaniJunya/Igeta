@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- ShareExtension と UserDefaults を共有するための App Group。
+	     配布する際は Apple Developer 側にも同じグループ ID を登録すること。 -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.__BUNDLE_PREFIX__.app</string>
+	</array>
+</dict>
+</plist>
