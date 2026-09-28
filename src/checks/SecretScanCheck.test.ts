@@ -92,11 +92,33 @@ describe('SecretScanCheck', () => {
     writeFile(
       root,
       'scripts/setup.sh',
-      ['cp file /Users/Shared', 'cp file /Users/Shared/auto-work'].join('\n'),
+      [
+        'cp file /Users/Shared',
+        'cp file /Users/Shared/auto-work',
+        'cp file /Users/Shared/devin-work/sub',
+      ].join('\n'),
     );
     const report = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
     assert.ok(report.isEmpty);
+  });
+
+  it('/Users/Shared を装った .. の上位ディレクトリ迂回は検出する', () => {
+    writeFile(
+      root,
+      'scripts/evade.sh',
+      [
+        'cd /Users/Shared/../alice/x',
+        'cd /Users/Shared/./../alice',
+        'cd /Users/Shared/..',
+      ].join('\n'),
+    );
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.equal(report.violations.length, 3, report.format());
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Shared\/\.\.\/alice\/x/);
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Shared\/\.\/\.\.\/alice/);
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Shared\/\.\./);
   });
 
   it('/Users/Shared に似た個人パスは引き続き検出する', () => {

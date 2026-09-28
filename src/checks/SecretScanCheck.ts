@@ -52,7 +52,8 @@ const PATTERNS: readonly SecretPattern[] = [
     re: /\/Users\/[A-Za-z0-9._@%+-]+(?:\/[A-Za-z0-9._@%+-]+)*/g,
     redact: false,
     // /Users/Shared は macOS が全ユーザー共用に用意する固定ディレクトリで、個人を特定しない。
-    allow: /^\/Users\/Shared(?:\/|$)/,
+    // .. による上位ディレクトリへの迂回 (/Users/Shared/../alice/... 等) は通さない。
+    allow: /^\/Users\/Shared(?:\/(?!\.{1,2}(?:\/|$))[A-Za-z0-9._@%+-]+)*$/,
   },
   {
     kind: 'メールアドレス',
