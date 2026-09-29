@@ -22,6 +22,10 @@ graph LR
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
   classDef map fill:#fef3c7,stroke:#78350f,color:#111
   classDef decision_log fill:#fee2e2,stroke:#7f1d1d,color:#111
+  audience-layers["読み手別 (顧客・開発者・AI) の設計書の層を足した理由"]
+  class audience-layers explanation
+  coverage-and-learning["由来の網羅検査と、食い違いを規則へ育てる学習ループ"]
+  class coverage-and-learning explanation
   design-doc-standards["設計書テンプレが参照した外部標準"]
   class design-doc-standards explanation
   docs-index["docs — Igeta 自身の説明書"]
@@ -32,20 +36,29 @@ graph LR
   class export-deliverable explanation
   human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
   class human-review-layer explanation
+  provenance-and-agreement["由来・鮮度・顧客との合意台帳の形"]
+  class provenance-and-agreement explanation
+  human-review-layer ==> audience-layers
+  provenance-and-agreement ==> coverage-and-learning
+  audience-layers ==> provenance-and-agreement
+  audience-layers -.- provenance-and-agreement
+  audience-layers -.- coverage-and-learning
   design-doc-standards -.- docs-index
   export-deliverable -.- docs-index
 ```
 ## ドキュメント一覧 (type 別)
 ### explanation
 
+- **audience-layers** — [読み手別 (顧客・開発者・AI) の設計書の層を足した理由](explanation/03-audience-layers.md)
+- **coverage-and-learning** — [由来の網羅検査と、食い違いを規則へ育てる学習ループ](explanation/05-coverage-and-learning.md)
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
 - **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md)
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
+- **provenance-and-agreement** — [由来・鮮度・顧客との合意台帳の形](explanation/04-provenance-and-agreement.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)
 
 | ID | Type | Path |
 |---|---|---|
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
-| human-review-layer | explanation | [`docs/explanation/02-human-review-layer.md`](explanation/02-human-review-layer.md) |
 
