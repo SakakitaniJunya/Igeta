@@ -15,7 +15,9 @@ relates_to: [docs-index]
 
 > **TL;DR**: **設計書の背骨は arc42 12 章**。読みやすさの部分 (関連 ID・依存・README 索引) だけ独自に足す。
 > - 採ったのは**節の構成と記法**であって、ツールチェーンではない (MADR CLI / spec-kit CLI は入れない)
-> - spec-kit / Kiro からは **tasks テンプレだけ**残す。Google 流の design doc 1 枚方式は `docs/proposal/` (対外提案) の形として残す
+> - spec-kit からは tasks テンプレに加え、**機能ブリーフ・未決の関門**も採る (2026-09-30 追加)。`analyze`・タスクのパスによる追跡は試験中で `feat/human-review-tools` に分離した。
+>   正本 (要件定義書・設計書) は変えず、その上に**人のレビュー入口**として重ねる。Kiro からは tasks テンプレだけ残す
+> - Google 流の design doc 1 枚方式は `docs/proposal/` (対外提案) の形として残す
 > - 採らなかった部分は §2 に理由付きで書く。後から「標準に無いから」と足し戻さないため
 
 ## 関連
@@ -32,7 +34,8 @@ relates_to: [docs-index]
 | 章立ての正典 | **arc42 12 章** | 「どの文書がどの関心事を担うか」を 12 個で固定でき、抜けが索引の空欄として見える。2005 年から使われ、商用利用も無償 |
 | 章の表し方 | frontmatter `arc42: <1-12>`。フォルダは変えない | フォルダを章名にすると、1 文書が 2 章に跨るたびに移動が起きる。章は属性であって置き場所ではない |
 | 独自に足すもの | 関連 ID (REQ/FN/SCR/API/TBL…)・`depends_on`・README 索引・行数上限 | arc42 は「何を書くか」しか決めない。追跡可能性と索引は自分たちで持つ必要がある |
-| spec-kit / Kiro | **tasks テンプレのみ**採用 | 3 点セット (requirements / design / tasks) は本体系より粒度が粗く、1 文書の行数上限に収まらない |
+| spec-kit | tasks テンプレ + **機能ブリーフ・未決の関門**を採用 (2026-09-30)。`analyze`・タスクのパスによる追跡は試験中 (`feat/human-review-tools`) | spec.md 1 枚を正本にする 3 点セット (spec/plan/tasks) は本体系より粒度が粗く、1 文書の行数上限に収まらない。**正本にはしない**。既存の要件定義書・設計書 (REQ → FN → SCR/API/TBL → CLS) の**上に人のレビュー入口として重ねる**だけにする |
+| Kiro | tasks テンプレのみ採用 | requirements/design/tasks の 3 点セットは spec-kit と同じ理由で正本にしない |
 | Google 流 design doc | `docs/proposal/` に限定 | 1 枚で背景〜設計〜代替案を書く形は**対外提案**には向くが、長期運用する設計書では更新点が散る |
 
 ## 1. 参照した外部標準
@@ -41,6 +44,7 @@ relates_to: [docs-index]
 |---|---|---|
 | [MADR 4.0](https://adr.github.io/madr/) | `Decision Drivers` / 冒頭「採用: <案>。理由:」/ `Confirmation` (決定が守られていることを機械で確かめる手段) | `templates/docs/adr/NNNN-__slug__.md` |
 | [GitHub spec-kit](https://github.com/github/spec-kit) | tasks の行形式 `- [ ] T001 [P] [FN-001] 説明 (path)` と Setup / Foundational / User Story / Polish のフェーズ分け | `templates/docs/design/tasks/__feature__.md` |
+| [GitHub spec-kit](https://github.com/github/spec-kit) (2026-09-30 追加) | spec.md の WHAT/WHY・ユーザーストーリー (P1/P2/P3・Independent Test・Given/When/Then) を**機能ブリーフ**として採用 (要件文・受入条件は書かない)。`[NEEDS CLARIFICATION]` は**未決の関門**として採用。`/analyze` (`igeta analyze`) は試験中で `feat/human-review-tools` に分離した | `templates/docs/product/features/__feature__.md`、`src/checks/DocTemplateCheck.ts` の `checkAcceptedGate` |
 | [AWS Kiro spec + EARS](https://kiro.dev/docs/specs/) / [EARS 原典](https://alistairmavin.com/ears/) | 機能要件を「<トリガ>のとき、システムは<応答>しなければならない」に固定し、パターン列 (Ubiquitous / Event / State / Unwanted / Optional) を持たせる | `templates/docs/product/01-requirements.md`、`check-doc-template.mjs` が REQ-1xx 行の義務形を検査 |
 | [Diátaxis](https://diataxis.fr/) | tutorial / how-to / reference / explanation の 4 分類。`guides/` = how-to、`explanation/` = explanation、reference = 設計書本体 | `docs/guides/01-document-taxonomy.md` §2 の kind 分け |
 | [arc42](https://arc42.org/overview) | §8 Crosscutting Concepts を独立文書にする (各機能の設計書に散らさない) | `templates/docs/design/basic/04-crosscutting.md` |
@@ -52,7 +56,7 @@ relates_to: [docs-index]
 | 標準 | 採らなかった部分 | 理由 |
 |---|---|---|
 | MADR | ファイル名 `NNNN-title.md` 以外の運用 (`adr-tools` / MADR CLI) | 索引は `scripts/generate-docs-graph.mjs` が生成する。CLI を足すと索引の生成元が 2 つになる |
-| spec-kit | `/specify` `/plan` `/tasks` のコマンド群と `spec.md` 1 枚方式 | 1 枚方式はIgeta の文書体系 (REQ → FN → SCR/API/TBL → CLS) と粒度が合わない。行形式だけ採る |
+| spec-kit | `/specify` `/plan` `/tasks` の**スラッシュコマンド群**と、`spec.md` を**正本にする**運用 | コマンド群は Igeta の CLI (`igeta` サブコマンド) に寄せる。`spec.md` は正本にはしない — 正本は既存の要件定義書・設計書のままで、機能ブリーフはその**要約 (レビュー入口)** に留める。二重化を避けるため要件文・受入条件は機能ブリーフに書かない |
 | Kiro | `requirements.md` / `design.md` / `tasks.md` の 3 点セット固定 | design.md 1 枚は 1 文書 200 行の上限に収まらない。分割済みの本体系を維持する |
 | Diátaxis | tutorial の専用テンプレ | 学習者向け文書がまだ 1 本も無い。kind だけ予約し、必要になったら `guides/__slug__.md` を流用する |
 | C4 | Component 図 (L3) の独立文書化 | モジュール仕様 (MOD) が同じ内容を文章で持つ。図は infra-design §1.2 内の小節に留める |

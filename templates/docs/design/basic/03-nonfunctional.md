@@ -26,7 +26,7 @@ relates_to: [infra-design, operations, test-plan]
 
 > **TL;DR**: <守る水準を 1 文で>
 > - 数値は**測定方法とセット**で書く。測れない目標は目標でない
-> - 仮置きの値は「未確認」と明記し、確定条件を書く
+> - 「仮置き」の値は「未確認」と明記し、確定条件を書く
 
 ## 関連
 
@@ -39,7 +39,7 @@ relates_to: [infra-design, operations, test-plan]
 
 | ID | 指標 | 目標値 | 測定方法 | 根拠 | 確度 |
 |---|---|---|---|---|---|
-| NFR-001 | API p95 応答 | 200ms 未満 | Cloud Monitoring | | 仮置き |
+| NFR-001 | API p95 応答 | 200ms 未満 | Cloud Monitoring | | 「仮置き」 |
 
 ## 2. 可用性
 

@@ -30,15 +30,16 @@ export class TemplateCheckCommand extends CheckCommand {
   readonly name = 'template-check';
   readonly summary = '設計書がテンプレートの必須構造を満たしているか検査する';
   override readonly usage = [
-    '  --root <dir>       対象リポジトリ (既定: カレントディレクトリ)',
-    '  --docs <dir>       検査対象 (既定: <root>/docs)',
-    '  --templates <dir>  テンプレ置き場 (既定: Igeta 自身の templates/docs)',
-    '  --require-kind     kind 未設定の doc を違反として扱う',
+    '  --root <dir>            対象リポジトリ (既定: カレントディレクトリ)',
+    '  --docs <dir>            検査対象 (既定: <root>/docs)',
+    '  --templates <dir>       テンプレ置き場 (既定: Igeta 自身の templates/docs)',
+    '  --require-kind          kind 未設定の doc を違反として扱う',
+    '  --require-human-review  地図の網羅・決定の帰属・仮置きの OPEN 参照・修飾 ID を検査する',
   ];
 
   protected override readonly argSpec = {
     valueOptions: ['docs', 'templates'],
-    boolOptions: ['require-kind'],
+    boolOptions: ['require-kind', 'require-human-review'],
   };
 
   protected createCheck(args: ParsedArgs): Check {
@@ -46,6 +47,7 @@ export class TemplateCheckCommand extends CheckCommand {
       docsDir: args.get('docs'),
       templatesDir: args.get('templates'),
       requireKind: args.has('require-kind'),
+      requireHumanReview: args.has('require-human-review'),
     });
   }
 }

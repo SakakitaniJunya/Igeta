@@ -17,5 +17,6 @@ owners: [eng]
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
 - [01-design-doc-standards.md](01-design-doc-standards.md) — **設計書テンプレが参照した外部標準** `explanation` — 設計書の背骨は arc42 12 章。読みやすさの部分 (関連 ID・依存・README 索引) だけ独自に足す。
+- [02-human-review-layer.md](02-human-review-layer.md) — **人間レビュー層 (地図・決定台帳・レビューシート) を足した理由** `explanation` — 1 文書 200 行の上限を守っていても、文書が 45 枚に増えると人は読めない。読み手の仕事
 
 <!-- AUTOGEN:dir-index:end -->
