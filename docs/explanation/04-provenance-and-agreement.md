@@ -1,6 +1,6 @@
 ---
 id: provenance-and-agreement
-title: 由来・鮮度・顧客との合意台帳の形
+title: 由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)
 type: explanation
 kind: explanation
 status: active
@@ -8,142 +8,123 @@ canonical: true
 owners: [product, eng]
 created: 2026-09-30
 depends_on: [audience-layers]
-relates_to: []
+relates_to: [coverage-and-learning]
 ---
 
-# 由来・鮮度・顧客との合意台帳の形
+# 由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)
 
-> **TL;DR**: 由来は本文に書かず**sidecar ファイル** (`<派生物>.provenance.json`) に置く。鮮度は正本の
-> 該当行・節の **SHA256 を再計算して比較**するだけで、保存した状態は信用しない (既存の
-> `docs-graph --write`/`--check` と同じ考え方)。顧客との合意は `igeta export` が書く**追記のみの台帳**
-> (`agreements.ledger.jsonl`)。再合意の判定規則は `.igeta.json` に持つ。
-> - 由来は export の forbid/omitSections に一切触らない設計にした (§1)
-> - moat は仕組みではなく**運用で溜めたルールと合意履行の実績**にしかない (§7、都合の悪い見立て込み)
+> **TL;DR**: 由来・鮮度・合意台帳は既存 kind **`delivery-chapter`** (提出物の章、PR #11) **だけ**に課す。
+> 由来は本文に書かず **sidecar** (`<章>.provenance.json`) に置き、既定粒度は **H2 節** (表の行は任意)。
+> 鮮度は保存した状態を信用せず都度 SHA256 で再計算し、`self-approved`/`orphan` も違反にする。
+> 合意は `docs/delivery/<提出物名>/agreements.ledger.jsonl` (追記のみ)。
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [読み手別の層](./03-audience-layers.md) | — |
-| 下流 | `templates/docs/client/__chapter__.md` / `.igeta.json` | — |
+| 上流 (depends_on) | [読み手別の入口](./03-audience-layers.md) | — |
+| 下流 | [網羅・学習](./05-coverage-and-learning.md) / `templates/docs/delivery/__chapter__.md` | — |
 
 ## 1. 由来 (provenance) の形 — 本文の外のどちらにするか
 
 | 案 | 検討 |
 |---|---|
-| 本文内 `## 由来` 節 / 行コメント | 節単位にしかならず export の `omitSections` 変更 (PR #11、未 merge) が要る。行コメント (`<!-- src: ... -->`) は `AUTOGEN` 以外の HTML コメントが PDF にそのまま文字で出る既知不具合があり、`AUTOGEN` ブロックも行単位の範囲除去でしか効かず表の 1 行には差し込めない |
-| **sidecar ファイル (採用)** | 行・節どちらの粒度も持てる。export の `manifest.chapters` に載らないので forbid/omitSections/`html:false` に一切触らずゼロ変更で済む。人が読むには 2 ファイルになるが、由来は AI/評価者の accept 対象であって人が素読みする対象ではない |
+| 本文内 `## 由来` 節 / 行コメント | 節単位にしかならず export の `omitSections` 変更が要る。行コメントは `AUTOGEN` 以外の HTML コメントが PDF に文字で出る既知不具合があり、`AUTOGEN` も行単位の範囲除去でしか効かない |
+| **sidecar ファイル (採用)** | export の `manifest.chapters` に載らないので `forbid`/`omitSections`/`html:false` に一切触らずゼロ変更で済む |
 
-sidecar は派生物と同じディレクトリに `<basename>.provenance.json` として置く。例:
+## 2. kind と置き場所
+
+`client-chapter` は新設せず、既存 `delivery-chapter` (`templates/docs/delivery/__chapter__.md`、PR #11) に統一する。
+由来・台帳も提出物と同じ場所に置く: 実案件は `docs/delivery/<提出物名>/` (例: `docs/delivery/design-document/`) の
+ように deliverable.json より 1 段深いことが多い。kind 解決 (ディレクトリ完全一致 + ファイル名ワイルドカード) は
+`docs/delivery/` 直下の 1 段しか登録されておらず、この 1 段深い置き場所は**パスから kind を決められない**。
+そのため `delivery-chapter` を名乗る文書は **frontmatter `kind: delivery-chapter` の明示を必須**にする
+(既存の「宣言が置き場所と食い違えば違反」の仕組みは活きるが、置き場所からの既定値には頼らない)。
+
+## 3. 由来の粒度
+
+既定は **H2 節** (「関連」節を除く)。表の行単位まで割るのは**任意** (由来+指紋の件数を抑える。Böckeler/marmelab
+の批判 (§ [読み手別の入口](./03-audience-layers.md) §2) と同じ理由で、既定を細かくしすぎない)。数値の正しさを
+特に確かめたい行だけ、著者が判断して行単位のエントリを足せる。
+
+## 4. sidecar の形
+
+`<basename>.provenance.json` を章と同じディレクトリに置く。1 章 1 sidecar。
 
 ```json
-{ "sourceDoc": "docs/client/02-reservation.md", "entries": [
-  { "anchor": "1. 予約の受付 > table:1 > 予約の変更", "from": "reservation-flow/REQ-114",
+{ "sourceDoc": "docs/delivery/design-document/02-reservation.md", "normalizationVersion": 1, "entries": [
+  { "anchor": "1. 予約の受付", "from": "reservation-flow/REQ-114",
     "fingerprint": "sha256:3b1e...c9", "capturedBy": "agent:eng-base", "capturedAt": "2026-09-28",
+    "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29" },
+  { "anchor": "2. ご挨拶", "from": null, "reason": "挨拶文、由来を持たない",
+    "blockFingerprint": "sha256:9f02...a1", "capturedBy": "agent:eng-base", "capturedAt": "2026-09-28",
     "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29" }
 ] }
 ```
 
-`from` は既存の修飾 ID (`<doc-id>/PREFIX-nnn`) をそのまま使う。**行 ID** (REQ/FN 等) は `collectRowDefinedTokens` (既存、`core/IdDefinitions.ts`) で定義行を取り、その行テキストを正規化して SHA256 する。**節** (機能ブリーフの `## 1. WHAT/WHY` 等) は既存の見出し抽出でセクション本文を取り、同じ方法で SHA256 する。`acceptedBy`/`acceptedAt` が無いエントリは「未承認」として扱う。`capturedBy` は書いた主体を書く (§2)。
+- `from` あり: `fingerprint` は正本側 (行なら `collectRowDefinedTokens` の定義行、節なら見出し抽出のセクション本文) を正規化して SHA256 (§6)
+- `from: null` (由来なし宣言): **`blockFingerprint`** (自分自身の現在のテキストの指紋) を持つ。書き直されたら §5 の `orphan-content` で「要確認」にする
+- `capturedBy`/`acceptedBy` はどちらのエントリでも必須 (由来なし宣言も承認対象。理由なしの exempt 濫用を防ぐ)
 
-## 2. 鮮度の検査
+**作る手順**: AI が章を書く → 節を書くたびに `provenance-capture` する → 別の主体 (人、または別のパック) が
+`provenance-accept` する。正本が変わって §5 が「要確認」を出したら、**その節だけ**を書き直す (章全体を要約し
+直さない)。要約という作業そのものは無くならない。減るのは「どこを直すべきかを探す」作業。
 
-| 状態 | 判定 | 検査の扱い |
+## 5. 鮮度の検査 (`provenance-check`)
+
+| 状態 | 判定 | 扱い |
 |---|---|---|
-| pending | エントリはあるが `acceptedBy` が無い | 違反 (要確認・未承認) |
-| stale | 承認済みだが、`from` の現在の指紋が保存値と違う | 違反 (要確認・陳腐化) |
-| self-approved | `acceptedBy` が `capturedBy` と同じ | 違反 (作る主体と裁く主体を分ける) |
-| ok | 承認済みで、`acceptedBy` ≠ `capturedBy` かつ指紋が一致 | 合格 |
+| pending | `acceptedBy` が無い | 違反 |
+| stale | `from` の現在の指紋が保存値と違う | 違反 |
+| `orphan` | sidecar の `anchor` が今の章に実在しない (節が消えた/名前が変わった) | 違反 |
+| `orphan-content` | `from: null` エントリの `blockFingerprint` が今のテキストと違う | 違反 (由来なし宣言の再確認) |
+| self-approved | `acceptedBy` = `capturedBy` | 違反 (作る主体と裁く主体を分ける) |
+| needs-recompute | エントリの正規化版が今の版と違う (§6) | 警告のみ (既定)。`--strict-normalization` で違反に上げる |
+| ok | 上記以外 | 合格 |
 
-検査は新設 `ProvenanceFreshnessCheck` → CLI `provenance-check` (`domain-drift`/`secret-scan` と同じ「別コマンド・既定で CI に無い」型)。書き込みは検査と分け、`ScaffoldCommand` と同型で `ProvenanceModule` → CLI `provenance capture`/`accept`:
+## 6. 指紋の正規化
 
-- `igeta provenance capture <file> --anchor "<anchor>" --from <doc-id>/<token> --captured-by <name>` — 現在の `from` から指紋を計算し、エントリを作る/上書きする (`acceptedBy` は付けない)。`capturedBy` は AI agent なら `agent:<pack名>` の形、人なら git のメール等をそのまま書く規約にする
-- `igeta provenance accept <file> [--anchor "<anchor>" | --all] --by <name>` — `--by` は必須 (省略しない。git の設定を共有する AI agent と人を区別できないため)。値が対象エントリの `capturedBy` と一致すれば `self-approved` として拒否し、一致しなければ指紋を保存値に上書きして `acceptedBy`/`acceptedAt` を記録する
+比較対象のテキストに、SHA256 の前に次を適用する。**整形だけの変更で落ちないこと**が目的。
 
-## 3. 顧客との合意台帳
+1. 改行コードを `\n` に統一 (CRLF→LF)
+2. 各行の行末の空白を除去
+3. 連続する空白 (全角スペース含む) を単一の半角スペースに畳む
+4. 表の区切り線 (`|---|---|` 相当) はセル幅の整形にすぎないので固定文字列に正規化し、セル内容前後の空白は trim する
+5. 全角・半角の文字そのもの (かな漢字英数記号) は変換しない (意味が変わる可能性があるため。3 の空白だけを正規化する)
 
-`docs/client/agreements.ledger.jsonl` (追記のみ、JSON Lines)。
+正規化ルールを変えたら `normalizationVersion` を上げる。既存エントリは一斉に `stale` へは落とさず、
+`needs-recompute` (既定は警告のみ) にして段階的に `provenance-capture` を再実行させる。
+
+## 7. 顧客との合意台帳
+
+`docs/delivery/<提出物名>/agreements.ledger.jsonl` (追記のみ、JSON Lines)。
 
 ```jsonl
-{"event":"export","version":"1.2.0","date":"2026-09-30","manifest":"docs/client/deliverable.json","chapters":[{"file":"docs/client/02-reservation.md","sources":[{"from":"reservation-flow/REQ-114","fingerprint":"sha256:3b1e...c9"}]}]}
+{"event":"export","version":"1.2.0","date":"2026-09-30","chapters":[{"file":"02-reservation.md","sources":[{"from":"reservation-flow/REQ-114","fingerprint":"sha256:3b1e...c9"}]}]}
 {"event":"approve","targetVersion":"1.2.0","approvedBy":"発注側の責任者","approvedAt":"2026-10-02"}
 ```
 
-- `event:"export"` は `igeta export <manifest.json> --record-agreement` (既存 `ExportCommand` に 1 flag 追加) が成功時に追記する。章ごとに、その時点の由来先の指紋を全部埋め込む (sidecar の値をコピーする。台帳は sidecar とは別に自己完結させる — sidecar が後で書き換わっても、承認した版の記録は変わらない)
-- `event:"approve"` は新設 `igeta agreement approve <version> --by <name>` (人が押す。取り消しにくい操作ではないが「顧客の合意」を主張する行為なので、発注側の責任者/裁く側だけが実行する運用にする)
-- `igeta agreement-check` (新設 Check) は最新の approve が指す `export` エントリを読み、`sources` の `from` を今の正本で再計算し、`.igeta.json` の `reagreementRules` に当たるものを「再合意が要る変更」として一覧する
+`export` は既存 `ExportCommand` に `--record-agreement` を足して成功時に追記。`agreement-approve` は人が押す。
+`agreement-check` は最新の approve が指す版の `sources` を今の正本で再計算し、`.igeta.json` の `reagreementRules`
+(kind + 節単位まで) に当たる変更を「再合意が要る」として一覧する。
 
-## 4. 設定ファイル `.igeta.json`
+## 8. CLI 一覧 (フラットな名前)
 
-対象リポジトリの根に置く (`.igeta-version` と同じ階層)。**存在しなくても既定値で動く** (§6 の段階導入と同じ考え方)。CLI フラグは「どの設定ファイルを読むか」だけを上書きし (`--config <path>`)、規則の値そのものは CLI から個別に上書きしない (`decisionAttributionPatterns` が今 CLI から上書きできないのと同じ理由)。
-
-```json
-{ "reagreementRules": {
-  "requirements": { "sections": ["*"] },
-  "feature-brief": { "sections": ["2. ユーザーストーリー", "3. 対象外"] }
-} }
-```
-
-v1 は **kind + 節単位**までで、列単位 (「この列だけ」) は持たない (§9 限界)。
-
-## 5. CLI 一覧
-
-| コマンド | 種別 | 追加・変更 | 終了コード |
-|---|---|---|---|
-| `template-check --require-audience-layers` | 検査 | 追加 (flag) | Ok / Violation / CannotCheck |
-| `provenance-check` | 検査 (新設) | 追加 | Ok / Violation / CannotCheck |
-| `agreement-check` | 検査 (新設) | 追加 | Ok / Violation / CannotCheck |
-| `provenance capture` / `provenance accept` | 生成 (新設) | 追加 | Ok / CannotCheck |
-| `agreement approve` | 生成 (新設) | 追加 | Ok / CannotCheck |
-| `export --record-agreement` | 生成 (既存 flag 追加) | 変更 (PR #11 merge 後) | 既存の `export` の終了コードに従う |
-
-## 6. 規模の試算
-
-| 読み手 | 機能 35 件 | 機能 300 件 | 増える単位 |
-|---|---|---|---|
-| agent (正本) | 77 本・約 8,400 行 (全量) | 概算 660 本・約 72,000 行 (全量) | 総量は比例。1 タスクで読む量は修飾 ID で機能ブリーフ 1 枚 + 関連 REQ に絞るため増えない (約 150〜300 行) |
-| developer | 地図 150 行 + 決定台帳 + ブリーフ 1 枚 150 行 | 全体地図 150 行 + 文脈の地図 150 行 + 決定台帳 + ブリーフ 1 枚 150 行 (2 段化、[読み手別の層](./03-audience-layers.md) §4) | 段を分けたぶん定数増だが、選ぶ対象は「文脈 6〜7→概算 20」→「文脈内のブリーフ数」の 2 段検索になり、300 枚から直接選ばせない |
-| client | 約 10 章・650 行・PDF 25 頁 | 概算 20 章・1,300 行・PDF 50 頁 | 章の単位を**機能数ではなく業務コンテキスト数** (6〜7→概算 20) に固定するため、機能数に対して準線形未満に抑える |
-
-## 7. 参入障壁の見立て
-
-| 写せる | 写せない (moat の候補) |
-|---|---|
-| `audience` フィールドと既定値表 (単純な取り決め) | 案件ごとに溜まった「食い違いの規則」の実測ログ (§8 の初期規則は 1 件の実例からの起点でしかない) |
-| 由来+指紋の仕組み (Doorstop の親指紋と同型、数百行で複製可能) | 顧客との合意台帳の再合意判定規則 (「判定の規則は運用からしか育たない」— 最初の規則が正しい保証は無い) |
-| 検査コードそのもの (MIT で公開、誰でも clone できる) | 日本のウォーターフォール成果物の型 + 3 読み手 + 由来 + 鮮度 + forbid を**実際に統合して保守している運用**そのもの |
-
-**都合の悪い見立て**: DITA/AsciiDoc/Sphinx + Doorstop + Sphinx-Needs/StrictDoc を組み合わせれば、技術力のあるチームは数週間で同等の骨格を再現できる可能性が高い。moat は個々の要素技術には無い。**やめる条件 (数えられる形)**:
-- 由来+指紋: 実例の食い違い 4 件を再現実験し、事前 (評価ラウンド前) に捕まえられたのが 1 件以下ならやめる
-- Mermaid 早期検査 (§8): 実例の図構文誤り 2 件を再現実験し、2 件とも事前に捕まえられなければ docs-check への統合をやめ、export 時点の検査に戻す
-- 合意台帳の再合意規則: 最初の 3 案件で再合意フラグが 1 回も正しく機能しない (全部 noise か全部漏れ) なら、既定の規則を空にして凍結する (機構自体はやめない)
-
-## 8. 初期の食い違いの規則・段階導入の順
-
-汎化した規則は Igeta 本体、案件ごとの記録は案件の repo に置く (`.igeta.json`)。初期 3 規則は実例から起こす。
-
-1. **`feature-brief` の `depends_on: []` 既定値を直す** (`ROOT_KINDS` 対応漏れ、300 件規模で階層検査が壊れる前提修正。既定値は自分の属する `context-map` の id にする)
-2. **決定 ID 正規表現の誤検出を直す** (`DEC-\d{3}` が日付入り ID `DEC-YYYYMMDD-NN` に部分一致する既存不具合。①の隣で一緒に直す前提修正。適用手順は §10)
-3. **`client-chapter`/`context-map` kind を追加** (`ARC42_BY_KIND` に null、`NON_ARC42_KINDS` に追加。既存の登録パターンのまま増やす)
-4. **`template-check --require-audience-layers`** (audience の値検証・`client-chapter`/`context-map` の構造検査)
-5. **由来 sidecar (`provenance capture`/`accept`) + `provenance-check`**。ここで規則 1 「派生物が『確定』と書いているのに正本が未決」を実装 (`from` の正本 status が `FINAL_STATUSES` 外なのに派生物側が確定を主張している場合を落とす)
-6. **Mermaid の早期検査**: export (`renderChapters`) の描画チェックを `src/core/MermaidRender.ts` に切り出し、`docs-check`/新設チェックの双方から呼べるようにする。規則 3「Mermaid が描画できない」を評価より前に倒す
-7. **合意台帳 (`export --record-agreement`/`agreement approve`/`agreement-check`)**。規則 2 「派生物の数値が正本と違う」は accept 前の「pending は常に違反」ゲートで運用に押し込む (§9 の限界を参照。機械では値の正しさまでは検証しない)
-
-手順 3〜7 の新設検査・コマンドは**すべて新規ファイル**に置き、既存ファイルの変更は `cli.ts` へのコマンド登録行と kind 登録 2 か所 (`ARC42_BY_KIND`/`NON_ARC42_KINDS`) だけにする。PR #13 (`review-sheet --diff`/`analyze`/`fix-ids`、試験中) とぶつかるのはその数行だけなので、**PR #13 の完了・撤回を待たずに着手できる**。export (PR #11) は director が main に合わせ直す作業で、手順 7 の `export --record-agreement` の追加だけをその後に回す。
-
-## 9. 限界と人が判断する地点
-
-| 地点 | 誰が判断するか | 機械にできないこと |
+| コマンド | 種別 | 終了コード |
 |---|---|---|
-| accept (§2) | AI または評価者 (人) | `self-approved` (`capturedBy`=`acceptedBy`) は機械で防げるが、承認は「押した」ことしか記録しない。値の正しさを確認せずに別人格が押した accept を機械は見抜けない (実例 3 の再発を完全には防げない) |
-| 合意の承認 (§3) / 再合意の要否判定 (§4) | 承認者・案件の裁く側 (`.igeta.json` の規則) | 「顧客が合意した」事実自体は記録の外 (口頭・メール等) にあり、台帳は残すだけで成立は保証しない。再合意は v1 で kind + 節単位まで (director 決定、列単位は持たない)。既定規則は 1 案件の実例からの起点 (§7 のやめる条件で見直す) |
+| `provenance-capture <file> --anchor "<a>" [--from <id>/<token> \| --exempt "<reason>"] --captured-by <name>` | 生成 | Ok / CannotCheck |
+| `provenance-accept <file> [--anchor "<a>" \| --all] --by <name>` | 生成 | Ok / **Violation** (`self-approved` を拒んだとき) / CannotCheck |
+| `provenance-check` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
+| `agreement-approve <version> --by <name>` | 生成 | Ok / CannotCheck |
+| `agreement-check` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
+| `export --record-agreement` | 既存 flag 追加 (PR #11 merge 後) | 既存 `export` の終了コードに従う |
 
-## 10. 実案件への適用手順 (案件名は出さない)
+## 9. 確定した前提・前提修正
 
-1. Igeta 側: PR #12 (人間レビュー層) 以降を含む新タグを切る (現行タグ `v0.2.1` は PR #12 を含まない)
-2. 案件側: 古い `.mjs` の写しを削除し、`package.json` の `devDependencies` を新タグへの npm git 依存に切り替える。`igeta check` (`.igeta-version` 比較) で追従を確認する
-3. `feature-brief` の `depends_on: []` 既定値の修正・決定 ID 正規表現の修正 (§8-1・§8-2) を先に適用する。日付入り ID (`DEC-YYYYMMDD-NN`) を使う案件は、決定台帳に 3 桁 ID を採番し直し、旧 ID は表の「原文」列に残す (ID 自体は捨てない)
-4. `client-chapter`/`context-map` テンプレを追加し、既存の顧客向け章・地図 (もしあれば) を移行する。この時点では `--require-audience-layers` は付けない (既定 OFF)
-5. 由来 sidecar を**新規に書く章からだけ**作り始め (既存章は「由来なし」のまま残す)、`provenance-check` を CI に**追加はするが exit code を見ない** (warning 運用) 期間を置いて未由来化の章の残数を可視化してから block に切り替える
-6. 合意台帳は次回の提出物から開始する。過去の提出物を遡って記録しない (実測できないものを捏造しない)
+- 決定 ID: 3 桁形式を標準のまま。`DEC-\d{3}` が日付入り ID (`DEC-YYYYMMDD-NN`) に部分一致する誤検出を前提修正として直す (適用手順は [別紙](./05-coverage-and-learning.md))
+- 再合意の判定粒度: kind + 節単位まで (列単位は持たない)
+
+## 10. 限界
+
+- `orphan-content`/`self-approved` は機械で防げるが、承認は「押した」ことしか記録しない。値の正しさそのものは見抜けない
+- `needs-recompute` を既定で警告のみにしたのは正規化変更時の一斉違反を避けるためだが、放置すれば陳腐化した指紋が残り続ける (運用で `--strict-normalization` へ切り替える判断が要る)

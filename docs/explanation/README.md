@@ -18,9 +18,9 @@ owners: [eng]
 
 - [01-design-doc-standards.md](01-design-doc-standards.md) — **設計書テンプレが参照した外部標準** `explanation` — 設計書の背骨は arc42 12 章。読みやすさの部分 (関連 ID・依存・README 索引) だけ独自に足す。
 - [02-human-review-layer.md](02-human-review-layer.md) — **人間レビュー層 (地図・決定台帳・レビューシート) を足した理由** `explanation` — 1 文書 200 行の上限を守っていても、文書が 45 枚に増えると人は読めない。読み手の仕事
-  - [03-audience-layers.md](03-audience-layers.md) — **読み手別 (顧客・開発者・AI) の設計書の層を足した理由** `explanation` — 人間レビュー層 (地図・決定台帳・機能ブリーフ) は「開発者」の読み方だった。顧客向けの章を
-    - [04-provenance-and-agreement.md](04-provenance-and-agreement.md) — **由来・鮮度・顧客との合意台帳の形** `explanation` — 由来は本文に書かずsidecar ファイル (.provenance.json) に置く。鮮度は正本の
-      - [05-coverage-and-learning.md](05-coverage-and-learning.md) — **由来の網羅検査と、食い違いを規則へ育てる学習ループ** `explanation` — 由来・鮮度 は「ある由来が古いか」しか見ていなかった。
-- [06-export-deliverable.md](06-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
+  - [03-audience-layers.md](03-audience-layers.md) — **読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由** `explanation` — 読み手は顧客・開発者・AI の 3 種。顧客 (非エンジニア) が読むのは提出物の PDF だけ
+    - [04-provenance-and-agreement.md](04-provenance-and-agreement.md) — **由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)** `explanation` — 由来・鮮度・合意台帳は既存 kind delivery-chapter (提出物の章、PR #11) だけに課す。
+      - [05-coverage-and-learning.md](05-coverage-and-learning.md) — **由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)** `explanation` — 由来・鮮度 は「由来が古いか」だけを見る。ここでは
+    - [07-context-boundaries.md](07-context-boundaries.md) — **まとまり (業務コンテキスト) の境界で読み込む量を短くする理由** `explanation` — 設計書を業務のまとまり (context) ごとに分け、人も AI も**1 つのまとまりだけ読めば
 
 <!-- AUTOGEN:dir-index:end -->
