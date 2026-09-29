@@ -15,6 +15,10 @@
 //
 // context 無記入・kind も共有でない文書 (「未割り当て」) はソースとして検査対象のまま (免除しない)
 // だが、移行の進み具合が分かるよう件数・一覧を warnings に出す (違反にはしない)。
+// **参照先が未割り当て (context 無記入・共有 kind でもない) でも、kind が共有でなければ違反にする**
+// (旧実装は target.context === shared を無条件で免除していたため、参照先が未割り当てなら kind を
+// 問わず検査を丸ごと免れていた。code-reviewer round 2 blocker 1)。未割り当て同士 (両方 shared) は
+// 「同じまとまり」と同義に扱う既存の等値判定でそのまま通る (既存案件を赤くしない挙動は変えない)。
 import { join } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import { extractReferences, buildContextGraph } from '../core/ContextGraph.js';
@@ -64,15 +68,14 @@ export class ContextBoundaryCheck implements Check {
       for (const ref of extractReferences(doc, graph, ctx.targetRoot)) {
         const target: ContextDoc = ref.target;
         if (target.context === doc.context) continue;
-        if (target.context === SHARED_CONTEXT) continue;
         if (target.kind === 'context-contract') continue; // 1.
         if (isSharedKind(target.kind)) continue; // 2.
-        violations.push({
-          severity: 'violation',
-          file: doc.relPath,
-          line: ref.line,
-          message: `別のまとまり (${target.context}) の文書を直接参照している: ${target.relPath} (このまとまり: ${doc.context === SHARED_CONTEXT ? '未割り当て' : doc.context})`,
-        });
+        const sourceLabel = doc.context === SHARED_CONTEXT ? '未割り当て' : doc.context;
+        const message =
+          target.context === SHARED_CONTEXT
+            ? `参照先が未割り当て (context 無記入・共有 kind でもない): ${target.relPath} (このまとまり: ${sourceLabel})`
+            : `別のまとまり (${target.context}) の文書を直接参照している: ${target.relPath} (このまとまり: ${sourceLabel})`;
+        violations.push({ severity: 'violation', file: doc.relPath, line: ref.line, message });
       }
     }
 

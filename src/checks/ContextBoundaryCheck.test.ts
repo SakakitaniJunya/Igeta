@@ -94,7 +94,34 @@ describe('ContextBoundaryCheck', () => {
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
-  it('正例: shared (無記入) の文書から他のまとまりへの参照は境界を持たないので通す (地図の網羅と矛盾しない)', () => {
+  it('正例: 参照先の kind が共有なら、参照先の context が無記入 (未割り当て) でも通す', () => {
+    writeDoc(root, 'contexts/reservation/requirements.md', [
+      '---', 'id: reservation-requirements', 'kind: requirements', 'context: reservation', 'depends_on: []', '---', '',
+      '# 予約要件', '', '[用語集](../../architecture/glossary.md) を参照する。',
+    ]);
+    writeDoc(root, 'architecture/glossary.md', [
+      '---', 'id: glossary', 'kind: glossary', 'depends_on: []', '---', '',
+      '# 用語集',
+    ]);
+    const { report } = run(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('違反: 参照先が未割り当て (context 無記入・共有 kind でもない) の文書を直接参照したら違反にする (code-reviewer round 2 blocker 1)', () => {
+    writeDoc(root, 'contexts/reservation/requirements.md', [
+      '---', 'id: reservation-requirements', 'kind: requirements', 'context: reservation', 'depends_on: []', '---', '',
+      '# 予約要件', '', '[未割り当ての文書](../../product/other.md) を直接参照する。',
+    ]);
+    writeDoc(root, 'product/other.md', [
+      '---', 'id: other', 'kind: requirements', 'depends_on: []', '---', '',
+      '# 未割り当ての文書',
+    ]);
+    const { report } = run(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /参照先が未割り当て.*docs[\\/]product[\\/]other\.md/);
+  });
+
+  it('正例: 全体の地図からまとまりの地図への参照は通す (地図の網羅と矛盾しない)', () => {
     writeDoc(root, '00-map.md', [
       '---', 'id: map', 'kind: map', 'depends_on: []', '---', '',
       '# 地図', '', '[予約まとまりの地図](./contexts/maps/reservation.md) を参照する。',
