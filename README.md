@@ -135,10 +135,10 @@ npm run docs:graph
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる |
+| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `design/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
 | `npm run docs:analyze` | 整合レポート (読み取り専用) | 網羅の穴・タスクが存在しない ID を参照しているダングリング参照・未決 OPEN・曖昧語・ID のローカル採番の重複。ダングリング参照だけ落ちる |
 | `npm run docs:fix-ids` | (生成・既定 dry-run) | 定義元が 1 件に一意な裸の ID 参照だけを修飾 ID に書き換える。`--write` を付けるまで書き込まない |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (135 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (147 件) |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
 
