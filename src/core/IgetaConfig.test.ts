@@ -28,7 +28,7 @@ describe('loadIgetaConfig', () => {
     const root = makeRoot();
     writeFileSync(join(root, '.igeta.json'), JSON.stringify({ sharedKinds: ['glossary'], contextSizeLimit: 500 }));
     const result = loadIgetaConfig(root);
-    assert.deepEqual(result, { config: { sharedKinds: ['glossary'], contextSizeLimit: 500 } });
+    assert.deepEqual(result, { config: { sharedKinds: ['glossary'], contextSizeLimit: 500, coverageExemptions: [] } });
   });
 
   it('未知のフィールドは無視する (将来の設定追加に備える)', () => {
@@ -72,7 +72,39 @@ describe('loadIgetaConfig', () => {
     const altPath = join(root, 'alt.json');
     writeFileSync(altPath, JSON.stringify({ contextSizeLimit: 10 }));
     const result = loadIgetaConfig(root, altPath);
-    assert.deepEqual(result, { config: { sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds, contextSizeLimit: 10 } });
+    assert.deepEqual(result, {
+      config: { sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds, contextSizeLimit: 10, coverageExemptions: [] },
+    });
+  });
+
+  it('coverageExemptions ({ id, reason } の配列) を読む', () => {
+    const root = makeRoot();
+    writeFileSync(
+      join(root, '.igeta.json'),
+      JSON.stringify({ coverageExemptions: [{ id: 'reservation-flow/REQ-999', reason: '内部専用 API、顧客要件外' }] }),
+    );
+    const result = loadIgetaConfig(root);
+    assert.deepEqual(result, {
+      config: {
+        sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds,
+        contextSizeLimit: null,
+        coverageExemptions: [{ id: 'reservation-flow/REQ-999', reason: '内部専用 API、顧客要件外' }],
+      },
+    });
+  });
+
+  it('CannotCheck: coverageExemptions の要素に reason が無い (理由必須)', () => {
+    const root = makeRoot();
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ coverageExemptions: [{ id: 'x/REQ-001' }] }));
+    const result = loadIgetaConfig(root);
+    assert.ok('violation' in result, JSON.stringify(result));
+  });
+
+  it('CannotCheck: coverageExemptions が配列でない', () => {
+    const root = makeRoot();
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ coverageExemptions: 'x' }));
+    const result = loadIgetaConfig(root);
+    assert.ok('violation' in result, JSON.stringify(result));
   });
 
   it('CannotCheck: --config で明示した場所が無い (省略時の既定値フォールバックと違う。code-reviewer round 1 blocker 1)', () => {

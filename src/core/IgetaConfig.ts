@@ -24,15 +24,23 @@ export const DEFAULT_SHARED_KINDS: readonly string[] = [
   'runbook',
 ];
 
+export interface CoverageExemption {
+  readonly id: string;
+  readonly reason: string;
+}
+
 export interface IgetaConfig {
   readonly sharedKinds: readonly string[];
   /** 未設定 (無制限) は null */
   readonly contextSizeLimit: number | null;
+  /** source-coverage の行単位の対象外。理由は必須 (docs/explanation/05-coverage-and-learning.md §2) */
+  readonly coverageExemptions: readonly CoverageExemption[];
 }
 
 export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
   sharedKinds: DEFAULT_SHARED_KINDS,
   contextSizeLimit: null,
+  coverageExemptions: [],
 };
 
 export type LoadIgetaConfigResult = { readonly config: IgetaConfig } | { readonly violation: Violation };
@@ -86,5 +94,33 @@ export function loadIgetaConfig(targetRoot: string, configPath?: string): LoadIg
     contextSizeLimit = value;
   }
 
-  return { config: { sharedKinds, contextSizeLimit } };
+  let coverageExemptions: readonly CoverageExemption[] = [];
+  if ('coverageExemptions' in record) {
+    const value = record['coverageExemptions'];
+    if (!Array.isArray(value)) {
+      return { violation: { severity: 'cannot-check', message: `${path} の coverageExemptions は配列でなければならない` } };
+    }
+    const exemptions: CoverageExemption[] = [];
+    for (const entry of value) {
+      if (
+        typeof entry !== 'object' ||
+        entry === null ||
+        typeof (entry as Record<string, unknown>)['id'] !== 'string' ||
+        (entry as Record<string, unknown>)['id'] === '' ||
+        typeof (entry as Record<string, unknown>)['reason'] !== 'string' ||
+        (entry as Record<string, unknown>)['reason'] === ''
+      ) {
+        return {
+          violation: {
+            severity: 'cannot-check',
+            message: `${path} の coverageExemptions は { id, reason } (どちらも空でない文字列) の配列でなければならない`,
+          },
+        };
+      }
+      exemptions.push({ id: (entry as Record<string, unknown>)['id'] as string, reason: (entry as Record<string, unknown>)['reason'] as string });
+    }
+    coverageExemptions = exemptions;
+  }
+
+  return { config: { sharedKinds, contextSizeLimit, coverageExemptions } };
 }
