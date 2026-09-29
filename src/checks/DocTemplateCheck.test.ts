@@ -120,6 +120,85 @@ function requirementsDoc(): string {
   ].join('\n');
 }
 
+interface ContextMapDocOptions {
+  readonly id?: string;
+  readonly context?: string;
+  readonly briefLink?: string;
+}
+
+// kind: context-map の必須節をすべて満たす最小 doc (templates/docs/contexts/maps/__context__.md 相当)
+function contextMapDoc({ id = 'reservation-map', context = 'reservation', briefLink = 'なし' }: ContextMapDocOptions = {}): string {
+  return [
+    '---',
+    `id: ${id}`,
+    'kind: context-map',
+    `context: ${context}`,
+    'line_limit: 150',
+    'depends_on: [map]',
+    'relates_to: []',
+    '---',
+    '',
+    '> **TL;DR**: テスト。',
+    '',
+    '## 関連',
+    '',
+    '| 区分 | 文書 | 対応 ID |',
+    '|---|---|---|',
+    '| 上流 (depends_on) | [全体の地図](./00-map.md) | — |',
+    '| 下流 | feature-brief 全部 | — |',
+    '',
+    ...['1. 概要', '2. 含む機能'].flatMap((s) => [`## ${s}`, '', 'x', '']),
+    '## 3. 隣接まとまりへの入口',
+    '',
+    briefLink === 'なし' ? 'x' : briefLink,
+    '',
+  ].join('\n');
+}
+
+interface FeatureBriefDocOptions {
+  readonly id?: string;
+  readonly context?: string;
+}
+
+// kind: feature-brief の必須節をすべて満たす最小 doc (templates/docs/product/features/__feature__.md 相当)
+function featureBriefDoc({ id = 'reservation-flow', context = 'reservation' }: FeatureBriefDocOptions = {}): string {
+  return [
+    '---',
+    `id: ${id}`,
+    'kind: feature-brief',
+    `context: ${context}`,
+    'depends_on: []',
+    '---',
+    '',
+    '> **TL;DR**: テスト。',
+    '',
+    '## 関連',
+    '',
+    '| 区分 | 文書 | 対応 ID |',
+    '|---|---|---|',
+    '| 上流 (depends_on) | [地図](../../00-map.md) | — |',
+    '| 下流 | 関わる REQ ID | REQ-* |',
+    '',
+    '## 1. WHAT/WHY',
+    '',
+    'x',
+    '',
+    '## 2. ユーザーストーリー',
+    '',
+    '| 優先度 | ストーリー | 単独で試せる | Given | When | Then |',
+    '|---|---|---|---|---|---|',
+    '',
+    '## 3. 対象外',
+    '',
+    '- x',
+    '',
+    '## 4. 関わる REQ ID',
+    '',
+    '- x',
+    '',
+  ].join('\n');
+}
+
 after(() => {
   for (const dir of workspaces) rmSync(dir, { recursive: true, force: true });
 });
@@ -652,6 +731,80 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Violation);
     assert.match(report.format(), /00-map\.md が無い/);
+  });
+
+  it('地図の網羅の2段化 (a): まとまりの地図が無ければ何も起きない (既存案件を赤くしない)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('地図の網羅の2段化 (a): まとまりの地図が 00-map.md からリンクされていなければ違反', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(
+      report.format(),
+      /まとまりの地図が 00-map\.md からリンクされていない: docs[\\/]contexts[\\/]maps[\\/]reservation\.md/,
+    );
+  });
+
+  it('地図の網羅の2段化 (a): 00-map.md からリンクしていれば通る', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('地図の網羅の2段化 (b): まとまりの地図が自分の feature-brief をリンクしていなければ違反、リンクすれば通る', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    writeDoc(root, 'product/features/reservation-flow.md', featureBriefDoc());
+    const missing = check(root, { requireHumanReview: true });
+    assert.equal(missing.report.exitCode, ExitCode.Violation, missing.report.format());
+    assert.match(
+      missing.report.format(),
+      /feature-brief がまとまりの地図からリンクされていない: docs[\\/]product[\\/]features[\\/]reservation-flow\.md/,
+    );
+
+    writeDoc(
+      root,
+      'contexts/maps/reservation.md',
+      contextMapDoc({ briefLink: '[予約の受付](../../product/features/reservation-flow.md)' }),
+    );
+    const ok = check(root, { requireHumanReview: true });
+    assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
+  });
+
+  it('地図の網羅の2段化 (b): 別のまとまりの feature-brief は数えない', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    writeDoc(root, 'product/features/payment-flow.md', featureBriefDoc({ id: 'payment-flow', context: 'payment' }));
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
   it('決定の帰属: 「CEO が決定」等の表記に DEC-nnn が無ければ違反', () => {

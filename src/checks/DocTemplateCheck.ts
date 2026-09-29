@@ -15,6 +15,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
+import { readContext } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
@@ -967,6 +968,51 @@ export class DocTemplateCheck implements Check {
             severity: 'violation',
             message: `requirements 文書が 00-map.md からリンクされていない: ${reqDoc.relPath}`,
             file: mapDoc.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+
+    // ①-2 地図の網羅 (2 段、docs/explanation/07-context-boundaries.md §8): まとまりの地図が
+    // 1 枚も無い案件では何も起きない (既存案件を赤くしない)。
+    // (a) 全体の地図が、存在する全部のまとまりの地図をリンクしているか
+    // (b) まとまりの地図が、自分のまとまりの feature-brief 全部へリンクしているか
+    const contextMapDocs = resolved.filter((doc) => doc.kind === 'context-map');
+    if (contextMapDocs.length > 0 && mapDoc !== undefined) {
+      const mapTargets = new Set(
+        extractLinkTargets(mapDoc.lines, mapDoc.meta.bodyStart)
+          .map((target) => resolveLinkAbs(mapDoc.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const contextMap of contextMapDocs) {
+        if (!mapTargets.has(contextMap.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `まとまりの地図が 00-map.md からリンクされていない: ${contextMap.relPath}`,
+            file: mapDoc.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+    for (const contextMap of contextMapDocs) {
+      const ownContext = readContext(contextMap.kind, contextMap.meta.data);
+      const featureBriefs = resolved.filter(
+        (doc) => doc.kind === 'feature-brief' && readContext(doc.kind, doc.meta.data) === ownContext,
+      );
+      if (featureBriefs.length === 0) continue;
+      const targets = new Set(
+        extractLinkTargets(contextMap.lines, contextMap.meta.bodyStart)
+          .map((target) => resolveLinkAbs(contextMap.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const brief of featureBriefs) {
+        if (!targets.has(brief.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `feature-brief がまとまりの地図からリンクされていない: ${brief.relPath}`,
+            file: contextMap.relPath,
             line: 1,
           });
         }
