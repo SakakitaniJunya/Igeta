@@ -336,6 +336,9 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   ['map', null],
   ['decision-log', null],
   ['human-review', null],
+  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  ['context-map', null],
+  ['context-contract', null],
 ]);
 
 function checkArc42(

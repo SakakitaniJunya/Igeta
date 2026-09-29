@@ -69,6 +69,9 @@ const NON_ARC42_KINDS = new Set([
   'map',
   'decision-log',
   'human-review',
+  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  'context-map',
+  'context-contract',
 ]);
 // 階層の根になれる文書種別 (type / kind のどちらかで判定)。上流も下流も持たなくてよい。
 // 要件定義は全設計書の上流、ADR は決定そのもの、guide / runbook / explanation は横断・独立 (taxonomy §1)。
