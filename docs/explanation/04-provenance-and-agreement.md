@@ -54,10 +54,10 @@ relates_to: [coverage-and-learning]
 ```json
 { "sourceDoc": "docs/delivery/design-document/02-reservation.md", "normalizationVersion": 1, "entries": [
   { "anchor": "1. 予約の受付", "from": "reservation-flow/REQ-114",
-    "fingerprint": "sha256:3b1e...c9", "capturedBy": "agent:eng-base", "capturedAt": "2026-09-28",
+    "fingerprint": "sha256:3b1e...c9", "capturedBy": "agent:writer", "capturedAt": "2026-09-28",
     "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29" },
   { "anchor": "2. ご挨拶", "from": null, "reason": "挨拶文、由来を持たない",
-    "blockFingerprint": "sha256:9f02...a1", "capturedBy": "agent:eng-base", "capturedAt": "2026-09-28",
+    "blockFingerprint": "sha256:9f02...a1", "capturedBy": "agent:writer", "capturedAt": "2026-09-28",
     "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29" }
 ] }
 ```

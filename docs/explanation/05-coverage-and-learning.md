@@ -90,13 +90,14 @@ relates_to: [audience-layers]
 ## 8. 段階導入の順・実装ファイルの境界
 
 1. 決定 ID 正規表現の誤検出を直す (前提修正)
-2. 由来 sidecar (`provenance-capture`/`provenance-accept`) + `provenance-check` (§4 `open-stated-as-final` を実装。`from` の正本 status が未決なのに派生物が確定を主張している場合を落とす)
-3. Mermaid 早期検査 (§4 `mermaid-unrenderable` を評価より前に倒す。export の描画チェックを共有モジュールに切り出す)
-4. 順方向・逆方向の網羅 (`provenance-coverage`/`source-coverage`)
-5. 合意台帳 (`export --record-agreement`/`agreement-approve`/`agreement-check`。export (PR #11) が main と揃ってから着手)
+2. まとまりの kind (`context-map`/`context-contract`) を `ARC42_BY_KIND` (null) と `NON_ARC42_KINDS` に登録する。未登録の kind は `template-check` が既定で違反にするため、テンプレの追加と同時に行う ([まとまりの境界](./07-context-boundaries.md))
+3. 由来 sidecar (`provenance-capture`/`provenance-accept`) + `provenance-check` (§4 `open-stated-as-final` を実装。`from` の正本 status が未決なのに派生物が確定を主張している場合を落とす)
+4. Mermaid 早期検査 (§4 `mermaid-unrenderable` を評価より前に倒す。export の描画チェックを共有モジュールに切り出す)
+5. 順方向・逆方向の網羅 (`provenance-coverage`/`source-coverage`)
+6. 合意台帳 (`export --record-agreement`/`agreement-approve`/`agreement-check`。export (PR #11) が main と揃ってから着手)
 
-新設検査・コマンドは全部新規ファイルに置き、既存ファイルの変更は `cli.ts` の登録行だけ (delivery-chapter は既存 kind
-のため kind 登録は不要)。試験中の他 PR とぶつかるのはその数行だけなので、他 PR の確定を待たずに着手できる。
+新設検査・コマンドは全部新規ファイルに置き、既存ファイルの変更は `cli.ts` の登録行と、手順 2 の kind 登録 2 か所だけ
+(delivery-chapter は既存 kind のため登録は不要)。試験中の他 PR とぶつかるのはその数行だけなので、他 PR の確定を待たずに着手できる。
 
 ## 9. 実案件への適用手順 (案件名は出さない)
 
