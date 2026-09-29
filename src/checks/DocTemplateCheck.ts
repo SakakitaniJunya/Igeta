@@ -431,11 +431,15 @@ function checkIds(
       ? new RegExp(`\\b${prefix}\\d[0-9A-Za-z_-]*`, 'g')
       : new RegExp(`\\b${prefix}-[A-Za-z0-9_-]+`, 'g');
     const strict = bare ? new RegExp(`^${prefix}\\d{3}$`) : new RegExp(`^${prefix}-\\d{3}$`);
+    // 汎用の説明用プレースホルダ (`PREFIX-nnn` / `PREFIXnnn`、小文字の nnn) はテンプレ・ガイド全体で
+    // 「この接頭辞の ID 一般」を指す記法として使っており、実際の ID ではない (code-reviewer 実バグ #4)。
+    const placeholder = bare ? `${prefix}nnn` : `${prefix}-nnn`;
     for (let i = bodyStart; i < lines.length; i += 1) {
       for (const token of (lines[i] ?? '').match(pattern) ?? []) {
+        if (token === placeholder) continue;
         count += 1;
         if (!strict.test(token)) {
-          add(i + 1, `ID 形式が不正: ${token} (${bare ? `${prefix}nnn` : `${prefix}-nnn`} の 3 桁)`);
+          add(i + 1, `ID 形式が不正: ${token} (${placeholder} の 3 桁)`);
         }
       }
     }
@@ -517,6 +521,26 @@ function makeFenceTracker(): (line: string) => boolean {
       return true; // フェンス行自体は対象外
     }
     return fence !== null;
+  };
+}
+
+/**
+ * HTML コメント (`<!-- ... -->`、複数行にまたがる場合を含む) の中を判定するトグル。コードフェンスと
+ * 同様、コメント内の記述 (著者向けの注記・記入例) は本文の主張ではないので検査対象外にする
+ * (code-reviewer 実バグ #10)。フェンスと同じ行単位の粒度: コメントの開始/終了を含む行自体も
+ * 対象外にする。
+ */
+function makeCommentTracker(): (line: string) => boolean {
+  let inComment = false;
+  return (line: string): boolean => {
+    if (inComment) {
+      if (line.includes('-->')) inComment = false;
+      return true;
+    }
+    const startIdx = line.indexOf('<!--');
+    if (startIdx === -1) return false;
+    if (line.indexOf('-->', startIdx + 4) === -1) inComment = true;
+    return true;
   };
 }
 
@@ -620,9 +644,11 @@ function checkQualifiedIds(
   addFix: (line: number, column: number, token: string, homeId: string) => void,
 ): void {
   const inFence = makeFenceTracker();
+  const inComment = makeCommentTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';
     if (inFence(line)) continue;
+    if (inComment(line)) continue; // HTML コメント内の例示は主張ではない (code-reviewer 実バグ #10)
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     for (const matched of line.matchAll(refRegex)) {
       const docIdPart = matched[1];
@@ -722,9 +748,12 @@ function checkDecisionAttribution(
   relatedRange: readonly [number, number],
   add: AddViolation,
 ): void {
-  // decision-log・adr 自身は決定の正本 (台帳・MADR)。列名 (「仮置き値」) や見出し (「仮置き一覧」)、
-  // ADR の Decision 節が語彙として「仮置き」「決定」を含むのは当然で、自分自身への帰属を求めない。
-  if (doc.kind === 'decision-log' || doc.kind === 'adr') return;
+  // decision-log・adr・human-review (この検査自身を解説するガイド) は語彙として
+  // 「仮置き」「決定」「OPEN-nnn」「DEC-nnn」を含むのが当然で、自分自身への帰属を求めない。
+  // human-review はこの仕組みを人に説明するガイド (実例そのものではなく解説) で、他の kind と
+  // 違って本文全体が「OPEN-nnn」「DEC-nnn」という**placeholder 記法の解説**であり、実在の決定・
+  // 仮置きへの言及ではない (code-reviewer 実バグ #5)。
+  if (doc.kind === 'decision-log' || doc.kind === 'adr' || doc.kind === 'human-review') return;
   const inFence = makeFenceTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';

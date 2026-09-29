@@ -9,13 +9,27 @@
 
 /**
  * 行頭が `| PREFIX-nnn |` の行だけを「定義」として集める (1 doc 内の重複は 1 件に数える)。
- * 順序は出現順。
+ * 順序は出現順。<!-- AUTOGEN...:start --> 〜 <!-- AUTOGEN...:end --> 区間は除外する
+ * (code-reviewer 実バグ #3)。decision-log の「仮置き一覧 (自動生成)」節は `| OPEN-nnn | 場所 | 本文 |`
+ * という**索引** (仮置きマークが「どこにあるか」を示すだけ) を生成するが、これも行頭セルの見た目を
+ * 持つため、除外しないと「§2 (未決 OPEN) に本物の定義が無い OPEN」でも索引の行だけで
+ * 「定義済み」と誤認し、決定台帳に無い違反が消えてしまう。
  */
 export function collectRowDefinedTokens(lines: readonly string[], prefix: string): string[] {
   const rowRe = new RegExp(`^\\|\\s*(${prefix}-\\d{3})\\s*\\|`);
   const seen = new Set<string>();
   const tokens: string[] = [];
+  let inAutogen = false;
   for (const line of lines) {
+    if (/<!--\s*AUTOGEN[A-Za-z:-]*:start/.test(line)) {
+      inAutogen = true;
+      continue;
+    }
+    if (/<!--\s*AUTOGEN[A-Za-z:-]*:end/.test(line)) {
+      inAutogen = false;
+      continue;
+    }
+    if (inAutogen) continue;
     const matched = rowRe.exec(line.trim());
     const token = matched?.[1];
     if (token === undefined || seen.has(token)) continue;
