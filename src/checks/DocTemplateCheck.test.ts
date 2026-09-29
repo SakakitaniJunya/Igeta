@@ -757,4 +757,22 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.equal(report.exitCode, ExitCode.Violation);
     assert.match(report.format(), /他ファイルの ID は修飾 ID \(<doc-id>\/REQ-001\) で参照する/);
   });
+
+  it('未決の関門 (S2): status: fixed の requirements が OPEN-nnn を参照していたら違反、draft なら通る', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    const withOpenRef = (status: string): string =>
+      requirementsDoc()
+        .replace('kind: requirements', `kind: requirements\nstatus: ${status}`)
+        .replace('REQ-001 の内容', 'REQ-001 の内容。仮置きで decisions/OPEN-001 の30日とする');
+
+    writeDoc(root, 'product/requirements.md', withOpenRef('fixed'));
+    const fixed = check(root, { requireHumanReview: true });
+    assert.equal(fixed.report.exitCode, ExitCode.Violation);
+    assert.match(fixed.report.format(), /status: fixed だが OPEN-001 を参照している \(未決の関門/);
+
+    writeDoc(root, 'product/requirements.md', withOpenRef('draft'));
+    const draft = check(root, { requireHumanReview: true });
+    assert.equal(draft.report.exitCode, ExitCode.Ok, draft.report.format());
+  });
 });

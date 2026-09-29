@@ -51,6 +51,13 @@ export const DEFAULT_DECISION_ATTRIBUTION_PATTERNS: readonly RegExp[] = [
 
 const TENTATIVE_MARK = '仮置き';
 
+/**
+ * 「確定した」とみなす status の値。requirements/feature-brief の既定語彙は fixed。
+ * accepted は spec-kit の語彙・将来 kind が使う可能性のある値として合わせて見る。
+ */
+const FINAL_STATUSES = new Set(['fixed', 'accepted']);
+const OPEN_ID_RE = /OPEN-\d{3}/;
+
 // 決定帰属・仮置きの誤検出対策 (code-reviewer B2)。
 // 「」『』内に完全に収まる語は引用 (置き換え前の表記の引用・訂正の記録) であって現在の主張ではない。
 // 語の直後の否定・伝聞は「そう主張していない」ことの表明なので除外する。
@@ -337,6 +344,7 @@ function checkEars(lines: readonly string[], bodyStart: number, add: AddViolatio
 // ---------------------------------------------------------------------------
 const ARC42_BY_KIND = new Map<string, number | null>([
   ['requirements', 1],
+  ['feature-brief', 1],
   ['function-list', 1],
   ['as-is-overview', 3],
   ['external-integration', 3],
@@ -648,6 +656,24 @@ function checkQualifiedIds(
   }
 }
 
+/**
+ * 未決の関門 (spec-kit の [NEEDS CLARIFICATION] 相当、S2)。requirements / feature-brief が
+ * status: fixed (確定) を名乗っているのに OPEN-nnn を参照しているなら、その未決事項が解決する
+ * まで確定を名乗れない。関連の対応 ID 列を含め本文全体を見る (未決が残っているかどうかが論点で、
+ * 引用・関連の区別は関係ない)。
+ */
+function checkAcceptedGate(doc: ResolvedDoc, add: AddViolation): void {
+  if (doc.kind !== 'requirements' && doc.kind !== 'feature-brief') return;
+  const status = scalar(doc.meta.data, 'status');
+  if (status === undefined || !FINAL_STATUSES.has(status)) return;
+  for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    const open = (doc.lines[i] ?? '').match(OPEN_ID_RE)?.[0];
+    if (open !== undefined) {
+      add(i + 1, `status: ${status} だが ${open} を参照している (未決の関門。解決してから確定にする)`);
+    }
+  }
+}
+
 function checkDecisionAttribution(
   doc: ResolvedDoc,
   idHomes: ReadonlyMap<string, readonly string[]>,
@@ -949,6 +975,7 @@ export class DocTemplateCheck implements Check {
       const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
       checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
       if (refRegex !== null) checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add);
+      checkAcceptedGate(doc, add);
     }
 
     return violations;

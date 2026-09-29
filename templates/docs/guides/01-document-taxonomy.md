@@ -129,7 +129,8 @@ docs/
 ├── 00-map.md                         地図 (MAP)。人間の入口。何を作るか・誰が使うか・主要フロー
 ├── 01-decisions.md                   決定台帳 (DEC/OPEN)。人間の入口。決めたこと・未決のこと
 ├── product/                          要件定義 — 何を作るか
-│   └── 01-requirements.md            要件定義書 (REQ)。機能要件は EARS 記法
+│   ├── 01-requirements.md            要件定義書 (REQ)。機能要件は EARS 記法
+│   └── features/NN-<機能>.md          機能ブリーフ。要件文は書かず REQ ID の一覧だけ (レビューの人の入口)
 ├── design/                           設計 (TO-BE)。実装前はすべてここ
 │   ├── 01-risks-tech-debt.md         リスクと技術的負債 (RSK)
 │   ├── basic/                        基本設計 (外部設計)
@@ -181,6 +182,7 @@ docs/
 | `docs/` 人間の入口 | `map` | 何を作るか・誰が使うか・主要フロー (図)・やらないこと・詳細への入口。kind: requirements の全文書をここからリンクする | — | `00-map.md` | — | 150 |
 | `docs/` 人間の入口 | `decision-log` | 決めたこと (DEC) と未決のこと (OPEN) の台帳。1 決定 1 行、行数上限は付けない (決定の数に比例して増えるのが正しい) | — | `01-decisions.md` | DEC / OPEN | — |
 | `product/` 要件定義 | `requirements` | 何を作るか。機能要件 (EARS 記法) と品質目標の要約、制約、ステークホルダー。全設計書の上流 | §1 | `product/01-requirements.md` | REQ | 200 |
+| `product/features/` 機能ブリーフ | `feature-brief` | spec-kit の spec.md 相当。機能単位の WHAT/WHY・ユーザーストーリー (P1/P2/P3・Given/When/Then)・対象外・関わる REQ ID の一覧だけを 1 枚に。要件文・受入条件は書かない (`igeta review-sheet` で REQ ID から展開する) | §1 | `product/features/__feature__.md` | REQ (参照のみ) | 150 |
 | `design/basic/` 基本設計 | `function-list` | 機能の一覧と、各機能が要件・画面・API・テストのどれに対応するかの対応表 | §1 | `design/basic/01-function-list.md` | FN | 200 |
 | `design/basic/` 基本設計 | `solution-strategy` | 技術選定・最上位の分割・品質目標の達成手段を短く。以後の設計の前提 | §4 | `design/basic/02-solution-strategy.md` | SS | 200 |
 | `design/basic/` 基本設計 | `nonfunctional` | 性能・可用性・セキュリティなどの品質要求を測定可能な数値で | §10 | `design/basic/03-nonfunctional.md` | NFR | 200 |
@@ -228,6 +230,7 @@ docs/
 | 論点 | 決定 | 理由 |
 |---|---|---|
 | 要件定義の置き場 | `docs/product/` | 要件定義 =「何を作るか」。設計 (どう作るか) と置き場所を分ける |
+| 機能ブリーフの置き場 | `docs/product/features/` (要件定義の隣、新しいトップレベルは作らない) | 機能ブリーフは要件定義の**要約であって代替ではない**。同じ `product/` に置き、正本が要件定義書 1 か所であることを配置で示す |
 | 実装前の設計書 | `docs/design/basic/` と `docs/design/detail/` | 実装前は全部 TO-BE。AS-IS は稼働後に `architecture/01-overview.md` へ起こす |
 | 画面 / API / テーブル / シーケンス / モジュール / テスト仕様 | **最初からサブフォルダ**に切る | 件数が伸びる前提の文書群。後からフォルダへ移すと `depends_on` と README 索引が同時に壊れる。1 本目から `flows/` `screens/` `api/` `tables/` `sequences/` `modules/` `test/specs/` に入れる |
 | テスト・運用 | `docs/design/test/` と `docs/design/ops/` | 「本数が少ないうちは flat」にしない。移動コストを後払いしているだけで、閾値を跨いだ瞬間に参照が壊れる |
