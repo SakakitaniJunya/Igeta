@@ -9,7 +9,7 @@
 // ファイルが無ければ既定値 (サイレント縮退ではない — 「無い」は正当な既定状態)。
 // ファイルはあるが形が不正なら CannotCheck にする (黙って既定値に倒さない)。
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Violation } from './Report.js';
 
@@ -38,12 +38,23 @@ export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
 export type LoadIgetaConfigResult = { readonly config: IgetaConfig } | { readonly violation: Violation };
 
 /**
- * `.igeta.json` を読む。`configPath` 省略時は `<targetRoot>/.igeta.json`。
- * ファイルが無ければ既定値。JSON が壊れている・型が違う項目があれば CannotCheck を返す。
+ * `.igeta.json` を読む。`configPath` 省略時は `<targetRoot>/.igeta.json` (無ければ既定値。
+ * 「無い」は正当な既定状態)。**`--config` で明示した場所が無ければ CannotCheck** にする
+ * (省略時の既定値フォールバックと違い、明示した場所が無いのは指定間違いの可能性が高く、
+ * 黙って既定値に倒すとフラグが無視されたことに気づけない。code-reviewer round 1 blocker 1)。
+ * JSON が壊れている・型が違う項目があれば CannotCheck を返す。
  */
 export function loadIgetaConfig(targetRoot: string, configPath?: string): LoadIgetaConfigResult {
   const path = configPath ?? join(targetRoot, '.igeta.json');
-  if (!existsSync(path)) return { config: DEFAULT_IGETA_CONFIG };
+  if (!existsSync(path)) {
+    if (configPath !== undefined) {
+      return { violation: { severity: 'cannot-check', message: `--config で指定した場所が無い: ${path}` } };
+    }
+    return { config: DEFAULT_IGETA_CONFIG };
+  }
+  if (statSync(path).isDirectory()) {
+    return { violation: { severity: 'cannot-check', message: `${path} はファイルでなくディレクトリ` } };
+  }
 
   let raw: unknown;
   try {

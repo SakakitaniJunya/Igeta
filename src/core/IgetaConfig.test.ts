@@ -1,5 +1,5 @@
 // node --test dist/core/IgetaConfig.test.js
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -73,5 +73,26 @@ describe('loadIgetaConfig', () => {
     writeFileSync(altPath, JSON.stringify({ contextSizeLimit: 10 }));
     const result = loadIgetaConfig(root, altPath);
     assert.deepEqual(result, { config: { sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds, contextSizeLimit: 10 } });
+  });
+
+  it('CannotCheck: --config で明示した場所が無い (省略時の既定値フォールバックと違う。code-reviewer round 1 blocker 1)', () => {
+    const root = makeRoot();
+    const result = loadIgetaConfig(root, join(root, 'nonexistent.json'));
+    assert.ok('violation' in result, JSON.stringify(result));
+    assert.match((result as { violation: { message: string } }).violation.message, /--config で指定した場所が無い/);
+  });
+
+  it('省略時 (既定パス) に .igeta.json が無いのは既定値のまま (回帰確認)', () => {
+    const root = makeRoot();
+    assert.deepEqual(loadIgetaConfig(root), { config: DEFAULT_IGETA_CONFIG });
+  });
+
+  it('CannotCheck: 指定した場所がディレクトリ (「JSON が壊れている」と誤表示しない)', () => {
+    const root = makeRoot();
+    mkdirSync(join(root, 'a-directory'));
+    const result = loadIgetaConfig(root, join(root, 'a-directory'));
+    assert.ok('violation' in result, JSON.stringify(result));
+    assert.match((result as { violation: { message: string } }).violation.message, /ディレクトリ/);
+    assert.doesNotMatch((result as { violation: { message: string } }).violation.message, /JSON が壊れている/);
   });
 });
