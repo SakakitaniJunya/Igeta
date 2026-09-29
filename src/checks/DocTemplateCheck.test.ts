@@ -258,6 +258,15 @@ describe('DocTemplateCheck', () => {
     assert.match(report.format(), /TL;DR \/ When to use ブロックがない/);
   });
 
+  it('frontmatter id の重複は template-check 単体でも違反にする (non-blocking N2)', () => {
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'design/basic/function-list.md', functionListDoc());
+    writeDoc(root, 'design/basic/function-list-2.md', functionListDoc());
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /frontmatter id が重複している: function-list \(.*function-list-2\.md, .*function-list\.md\)/);
+  });
+
   it('未登録の kind は違反', () => {
     writeDoc(root, 'design/basic/x.md', '---\nid: x\nkind: unknown-kind\n---\n\n# x\n');
     const { report } = check(root);
@@ -495,6 +504,24 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     writeDoc(root, 'design/basic/function-list.md', functionListDoc());
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('決定台帳: DEC/OPEN 行の必須列が空欄なら違反 (requireHumanReview 不要、non-blocking N1)', () => {
+    writeDoc(
+      root,
+      '01-decisions.md',
+      decisionLogDoc({
+        decRows: '| DEC-001 | | CEO | | 青色申告を継続する | requirements.md |',
+        openRows: '| OPEN-001 | | 30日 | | requirements.md |',
+      }),
+    );
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /DEC-001 の「日付」列が空欄/);
+    assert.match(report.format(), /DEC-001 の「原文」列が空欄/);
+    assert.match(report.format(), /OPEN-001 の「論点」列が空欄/);
+    assert.match(report.format(), /OPEN-001 の「仮置き値」列が空欄/);
+    assert.doesNotMatch(report.format(), /「決めた人」列が空欄/);
   });
 
   it('requireHumanReview 無しでは地図の網羅・決定の帰属・修飾 ID を検査しない (既存プロジェクトを赤くしない)', () => {

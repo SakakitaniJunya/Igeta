@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ExitCode } from '../../core/ExitCode.js';
-import { extractQualifiedIds, ReviewSheetModule } from '../../generators/ReviewSheetModule.js';
+import { extractNearMissQualifiedIds, extractQualifiedIds, ReviewSheetModule } from '../../generators/ReviewSheetModule.js';
 import { ArgParseError, parseArgs } from '../Args.js';
 import type { CommandContext } from '../Command.js';
 import { Command } from '../Command.js';
@@ -31,6 +31,10 @@ export class ReviewSheetCommand extends Command {
     if (prBodyPath !== undefined) {
       const body = readFileSync(resolve(prBodyPath), 'utf8');
       for (const id of extractQualifiedIds(body)) ids.add(id);
+      // 大文字 doc-id 等の近似表記は黙って無視せず警告する (non-blocking N4)
+      for (const nearMiss of extractNearMissQualifiedIds(body)) {
+        ctx.stderr(`WARN --pr-body に修飾 ID の近似表記がある (無視した): ${nearMiss}`);
+      }
     }
     if (ids.size === 0) {
       throw new ArgParseError('対象 ID が 1 件も無い。<doc-id>/PREFIX-nnn を渡すか --pr-body で抜き出す');

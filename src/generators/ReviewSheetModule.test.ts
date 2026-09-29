@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractQualifiedIds, ReviewSheetModule } from './ReviewSheetModule.js';
+import { extractNearMissQualifiedIds, extractQualifiedIds, ReviewSheetModule } from './ReviewSheetModule.js';
 
 const workspaces: string[] = [];
 
@@ -132,5 +132,15 @@ describe('extractQualifiedIds', () => {
 
   it('修飾されていない裸の ID は抜き出さない', () => {
     assert.deepEqual(extractQualifiedIds('REQ-101 だけでは抜き出さない'), []);
+  });
+});
+
+describe('extractNearMissQualifiedIds (non-blocking N4)', () => {
+  it('大文字 doc-id 等の近似表記を警告用に抜き出す', () => {
+    assert.deepEqual(extractNearMissQualifiedIds('この PR は Requirements/REQ-101 に関わる。'), ['Requirements/REQ-101']);
+  });
+
+  it('正規の修飾 ID は近似表記に含めない (重複警告しない)', () => {
+    assert.deepEqual(extractNearMissQualifiedIds('requirements/REQ-101 は正規表記。'), []);
   });
 });

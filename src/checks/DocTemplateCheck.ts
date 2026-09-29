@@ -475,6 +475,44 @@ function checkIds(
   }
 }
 
+const DEC_REQUIRED_COLUMNS = ['日付', '決めた人', '原文'];
+const OPEN_REQUIRED_COLUMNS = ['論点', '仮置き値'];
+
+function splitTableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+/**
+ * decision-log の DEC-nnn / OPEN-nnn 行は、日付・決めた人・原文 (DEC) / 論点・仮置き値 (OPEN)
+ * を空欄禁止にする (non-blocking N1)。「決めた」「未決」の中身が無い行は台帳として機能しないため。
+ */
+function checkDecisionLogRows(lines: readonly string[], bodyStart: number, add: AddViolation): void {
+  for (let i = bodyStart; i < lines.length; i += 1) {
+    const trimmed = (lines[i] ?? '').trim();
+    if (!/^\|\s*(DEC|OPEN)-\d{3}\s*\|/.test(trimmed)) continue;
+    let headerIndex = i;
+    while (headerIndex > 0 && (lines[headerIndex - 1] ?? '').trim().startsWith('|')) headerIndex -= 1;
+    if (headerIndex === i) continue; // 見出し行が見つからない (表構造の異常は他の検査が拾う)
+    const headers = splitTableCells(lines[headerIndex] ?? '');
+    const cells = splitTableCells(trimmed);
+    const token = cells[0] ?? '';
+    const required = token.startsWith('DEC') ? DEC_REQUIRED_COLUMNS : OPEN_REQUIRED_COLUMNS;
+    for (const column of required) {
+      const columnIndex = headers.indexOf(column);
+      if (columnIndex === -1) continue; // 列名自体が無ければ別の検査 (必須節) が拾う
+      const value = (cells[columnIndex] ?? '').trim();
+      if (value === '' || value === '—' || value === '-') {
+        add(i + 1, `${token} の「${column}」列が空欄`);
+      }
+    }
+  }
+}
+
 /** doc 本文の行数。<!-- AUTOGEN --> 区間 (生成される仮置き一覧など) は上限の外に置く。 */
 function countCheckableLines(lines: readonly string[]): number {
   let total = lines.length;
@@ -709,6 +747,7 @@ function checkDoc(
   checkIds(lines, bodyStart, data, template, add);
 
   if (template.kind === 'requirements') checkEars(lines, bodyStart, add);
+  if (template.kind === 'decision-log') checkDecisionLogRows(lines, bodyStart, add);
 
   checkArc42(template.kind, data, add, requireKind);
 
@@ -768,6 +807,7 @@ export class DocTemplateCheck implements Check {
     const parsedDocs: ParsedDoc[] = [];
     const idIndex = new Map<string, string>();
     const idIndexRel = new Map<string, string>();
+    const idOccurrences = new Map<string, string[]>();
     for (const file of listMarkdown(docsDir, true)) {
       const lines = readFileSync(file, 'utf8').split(/\r?\n/);
       const meta = parseFrontmatter(lines);
@@ -776,6 +816,9 @@ export class DocTemplateCheck implements Check {
       if (id !== undefined && id !== '') {
         idIndex.set(id, file);
         idIndexRel.set(id, rel(file));
+        const occurrences = idOccurrences.get(id) ?? [];
+        occurrences.push(rel(file));
+        idOccurrences.set(id, occurrences);
       }
     }
 
@@ -783,6 +826,17 @@ export class DocTemplateCheck implements Check {
     const unmanaged: string[] = [];
     const resolved: ResolvedDoc[] = [];
     let checkedCount = 0;
+
+    // frontmatter id の重複 (non-blocking N2)。docs-check (DocGraphCheck) も同じ id を見て
+    // 落とすが、template-check 単体でも検出できるようにする (両方の実行を前提にしない)。
+    for (const [id, occurrences] of idOccurrences) {
+      if (occurrences.length > 1) {
+        violations.push({
+          severity: 'violation',
+          message: `frontmatter id が重複している: ${id} (${occurrences.join(', ')})`,
+        });
+      }
+    }
 
     for (const { file, lines, meta } of parsedDocs) {
       const relPath = rel(file);

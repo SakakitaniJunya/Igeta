@@ -150,6 +150,29 @@ export function extractQualifiedIds(text: string): string[] {
   return [...found];
 }
 
+// 正規の修飾 ID (小文字 doc-id + 大文字 PREFIX) に近いが一致しない表記 (大文字 doc-id 等) をゆるく拾う。
+// 大文字小文字を無視して抜き出したものを、正規表現の抜き出し結果と比べて差分だけを「近似表記」として残す。
+const NEAR_MISS_ID_RE = /\b([A-Za-z][A-Za-z0-9-]*)\/([A-Za-z]+-\d{3})\b/gi;
+
+/**
+ * 正規の修飾 ID 形式に一致しない近似表記 (例: `Requirements/REQ-101`) を抜き出す (non-blocking N4)。
+ * 黙って無視すると「修飾したつもりが解決されない」ことに気付けないため、警告として可視化する。
+ */
+export function extractNearMissQualifiedIds(text: string): string[] {
+  const exact = new Set(extractQualifiedIds(text));
+  const nearMisses = new Set<string>();
+  for (const matched of text.matchAll(NEAR_MISS_ID_RE)) {
+    const doc = matched[1];
+    const id = matched[2];
+    if (doc === undefined || id === undefined) continue;
+    const raw = `${doc}/${id}`;
+    if (exact.has(raw)) continue; // 既に正規表記として抜き出せている
+    if (/^[a-z][a-z0-9-]*\/[A-Z]+-\d{3}$/.test(raw)) continue; // 正規表記そのもの (matchAll の別ヒット)
+    nearMisses.add(raw);
+  }
+  return [...nearMisses];
+}
+
 export interface ReviewSheetModuleOptions {
   readonly targetRoot: string;
   readonly docsDir?: string;
