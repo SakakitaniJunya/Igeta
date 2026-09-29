@@ -20,6 +20,8 @@ graph LR
   classDef runbook fill:#fecaca,stroke:#7f1d1d,color:#111
   classDef guide fill:#e9d5ff,stroke:#581c87,color:#111
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
+  classDef map fill:#fef3c7,stroke:#78350f,color:#111
+  classDef decision_log fill:#fee2e2,stroke:#7f1d1d,color:#111
   design-doc-standards["設計書テンプレが参照した外部標準"]
   class design-doc-standards explanation
   docs-index["docs — Igeta 自身の説明書"]
@@ -28,6 +30,8 @@ graph LR
   class explanation-index index
   export-deliverable["igeta export — 提出用 PDF 出力基盤"]
   class export-deliverable explanation
+  human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
+  class human-review-layer explanation
   design-doc-standards -.- docs-index
   export-deliverable -.- docs-index
 ```
@@ -35,11 +39,13 @@ graph LR
 ### explanation
 
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
-- **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](explanation/02-export-deliverable.md)
+- **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md)
+- **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)
 
 | ID | Type | Path |
 |---|---|---|
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
+| human-review-layer | explanation | [`docs/explanation/02-human-review-layer.md`](explanation/02-human-review-layer.md) |
 

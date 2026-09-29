@@ -3,6 +3,7 @@ import { IGETA_ROOT } from './core/Paths.js';
 import { Cli } from './cli/Cli.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
+import { ReviewSheetCommand } from './cli/commands/ReviewSheetCommand.js';
 import { ScaffoldCommand } from './cli/commands/ScaffoldCommand.js';
 import {
   DocsCheckCommand,
@@ -22,6 +23,7 @@ const cli = new Cli()
   .register(new SecretScanCommand())
   .register(new ScaffoldCommand())
   .register(new ExportCommand())
+  .register(new ReviewSheetCommand())
   .register(new VersionCheckCommand())
   .register(new UpgradeCommand());
 

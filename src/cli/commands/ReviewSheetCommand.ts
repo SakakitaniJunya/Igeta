@@ -1,0 +1,55 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { ExitCode } from '../../core/ExitCode.js';
+import { extractNearMissQualifiedIds, extractQualifiedIds, ReviewSheetModule } from '../../generators/ReviewSheetModule.js';
+import { ArgParseError, parseArgs } from '../Args.js';
+import type { CommandContext } from '../Command.js';
+import { Command } from '../Command.js';
+
+/**
+ * 人間レビュー層 (docs/00-map.md・docs/01-decisions.md) を前提に、指定した修飾 ID の
+ * 要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown へ展開して stdout に出す。
+ * Spec: templates/docs/guides/03-human-review.md
+ */
+export class ReviewSheetCommand extends Command {
+  readonly name = 'review-sheet';
+  readonly summary = '指定した修飾 ID のレビューシートを 1 枚の Markdown で出す';
+  override readonly usage = [
+    '  igeta review-sheet <doc-id>/REQ-nnn [<doc-id>/REQ-nnn ...] [--root <dir>]',
+    '  igeta review-sheet --pr-body <file> [--root <dir>]',
+    '',
+    '  --root <dir>       対象リポジトリ (既定: カレントディレクトリ)',
+    '  --pr-body <file>   PR 本文などから修飾 ID (<doc-id>/PREFIX-nnn) を抜き出して対象に加える',
+  ];
+
+  protected readonly argSpec = { valueOptions: ['root', 'pr-body'] };
+
+  override async run(argv: readonly string[], ctx: CommandContext): Promise<ExitCode> {
+    const args = parseArgs(argv, { valueOptions: this.argSpec.valueOptions });
+    const targetRoot = resolve(args.get('root') ?? ctx.cwd);
+    const prBodyPath = args.get('pr-body');
+    const prBody = prBodyPath === undefined ? null : readFileSync(resolve(prBodyPath), 'utf8');
+    if (prBody !== null) {
+      // 大文字 doc-id 等の近似表記は黙って無視せず警告する (non-blocking N4)
+      for (const nearMiss of extractNearMissQualifiedIds(prBody)) {
+        ctx.stderr(`WARN --pr-body に修飾 ID の近似表記がある (無視した): ${nearMiss}`);
+      }
+    }
+
+    const ids = new Set(args.positional);
+    if (prBody !== null) for (const id of extractQualifiedIds(prBody)) ids.add(id);
+    if (ids.size === 0) {
+      throw new ArgParseError('対象 ID が 1 件も無い。<doc-id>/PREFIX-nnn を渡すか --pr-body で抜き出す');
+    }
+
+    const module = new ReviewSheetModule({ targetRoot });
+    const result = module.generate([...ids]);
+
+    ctx.stdout(result.markdown);
+    if (result.unresolvedCount > 0) {
+      ctx.stderr(`\n${result.unresolvedCount} 件の ID が解決できなかった (上の Markdown を参照)`);
+      return ExitCode.Violation;
+    }
+    return ExitCode.Ok;
+  }
+}
