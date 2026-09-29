@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { IGETA_ROOT } from './core/Paths.js';
 import { Cli } from './cli/Cli.js';
+import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
 import { ReviewSheetCommand } from './cli/commands/ReviewSheetCommand.js';
 import { ScaffoldCommand } from './cli/commands/ScaffoldCommand.js';
@@ -22,6 +23,7 @@ const cli = new Cli()
   .register(new SecretScanCommand())
   .register(new ScaffoldCommand())
   .register(new ReviewSheetCommand())
+  .register(new AnalyzeCommand())
   .register(new VersionCheckCommand())
   .register(new UpgradeCommand());
 
