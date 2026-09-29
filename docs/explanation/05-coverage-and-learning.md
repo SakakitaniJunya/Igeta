@@ -32,7 +32,9 @@ relates_to: [audience-layers]
 
 ## 2. 逆方向の網羅 (`source-coverage`)
 
-正本の要件行のうち、**どの `delivery-chapter` の sidecar の `from` にも現れないもの**を一覧する。
+正本の行のうち、**どの `delivery-chapter` の sidecar の `from` にも現れないもの**を一覧する。
+**実装で広げた点**: 対象を `REQ` に限定せず、行頭セル定義 (`| PREFIX-nnn | ... |`) を持つ文書全部にした
+(`FN` 等も同じ機構で定義されるため、REQ だけを特別扱いする理由が無い)。
 
 - 文書単位の対象外: 正本側 frontmatter に `clientExempt: true`
 - 行単位の対象外: `.igeta.json` の `coverageExemptions` (理由必須)

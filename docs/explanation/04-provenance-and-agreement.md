@@ -52,19 +52,23 @@ relates_to: [coverage-and-learning]
 `<basename>.provenance.json` を章と同じディレクトリに置く。1 章 1 sidecar。
 
 ```json
-{ "sourceDoc": "docs/delivery/design-document/02-reservation.md", "normalizationVersion": 1, "entries": [
+{ "sourceDoc": "docs/delivery/design-document/02-reservation.md", "entries": [
   { "anchor": "1. 予約の受付", "from": "reservation-flow/REQ-114",
     "fingerprint": "sha256:3b1e...c9", "capturedBy": "agent:writer", "capturedAt": "2026-09-28",
-    "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29" },
+    "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29", "normalizationVersion": 1 },
   { "anchor": "2. ご挨拶", "from": null, "reason": "挨拶文、由来を持たない",
     "blockFingerprint": "sha256:9f02...a1", "capturedBy": "agent:writer", "capturedAt": "2026-09-28",
-    "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29" }
+    "acceptedBy": "reviewer@example.com", "acceptedAt": "2026-09-29", "normalizationVersion": 1 }
 ] }
 ```
 
-- `from` あり: `fingerprint` は正本側 (行なら `collectRowDefinedTokens` の定義行、節なら見出し抽出のセクション本文) を正規化して SHA256 (§6)
-- `from: null` (由来なし宣言): **`blockFingerprint`** (自分自身の現在のテキストの指紋) を持つ。書き直されたら §5 の `orphan-content` で「要確認」にする
-- `capturedBy`/`acceptedBy` はどちらのエントリでも必須 (由来なし宣言も承認対象。理由なしの exempt 濫用を防ぐ)
+**実装で変えた点**: `normalizationVersion` はファイル直下 1 個ではなく**エントリごと**に持つ (上記 JSON は実装に
+合わせて直した)。`needs-recompute` は「このエントリを計算した版」対「今の版」の比較であり、ファイル単位 1 個だと
+一部のエントリだけ再 capture したときに他のエントリの版情報が失われる。
+
+- `from` あり: `fingerprint` は正本側 (行なら行頭セル定義そのもの、節なら見出し抽出のセクション本文) を正規化して SHA256 (§6)
+- `from: null` (由来なし宣言): **`blockFingerprint`** (自分自身の現在のテキストの指紋) を持つ。書き直されたら §5 の `orphan-content` で違反にする
+- `capturedBy` はどちらのエントリでも必須。`acceptedBy`/`acceptedAt` は accept 後に付く (無ければ §5 の `pending`)
 
 **作る手順**: AI が章を書く → 節を書くたびに `provenance-capture` する → 別の主体 (人、または別のパック) が
 `provenance-accept` する。正本が変わって §5 が「要確認」を出したら、**その節だけ**を書き直す (章全体を要約し
@@ -74,13 +78,20 @@ relates_to: [coverage-and-learning]
 
 | 状態 | 判定 | 扱い |
 |---|---|---|
-| pending | `acceptedBy` が無い | 違反 |
-| stale | `from` の現在の指紋が保存値と違う | 違反 |
 | `orphan` | sidecar の `anchor` が今の章に実在しない (節が消えた/名前が変わった) | 違反 |
-| `orphan-content` | `from: null` エントリの `blockFingerprint` が今のテキストと違う | 違反 (由来なし宣言の再確認) |
+| `source-missing` | `from` が今の正本で解決できない (`from` ありのときだけ。実装で追加 — 正本が消えた/移動したケースを `stale` と区別する) | 違反 |
+| pending | `acceptedBy` が無い | 違反 |
 | self-approved | `acceptedBy` = `capturedBy` | 違反 (作る主体と裁く主体を分ける) |
+| `open-stated-as-final` | `from` の正本が未決なのに、章が確定を主張している (`from` ありのときだけ。§8 手順 3、判定は §9) | 違反 |
 | needs-recompute | エントリの正規化版が今の版と違う (§6) | 警告のみ (既定)。`--strict-normalization` で違反に上げる |
+| stale | `from` の現在の指紋が保存値と違う | 違反 |
+| `orphan-content` | `from: null` エントリの `blockFingerprint` が今のテキストと違う | 違反 (由来なし宣言の再確認) |
 | ok | 上記以外 | 合格 |
+
+**判定順 (実装で追加。設計に優先順位の明文が無かったため)**: 上の表の行の順に判定し、最初に当たった状態を
+採る。`orphan` を最初に切るのは、章に無い節は指紋比較自体が成立しないため。`needs-recompute` を
+`stale`/`orphan-content` より先に切るのは、古いアルゴリズムの指紋を今のアルゴリズムと比較すると
+差が「内容が変わった」と誤認されるため。
 
 ## 6. 指紋の正規化
 
@@ -112,17 +123,26 @@ relates_to: [coverage-and-learning]
 
 | コマンド | 種別 | 終了コード |
 |---|---|---|
-| `provenance-capture <file> --anchor "<a>" [--from <id>/<token> \| --exempt "<reason>"] --captured-by <name>` | 生成 | Ok / CannotCheck |
-| `provenance-accept <file> [--anchor "<a>" \| --all] --by <name>` | 生成 | Ok / **Violation** (`self-approved` を拒んだとき) / CannotCheck |
-| `provenance-check` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
+| `provenance-capture <file> --anchor "<a>" (--from <id>/<token> \| --no-source --reason "<reason>") --by <name>` | 生成 | Ok / CannotCheck |
+| `provenance-accept <file> (--anchor "<a>" \| --all) --by <name>` | 生成 | Ok / **Violation** (`self-approved` を拒んだとき) / CannotCheck |
+| `provenance-check [<file> ...] [--strict-normalization]` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
+| `provenance-coverage [<file> ...]` | 検査 (既定 OFF、順方向) | Ok / Violation / CannotCheck |
+| `source-coverage` | 検査 (既定 OFF、逆方向) | Ok / Violation / CannotCheck |
 | `agreement-approve <version> --by <name>` | 生成 | Ok / CannotCheck |
 | `agreement-check` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
 | `export --record-agreement` | 既存 flag 追加 (PR #11 merge 後) | 既存 `export` の終了コードに従う |
+
+**実装で変えた点**: `--captured-by`/`--exempt` は `--by`/`--no-source --reason` にした (`provenance-accept`
+の `--by` と揃え、「由来なし宣言」を `--no-source` で明示する)。`agreement-*`/`--record-agreement` は
+次の実装対象 (今回は作らない)。
 
 ## 9. 確定した前提・前提修正
 
 - 決定 ID: 3 桁形式を標準のまま。`DEC-\d{3}` が日付入り ID (`DEC-YYYYMMDD-NN`) に部分一致する誤検出を前提修正として直す (適用手順は [別紙](./05-coverage-and-learning.md))
 - 再合意の判定粒度: kind + 節単位まで (列単位は持たない)
+- **`open-stated-as-final` の判定 (05 §8 手順 3、実装で明記)**: 章の frontmatter `status` が
+  `fixed`/`accepted` (確定を主張) **かつ**、`from` の解決先の `status` が `fixed`/`accepted` でない
+  **または**解決先に `OPEN-nnn` の参照がある (正本が未決) の両方を満たしたときだけ違反にする
 
 ## 10. 限界
 
