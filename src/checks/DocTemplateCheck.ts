@@ -340,6 +340,9 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
   ['context-map', null],
   ['context-contract', null],
+  // 由来 (provenance) の手引き。01-document-taxonomy 等と同じく固定名の単独文書で、
+  // 汎用 kind: guide (__slug__.md) と kind を共有できない (テンプレ登録は kind 単位で 1 枚)
+  ['provenance-workflow', null],
 ]);
 
 function checkArc42(
