@@ -27,7 +27,29 @@ export interface DocTemplateOptions {
   readonly templatesDir?: string;
   /** kind 未設定の doc を違反として扱う */
   readonly requireKind?: boolean;
+  /**
+   * 人間レビュー層 (地図の網羅・決定の帰属・仮置きの参照・修飾 ID) を検査する。
+   * 既存プロジェクトを一斉に赤くしないための段階導入フラグ。既定 OFF。
+   * kind ごとの構造検査 (①テンプレ適合 ②必須節 ③行数上限) は kind: map / decision-log を
+   * 名乗った時点で opt-in なので、このフラグの影響を受けない。
+   */
+  readonly requireHumanReview?: boolean;
+  /**
+   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は company-person の
+   * 実例 (「CEO 2026-09-29 決定」「〜が決定」) から採った 3 パターン。
+   * キーワード判定は文書 lint であり会社 OS の「選ぶ」判断ではないので設定として持てる。
+   */
+  readonly decisionAttributionPatterns?: readonly RegExp[];
 }
+
+/** decisionAttributionPatterns の既定値。company-person の実例から採った表記。 */
+export const DEFAULT_DECISION_ATTRIBUTION_PATTERNS: readonly RegExp[] = [
+  /CEO[^\n。、]{0,20}決定/,
+  /代表(?:取締役)?[^\n。、]{0,20}決定/,
+  /[^\s|][^\n。、]{0,20}が決定(?:した|済み|している)?/,
+];
+
+const TENTATIVE_MARK = '仮置き';
 
 export interface DocTemplateResult {
   readonly violations: readonly Violation[];
@@ -55,9 +77,22 @@ interface Section {
 
 interface TemplateEntry {
   readonly kind: string;
-  readonly idPrefix: string | null;
+  /** ID 接頭辞。通常 1 個 (REQ)。decision-log は複数 (DEC, OPEN) を持つ */
+  readonly idPrefixes: readonly string[];
   readonly idPattern: string;
+  /** frontmatter line_limit。未設定なら null (上限なし) */
+  readonly lineLimit: number | null;
   readonly required: readonly string[];
+}
+
+/** kind 解決済みの doc。人間レビュー層の横断検査 (地図網羅・決定帰属・修飾 ID) はこの一覧を使う。 */
+interface ResolvedDoc {
+  readonly relPath: string;
+  readonly file: string;
+  readonly lines: readonly string[];
+  readonly meta: Frontmatter;
+  readonly kind: string;
+  readonly template: TemplateEntry;
 }
 
 interface PathSlot {
@@ -206,10 +241,14 @@ function loadTemplates(dir: string): {
       continue;
     }
     const sections = extractSections(lines, parsed.bodyStart);
+    const idPrefixValue = scalar(parsed.data, 'id_prefix') ?? null;
+    const idPrefixesList = stringList(parsed.data, 'id_prefixes');
+    const lineLimitRaw = scalar(parsed.data, 'line_limit');
     registry.set(kind, {
       kind,
-      idPrefix: scalar(parsed.data, 'id_prefix') ?? null,
+      idPrefixes: idPrefixesList.length > 0 ? idPrefixesList : idPrefixValue !== null ? [idPrefixValue] : [],
       idPattern: scalar(parsed.data, 'id_pattern') ?? 'numeric',
+      lineLimit: lineLimitRaw === undefined ? null : Number(lineLimitRaw),
       required: sections
         .filter((section) => !section.text.endsWith(OPTIONAL_SUFFIX))
         .map((section) => section.text),
@@ -314,6 +353,10 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   ['document-taxonomy', null],
   ['explanation', null],
   ['runbook', null],
+  // 人間レビュー層: 地図と決定台帳。人の入口であって arc42 の関心事の分類には乗らない
+  ['map', null],
+  ['decision-log', null],
+  ['human-review', null],
 ]);
 
 function checkArc42(
@@ -385,26 +428,211 @@ function checkIds(
     }
     return;
   }
-  const prefix = template.idPrefix;
-  if (prefix === null || prefix === '') return;
+  if (template.idPrefixes.length === 0) return;
   // bare-numeric = T001 形式 (spec-kit の tasks)。既定は PREFIX-nnn。
   const bare = template.idPattern === 'bare-numeric';
-  const pattern = bare
-    ? new RegExp(`\\b${prefix}\\d[0-9A-Za-z_-]*`, 'g')
-    : new RegExp(`\\b${prefix}-[A-Za-z0-9_-]+`, 'g');
-  const strict = bare ? new RegExp(`^${prefix}\\d{3}$`) : new RegExp(`^${prefix}-\\d{3}$`);
   let count = 0;
-  for (let i = bodyStart; i < lines.length; i += 1) {
-    for (const token of (lines[i] ?? '').match(pattern) ?? []) {
-      count += 1;
-      if (!strict.test(token)) {
-        add(i + 1, `ID 形式が不正: ${token} (${bare ? `${prefix}nnn` : `${prefix}-nnn`} の 3 桁)`);
+  for (const prefix of template.idPrefixes) {
+    const pattern = bare
+      ? new RegExp(`\\b${prefix}\\d[0-9A-Za-z_-]*`, 'g')
+      : new RegExp(`\\b${prefix}-[A-Za-z0-9_-]+`, 'g');
+    const strict = bare ? new RegExp(`^${prefix}\\d{3}$`) : new RegExp(`^${prefix}-\\d{3}$`);
+    for (let i = bodyStart; i < lines.length; i += 1) {
+      for (const token of (lines[i] ?? '').match(pattern) ?? []) {
+        count += 1;
+        if (!strict.test(token)) {
+          add(i + 1, `ID 形式が不正: ${token} (${bare ? `${prefix}nnn` : `${prefix}-nnn`} の 3 桁)`);
+        }
       }
     }
   }
   if (count === 0) {
-    add(bodyStart + 1, `${bare ? prefix : `${prefix}-`}nnn の ID が 1 件もない`);
+    const labels = template.idPrefixes.map((prefix) => (bare ? `${prefix}nnn` : `${prefix}-nnn`)).join(' / ');
+    add(bodyStart + 1, `${labels} の ID が 1 件もない`);
   }
+}
+
+/** doc 本文の行数。<!-- AUTOGEN --> 区間 (生成される仮置き一覧など) は上限の外に置く。 */
+function countCheckableLines(lines: readonly string[]): number {
+  let total = lines.length;
+  if (lines[lines.length - 1] === '') total -= 1; // 末尾の改行 1 個は行数に数えない
+  let inAutogen = false;
+  for (const line of lines) {
+    if (/<!--\s*AUTOGEN[A-Za-z:-]*:start/.test(line)) {
+      inAutogen = true;
+      continue;
+    }
+    if (/<!--\s*AUTOGEN[A-Za-z:-]*:end/.test(line)) {
+      inAutogen = false;
+      continue;
+    }
+    if (inAutogen) total -= 1;
+  }
+  return total;
+}
+
+/** コードフェンス外を判定するトグル。関連する 3 検査 (行数以外) がフェンス内の例示コードを誤検出しないために使う */
+function makeFenceTracker(): (line: string) => boolean {
+  let fence: string | null = null;
+  return (line: string): boolean => {
+    const matched = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+    if (matched !== null) {
+      const marker = matched[1]?.[0];
+      if (marker !== undefined) {
+        if (fence === null) fence = marker;
+        else if (marker === fence) fence = null;
+      }
+      return true; // フェンス行自体は対象外
+    }
+    return fence !== null;
+  };
+}
+
+/**
+ * ID トークン (PREFIX-nnn) の定義元 doc を索引する。同一ファイル内の裸参照を許すための基準。
+ * 各テンプレは「1 ファイル 1 ローカル採番」(REQ-001/101/201/301/401 等) を前提にしているため、
+ * 同じ番号が複数ファイルで独立に定義されるのは正常 (欠陥ではない)。だから定義元は 1 件に絞らず
+ * 全部残し、「同一ファイル内は裸で OK」の判定と「複数ファイルにある番号は修飾 ID が必須」の
+ * 判定の両方に使う。番号の重複そのものを違反にはしない (それをやると全テンプレが赤くなる)。
+ */
+function buildIdHomes(resolved: readonly ResolvedDoc[]): ReadonlyMap<string, readonly string[]> {
+  const idHomes = new Map<string, string[]>();
+  for (const doc of resolved) {
+    for (const prefix of doc.template.idPrefixes) {
+      const strict = new RegExp(`\\b${prefix}-\\d{3}\\b`, 'g');
+      const seenInDoc = new Set<string>();
+      for (const token of doc.lines.join('\n').match(strict) ?? []) {
+        if (seenInDoc.has(token)) continue; // 同一 doc 内の複数出現は 1 件と数える
+        seenInDoc.add(token);
+        const homes = idHomes.get(token) ?? [];
+        homes.push(doc.relPath);
+        idHomes.set(token, homes);
+      }
+    }
+  }
+  return idHomes;
+}
+
+/** 「他ファイルの REQ を参照するときは <doc-id>/REQ-nnn」を検査する正規表現。 */
+function buildQualifiedIdRegex(prefixes: readonly string[]): RegExp | null {
+  const unique = [...new Set(prefixes)];
+  if (unique.length === 0) return null;
+  const alt = unique.sort((a, b) => b.length - a.length).join('|');
+  return new RegExp(`(?:([a-z][a-z0-9-]*)\\/)?\\b(${alt})-(\\d{3})\\b`, 'g');
+}
+
+/**
+ * 「## 関連」節の本文範囲 (0-based, [start, end))。この節は「文書」列が隣で ID の帰属を明示するので、
+ * 修飾 ID・決定帰属の検査対象から外す (関連は要約であって、他ファイルの ID を裸で持ち出す主張ではない)。
+ * 節が無ければ [-1, -1] (どの行も範囲に入らない)。
+ */
+function relatedSectionRange(lines: readonly string[], bodyStart: number): readonly [number, number] {
+  const sections = extractSections(lines, bodyStart);
+  const index = sections.findIndex((section) => section.text.startsWith('関連'));
+  const related = sections[index];
+  if (related === undefined) return [-1, -1];
+  const next = sections[index + 1];
+  const end = next === undefined ? lines.length : next.line - 1;
+  return [related.line - 1, end]; // -1 して見出し行 (## 関連) 自体も範囲に含める
+}
+
+const inRange = (i: number, [start, end]: readonly [number, number]): boolean => i >= start && i < end;
+
+function checkQualifiedIds(
+  doc: ResolvedDoc,
+  idHomes: ReadonlyMap<string, readonly string[]>,
+  idIndexRel: ReadonlyMap<string, string>,
+  refRegex: RegExp,
+  relatedRange: readonly [number, number],
+  add: AddViolation,
+): void {
+  const inFence = makeFenceTracker();
+  for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    const line = doc.lines[i] ?? '';
+    if (inFence(line)) continue;
+    if (inRange(i, relatedRange)) continue;
+    for (const matched of line.matchAll(refRegex)) {
+      const docIdPart = matched[1];
+      const token = `${matched[2] ?? ''}-${matched[3] ?? ''}`;
+      const homes = idHomes.get(token);
+      if (docIdPart !== undefined) {
+        const targetFile = idIndexRel.get(docIdPart);
+        if (targetFile === undefined) {
+          add(i + 1, `修飾 ID が解決できない: ${docIdPart}/${token} (doc id "${docIdPart}" が存在しない)`);
+        } else if (homes === undefined || !homes.includes(targetFile)) {
+          add(i + 1, `修飾 ID が解決できない: ${docIdPart}/${token} (${token} は ${docIdPart} に無い)`);
+        }
+        continue;
+      }
+      if (homes === undefined || homes.includes(doc.relPath)) continue; // 未知の ID、または同一ファイル内
+      const toDocId = (relPath: string): string => relPath.replace(/^.*\//, '').replace(/\.md$/, '');
+      if (homes.length === 1) {
+        const home = homes[0] ?? '';
+        add(i + 1, `他ファイルの ID は修飾 ID (<doc-id>/${token}) で参照する: ${token} は ${home} 由来 (例: ${toDocId(home)}/${token})`);
+      } else {
+        // この番号は複数ファイルのローカル採番で独立に使われている (欠陥ではない)。
+        // 裸で参照するとどちらの意味か分からないので、修飾 ID でどの文書のものかを明示させる。
+        const examples = homes.map((home) => `${toDocId(home)}/${token}`).join(' か ');
+        add(i + 1, `他ファイルの ID は修飾 ID で参照する: ${token} は複数の文書のローカル採番 (${homes.join(', ')}) にあるため、${examples} のどちらかを明示する`);
+      }
+    }
+  }
+}
+
+function checkDecisionAttribution(
+  doc: ResolvedDoc,
+  idHomes: ReadonlyMap<string, readonly string[]>,
+  patterns: readonly RegExp[],
+  relatedRange: readonly [number, number],
+  add: AddViolation,
+): void {
+  // decision-log 自身は台帳の正本。列名 (「仮置き値」) や見出し (「仮置き一覧」) が
+  // 語彙として「仮置き」「決定」を含むのは当然で、自分自身への帰属を求めない。
+  if (doc.kind === 'decision-log') return;
+  const inFence = makeFenceTracker();
+  for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    const line = doc.lines[i] ?? '';
+    if (inFence(line)) continue;
+    if (inRange(i, relatedRange)) continue;
+    if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
+    if (patterns.some((pattern) => pattern.test(line))) {
+      const dec = line.match(/DEC-\d{3}/)?.[0];
+      if (dec === undefined) {
+        add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
+      } else if (!idHomes.has(dec)) {
+        add(i + 1, `${dec} が決定台帳に無い`);
+      }
+    }
+    if (line.includes(TENTATIVE_MARK)) {
+      const open = line.match(/OPEN-\d{3}/)?.[0];
+      if (open === undefined) {
+        add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
+      } else if (!idHomes.has(open)) {
+        add(i + 1, `${open} が決定台帳に無い`);
+      }
+    }
+  }
+}
+
+/** map の本文リンク先を、コードフェンス外から集める (フラグメント `#…` は無視)。 */
+function extractLinkTargets(lines: readonly string[], bodyStart: number): string[] {
+  const inFence = makeFenceTracker();
+  const targets: string[] = [];
+  for (let i = bodyStart; i < lines.length; i += 1) {
+    const line = lines[i] ?? '';
+    if (inFence(line)) continue;
+    for (const matched of line.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+      const target = matched[1];
+      if (target !== undefined) targets.push((target.split('#')[0] ?? target).trim());
+    }
+  }
+  return targets;
+}
+
+function resolveLinkAbs(fromFileAbs: string, targetRoot: string, target: string): string | null {
+  if (target === '' || /^[a-z][a-z0-9+.-]*:/i.test(target)) return null; // 外部リンク (http: / mailto: 等)
+  if (target.startsWith('/')) return join(targetRoot, target.slice(1));
+  return join(dirname(fromFileAbs), target);
 }
 
 function checkDoc(
@@ -439,6 +667,13 @@ function checkDoc(
   if (template.kind === 'requirements') checkEars(lines, bodyStart, add);
 
   checkArc42(template.kind, data, add, requireKind);
+
+  if (template.lineLimit !== null) {
+    const total = countCheckableLines(lines);
+    if (total > template.lineLimit) {
+      add(1, `行数上限 (${template.lineLimit}) を超えている: ${total} 行`);
+    }
+  }
 
   for (const dependency of stringList(data, 'depends_on')) {
     if (dependency.startsWith('external:')) continue;
@@ -488,16 +723,21 @@ export class DocTemplateCheck implements Check {
 
     const parsedDocs: ParsedDoc[] = [];
     const idIndex = new Map<string, string>();
+    const idIndexRel = new Map<string, string>();
     for (const file of listMarkdown(docsDir, true)) {
       const lines = readFileSync(file, 'utf8').split(/\r?\n/);
       const meta = parseFrontmatter(lines);
       parsedDocs.push({ file, lines, meta });
       const id = meta === null ? undefined : scalar(meta.data, 'id');
-      if (id !== undefined && id !== '') idIndex.set(id, file);
+      if (id !== undefined && id !== '') {
+        idIndex.set(id, file);
+        idIndexRel.set(id, rel(file));
+      }
     }
 
     const violations: Violation[] = [];
     const unmanaged: string[] = [];
+    const resolved: ResolvedDoc[] = [];
     let checkedCount = 0;
 
     for (const { file, lines, meta } of parsedDocs) {
@@ -535,6 +775,7 @@ export class DocTemplateCheck implements Check {
       }
       checkedCount += 1;
       violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind));
+      resolved.push({ relPath, file, lines, meta, kind, template });
     }
 
     if (requireKind) {
@@ -548,9 +789,70 @@ export class DocTemplateCheck implements Check {
       }
     }
 
+    if (this.#options.requireHumanReview ?? false) {
+      violations.push(
+        ...this.#analyzeHumanReviewLayer(ctx.targetRoot, resolved, idIndexRel),
+      );
+    }
+
     violations.sort(
       (a, b) => (a.file ?? '').localeCompare(b.file ?? '') || (a.line ?? 0) - (b.line ?? 0),
     );
     return { violations, kindCount: registry.size, checkedCount, unmanaged };
+  }
+
+  /**
+   * 人間レビュー層の横断検査。①地図の網羅 ②決定の帰属 ③仮置きの OPEN 参照 ④修飾 ID。
+   * kind 解決が終わった doc の一覧 (resolved) だけを対象にする — 未管理 doc の本文までは追わない。
+   */
+  #analyzeHumanReviewLayer(
+    targetRoot: string,
+    resolved: readonly ResolvedDoc[],
+    idIndexRel: ReadonlyMap<string, string>,
+  ): Violation[] {
+    const violations: Violation[] = [];
+
+    // ① 地図の網羅: kind: requirements の全文書が 00-map.md からリンクされていること
+    const mapDoc = resolved.find((doc) => doc.kind === 'map');
+    const requirementsDocs = resolved.filter((doc) => doc.kind === 'requirements');
+    if (requirementsDocs.length > 0 && mapDoc === undefined) {
+      violations.push({
+        severity: 'violation',
+        message: '00-map.md が無い (kind: requirements の文書は全部そこからリンクされる必要がある)',
+      });
+    } else if (mapDoc !== undefined) {
+      const targets = new Set(
+        extractLinkTargets(mapDoc.lines, mapDoc.meta.bodyStart)
+          .map((target) => resolveLinkAbs(mapDoc.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const reqDoc of requirementsDocs) {
+        if (!targets.has(reqDoc.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `requirements 文書が 00-map.md からリンクされていない: ${reqDoc.relPath}`,
+            file: mapDoc.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+
+    // ②③ 決定の帰属・仮置きの OPEN 参照、④ 修飾 ID。いずれも DEC-nnn/OPEN-nnn/REQ-nnn 等の
+    // 定義元 (idHomes) を全 doc から作ってから判定する
+    const idHomes = buildIdHomes(resolved);
+    const attributionPatterns = this.#options.decisionAttributionPatterns ?? DEFAULT_DECISION_ATTRIBUTION_PATTERNS;
+    const allPrefixes = [...new Set(resolved.flatMap((doc) => doc.template.idPrefixes))];
+    const refRegex = buildQualifiedIdRegex(allPrefixes);
+
+    for (const doc of resolved) {
+      const add: AddViolation = (line, message) =>
+        violations.push({ severity: 'violation', message, file: doc.relPath, line });
+      const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
+      checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
+      if (refRegex !== null) checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add);
+    }
+
+    return violations;
   }
 }
