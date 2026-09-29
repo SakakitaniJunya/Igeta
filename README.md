@@ -23,7 +23,7 @@
 
 | 提供するもの | 中身 |
 |---|---|
-| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **39 種** |
+| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **40 種** |
 | **検査スクリプト** (`src/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/api-*` / `web-feature`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js) |
 | **ストアスクショの型** (`templates/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
@@ -100,7 +100,7 @@ flowchart LR
 | 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
-39 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+40 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/guides/03-human-review.md)**、
 足した理由は **[人間レビュー層を足した理由](docs/explanation/02-human-review-layer.md)** にある。
 
@@ -135,10 +135,16 @@ npm run docs:graph
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (108 件) |
+| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる |
+| `npm run docs:analyze` | 整合レポート (読み取り専用) | 網羅の穴・タスクが存在しない ID を参照しているダングリング参照・未決 OPEN・曖昧語・ID のローカル採番の重複。ダングリング参照だけ落ちる |
+| `npm run docs:fix-ids` | (生成・既定 dry-run) | 定義元が 1 件に一意な裸の ID 参照だけを修飾 ID に書き換える。`--write` を付けるまで書き込まない |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (135 件) |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
+
+`--require-human-review` を付けていない緑は「地図・決定台帳が無くても出る」緑であって、
+人間レビュー層があることを意味しない。決定台帳の長期アーカイブ方針・地図の内容の陳腐化はこの検査の
+対象外 (詳細は [人間レビュー層の読み方](templates/docs/guides/03-human-review.md) §7)。
 
 社内制約 ID の検出は `secret-scan --internal-ids` で明示的に有効にしたときだけ走る。非公開リポジトリでは
 規約 ID を本文から参照するのは正当なので既定 OFF、公開リポジトリでは漏洩なので ON にする。Igeta 自身は
@@ -153,7 +159,7 @@ npm run docs:graph
 ```text
 Igeta/
 ├── templates/              雛形置き場。パッケージに同梱され、使う人は `node_modules/igeta/templates/` から取る
-│   ├── docs/               設計書の雛形 39 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
+│   ├── docs/               設計書の雛形 40 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
 │   ├── .github/            使う人の .github/ にコピーする雛形 (PR テンプレ)
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
