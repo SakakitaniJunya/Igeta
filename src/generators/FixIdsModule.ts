@@ -53,11 +53,11 @@ export class FixIdsModule {
       requireHumanReview: true,
     }).analyze({ targetRoot: this.#options.targetRoot, igetaRoot: this.#options.igetaRoot });
 
-    const fixesByLine = new Map<string, { file: string; line: number; fixes: Array<{ token: string; homeId: string }> }>();
+    const fixesByLine = new Map<string, { file: string; line: number; fixes: Array<{ column: number; token: string; homeId: string }> }>();
     for (const fix of result.unambiguousFixes) {
       const key = `${fix.file}\u0000${fix.line}`;
       const entry = fixesByLine.get(key) ?? { file: fix.file, line: fix.line, fixes: [] };
-      entry.fixes.push({ token: fix.token, homeId: fix.homeId });
+      entry.fixes.push({ column: fix.column, token: fix.token, homeId: fix.homeId });
       fixesByLine.set(key, entry);
     }
 
@@ -67,9 +67,14 @@ export class FixIdsModule {
       const lines = readFileSync(abs, 'utf8').split(/\r?\n/);
       const before = lines[line - 1] ?? '';
       let after = before;
-      for (const { token, homeId } of fixes) {
-        // すでに <doc-id>/TOKEN の形式で修飾されている箇所は変えない (裸の出現だけを直す)
-        after = after.replace(new RegExp(`(?<![A-Za-z0-9-]/)\\b${token}\\b`, 'g'), `${homeId}/${token}`);
+      // 列位置だけを書き換える (code-reviewer C4)。同一行に「空白区切りで修飾済み (tenancy REQ-114)」
+      // と「裸 (REQ-114)」が両方あると、トークン文字列だけを全出現置換すると前者まで壊れていた。
+      // 判定 (どこが裸で一意に解決できるか) は checkQualifiedIds/isSpaceQualified の 1 か所だけで行い、
+      // ここではその結果 (列位置) をそのまま使うだけにする。列の大きい方から挿入し、まだ処理していな
+      // い左側の列がずれないようにする。
+      const sorted = [...fixes].sort((a, b) => b.column - a.column);
+      for (const { column, homeId } of sorted) {
+        after = `${after.slice(0, column)}${homeId}/${after.slice(column)}`;
       }
       if (after !== before) plan.push({ file, line, before, after });
     }

@@ -89,6 +89,8 @@ function isNegatedOrHearsayAfter(line: string, keywordEnd: number): boolean {
 export interface QualifiedIdFix {
   readonly file: string;
   readonly line: number;
+  /** 行内でトークンが始まる 0-based の列。fix-ids はこの位置だけを書き換える (code-reviewer C4) */
+  readonly column: number;
   readonly token: string;
   readonly homeId: string;
 }
@@ -652,7 +654,7 @@ function checkQualifiedIds(
   refRegex: RegExp,
   relatedRange: readonly [number, number],
   add: AddViolation,
-  addFix: (line: number, token: string, homeId: string) => void,
+  addFix: (line: number, column: number, token: string, homeId: string) => void,
 ): void {
   const inFence = makeFenceTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
@@ -678,7 +680,7 @@ function checkQualifiedIds(
         const home = homes[0] ?? '';
         const homeId = toDocId(home);
         add(i + 1, `他ファイルの ID は修飾 ID (<doc-id>/${token}) で参照する: ${token} は ${home} 由来 (例: ${homeId}/${token})`);
-        addFix(i + 1, token, homeId);
+        addFix(i + 1, matched.index, token, homeId);
       } else {
         // この番号は複数ファイルのローカル採番で独立に使われている (欠陥ではない)。
         // 裸で参照するとどちらの意味か分からないので、修飾 ID でどの文書のものかを明示させる。
@@ -1033,8 +1035,8 @@ export class DocTemplateCheck implements Check {
       const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
       checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
       if (refRegex !== null) {
-        checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add, (line, token, homeId) => {
-          fixes.push({ file: doc.relPath, line, token, homeId });
+        checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add, (line, column, token, homeId) => {
+          fixes.push({ file: doc.relPath, line, column, token, homeId });
         });
       }
       checkAcceptedGate(doc, add);

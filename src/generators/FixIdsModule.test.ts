@@ -101,6 +101,31 @@ describe('FixIdsModule', () => {
     assert.equal(plan.find((p) => p.file.endsWith('function-list.md')), undefined, JSON.stringify(plan));
   });
 
+  it('負例: 同一行に「空白区切りで修飾済み」と「裸」が両方あるとき、修飾済みの方は壊さない (code-reviewer round 3 C4)', () => {
+    // tenancy.md が REQ-114 を一意に定義する (requirements.md は REQ-001 を定義するので競合しない)
+    writeDoc(root, 'product/tenancy.md', requirementsDoc().replace('id: requirements', 'id: tenancy').replace(/REQ-001/g, 'REQ-114'));
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace(
+        '| 下流 | [要件定義書](./product/requirements.md) | — |',
+        '| 下流 | [要件定義書](./product/requirements.md) / [tenancy](./product/tenancy.md) | — |',
+      ),
+    );
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc('。FN-001 tenancy REQ-114 と REQ-114 の両方を参照'),
+    );
+    const plan = new FixIdsModule({ targetRoot: root, igetaRoot: root }).plan();
+    const hit = plan.find((p) => p.file.endsWith('function-list.md'));
+    assert.ok(hit, JSON.stringify(plan));
+    assert.match(hit?.after ?? '', /FN-001 tenancy REQ-114 と tenancy\/REQ-114 の両方を参照/);
+    // 空白区切りで既に修飾済みだった先頭の出現 ("tenancy REQ-114") が "tenancy tenancy/REQ-114" に
+    // 壊れていないこと (二重修飾の再現ケース)
+    assert.doesNotMatch(hit?.after ?? '', /tenancy tenancy\/REQ-114/);
+  });
+
   it('write() は plan() 後にファイルが変わっていたら drifted に積んで書かない (non-blocking N-b)', () => {
     writeDoc(root, 'design/basic/function-list.md', functionListDoc('。他ファイルの REQ-001 を裸で参照。'));
     const module = new FixIdsModule({ targetRoot: root, igetaRoot: root });
