@@ -41,7 +41,7 @@ export interface DocTemplateOptions {
    */
   readonly requireHumanReview?: boolean;
   /**
-   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は company-person の
+   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は ある案件の
    * 実例 (「CEO 2026-09-29 決定」「〜が決定」) から採った 3 パターン。
    * キーワード判定は文書 lint であり会社 OS の「選ぶ」判断ではないので設定として持てる。
    */
@@ -49,7 +49,7 @@ export interface DocTemplateOptions {
 }
 
 /**
- * decisionAttributionPatterns の既定値。company-person の実例から採った表記。
+ * decisionAttributionPatterns の既定値。ある案件の実例から採った表記。
  * 「が決定」の主語は**人を指す語だけ**にする (code-reviewer 実バグ #6)。主語を問わない
  * `[^\s|]...が決定` は「価格が決定されるまで」「日程が決定次第」のような無生物主語まで誤検出した。
  * 人名+さん等、CEO/代表以外の主語を検出したいプロジェクトは decisionAttributionPatterns を丸ごと
