@@ -4,6 +4,7 @@ import { Cli } from './cli/Cli.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
+import { MermaidCheckCommand } from './cli/commands/MermaidCheckCommand.js';
 import {
   ProvenanceAcceptCommand,
   ProvenanceCaptureCommand,
@@ -37,6 +38,7 @@ const cli = new Cli()
   .register(new ProvenanceCheckCommand())
   .register(new ProvenanceCoverageCommand())
   .register(new SourceCoverageCommand())
+  .register(new MermaidCheckCommand())
   .register(new ScaffoldCommand())
   .register(new ExportCommand())
   .register(new ReviewSheetCommand())
