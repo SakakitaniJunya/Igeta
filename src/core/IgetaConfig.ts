@@ -1,10 +1,10 @@
-// リポジトリ直下の `.igeta.json` を読む共通ロジック。
-// Spec: docs/explanation/07-context-boundaries.md §4
+// リポジトリ直下の `.igeta.json` を読む共通ロジック。項目の一覧は README の `.igeta.json` の節。
+// Spec: docs/explanation/07-context-boundaries.md §4 (sharedKinds/contextSizeLimit)、
+// 05-coverage-and-learning.md §2 (coverageExemptions)、08-agreement-ledger.md (reagreementRules)
 //
-// 今回使うのは sharedKinds (context-boundary-check の対象外 kind) と contextSizeLimit
-// (context-size の上限) だけ。将来足す設定 (由来・合意の再合意規則等) はこのファイルの
-// 関数を増やさず、同じ loadIgetaConfig の戻り値に読み取りを追加していく作りにする —
-// ファイルが 1 個なのに読み取り関数が増えると「どの設定がどこにあるか」が散らばるため。
+// 将来足す設定もこのファイルの関数を増やさず、同じ loadIgetaConfig の戻り値に読み取りを
+// 追加していく作りにする — ファイルが 1 個なのに読み取り関数が増えると「どの設定がどこに
+// あるか」が散らばるため。
 //
 // ファイルが無ければ既定値 (サイレント縮退ではない — 「無い」は正当な既定状態)。
 // ファイルはあるが形が不正なら CannotCheck にする (黙って既定値に倒さない)。
@@ -29,18 +29,33 @@ export interface CoverageExemption {
   readonly reason: string;
 }
 
+/**
+ * agreement-check の再合意判定規則。正本の変更が kind に一致 (かつ section を指定していれば
+ * それも一致) したら「再合意が要る」、当たらなければ「通知のみ」にする (kind + 節単位まで、
+ * 列単位は持たない。04-provenance-and-agreement.md §9)。
+ */
+export interface ReagreementRule {
+  readonly kind: string;
+  readonly section?: string;
+}
+
+/** 既定は requirements の変更を再合意対象にする (何を作るかの根拠が変わったときだけ確実に拾う)。 */
+export const DEFAULT_REAGREEMENT_RULES: readonly ReagreementRule[] = [{ kind: 'requirements' }];
+
 export interface IgetaConfig {
   readonly sharedKinds: readonly string[];
   /** 未設定 (無制限) は null */
   readonly contextSizeLimit: number | null;
   /** source-coverage の行単位の対象外。理由は必須 (docs/explanation/05-coverage-and-learning.md §2) */
   readonly coverageExemptions: readonly CoverageExemption[];
+  readonly reagreementRules: readonly ReagreementRule[];
 }
 
 export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
   sharedKinds: DEFAULT_SHARED_KINDS,
   contextSizeLimit: null,
   coverageExemptions: [],
+  reagreementRules: DEFAULT_REAGREEMENT_RULES,
 };
 
 export type LoadIgetaConfigResult = { readonly config: IgetaConfig } | { readonly violation: Violation };
@@ -122,5 +137,30 @@ export function loadIgetaConfig(targetRoot: string, configPath?: string): LoadIg
     coverageExemptions = exemptions;
   }
 
-  return { config: { sharedKinds, contextSizeLimit, coverageExemptions } };
+  let reagreementRules: readonly ReagreementRule[] = DEFAULT_REAGREEMENT_RULES;
+  if ('reagreementRules' in record) {
+    const value = record['reagreementRules'];
+    if (!Array.isArray(value)) {
+      return { violation: { severity: 'cannot-check', message: `${path} の reagreementRules は配列でなければならない` } };
+    }
+    const rules: ReagreementRule[] = [];
+    for (const entry of value) {
+      if (typeof entry !== 'object' || entry === null) {
+        return { violation: { severity: 'cannot-check', message: `${path} の reagreementRules は { kind, section? } の配列でなければならない` } };
+      }
+      const r = entry as Record<string, unknown>;
+      const kind = r['kind'];
+      const section = r['section'];
+      if (typeof kind !== 'string' || kind === '') {
+        return { violation: { severity: 'cannot-check', message: `${path} の reagreementRules[].kind は空でない文字列でなければならない` } };
+      }
+      if (section !== undefined && (typeof section !== 'string' || section === '')) {
+        return { violation: { severity: 'cannot-check', message: `${path} の reagreementRules[].section は空でない文字列でなければならない` } };
+      }
+      rules.push(typeof section === 'string' ? { kind, section } : { kind });
+    }
+    reagreementRules = rules;
+  }
+
+  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules } };
 }

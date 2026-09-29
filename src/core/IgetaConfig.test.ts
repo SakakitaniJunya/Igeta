@@ -28,12 +28,14 @@ describe('loadIgetaConfig', () => {
     const root = makeRoot();
     writeFileSync(join(root, '.igeta.json'), JSON.stringify({ sharedKinds: ['glossary'], contextSizeLimit: 500 }));
     const result = loadIgetaConfig(root);
-    assert.deepEqual(result, { config: { sharedKinds: ['glossary'], contextSizeLimit: 500, coverageExemptions: [] } });
+    assert.deepEqual(result, {
+      config: { sharedKinds: ['glossary'], contextSizeLimit: 500, coverageExemptions: [], reagreementRules: DEFAULT_IGETA_CONFIG.reagreementRules },
+    });
   });
 
   it('未知のフィールドは無視する (将来の設定追加に備える)', () => {
     const root = makeRoot();
-    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ reagreementRules: ['x'] }));
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ notYetImplemented: ['x'] }));
     const result = loadIgetaConfig(root);
     assert.deepEqual(result, { config: DEFAULT_IGETA_CONFIG });
   });
@@ -73,7 +75,12 @@ describe('loadIgetaConfig', () => {
     writeFileSync(altPath, JSON.stringify({ contextSizeLimit: 10 }));
     const result = loadIgetaConfig(root, altPath);
     assert.deepEqual(result, {
-      config: { sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds, contextSizeLimit: 10, coverageExemptions: [] },
+      config: {
+        sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds,
+        contextSizeLimit: 10,
+        coverageExemptions: [],
+        reagreementRules: DEFAULT_IGETA_CONFIG.reagreementRules,
+      },
     });
   });
 
@@ -89,6 +96,7 @@ describe('loadIgetaConfig', () => {
         sharedKinds: DEFAULT_IGETA_CONFIG.sharedKinds,
         contextSizeLimit: null,
         coverageExemptions: [{ id: 'reservation-flow/REQ-999', reason: '内部専用 API、顧客要件外' }],
+        reagreementRules: DEFAULT_IGETA_CONFIG.reagreementRules,
       },
     });
   });
@@ -117,6 +125,33 @@ describe('loadIgetaConfig', () => {
   it('省略時 (既定パス) に .igeta.json が無いのは既定値のまま (回帰確認)', () => {
     const root = makeRoot();
     assert.deepEqual(loadIgetaConfig(root), { config: DEFAULT_IGETA_CONFIG });
+  });
+
+  it('reagreementRules ({ kind, section? } の配列) を読む', () => {
+    const root = makeRoot();
+    writeFileSync(
+      join(root, '.igeta.json'),
+      JSON.stringify({ reagreementRules: [{ kind: 'requirements' }, { kind: 'business-flow', section: '1. 予約の受付' }] }),
+    );
+    const result = loadIgetaConfig(root);
+    assert.ok('config' in result, JSON.stringify(result));
+    if ('config' in result) {
+      assert.deepEqual(result.config.reagreementRules, [{ kind: 'requirements' }, { kind: 'business-flow', section: '1. 予約の受付' }]);
+    }
+  });
+
+  it('CannotCheck: reagreementRules の要素に kind が無い', () => {
+    const root = makeRoot();
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ reagreementRules: [{ section: 'x' }] }));
+    const result = loadIgetaConfig(root);
+    assert.ok('violation' in result, JSON.stringify(result));
+  });
+
+  it('CannotCheck: reagreementRules が配列でない', () => {
+    const root = makeRoot();
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ reagreementRules: 'x' }));
+    const result = loadIgetaConfig(root);
+    assert.ok('violation' in result, JSON.stringify(result));
   });
 
   it('CannotCheck: 指定した場所がディレクトリ (「JSON が壊れている」と誤表示しない)', () => {
