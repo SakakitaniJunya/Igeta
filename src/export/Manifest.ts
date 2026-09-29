@@ -3,7 +3,7 @@
 // 検査そのものが成立しない (JSON が壊れている・必須項目が無い・章ファイルが無い) は
 // 1 件も見逃さず全件集めてから ManifestError として投げる (直すたびに 1 件ずつ再実行させない)。
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 export interface DeliverableManifest {
@@ -66,12 +66,53 @@ function isStringArray(value: unknown): value is string[] {
 /**
  * target が dir の配下 (dir 自身を含む) に収まっているかを判定する。
  * `../` による親ディレクトリへの脱出、絶対パスによる差し替えのどちらも弾く。
- * target は `resolve(dir, ...)` 済みの絶対パスであること (join() は絶対パスの引数を
- * 正規化してしまい脱出を検出できないため使わない)。
+ * dir・target はどちらも symlink 解決済みの実体パスであること (isPathWithinRealDir /
+ * assertOutputWithinManifestDir の内部専用。lexical な resolve() だけでは symlink による
+ * 脱出 (章ファイル自体が外を指す symlink、出力先の途中の階層が外を指す symlink) を
+ * 見逃す)。
  */
 function isWithinDir(dir: string, target: string): boolean {
   const rel = relative(dir, target);
   return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`));
+}
+
+/** lexicalPath 自身または最も近い実在の祖先ディレクトリを返す (無ければファイルシステムの根)。 */
+function nearestExistingAncestor(lexicalPath: string): string {
+  let current = lexicalPath;
+  while (!existsSync(current)) {
+    const parent = dirname(current);
+    if (parent === current) return current; // 根に達した (通常は起きない)
+    current = parent;
+  }
+  return current;
+}
+
+/**
+ * lexicalTarget (存在するとは限らない) を、symlink を解決した実体パスに正規化してから
+ * realDir (symlink 解決済み) の配下かどうかを判定する。
+ * 実在しない末尾部分は symlink になりようがないため、実在する最も近い祖先だけ realpath し、
+ * 残りはそのまま繋げる。章ファイル (既に存在する) にも出力先 (まだ存在しない) にも使える。
+ */
+function isPathWithinRealDir(realDir: string, lexicalTarget: string): boolean {
+  const ancestor = nearestExistingAncestor(lexicalTarget);
+  const realAncestor = realpathSync(ancestor);
+  const remainder = relative(ancestor, lexicalTarget);
+  const realTarget = remainder === '' ? realAncestor : resolve(realAncestor, remainder);
+  return isWithinDir(realDir, realTarget);
+}
+
+/**
+ * 出力先の親ディレクトリが manifest の外を指していないかを、書き込みの直前 (mkdir の後) に
+ * もう一度確かめる。parseManifest() の検査から実際の書き込みまでの間に親ディレクトリが
+ * symlink にすり替えられる隙を狭めるための再検証で、mkdir 済みなので親は実在する前提。
+ */
+export function assertOutputWithinManifestDir(manifestDir: string, outputPath: string): void {
+  const realManifestDir = realpathSync(manifestDir);
+  const parent = dirname(outputPath);
+  const realParent = realpathSync(parent);
+  if (!isWithinDir(realManifestDir, realParent)) {
+    throw new ManifestError([`output の書き込み先が manifest の外を指している (書き込み直前の再検証): ${outputPath}`]);
+  }
 }
 
 /** deliverable.json を読み、検証し、解決済みの絶対パスを添えて返す。1 件でも違反があれば全件まとめて ManifestError。 */
@@ -96,6 +137,8 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
   }
 
   const manifestDir = dirname(absoluteManifestPath);
+  // symlink 判定の基準。manifestDir 自体が symlink 越しにあってもよい (よくある正常系)。
+  const realManifestDir = realpathSync(manifestDir);
 
   for (const field of REQUIRED_STRING_FIELDS) {
     if (!isNonEmptyString(raw[field])) {
@@ -132,7 +175,7 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
     errors.push('必須項目が無い: output');
   } else if (!raw['output'].toLowerCase().endsWith('.pdf')) {
     errors.push(`output は .pdf で終わる必要がある: ${raw['output']}`);
-  } else if (!isWithinDir(manifestDir, resolve(manifestDir, raw['output']))) {
+  } else if (!isPathWithinRealDir(realManifestDir, resolve(manifestDir, raw['output']))) {
     errors.push(`output が manifest の外を指している: ${raw['output']}`);
   }
 
@@ -153,12 +196,20 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
   const chapterPaths: string[] = [];
   for (const chapter of chapters) {
     const path = resolve(manifestDir, chapter);
+    // まず lexical に脱出していないか (../ ・絶対パス) を見る。存在しなくても弾けるので、
+    // 実在しないファイルを指す明らかな脱出はここで即座に検出できる。
     if (!isWithinDir(manifestDir, path)) {
       errors.push(`章ファイルが manifest の外を指している: ${chapter}`);
       continue;
     }
+    // 存在確認: realpath は対象が実在しないと投げるため、symlink 解決の前に確かめる。
     if (!existsSync(path) || !statSync(path).isFile()) {
       errors.push(`章ファイルが存在しない: ${chapter}`);
+      continue;
+    }
+    // lexical には manifest 配下でも、章ファイル自体や途中の階層が外を指す symlink なら弾く。
+    if (!isPathWithinRealDir(realManifestDir, path)) {
+      errors.push(`章ファイルが manifest の外を指している: ${chapter}`);
       continue;
     }
     chapterPaths.push(path);

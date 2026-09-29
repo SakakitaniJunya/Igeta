@@ -1,5 +1,5 @@
 // node --test dist
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -241,5 +241,57 @@ describe('parseManifest — パスの脱出を弾く', () => {
     const path = writeManifest(dir, { ...VALID_BASE, chapters: ['sub/chapter.md'] });
     const manifest = parseManifest(path);
     assert.equal(manifest.chapterPaths[0], join(dir, 'sub', 'chapter.md'));
+  });
+});
+
+describe('parseManifest — symlink による脱出を弾く (lexical には manifest 配下に見えても実体は外)', () => {
+  it('章ファイル自体が manifest の外を指す symlink ならエラー (evil-symlink.md -> ../outside/secret.md)', () => {
+    const dir = makeWorkspace();
+    const outsideDir = makeWorkspace();
+    writeFileSync(join(outsideDir, 'secret.md'), '# secret\n');
+    symlinkSync(join(outsideDir, 'secret.md'), join(dir, 'evil-symlink.md'));
+
+    const path = writeManifest(dir, { ...VALID_BASE, chapters: ['evil-symlink.md'] });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(error.messages.some((m) => m.includes('manifest の外') && m.includes('evil-symlink.md')));
+    }
+  });
+
+  it('output の書き込み先の途中の階層が symlink で manifest の外を指すならエラー (out -> ../outside/writable)', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const outsideDir = makeWorkspace();
+    mkdirSync(join(outsideDir, 'writable'), { recursive: true });
+    symlinkSync(join(outsideDir, 'writable'), join(dir, 'out'));
+
+    const path = writeManifest(dir, { ...VALID_BASE, output: 'out/design-document.pdf' });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(
+        error.messages.some((m) => m.includes('manifest の外') && m.includes('out/design-document.pdf')),
+      );
+    }
+  });
+
+  it('manifest のディレクトリ自体が symlink 越しにあるのは正常系として通す', () => {
+    const realDir = makeWorkspace();
+    writeChapter(realDir, '00-intro.md');
+    writeManifest(realDir, VALID_BASE);
+
+    const parentDir = mkdtempSync(join(tmpdir(), 'igeta-export-manifest-link-parent-'));
+    workspaces.push(parentDir);
+    const linkedDir = join(parentDir, 'linked');
+    symlinkSync(realDir, linkedDir);
+
+    const manifest = parseManifest(join(linkedDir, 'deliverable.json'));
+    assert.equal(manifest.chapterPaths.length, 1);
+    assert.equal(manifest.chapterPaths[0], join(linkedDir, '00-intro.md'));
   });
 });

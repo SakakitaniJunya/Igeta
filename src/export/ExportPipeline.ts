@@ -8,7 +8,7 @@ import { renderChapters } from './ChapterRenderer.js';
 import type { ForbidHit } from './ForbidScan.js';
 import { scanForbidden } from './ForbidScan.js';
 import { buildHtmlDocument } from './HtmlDocument.js';
-import { ManifestError, parseManifest } from './Manifest.js';
+import { ManifestError, assertOutputWithinManifestDir, parseManifest } from './Manifest.js';
 import type { StrippedLine } from './MarkdownStrip.js';
 import { UnclosedAutogenError, joinStrippedLines, stripFrontmatterAndAutogen } from './MarkdownStrip.js';
 import { omitSections } from './OmitSections.js';
@@ -91,6 +91,14 @@ export async function runExport(options: ExportOptions): Promise<ExportOutcome> 
   });
 
   mkdirSync(dirname(manifest.outputHtmlPath), { recursive: true });
+  try {
+    // mkdir の後、書き込みの直前にもう一度確かめる (検査から書き込みまでの間に
+    // 親ディレクトリが symlink にすり替えられる隙を狭めるため)。
+    assertOutputWithinManifestDir(manifest.manifestDir, manifest.outputHtmlPath);
+  } catch (error) {
+    if (error instanceof ManifestError) return { kind: 'manifest-error', messages: error.messages };
+    throw error;
+  }
   writeFileSync(manifest.outputHtmlPath, html);
 
   if (options.htmlOnly) {
@@ -98,6 +106,12 @@ export async function runExport(options: ExportOptions): Promise<ExportOutcome> 
   }
 
   mkdirSync(dirname(manifest.outputPdfPath), { recursive: true });
+  try {
+    assertOutputWithinManifestDir(manifest.manifestDir, manifest.outputPdfPath);
+  } catch (error) {
+    if (error instanceof ManifestError) return { kind: 'manifest-error', messages: error.messages };
+    throw error;
+  }
   try {
     await renderPdf({
       htmlPath: manifest.outputHtmlPath,
