@@ -97,7 +97,11 @@ export class FixIdsModule {
     const drifted: FixIdsPlanEntry[] = [];
     for (const [file, entries] of byFile) {
       const abs = join(this.#options.targetRoot, file);
-      const lines = readFileSync(abs, 'utf8').split(/\r?\n/);
+      const raw = readFileSync(abs, 'utf8');
+      // 元の改行コードを保つ (code-reviewer 実バグ #8)。CRLF のファイルを LF で書き戻すと、
+      // 直したのは 1 行だけなのに diff がファイル全体に広がる。
+      const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+      const lines = raw.split(/\r?\n/);
       let changed = false;
       for (const entry of entries) {
         const current = lines[entry.line - 1] ?? '';
@@ -109,7 +113,7 @@ export class FixIdsModule {
         written.push(entry);
         changed = true;
       }
-      if (changed) writeFileSync(abs, lines.join('\n'));
+      if (changed) writeFileSync(abs, lines.join(eol));
     }
     return { written, drifted };
   }

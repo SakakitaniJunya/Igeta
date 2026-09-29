@@ -73,6 +73,49 @@ describe('DiffTraceModule', () => {
     assert.deepEqual(result.impactedReqIds, ['REQ-101']);
   });
 
+  it('複数 FN 行の function-list で、1 つの FN のタスクを触っても他の FN の REQ は「申告漏れ」にならない (code-reviewer 実バグ #1)', () => {
+    // makeRoot() の既定ファイル (product/requirements.md 等) を、複数行・複数節を持つ実テンプレに
+    // 近い構成に上書きする: 要件定義書は REQ-101/REQ-201 を別々の行で定義し、機能一覧は
+    // FN-001 (→REQ-101) と FN-002 (→REQ-201) を別々の行に持つ。
+    writeDoc(
+      root,
+      'product/requirements.md',
+      [
+        '---', 'id: requirements', 'kind: requirements', '---', '',
+        '## 1. 業務要件', '', '| REQ-101 | 予約に関する業務要件 |', '',
+        '## 2. 機能要件', '', '| REQ-201 | 通知に関する業務要件 |', '',
+      ].join('\n'),
+    );
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      [
+        '---', 'id: function-list', 'kind: function-list', '---', '',
+        '## 1. 機能一覧', '',
+        '| ID | 機能名 | 対応 REQ |', '|---|---|---|',
+        '| FN-001 | 予約する | REQ-101 |',
+        '| FN-002 | 通知する | REQ-201 |',
+        '',
+      ].join('\n'),
+    );
+    writeDoc(
+      root,
+      'design/tasks/feature.md',
+      [
+        '---', 'id: tasks-feature', 'kind: tasks', '---', '',
+        '- [ ] T001 [P] [FN-001] 予約 API を実装する (src/reservation.ts)',
+        '- [ ] T002 [P] [FN-002] 通知バッチを実装する (src/notification.ts)',
+        '',
+      ].join('\n'),
+    );
+    // FN-001 のタスク (reservation.ts) だけを変更し、REQ-101 だけを申告する
+    const result = new DiffTraceModule({ targetRoot: root }).trace(['src/reservation.ts'], ['requirements/REQ-101']);
+    assert.deepEqual(result.impactedReqIds, ['requirements/REQ-101']);
+    // FN-002 (別行) の REQ-201 が紛れ込んで「申告漏れ」にならないこと
+    assert.deepEqual(result.missingFromDeclaration, [], result.markdown);
+    assert.deepEqual(result.declaredButNotTouched, []);
+  });
+
   it('cannotCheck (main 決定 A2): 変更ファイルが 1 件もタスクに一致しなければ裏取りできていない (exit 2 の根拠)', () => {
     const result = new DiffTraceModule({ targetRoot: root }).trace(['package.json'], []);
     assert.equal(result.cannotCheck, true, result.markdown);

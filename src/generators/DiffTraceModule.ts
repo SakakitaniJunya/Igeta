@@ -1,6 +1,7 @@
 import type { Dirent } from 'node:fs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
 
 /**
  * 差分からの追跡 (spec-kit には無い、arch レビューの核心)。既存の tasks 行形式
@@ -131,18 +132,30 @@ function taskTouchesFile(taskPath: string, changedFile: string): boolean {
 /** ID トークン (REQ-nnn 等) の定義元 doc を索引する (複数ファイルの重複もそのまま残す) */
 function collectDefinedIds(docs: readonly DocRecord[], prefix: string): Map<string, string[]> {
   const homes = new Map<string, string[]>();
-  const strict = new RegExp(`\\b${prefix}-\\d{3}\\b`, 'g');
   for (const doc of docs) {
-    const seen = new Set<string>();
-    for (const token of doc.lines.join('\n').match(strict) ?? []) {
-      if (seen.has(token)) continue;
-      seen.add(token);
+    // 定義は行頭セル (`| REQ-nnn | ... |`) だけ (code-reviewer 実バグ #3/#7 で共有)。
+    for (const token of collectRowDefinedTokens(doc.lines, prefix)) {
       const list = homes.get(token) ?? [];
       list.push(doc.relPath);
       homes.set(token, list);
     }
   }
   return homes;
+}
+
+/**
+ * その FN の行 (行頭セルが FN トークンと一致する行) にある REQ トークンだけを集める。
+ * ファイル全体から集めると、同じ function-list 内の**他の FN の対応 REQ**まで拾ってしまい、
+ * その FN のタスクを触っただけで無関係な REQ まで「影響する」ことになる (code-reviewer 実バグ #1)。
+ */
+function reqsInFnRow(lines: readonly string[], fnToken: string): string[] {
+  const rowRe = new RegExp(`^\\|\\s*${fnToken}\\s*\\|`);
+  const tokens: string[] = [];
+  for (const line of lines) {
+    if (!rowRe.test(line.trim())) continue;
+    for (const matched of line.matchAll(/\bREQ-\d{3}\b/g)) tokens.push(matched[0]);
+  }
+  return tokens;
 }
 
 /** frontmatter id が無い場合だけのフォールバック (連番付きのファイル名 stem)。 */
@@ -202,14 +215,14 @@ export class DiffTraceModule {
     const { tasks, parseFailureCount } = parseTasks(docs);
     const reqHomes = collectDefinedIds(docs.filter((d) => d.kind === 'requirements'), 'REQ');
     const fnHomes = collectDefinedIds(docs.filter((d) => d.kind === 'function-list'), 'FN');
-    // FN → REQ: FN の定義元ファイル本文にある REQ トークンを「その FN が指す REQ」とみなす
+    // FN → REQ: その FN の行 (行頭セル一致) にある REQ トークンだけを「その FN が指す REQ」とみなす
     const reqOfFn = new Map<string, Set<string>>();
     for (const [fn, homes] of fnHomes) {
       const set = new Set<string>();
       for (const home of homes) {
         const doc = docs.find((d) => d.relPath === home);
         if (doc === undefined) continue;
-        for (const matched of doc.lines.join('\n').matchAll(/\bREQ-\d{3}\b/g)) set.add(matched[0]);
+        for (const req of reqsInFnRow(doc.lines, fn)) set.add(req);
       }
       reqOfFn.set(fn, set);
     }

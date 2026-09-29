@@ -130,6 +130,43 @@ describe('AnalyzeModule', () => {
     assert.equal(result.hasCritical, false);
   });
 
+  it('function-list / tasks での言及 (行頭セルではない参照) は「定義」に数えない (code-reviewer 実バグ #7、#3 と共有)', () => {
+    // requirements-a だけが REQ-101 を要件表の行頭セルで定義する。複数節を持つ実テンプレに近い構成。
+    writeDoc(
+      root,
+      'product/01-requirements.md',
+      [
+        '---', 'id: requirements-a', 'kind: requirements', '---', '',
+        '## 1. 業務要件', '', '| REQ-101 | 業務要件本文 | 現状の課題 | 受入基準 |', '',
+        '## 2. 機能要件', '', '| REQ-102 | Event | 別の要件文 |', '',
+      ].join('\n'),
+    );
+    // function-list.md は FN-001/FN-002 の行の**対応 REQ 列**で REQ-101 に言及するだけ (行頭セルは FN)
+    writeDoc(
+      root,
+      'design/basic/01-function-list.md',
+      [
+        '---', 'id: function-list', 'kind: function-list', '---', '',
+        '## 1. 機能一覧', '',
+        '| ID | 機能名 | 対応 REQ |', '|---|---|---|',
+        '| FN-001 | 予約する | REQ-101 |',
+        '| FN-002 | 予約を確認する | REQ-101 |',
+        '',
+      ].join('\n'),
+    );
+    // tasks.md はタスク行の参照ブラケットで REQ-101/FN-001 に言及するだけ (行頭は `- [ ]`)
+    writeDoc(
+      root,
+      'design/tasks/01-feature.md',
+      ['---', 'id: tasks-feature', 'kind: tasks', '---', '', '- [ ] T001 [P] [FN-001] 予約 API を実装する (src/reservation.ts)', ''].join(
+        '\n',
+      ),
+    );
+    const result = new AnalyzeModule({ targetRoot: root }).analyze();
+    const dup = result.findings.find((f) => f.kind === '重複 (ローカル採番)' && f.id === 'REQ-101');
+    assert.equal(dup, undefined, JSON.stringify(result.findings));
+  });
+
   it('function-list / tasks が 1 本も無いツリーでは網羅を評価対象外にする (サイレント縮退にしない)', () => {
     writeDoc(root, 'product/requirements.md', ['---', 'id: requirements', 'kind: requirements', '---', '', '| REQ-001 |', ''].join('\n'));
     const result = new AnalyzeModule({ targetRoot: root }).analyze();

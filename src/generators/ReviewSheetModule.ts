@@ -1,6 +1,7 @@
 import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
+import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 
 /**
  * レビューシート生成。人間レビュー層 (docs/00-map.md・docs/01-decisions.md) を前提に、
@@ -63,49 +64,6 @@ function listMarkdown(dir: string): string[] {
   return found;
 }
 
-/** id: / title: / depends_on: だけを読む最小 frontmatter パーサ (この用途に必要な分だけ) */
-function parseMinimalFrontmatter(lines: readonly string[]): { id?: string; title?: string; dependsOn: string[]; kind?: string } | null {
-  if (lines[0]?.trim() !== '---') return null;
-  let end = -1;
-  for (let i = 1; i < lines.length; i += 1) {
-    if (lines[i]?.trim() === '---') {
-      end = i;
-      break;
-    }
-  }
-  if (end === -1) return null;
-  let id: string | undefined;
-  let title: string | undefined;
-  let kind: string | undefined;
-  const dependsOn: string[] = [];
-  let inDependsOn = false;
-  for (let i = 1; i < end; i += 1) {
-    const raw = lines[i] ?? '';
-    const item = /^\s+-\s+(.*)$/.exec(raw);
-    if (item !== null && inDependsOn) {
-      dependsOn.push((item[1] ?? '').trim());
-      continue;
-    }
-    inDependsOn = false;
-    const pair = /^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/.exec(raw);
-    if (pair === null) continue;
-    const key = pair[1];
-    const value = (pair[2] ?? '').trim();
-    if (key === 'id') id = value;
-    else if (key === 'title') title = value;
-    else if (key === 'kind') kind = value;
-    else if (key === 'depends_on') {
-      if (value === '') {
-        inDependsOn = true;
-      } else if (value.startsWith('[') && value.endsWith(']')) {
-        const inner = value.slice(1, -1).trim();
-        if (inner !== '') dependsOn.push(...inner.split(',').map((v) => v.trim()));
-      }
-    }
-  }
-  return { id, title, dependsOn, kind };
-}
-
 function splitCells(line: string): string[] {
   return line
     .trim()
@@ -127,14 +85,21 @@ function findTableRow(lines: readonly string[], idToken: string): { headers: rea
   return { headers, cells };
 }
 
-/** DEC-nnn / OPEN-nnn の行のうち、target (doc id か qualifiedId) をどこかの列に含む行の生テキストを返す */
-function findDecisionRows(decisionLog: DocRecord | undefined, targets: readonly string[]): string[] {
+/**
+ * DEC-nnn / OPEN-nnn の行のうち、対象の REQ を指している行の生テキストを返す。
+ * 修飾 ID (`<docId>/<token>`) の完全一致、または**他 doc への修飾参照になっていない**裸の token
+ * だけを拾う (code-reviewer 実バグ #5)。裸の token を部分文字列一致で拾うと、`other-doc/REQ-101`
+ * のような**別文書**の同番号 REQ への修飾参照まで「この REQ の決定」として混ざってしまう。
+ */
+function findDecisionRows(decisionLog: DocRecord | undefined, docId: string, token: string): string[] {
   if (decisionLog === undefined) return [];
+  const qualifiedRe = new RegExp(`\\b${docId}/${token}\\b`);
+  const bareRe = new RegExp(`(?<![A-Za-z0-9-]/)\\b${token}\\b`);
   const rows: string[] = [];
   for (const line of decisionLog.lines) {
     const trimmed = line.trim();
     if (!/^\|\s*(DEC|OPEN)-\d{3}\s*\|/.test(trimmed)) continue;
-    if (targets.some((t) => trimmed.includes(t))) rows.push(trimmed);
+    if (qualifiedRe.test(trimmed) || bareRe.test(trimmed)) rows.push(trimmed);
   }
   return rows;
 }
@@ -193,16 +158,18 @@ export class ReviewSheetModule {
     let decisionLog: DocRecord | undefined;
     for (const file of files) {
       const lines = readFileSync(file, 'utf8').split(/\r?\n/);
-      const fm = parseMinimalFrontmatter(lines);
-      if (fm === null || fm.id === undefined || fm.id === '') continue;
+      const fm = parseFrontmatter(lines);
+      if (fm === null) continue;
+      const id = scalar(fm.data, 'id');
+      if (id === undefined || id === '') continue;
       const record: DocRecord = {
         relPath: relative(this.#root, file),
         lines,
-        title: fm.title,
-        dependsOn: fm.dependsOn,
+        title: scalar(fm.data, 'title'),
+        dependsOn: stringList(fm.data, 'depends_on'),
       };
-      byId.set(fm.id, record);
-      if (fm.kind === 'decision-log') decisionLog = record;
+      byId.set(id, record);
+      if (scalar(fm.data, 'kind') === 'decision-log') decisionLog = record;
     }
 
     const entries: ReviewSheetEntry[] = [];
@@ -238,7 +205,7 @@ export class ReviewSheetModule {
       const value = row.cells[i];
       if (key !== undefined && value !== undefined) fields.set(key, value);
     }
-    const relatedDecisions = findDecisionRows(decisionLog, [token, qualifiedId]);
+    const relatedDecisions = findDecisionRows(decisionLog, docId, token);
     const downstream = [...byId.entries()]
       .filter(([, d]) => d.dependsOn.includes(docId))
       .map(([id, d]) => ({ id, relPath: d.relPath, title: d.title ?? basename(d.relPath) }));

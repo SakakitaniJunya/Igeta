@@ -85,7 +85,9 @@ function functionListDoc({
     '|---|---|---|',
     related,
     '',
-    ...sections.flatMap((section) => [`## ${section}`, '', `${ids} の内容`, '']),
+    // ID の「定義」は行頭セル (`| FN-001 | ... |`) だけを数える (code-reviewer 実バグ #3/#7)。
+    // テスト fixture も実テンプレと同じ表形式にする (本文の平文言及とは区別して検証するため)。
+    ...sections.flatMap((section) => [`## ${section}`, '', `| ${ids} | 内容 |`, '']),
   ].join('\n');
 }
 
@@ -107,10 +109,12 @@ function requirementsDoc(): string {
     '| 上流 (depends_on) | なし (最上流) | — |',
     '| 下流 | [機能一覧](./function-list.md) | FN-001 |',
     '',
+    // ID の「定義」は行頭セル (`| REQ-001 | ... |`) だけを数える (code-reviewer 実バグ #3/#7)。
+    // テスト fixture も実テンプレと同じ表形式にする。
     ...['1. 業務要件', '2. 機能要件', '3. 制約', '4. 前提', '5. スコープ外'].flatMap((s) => [
       `## ${s}`,
       '',
-      'REQ-001 の内容',
+      '| REQ-001 | 内容 |',
       '',
     ]),
   ].join('\n');
@@ -141,7 +145,7 @@ describe('DocTemplateCheck', () => {
       root,
       'product/requirements.md',
       requirementsDoc().replace(
-        '## 2. 機能要件\n\nREQ-001 の内容',
+        '## 2. 機能要件\n\n| REQ-001 | 内容 |',
         ['## 2. 機能要件', '', '| ID | パターン | 要件文 |', '|---|---|---|', '| REQ-101 | Event | 利用者は予約できる |'].join('\n'),
       ),
     );
@@ -156,7 +160,7 @@ describe('DocTemplateCheck', () => {
       root,
       'product/requirements.md',
       requirementsDoc().replace(
-        '## 2. 機能要件\n\nREQ-001 の内容',
+        '## 2. 機能要件\n\n| REQ-001 | 内容 |',
         ['## 2. 機能要件', '', '| ID | パターン | 要件文 |', '|---|---|---|',
           '| REQ-101 | Optional | 機能を有効にしている場合、システムは 0 円で引き換えられなければならない |'].join('\n'),
       ),
@@ -642,13 +646,49 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.match(report.format(), /決定の帰属を主張しているが DEC-nnn の参照が無い/);
   });
 
+  it('決定の帰属: 無生物主語の「〜が決定」は誤検出しない (code-reviewer 実バグ #6)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace(
+        '## 5. スコープ外',
+        [
+          '価格が決定されるまでは仮の値を使う (人が決めたわけではない)。',
+          '日程が決定次第、関係者へ通知する。',
+          '',
+          '## 5. スコープ外',
+        ].join('\n'),
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('決定の帰属: 「〜さんが決定」は人が主語なので検出する (code-reviewer 実バグ #6、正例)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace(
+        '## 5. スコープ外',
+        ['田中さんが決定した内容をここに反映する。', '', '## 5. スコープ外'].join('\n'),
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /決定の帰属を主張しているが DEC-nnn の参照が無い/);
+  });
+
   it('仮置き: OPEN-nnn の参照が無ければ違反、書けば通る', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
     writeDoc(
       root,
       'product/requirements.md',
-      requirementsDoc().replace('REQ-001 の内容', 'REQ-001 の内容。仮置きで30日とする'),
+      requirementsDoc().replace('| REQ-001 | 内容 |', '| REQ-001 | 内容 |\n\n仮置きで30日とする。'),
     );
     const missing = check(root, { requireHumanReview: true });
     assert.equal(missing.report.exitCode, ExitCode.Violation);
@@ -657,7 +697,7 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     writeDoc(
       root,
       'product/requirements.md',
-      requirementsDoc().replace('REQ-001 の内容', 'REQ-001 の内容。仮置きで decisions/OPEN-001 の30日とする'),
+      requirementsDoc().replace('| REQ-001 | 内容 |', '| REQ-001 | 内容 |\n\n仮置きで decisions/OPEN-001 の30日とする。'),
     );
     const ok = check(root, { requireHumanReview: true });
     assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
@@ -814,6 +854,36 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.equal(fix?.homeId, 'tenancy');
   });
 
+  it('修飾 ID: 定義元の doc に frontmatter id が無ければ fix-ids の対象から外す (code-reviewer 実バグ #4)', () => {
+    // product/02-tenancy.md は kind: requirements だが id を持たない (id 未記入のまま運用してしまった場合)
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc({ requirementsLink: '[要件定義書](./product/requirements.md) / [tenancy](./product/02-tenancy.md)' }),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(
+      root,
+      'product/02-tenancy.md',
+      requirementsDoc().replace('id: requirements\n', '').replace(/REQ-001/g, 'REQ-301'),
+    );
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc().replace('## 3. カバレッジ確認', '他ファイルの REQ-301 を裸で参照。\n\n## 3. カバレッジ確認'),
+    );
+    const { report, result } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(
+      report.format(),
+      /他ファイルの ID は修飾 ID \(<doc-id>\/REQ-301\) で参照する: REQ-301 は .*02-tenancy\.md 由来。.*id を付けてから修飾する \(fix-ids の対象外\)/,
+    );
+    // ファイル名 stem (02-tenancy) を例として書かない (id が無いので書ける修飾形が無い)
+    assert.doesNotMatch(report.format(), /例: 02-tenancy\/REQ-301/);
+    assert.equal(result.unambiguousFixes.find((f) => f.token === 'REQ-301'), undefined, JSON.stringify(result.unambiguousFixes));
+  });
+
   it('修飾 ID: 定義元が 1 件に一意な裸参照は unambiguousFixes に構造化データを積む (non-blocking N-a)', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
@@ -873,7 +943,7 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     const withOpenRef = (status: string): string =>
       requirementsDoc()
         .replace('kind: requirements', `kind: requirements\nstatus: ${status}`)
-        .replace('REQ-001 の内容', 'REQ-001 の内容。仮置きで decisions/OPEN-001 の30日とする');
+        .replace('| REQ-001 | 内容 |', '| REQ-001 | 内容 |\n\n仮置きで decisions/OPEN-001 の30日とする。');
 
     writeDoc(root, 'product/requirements.md', withOpenRef('fixed'));
     const fixed = check(root, { requireHumanReview: true });
@@ -893,7 +963,7 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
       'product/requirements.md',
       requirementsDoc()
         .replace('kind: requirements', 'kind: requirements\nstatus: fixed')
-        .replace('REQ-001 の内容', ['REQ-001 の内容。', '', '```', '例: OPEN-001 のような書き方をしない', '```'].join('\n')),
+        .replace('| REQ-001 | 内容 |', ['| REQ-001 | 内容 |', '', '```', '例: OPEN-001 のような書き方をしない', '```'].join('\n')),
     );
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());

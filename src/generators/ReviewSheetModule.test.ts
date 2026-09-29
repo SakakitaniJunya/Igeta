@@ -108,6 +108,64 @@ describe('ReviewSheetModule', () => {
     assert.match(result.entries[0]?.reason ?? '', /修飾 ID の形式が不正/);
   });
 
+  it('frontmatter 行末の `# コメント` を id・depends_on から除去する (code-reviewer 実バグ #2)', () => {
+    // 実テンプレそのままの書き方: id: の後ろに記入例コメント、depends_on: にもコメントが付く
+    writeDoc(
+      root,
+      'product/02-tenancy.md',
+      [
+        '---',
+        'id: tenancy            # 例: tenancy / 一意。ファイル名と揃える',
+        'title: テナンシー要件',
+        'kind: requirements',
+        'depends_on: []              # 最上流。ヒアリング記録があれば external:<名前> で書く',
+        '---',
+        '',
+        '| ID | パターン | 要件文 | 対応業務 (REQ-0xx) | 受け入れ条件 |',
+        '|---|---|---|---|---|',
+        '| REQ-201 | Event | 組織を作成できる | REQ-002 | 組織が作成されること |',
+        '',
+      ].join('\n'),
+    );
+    const result = new ReviewSheetModule({ targetRoot: root }).generate(['tenancy/REQ-201']);
+    assert.equal(result.unresolvedCount, 0, result.markdown);
+    const entry = result.entries[0];
+    assert.ok(entry?.resolved, JSON.stringify(entry));
+    assert.equal(entry.fields?.get('要件文'), '組織を作成できる');
+  });
+
+  it('関連 DEC/OPEN は修飾 ID (または同一文書内の裸) だけで照合し、別文書の同番号は混ざらない (code-reviewer 実バグ #5)', () => {
+    // 決定台帳に、要件A (requirements) の REQ-101 への決定と、要件B (other-doc) の**別の** REQ-101
+    // への決定を両方置く。番号が同じでも文書が違う。複数行・複数節を持つ実テンプレに近い構成。
+    writeDoc(
+      root,
+      '01-decisions.md',
+      [
+        '---', 'id: decisions', 'title: 決定台帳', 'kind: decision-log', 'depends_on: []', '---', '',
+        '## 1. 決定 (DEC)', '',
+        '| ID | 日付 | 決めた人 | 原文 | 決定 | 影響する文書 |',
+        '|---|---|---|---|---|---|',
+        '| DEC-001 | 2026-09-29 | CEO | 青色でいく | 青色申告を継続する | requirements/REQ-101 |',
+        '| DEC-002 | 2026-09-30 | CEO | 別件の方針 | 別文書の方針を確定する | other-doc/REQ-101 |',
+        '',
+      ].join('\n'),
+    );
+    writeDoc(
+      root,
+      'product/other-doc.md',
+      [
+        '---', 'id: other-doc', 'title: 別の要件定義書', 'kind: requirements', 'depends_on: []', '---', '',
+        '| ID | パターン | 要件文 |', '|---|---|---|', '| REQ-101 | Event | 別文書の要件 |', '',
+      ].join('\n'),
+    );
+    const result = new ReviewSheetModule({ targetRoot: root }).generate(['requirements/REQ-101']);
+    const entry = result.entries[0];
+    assert.ok(entry?.resolved, JSON.stringify(entry));
+    assert.equal(entry.relatedDecisions?.length, 1, JSON.stringify(entry.relatedDecisions));
+    assert.match(entry.relatedDecisions?.[0] ?? '', /DEC-001/);
+    assert.doesNotMatch(entry.relatedDecisions?.[0] ?? '', /DEC-002/);
+  });
+
   it('関連 DEC が無い場合は「なし」と明記する (サイレント縮退禁止)', () => {
     writeDoc(
       root,

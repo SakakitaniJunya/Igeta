@@ -38,7 +38,8 @@ function requirementsDoc(): string {
     '> **TL;DR**: 要件。', '',
     '## 関連', '', '| 区分 | 文書 | 対応 ID |', '|---|---|---|',
     '| 上流 (depends_on) | なし (最上流) | — |', '| 下流 | [機能一覧](./function-list.md) | FN-001 |', '',
-    ...['1. 業務要件', '2. 機能要件', '3. 制約', '4. 前提', '5. スコープ外'].flatMap((s) => [`## ${s}`, '', 'REQ-001 の内容', '']),
+    // ID の「定義」は行頭セル (`| REQ-001 | ... |`) だけを数える (code-reviewer 実バグ #3/#7)
+    ...['1. 業務要件', '2. 機能要件', '3. 制約', '4. 前提', '5. スコープ外'].flatMap((s) => [`## ${s}`, '', '| REQ-001 | 内容 |', '']),
   ].join('\n');
 }
 
@@ -48,9 +49,9 @@ function functionListDoc(bodyExtra = ''): string {
     '# 機能一覧', '', '> **TL;DR**: 最小の機能一覧。', '',
     '## 関連', '', '| 区分 | 文書 | 対応 ID |', '|---|---|---|',
     '| 上流 (depends_on) | [要件定義書](../../product/requirements.md) | REQ-001 |', '| 下流 | [画面設計](./screen-spec.md) | SCR-001 |', '',
-    '## 1. 機能一覧', '', `FN-001 の内容${bodyExtra}`, '',
-    '## 2. 機能別の状態・権限', '', 'FN-001 の内容', '',
-    '## 3. カバレッジ確認', '', 'FN-001 の内容', '',
+    '## 1. 機能一覧', '', '| FN-001 | 内容 |', ...(bodyExtra === '' ? [] : ['', bodyExtra]), '',
+    '## 2. 機能別の状態・権限', '', '| FN-001 | 内容 |', '',
+    '## 3. カバレッジ確認', '', '| FN-001 | 内容 |', '',
   ].join('\n');
 }
 
@@ -91,6 +92,22 @@ describe('FixIdsModule', () => {
     const fnPath = join(root, 'docs', 'design', 'basic', 'function-list.md');
     assert.match(readFileSync(fnPath, 'utf8'), /requirements\/REQ-001/);
     assert.equal(module.plan().length, 0, '書き換え後は同じ違反が出ない');
+  });
+
+  it('write() は元の改行コード (CRLF) を保つ (code-reviewer 実バグ #8)', () => {
+    const fnPath = join(root, 'docs', 'design', 'basic', 'function-list.md');
+    mkdirSync(dirname(fnPath), { recursive: true });
+    // CRLF で直接書き込む (functionListDoc() は \n 連結なので、ここだけ明示的に CRLF 化する)
+    writeFileSync(fnPath, functionListDoc('。他ファイルの REQ-001 を裸で参照。').replace(/\n/g, '\r\n'));
+    const module = new FixIdsModule({ targetRoot: root, igetaRoot: root });
+    const plan = module.plan();
+    assert.ok(plan.length > 0, 'this test needs at least one planned fix');
+    module.write(plan);
+    const after = readFileSync(fnPath, 'utf8');
+    assert.match(after, /requirements\/REQ-001/);
+    // 全ての改行が \r\n のペアであること (LF 単独の改行が 1 つも残っていないこと)
+    const bareLfCount = (after.replace(/\r\n/g, '').match(/\n/g) ?? []).length;
+    assert.equal(bareLfCount, 0, `LF 単独の改行が残っている (CRLF が保たれていない): ${JSON.stringify(after)}`);
   });
 
   it('負例: 複数ファイルのローカル採番で曖昧な ID は対象外にする (推測で書き換えない)', () => {
@@ -155,6 +172,42 @@ describe('FixIdsModule', () => {
     assert.match(hit?.after ?? '', /FN-001 crosscutting REQ-201 と crosscutting\/REQ-201 の両方を参照/);
     assert.doesNotMatch(hit?.after ?? '', /crosscutting (crosscutting|04-crosscutting)\/REQ-201/);
     assert.doesNotMatch(hit?.after ?? '', /04-crosscutting\/REQ-201/);
+  });
+
+  it('負例: requirements 同士の裸参照 (言及であって定義ではない) は違反になり、fix-ids が直せる (code-reviewer 実バグ #3)', () => {
+    // doc A (id: requirements-a) が REQ-201 を要件表の行頭セルで「定義」する。複数行・複数節を持つ
+    // 実テンプレに近い構成 (業務要件/機能要件/制約/前提/スコープ外の 5 節、各節に表の行が 1 つ)。
+    const docA = requirementsDoc()
+      .replace('id: requirements', 'id: requirements-a')
+      .replace(/\| REQ-001 \| 内容 \|/g, '| REQ-201 | 内容 |');
+    // doc B (id: requirements-b) は自分の REQ-001 を定義する一方、「前提」節で REQ-201 に**言及**
+    // するだけ (行頭セルではない自由記述)。これは定義ではないので、doc B に home が増えてはいけない。
+    const docB = requirementsDoc()
+      .replace('id: requirements', 'id: requirements-b')
+      .replace(
+        '## 4. 前提\n\n| REQ-001 | 内容 |',
+        '## 4. 前提\n\n| REQ-001 | 内容 |\n\n他文書 (requirements-a) の REQ-201 が成立していることを前提とする (裸参照)。',
+      );
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace(
+        '| 下流 | [要件定義書](./product/requirements.md) | — |',
+        '| 下流 | [要件A](./product/01-requirements.md) / [要件B](./product/02-other-requirements.md) | — |',
+      ),
+    );
+    writeDoc(root, 'product/01-requirements.md', docA);
+    writeDoc(root, 'product/02-other-requirements.md', docB);
+
+    const module = new FixIdsModule({ targetRoot: root, igetaRoot: root });
+    const plan = module.plan();
+    const hit = plan.find((p) => p.file.endsWith('02-other-requirements.md'));
+    assert.ok(hit, JSON.stringify(plan));
+    assert.match(hit?.after ?? '', /requirements-a\/REQ-201 が成立していることを前提とする/);
+    assert.doesNotMatch(hit?.before ?? '', /requirements-a\/REQ-201/);
+
+    module.write(plan);
+    assert.equal(module.plan().length, 0, '書き換え後は同じ違反が出ない (doc B に定義が増えたわけではない)');
   });
 
   it('write() は plan() 後にファイルが変わっていたら drifted に積んで書かない (non-blocking N-b)', () => {

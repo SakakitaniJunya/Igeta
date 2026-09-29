@@ -1,6 +1,7 @@
 import type { Dirent } from 'node:fs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
 
 /**
  * 読み取り専用・非破壊の整合レポート (spec-kit /analyze 相当)。
@@ -109,12 +110,10 @@ function bodyStartOf(lines: readonly string[]): number {
 /** 定義済み ID (PREFIX-nnn) をトークン→定義元 doc の一覧で索引する (複数ファイルの重複もそのまま残す) */
 function collectDefinedIds(docs: readonly DocRecord[], prefix: string): Map<string, string[]> {
   const homes = new Map<string, string[]>();
-  const strict = new RegExp(`\\b${prefix}-\\d{3}\\b`, 'g');
   for (const doc of docs) {
-    const seen = new Set<string>();
-    for (const token of doc.lines.join('\n').match(strict) ?? []) {
-      if (seen.has(token)) continue;
-      seen.add(token);
+    // 定義は行頭セル (`| REQ-nnn | ... |`) だけ (code-reviewer 実バグ #3/#7 で共有)。本文中の言及
+    // (前提列・対応業務列などでの参照) を定義に数えると、重複採番でもないのに重複扱いになる。
+    for (const token of collectRowDefinedTokens(doc.lines, prefix)) {
       const list = homes.get(token) ?? [];
       list.push(doc.relPath);
       homes.set(token, list);
