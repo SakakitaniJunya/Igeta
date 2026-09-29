@@ -28,6 +28,10 @@ export class ExportCommand extends Command {
         for (const message of outcome.messages) ctx.stderr(`ERROR ${message}`);
         return ExitCode.CannotCheck;
       }
+      case 'unclosed-autogen': {
+        for (const message of outcome.messages) ctx.stderr(`ERROR ${message}`);
+        return ExitCode.CannotCheck;
+      }
       case 'forbid-violation': {
         for (const hit of outcome.hits) ctx.stderr(`FORBID ${formatForbidHit(hit)}`);
         ctx.stderr(`\n${outcome.hits.length} 件、提出物に含められない語が見つかった。1 ファイルも書いていない。`);

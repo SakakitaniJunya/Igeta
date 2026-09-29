@@ -51,7 +51,7 @@ function writeFixture(
   const manifest = {
     title: 'サンプル設計書',
     recipient: 'サンプル株式会社 御中',
-    issuer: 'CreaNest 株式会社',
+    issuer: 'サンプル開発株式会社',
     version: '1.0',
     date: '2026-09-29',
     chapters: ['00-intro.md', '01-flows.md'],
@@ -101,6 +101,31 @@ describe('runExport — manifest / forbid ゲート', () => {
     }
     assert.equal(existsSync(join(dir, 'out')), false);
   });
+
+  it('AUTOGEN が閉じられていない章があれば unclosed-autogen (何も書かない)', async () => {
+    const dir = makeWorkspace();
+    writeFileSync(
+      join(dir, '00-intro.md'),
+      '# はじめに\n\n<!-- AUTOGEN:dir-index:start -->\n生成された行\n本文 (閉じタグ無し)\n',
+    );
+    const manifest = {
+      title: 'T',
+      issuer: 'I',
+      version: '1.0',
+      date: '2026-09-29',
+      chapters: ['00-intro.md'],
+      output: 'out/x.pdf',
+    };
+    const manifestPath = join(dir, 'deliverable.json');
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const outcome = await runExport({ manifestPath, htmlOnly: true });
+    assert.equal(outcome.kind, 'unclosed-autogen');
+    if (outcome.kind === 'unclosed-autogen') {
+      assert.match(outcome.messages[0] ?? '', /00-intro\.md:3/);
+    }
+    assert.equal(existsSync(join(dir, 'out')), false);
+  });
 });
 
 describe('runExport — html-only', () => {
@@ -136,7 +161,7 @@ describe('runExport — html-only', () => {
     assert.notEqual(metaSection, '');
     assert.ok(!metaSection.includes('undefined'));
     assert.ok(!metaSection.includes('<div></div>'));
-    assert.match(metaSection, /CreaNest 株式会社/); // issuer は出る
+    assert.match(metaSection, /サンプル開発株式会社/); // issuer は出る
   });
 });
 

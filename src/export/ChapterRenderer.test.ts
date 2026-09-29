@@ -105,3 +105,15 @@ describe('renderChapters — mermaid', () => {
     assert.equal(result.mermaidBlocks.length, 0);
   });
 });
+
+describe('renderChapters — 生 HTML', () => {
+  it('章に書かれた <script> はタグとして通さず、エスケープした文字として出す', () => {
+    const result = renderChapters([
+      chapter('00-intro.md', '# はじめに\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n'),
+    ]);
+    const html = result.chapters[0]?.html ?? '';
+    assert.ok(!html.includes('<script>'));
+    assert.ok(!/<img\s/.test(html));
+    assert.match(html, /&lt;script&gt;/);
+  });
+});

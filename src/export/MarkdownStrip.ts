@@ -8,6 +8,13 @@ export interface StrippedLine {
   readonly line: number;
 }
 
+/** AUTOGEN 区間が章の終わりまで閉じられていない。本文を黙って捨てず、ここで止める。 */
+export class UnclosedAutogenError extends Error {
+  constructor(relPath: string, startLine: number) {
+    super(`AUTOGEN 区間が閉じられていない (:end が無い): ${relPath}:${startLine}`);
+  }
+}
+
 const AUTOGEN_START_RE = /<!--\s*AUTOGEN:[^>]*:start[^>]*-->/;
 const AUTOGEN_END_RE = /<!--\s*AUTOGEN:[^>]*:end[^>]*-->/;
 
@@ -20,16 +27,21 @@ function frontmatterBodyStart(lines: readonly string[]): number {
   return 0; // 閉じられていない frontmatter は frontmatter として扱わない
 }
 
-/** frontmatter と AUTOGEN 区間を除いた行を、元の行番号付きで返す。 */
-export function stripFrontmatterAndAutogen(content: string): readonly StrippedLine[] {
+/**
+ * frontmatter と AUTOGEN 区間を除いた行を、元の行番号付きで返す。
+ * relPath は UnclosedAutogenError のメッセージにだけ使う (表示用)。
+ */
+export function stripFrontmatterAndAutogen(content: string, relPath: string): readonly StrippedLine[] {
   const lines = content.split(/\r?\n/);
   const bodyStart = frontmatterBodyStart(lines);
   const result: StrippedLine[] = [];
   let inAutogen = false;
+  let autogenStartLine = -1;
   for (let i = bodyStart; i < lines.length; i += 1) {
     const line = lines[i] ?? '';
     if (!inAutogen && AUTOGEN_START_RE.test(line)) {
       inAutogen = true;
+      autogenStartLine = i + 1;
       continue;
     }
     if (inAutogen) {
@@ -37,6 +49,9 @@ export function stripFrontmatterAndAutogen(content: string): readonly StrippedLi
       continue;
     }
     result.push({ text: line, line: i + 1 });
+  }
+  if (inAutogen) {
+    throw new UnclosedAutogenError(relPath, autogenStartLine);
   }
   return result;
 }

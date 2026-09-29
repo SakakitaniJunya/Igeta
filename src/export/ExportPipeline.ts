@@ -9,7 +9,8 @@ import type { ForbidHit } from './ForbidScan.js';
 import { scanForbidden } from './ForbidScan.js';
 import { buildHtmlDocument } from './HtmlDocument.js';
 import { ManifestError, parseManifest } from './Manifest.js';
-import { joinStrippedLines, stripFrontmatterAndAutogen } from './MarkdownStrip.js';
+import type { StrippedLine } from './MarkdownStrip.js';
+import { UnclosedAutogenError, joinStrippedLines, stripFrontmatterAndAutogen } from './MarkdownStrip.js';
 import { omitSections } from './OmitSections.js';
 import { ChromiumNotFoundError, MermaidRenderError, renderPdf } from './PdfRenderer.js';
 
@@ -26,6 +27,7 @@ export type ExportOutcome =
       readonly warnings: readonly string[];
     }
   | { readonly kind: 'manifest-error'; readonly messages: readonly string[] }
+  | { readonly kind: 'unclosed-autogen'; readonly messages: readonly string[] }
   | { readonly kind: 'forbid-violation'; readonly hits: readonly ForbidHit[] }
   | { readonly kind: 'mermaid-error'; readonly messages: readonly string[] }
   | { readonly kind: 'chromium-not-found'; readonly message: string };
@@ -39,14 +41,28 @@ export async function runExport(options: ExportOptions): Promise<ExportOutcome> 
     throw error;
   }
 
-  const strippedByChapter = manifest.chapters.map((relPath, i) => {
+  const strippedByChapter: { relPath: string; absPath: string; lines: readonly StrippedLine[] }[] = [];
+  const autogenErrors: string[] = [];
+  for (let i = 0; i < manifest.chapters.length; i += 1) {
+    const relPath = manifest.chapters[i];
     const absPath = manifest.chapterPaths[i];
-    if (absPath === undefined) throw new Error('manifest.chapterPaths と chapters の対応が壊れている');
+    if (relPath === undefined || absPath === undefined) {
+      throw new Error('manifest.chapterPaths と chapters の対応が壊れている');
+    }
     const content = readFileSync(absPath, 'utf8');
-    const stripped = stripFrontmatterAndAutogen(content);
-    const lines = omitSections(stripped, manifest.omitSections);
-    return { relPath, absPath, lines };
-  });
+    try {
+      const stripped = stripFrontmatterAndAutogen(content, relPath);
+      const lines = omitSections(stripped, manifest.omitSections);
+      strippedByChapter.push({ relPath, absPath, lines });
+    } catch (error) {
+      if (error instanceof UnclosedAutogenError) {
+        autogenErrors.push(error.message);
+        continue;
+      }
+      throw error;
+    }
+  }
+  if (autogenErrors.length > 0) return { kind: 'unclosed-autogen', messages: autogenErrors };
 
   const forbidHits: ForbidHit[] = strippedByChapter.flatMap(({ relPath, lines }) =>
     scanForbidden(relPath, lines, manifest.forbidPatterns, manifest.forbid),

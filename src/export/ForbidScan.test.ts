@@ -10,7 +10,7 @@ function makePatterns(sources: readonly string[]): RegExp[] {
 
 describe('scanForbidden', () => {
   it('一致すれば file:line:word を返す', () => {
-    const lines = stripFrontmatterAndAutogen('# t\n\n社内メモ: DEC-42 を参照\n');
+    const lines = stripFrontmatterAndAutogen('# t\n\n社内メモ: DEC-42 を参照\n', 'a.md');
     const sources = ['DEC-\\d+'];
     const hits = scanForbidden('00-intro.md', lines, makePatterns(sources), sources);
     assert.equal(hits.length, 1);
@@ -20,14 +20,14 @@ describe('scanForbidden', () => {
   });
 
   it('1 行に複数パターンが一致すれば全件返す', () => {
-    const lines = stripFrontmatterAndAutogen('DEC-1 と REQ-2 が同じ行にある');
+    const lines = stripFrontmatterAndAutogen('DEC-1 と REQ-2 が同じ行にある', 'a.md');
     const sources = ['DEC-\\d', 'REQ-\\d'];
     const hits = scanForbidden('a.md', lines, makePatterns(sources), sources);
     assert.equal(hits.length, 2);
   });
 
   it('一致が無ければ空配列', () => {
-    const lines = stripFrontmatterAndAutogen('普通の本文');
+    const lines = stripFrontmatterAndAutogen('普通の本文', 'a.md');
     const sources = ['DEC-\\d'];
     const hits = scanForbidden('a.md', lines, makePatterns(sources), sources);
     assert.deepEqual(hits, []);
@@ -37,7 +37,7 @@ describe('scanForbidden', () => {
     const content = ['---', 'id: DEC-1', '---', '<!-- AUTOGEN:x:start -->', 'DEC-2', '<!-- AUTOGEN:x:end -->', '本文'].join(
       '\n',
     );
-    const lines = stripFrontmatterAndAutogen(content);
+    const lines = stripFrontmatterAndAutogen(content, 'a.md');
     const sources = ['DEC-\\d'];
     const hits = scanForbidden('a.md', lines, makePatterns(sources), sources);
     assert.deepEqual(hits, []);

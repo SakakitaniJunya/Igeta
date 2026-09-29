@@ -202,7 +202,10 @@ function rewriteLinks(
 }
 
 function createMarkdownIt(mermaidBlocks: MermaidBlock[]): InstanceType<typeof MarkdownIt> {
-  const md = new MarkdownIt({ html: true, linkify: false, typographer: false });
+  // html:false — 章 Markdown 中の生 HTML (<script> 等) をタグとして通さず、
+  // エスケープしたテキストとして扱う。社内向け原稿がそのまま提出物の HTML/PDF になるため、
+  // 意図しないスクリプト混入・注入を作らない。
+  const md = new MarkdownIt({ html: false, linkify: false, typographer: false });
   const defaultFence =
     md.renderer.rules['fence'] ??
     ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));

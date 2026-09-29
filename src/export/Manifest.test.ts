@@ -28,7 +28,7 @@ function writeChapter(dir: string, name: string, content = '# title\n'): void {
 const VALID_BASE = {
   title: 'サンプル設計書',
   recipient: 'サンプル株式会社 御中',
-  issuer: 'CreaNest 株式会社',
+  issuer: 'サンプル開発株式会社',
   version: '1.0',
   date: '2026-09-29',
   chapters: ['00-intro.md'],
@@ -165,5 +165,81 @@ describe('parseManifest', () => {
     const manifest = parseManifest(path);
     assert.equal(manifest.forbidPatterns.length, 2);
     assert.equal(manifest.forbidPatterns[0]?.test('DEC-1'), true);
+  });
+});
+
+describe('parseManifest — パスの脱出を弾く', () => {
+  it('chapters に ../ で manifest の外を指す要素があればエラー', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, chapters: ['00-intro.md', '../x.md'] });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(error.messages.some((m) => m.includes('manifest の外') && m.includes('../x.md')));
+    }
+  });
+
+  it('output に ../../ で manifest の外を指す値があればエラー', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, output: '../../x.pdf' });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(error.messages.some((m) => m.includes('manifest の外') && m.includes('../../x.pdf')));
+    }
+  });
+
+  it('chapters に絶対パスがあればエラー', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, chapters: ['00-intro.md', '/etc/passwd'] });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(error.messages.some((m) => m.includes('manifest の外') && m.includes('/etc/passwd')));
+    }
+  });
+
+  it('output に絶対パスがあればエラー', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, output: '/tmp/x.pdf' });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(error.messages.some((m) => m.includes('manifest の外') && m.includes('/tmp/x.pdf')));
+    }
+  });
+
+  it('途中で戻ってから最終的に外へ出る chapters (sub/../../x) もエラー', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, chapters: ['00-intro.md', 'sub/../../x.md'] });
+    try {
+      parseManifest(path);
+      assert.fail('ManifestError を期待した');
+    } catch (error) {
+      assert.ok(error instanceof ManifestError);
+      assert.ok(error.messages.some((m) => m.includes('manifest の外') && m.includes('sub/../../x.md')));
+    }
+  });
+
+  it('manifest 配下に収まる相対パス (サブディレクトリ含む) は許す', () => {
+    const dir = makeWorkspace();
+    mkdirSync(join(dir, 'sub'), { recursive: true });
+    writeFileSync(join(dir, 'sub', 'chapter.md'), '# title\n');
+    const path = writeManifest(dir, { ...VALID_BASE, chapters: ['sub/chapter.md'] });
+    const manifest = parseManifest(path);
+    assert.equal(manifest.chapterPaths[0], join(dir, 'sub', 'chapter.md'));
   });
 });

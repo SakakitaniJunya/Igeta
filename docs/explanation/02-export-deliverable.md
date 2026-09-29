@@ -48,7 +48,9 @@ relates_to: [docs-index]
 | `output` | ✓ | 出力先。`.pdf` で終わる相対パス。同じ場所に `.html` も書く |
 
 パスはすべて `deliverable.json` のあるディレクトリを基準に解決する。必須項目の欠落・章ファイルの不在は
-1 件も見逃さず全件まとめてエラーにする (直すたびに 1 回ずつ再実行させない)。
+1 件も見逃さず全件まとめてエラーにする (直すたびに 1 回ずつ再実行させない)。`chapters` / `output` が
+`../` や絶対パスで manifest の外を指していたら、章ファイルの有無に関わらずエラーにする
+(manifest の外のファイルを読んだり、manifest の外へ書き出したりしない)。
 
 ## 3. forbid — 社内 ID の混入防止
 
@@ -66,6 +68,12 @@ relates_to: [docs-index]
 
 - 既定値は `["関連"]`。`templates/docs/delivery/__chapter__.md` の `## 関連` 節は既定でそのまま除かれる
 - 明示すれば上書きできる。`[]` を渡すと何も除かない
+
+### 3.2 AUTOGEN が閉じられていない章
+
+`<!-- AUTOGEN:...:start -->` を書いたら、同じ章の中に対応する `:end` が必ず要る。章の終わりまで
+閉じられなければ、それ以降の本文を黙って捨てず、ファイル名と開始行を出してエラーで止める
+(閉じ忘れたまま本文が欠けた提出物を作らないため)。
 
 ## 4. 出力の見え方
 
@@ -92,7 +100,18 @@ igeta export path/to/deliverable.json --html-only  # HTML だけ生成する。C
 (frontmatter `kind: delivery-chapter`。arc42 章を持たない対外文書で、必須節は「関連」のみ。
 `proposal` / `guide` と同列)。
 
-## 6. 制約
+## 6. 安全対策
+
+章 Markdown は社内原稿がそのまま先方提出物になる。原稿に埋め込まれた内容が意図しない形で動いたり、
+外部へ通信したりしないよう、次を徹底している。
+
+- 章 Markdown 中の生 HTML (`<script>` 等) はタグとして通さず、エスケープした文字として出す
+  (markdown-it を `html: false` で使う)
+- PDF 化に使うブラウザページは、自分の HTML ファイル 1 本以外への通信を一切許さない。
+  章に外部 URL への画像・リンクが残っていても、読み込みや通信は `page.route()` で止める
+  (Mermaid はランタイムをインライン埋め込みしているため影響しない)
+
+## 7. 制約
 
 - Chromium は `~/Library/Caches/ms-playwright/chromium-*` 等、**既に Playwright が取得済みのもの**を探して使う。
   見つからなければ `npx playwright install chromium` を案内して非 0 終了する (export 自体はブラウザを取得しない)

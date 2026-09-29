@@ -4,7 +4,7 @@
 // 1 件も見逃さず全件集めてから ManifestError として投げる (直すたびに 1 件ずつ再実行させない)。
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 export interface DeliverableManifest {
   readonly title: string;
@@ -63,6 +63,17 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === 'string');
 }
 
+/**
+ * target が dir の配下 (dir 自身を含む) に収まっているかを判定する。
+ * `../` による親ディレクトリへの脱出、絶対パスによる差し替えのどちらも弾く。
+ * target は `resolve(dir, ...)` 済みの絶対パスであること (join() は絶対パスの引数を
+ * 正規化してしまい脱出を検出できないため使わない)。
+ */
+function isWithinDir(dir: string, target: string): boolean {
+  const rel = relative(dir, target);
+  return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`));
+}
+
 /** deliverable.json を読み、検証し、解決済みの絶対パスを添えて返す。1 件でも違反があれば全件まとめて ManifestError。 */
 export function parseManifest(manifestPath: string): ResolvedManifest {
   const errors: string[] = [];
@@ -83,6 +94,8 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
   if (!isRecord(raw)) {
     throw new ManifestError([`manifest が JSON オブジェクトではない: ${manifestPath}`]);
   }
+
+  const manifestDir = dirname(absoluteManifestPath);
 
   for (const field of REQUIRED_STRING_FIELDS) {
     if (!isNonEmptyString(raw[field])) {
@@ -119,6 +132,8 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
     errors.push('必須項目が無い: output');
   } else if (!raw['output'].toLowerCase().endsWith('.pdf')) {
     errors.push(`output は .pdf で終わる必要がある: ${raw['output']}`);
+  } else if (!isWithinDir(manifestDir, resolve(manifestDir, raw['output']))) {
+    errors.push(`output が manifest の外を指している: ${raw['output']}`);
   }
 
   // forbid の正規表現としての妥当性はここで検証する (後段で全件コンパイルするため)
@@ -134,15 +149,19 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
     }
   }
 
-  const manifestDir = dirname(absoluteManifestPath);
   const chapters = isStringArray(chaptersRaw) ? chaptersRaw : [];
-  const chapterPaths = chapters.map((chapter) => join(manifestDir, chapter));
-  const missingChapters = chapters.filter((_, i) => {
-    const path = chapterPaths[i];
-    return path === undefined || !existsSync(path) || !statSync(path).isFile();
-  });
-  for (const chapter of missingChapters) {
-    errors.push(`章ファイルが存在しない: ${chapter}`);
+  const chapterPaths: string[] = [];
+  for (const chapter of chapters) {
+    const path = resolve(manifestDir, chapter);
+    if (!isWithinDir(manifestDir, path)) {
+      errors.push(`章ファイルが manifest の外を指している: ${chapter}`);
+      continue;
+    }
+    if (!existsSync(path) || !statSync(path).isFile()) {
+      errors.push(`章ファイルが存在しない: ${chapter}`);
+      continue;
+    }
+    chapterPaths.push(path);
   }
 
   if (errors.length > 0) {
@@ -150,7 +169,7 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
   }
 
   const output = raw['output'] as string;
-  const outputPdfPath = join(manifestDir, output);
+  const outputPdfPath = resolve(manifestDir, output);
   const outputHtmlPath = `${outputPdfPath.slice(0, -'.pdf'.length)}.html`;
 
   return {
