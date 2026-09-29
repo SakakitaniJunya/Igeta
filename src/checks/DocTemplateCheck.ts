@@ -81,6 +81,18 @@ function isNegatedOrHearsayAfter(line: string, keywordEnd: number): boolean {
   return NEGATION_TAIL_RE.test(tail) || HEARSAY_TAIL_RE.test(tail);
 }
 
+/**
+ * 「他ファイルの ID は修飾 ID で参照する」違反のうち、定義元が 1 件に一意に決まるもの (=機械的に
+ * 直せるもの) を構造化データで持つ。fix-ids はこれを直接読む — 違反メッセージの文言を正規表現で
+ * パースする密結合をやめるため (non-blocking N-a, code-reviewer round 3)。
+ */
+export interface QualifiedIdFix {
+  readonly file: string;
+  readonly line: number;
+  readonly token: string;
+  readonly homeId: string;
+}
+
 export interface DocTemplateResult {
   readonly violations: readonly Violation[];
   /** テンプレに登録されている kind の種類数 */
@@ -89,6 +101,8 @@ export interface DocTemplateResult {
   readonly checkedCount: number;
   /** kind を決められなかった doc (targetRoot からの相対パス) */
   readonly unmanaged: readonly string[];
+  /** 定義元が 1 件に一意な裸の ID 参照。requireHumanReview 無しでは常に空配列 */
+  readonly unambiguousFixes: readonly QualifiedIdFix[];
 }
 
 type FrontmatterValue = string | readonly string[];
@@ -615,6 +629,22 @@ const inRange = (i: number, [start, end]: readonly [number, number]): boolean =>
 const isExemptRelatedRow = (i: number, relatedRange: readonly [number, number], line: string): boolean =>
   inRange(i, relatedRange) && line.trim().startsWith('|');
 
+const toDocId = (relPath: string): string => relPath.replace(/^.*\//, '').replace(/\.md$/, '');
+
+/**
+ * トークン直前の語が候補 homeId のいずれかと完全一致するなら「広義の修飾済み」とみなす
+ * (code-reviewer round 3 C1)。manabi-zone では `tenancy REQ-114` のように、スラッシュではなく
+ * 空白 1 個で doc-id を前置く書き方が多用されている。これを「未修飾」と誤認すると、fix-ids が
+ * `tenancy tenancy/REQ-114` のように二重修飾で本文を壊す。検査の判定そのものをここで直す
+ * (fix-ids 側だけの対症療法にしない一箇所修正)。
+ */
+function isSpaceQualified(line: string, matchIndex: number, homes: readonly string[]): boolean {
+  const before = line.slice(0, matchIndex);
+  const precedingWord = /([A-Za-z0-9][A-Za-z0-9-]*)\s+$/.exec(before)?.[1];
+  if (precedingWord === undefined) return false;
+  return homes.some((home) => toDocId(home) === precedingWord);
+}
+
 function checkQualifiedIds(
   doc: ResolvedDoc,
   idHomes: ReadonlyMap<string, readonly string[]>,
@@ -622,6 +652,7 @@ function checkQualifiedIds(
   refRegex: RegExp,
   relatedRange: readonly [number, number],
   add: AddViolation,
+  addFix: (line: number, token: string, homeId: string) => void,
 ): void {
   const inFence = makeFenceTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
@@ -642,10 +673,12 @@ function checkQualifiedIds(
         continue;
       }
       if (homes === undefined || homes.includes(doc.relPath)) continue; // 未知の ID、または同一ファイル内
-      const toDocId = (relPath: string): string => relPath.replace(/^.*\//, '').replace(/\.md$/, '');
+      if (isSpaceQualified(line, matched.index, homes)) continue; // 広義の修飾済み (C1)
       if (homes.length === 1) {
         const home = homes[0] ?? '';
-        add(i + 1, `他ファイルの ID は修飾 ID (<doc-id>/${token}) で参照する: ${token} は ${home} 由来 (例: ${toDocId(home)}/${token})`);
+        const homeId = toDocId(home);
+        add(i + 1, `他ファイルの ID は修飾 ID (<doc-id>/${token}) で参照する: ${token} は ${home} 由来 (例: ${homeId}/${token})`);
+        addFix(i + 1, token, homeId);
       } else {
         // この番号は複数ファイルのローカル採番で独立に使われている (欠陥ではない)。
         // 裸で参照するとどちらの意味か分からないので、修飾 ID でどの文書のものかを明示させる。
@@ -666,11 +699,44 @@ function checkAcceptedGate(doc: ResolvedDoc, add: AddViolation): void {
   if (doc.kind !== 'requirements' && doc.kind !== 'feature-brief') return;
   const status = scalar(doc.meta.data, 'status');
   if (status === undefined || !FINAL_STATUSES.has(status)) return;
+  const inFence = makeFenceTracker(); // コードフェンス内の例示は主張ではない (non-blocking N-d)
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
-    const open = (doc.lines[i] ?? '').match(OPEN_ID_RE)?.[0];
+    const line = doc.lines[i] ?? '';
+    if (inFence(line)) continue;
+    const open = line.match(OPEN_ID_RE)?.[0];
     if (open !== undefined) {
       add(i + 1, `status: ${status} だが ${open} を参照している (未決の関門。解決してから確定にする)`);
     }
+  }
+}
+
+/**
+ * 行内の**全出現**を独立に判定する (code-reviewer round 3 C2)。以前は最初のマッチだけを見ていたため、
+ * 「CEOが決定ではないという説もあるが、実務上はCEOが決定した」のように否定の decoy を先に置くと、
+ * 後続の本物の主張を見逃していた。パターンごとに matchAll で全出現を回し、1 件でも
+ * 引用・否定・伝聞でないものがあれば「主張がある」と判定する。
+ */
+function hasValidAttribution(line: string, patterns: readonly RegExp[]): boolean {
+  for (const pattern of patterns) {
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+    const global = new RegExp(pattern.source, flags);
+    for (const matched of line.matchAll(global)) {
+      const index = matched.index;
+      if (index === undefined) continue;
+      if (!isQuotedAt(line, index) && !isNegatedOrHearsayAfter(line, index + matched[0].length)) return true;
+    }
+  }
+  return false;
+}
+
+/** 「仮置き」の全出現を独立に判定する (同じ理由で C2)。 */
+function hasValidTentativeMark(line: string): boolean {
+  let from = 0;
+  for (;;) {
+    const index = line.indexOf(TENTATIVE_MARK, from);
+    if (index === -1) return false;
+    if (!isQuotedAt(line, index) && !isNegatedOrHearsayAfter(line, index + TENTATIVE_MARK.length)) return true;
+    from = index + TENTATIVE_MARK.length;
   }
 }
 
@@ -691,17 +757,7 @@ function checkDecisionAttribution(
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
 
-    let attribution: RegExpExecArray | null = null;
-    for (const pattern of patterns) {
-      const matched = pattern.exec(line);
-      // パターンは全て文字列 "決定" で終わる (DEFAULT_DECISION_ATTRIBUTION_PATTERNS 参照)。
-      // 引用 (「」『』内) と否定・伝聞 (〜ではない・〜と書かれていた 等) は主張ではないので除外する。
-      if (matched !== null && !isQuotedAt(line, matched.index) && !isNegatedOrHearsayAfter(line, matched.index + matched[0].length)) {
-        attribution = matched;
-        break;
-      }
-    }
-    if (attribution !== null) {
+    if (hasValidAttribution(line, patterns)) {
       const dec = line.match(/DEC-\d{3}/)?.[0];
       if (dec === undefined) {
         add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
@@ -710,8 +766,7 @@ function checkDecisionAttribution(
       }
     }
 
-    const tentativeIndex = line.indexOf(TENTATIVE_MARK);
-    if (tentativeIndex !== -1 && !isQuotedAt(line, tentativeIndex) && !isNegatedOrHearsayAfter(line, tentativeIndex + TENTATIVE_MARK.length)) {
+    if (hasValidTentativeMark(line)) {
       const open = line.match(/OPEN-\d{3}/)?.[0];
       if (open === undefined) {
         add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
@@ -821,6 +876,7 @@ export class DocTemplateCheck implements Check {
       kindCount: 0,
       checkedCount: 0,
       unmanaged: [],
+      unambiguousFixes: [],
     });
 
     if (!isDir(templatesDir)) return cannotCheck(`テンプレ置き場が無い: ${rel(templatesDir)}`);
@@ -913,16 +969,17 @@ export class DocTemplateCheck implements Check {
       }
     }
 
+    let unambiguousFixes: readonly QualifiedIdFix[] = [];
     if (this.#options.requireHumanReview ?? false) {
-      violations.push(
-        ...this.#analyzeHumanReviewLayer(ctx.targetRoot, resolved, idIndexRel),
-      );
+      const layer = this.#analyzeHumanReviewLayer(ctx.targetRoot, resolved, idIndexRel);
+      violations.push(...layer.violations);
+      unambiguousFixes = layer.fixes;
     }
 
     violations.sort(
       (a, b) => (a.file ?? '').localeCompare(b.file ?? '') || (a.line ?? 0) - (b.line ?? 0),
     );
-    return { violations, kindCount: registry.size, checkedCount, unmanaged };
+    return { violations, kindCount: registry.size, checkedCount, unmanaged, unambiguousFixes };
   }
 
   /**
@@ -933,8 +990,9 @@ export class DocTemplateCheck implements Check {
     targetRoot: string,
     resolved: readonly ResolvedDoc[],
     idIndexRel: ReadonlyMap<string, string>,
-  ): Violation[] {
+  ): { violations: Violation[]; fixes: QualifiedIdFix[] } {
     const violations: Violation[] = [];
+    const fixes: QualifiedIdFix[] = [];
 
     // ① 地図の網羅: kind: requirements の全文書が 00-map.md からリンクされていること
     const mapDoc = resolved.find((doc) => doc.kind === 'map');
@@ -974,10 +1032,14 @@ export class DocTemplateCheck implements Check {
         violations.push({ severity: 'violation', message, file: doc.relPath, line });
       const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
       checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
-      if (refRegex !== null) checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add);
+      if (refRegex !== null) {
+        checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add, (line, token, homeId) => {
+          fixes.push({ file: doc.relPath, line, token, homeId });
+        });
+      }
       checkAcceptedGate(doc, add);
     }
 
-    return violations;
+    return { violations, fixes };
   }
 }

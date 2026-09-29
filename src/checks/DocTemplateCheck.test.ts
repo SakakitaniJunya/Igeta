@@ -622,6 +622,26 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
+  it('決定の帰属: 否定の decoy を先に置いても後続の本物の主張を見逃さない (code-reviewer round 3 C2)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace(
+        '## 5. スコープ外',
+        [
+          'CEOが決定ではないという説もあるが、実務上はCEOが決定した。',
+          '',
+          '## 5. スコープ外',
+        ].join('\n'),
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /決定の帰属を主張しているが DEC-nnn の参照が無い/);
+  });
+
   it('仮置き: OPEN-nnn の参照が無ければ違反、書けば通る', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
@@ -662,6 +682,26 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     );
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('仮置き: 否定の decoy を先に置いても後続の本物の仮置きを見逃さない (code-reviewer round 3 C2)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace(
+        '## 5. スコープ外',
+        [
+          '前者は仮置きではないが、後者は仮置きで30日とする。',
+          '',
+          '## 5. スコープ外',
+        ].join('\n'),
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /「仮置き」に OPEN-nnn の参照が無い/);
   });
 
   it('修飾 ID: 他ファイルの ID を裸で参照したら違反、<doc-id>/PREFIX-nnn で参照すれば通る', () => {
@@ -732,6 +772,47 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.equal(qualified.report.exitCode, ExitCode.Ok, qualified.report.format());
   });
 
+  it('修飾 ID: 空白区切りの疑似修飾 (`09-auth REQ-128`) は広義の修飾済みとして扱う (code-reviewer round 3 C1)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc().replace('## 3. カバレッジ確認', '空白区切りの疑似修飾: requirements REQ-001 を参照。\n\n## 3. カバレッジ確認'),
+    );
+    const { report, result } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.deepEqual(result.unambiguousFixes, []); // 既に広義の修飾済みなので fix-ids の対象にもしない
+  });
+
+  it('修飾 ID: 定義元が 1 件に一意な裸参照は unambiguousFixes に構造化データを積む (non-blocking N-a)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc().replace('## 3. カバレッジ確認', '他ファイルの REQ-001 を裸で参照。\n\n## 3. カバレッジ確認'),
+    );
+    const { result } = check(root, { requireHumanReview: true });
+    const fix = result.unambiguousFixes.find((f) => f.token === 'REQ-001');
+    assert.ok(fix, JSON.stringify(result.unambiguousFixes));
+    assert.equal(fix?.homeId, 'requirements');
+    assert.equal(fix?.file, join('docs', 'design', 'basic', 'function-list.md'));
+  });
+
+  it('requireHumanReview 無しでは unambiguousFixes は常に空配列', () => {
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc().replace('## 3. カバレッジ確認', '他ファイルの REQ-001 を裸で参照。\n\n## 3. カバレッジ確認'),
+    );
+    const { result } = check(root);
+    assert.deepEqual(result.unambiguousFixes, []);
+  });
+
   it('修飾 ID: 「## 関連」節の対応 ID 列は裸のままでよい (文書列が帰属を示すため)', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
@@ -774,5 +855,19 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     writeDoc(root, 'product/requirements.md', withOpenRef('draft'));
     const draft = check(root, { requireHumanReview: true });
     assert.equal(draft.report.exitCode, ExitCode.Ok, draft.report.format());
+  });
+
+  it('未決の関門: コードフェンス内の OPEN-nnn は例示であって主張ではない (non-blocking N-d)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc()
+        .replace('kind: requirements', 'kind: requirements\nstatus: fixed')
+        .replace('REQ-001 の内容', ['REQ-001 の内容。', '', '```', '例: OPEN-001 のような書き方をしない', '```'].join('\n')),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 });
