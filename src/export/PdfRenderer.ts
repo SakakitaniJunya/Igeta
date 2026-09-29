@@ -6,6 +6,12 @@
 import { chromium } from 'playwright-core';
 import type { MermaidBlock } from './ChapterRenderer.js';
 import { findChromiumExecutable, PLAYWRIGHT_INSTALL_HINT } from './Chromium.js';
+import {
+  PDF_MARGIN_BOTTOM_MM,
+  PDF_MARGIN_LEFT_MM,
+  PDF_MARGIN_RIGHT_MM,
+  PDF_MARGIN_TOP_MM,
+} from './PdfLayout.js';
 
 export class ChromiumNotFoundError extends Error {
   constructor() {
@@ -66,7 +72,12 @@ export async function renderPdf(options: PdfRenderOptions): Promise<void> {
       path: options.pdfPath,
       format: 'A4',
       printBackground: true,
-      margin: { top: '22mm', bottom: '18mm', left: '15mm', right: '15mm' },
+      margin: {
+        top: `${PDF_MARGIN_TOP_MM}mm`,
+        bottom: `${PDF_MARGIN_BOTTOM_MM}mm`,
+        left: `${PDF_MARGIN_LEFT_MM}mm`,
+        right: `${PDF_MARGIN_RIGHT_MM}mm`,
+      },
       displayHeaderFooter: true,
       headerTemplate: `<div style="font-size:8px; width:100%; text-align:center; color:#666; padding-top:6mm;">${escapeHtml(options.title)}</div>`,
       footerTemplate:

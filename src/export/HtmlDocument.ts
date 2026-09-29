@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import type { ChapterHtml, TocEntry } from './ChapterRenderer.js';
+import { MERMAID_CONTAINER_MAX_HEIGHT_MM, MERMAID_PADDING_MM, MERMAID_SVG_MAX_HEIGHT_MM } from './PdfLayout.js';
 
 export interface DocumentMeta {
   readonly title: string;
@@ -62,9 +63,29 @@ function buildStyle(): string {
   th, td { border: 1px solid #555; padding: 2mm 3mm; text-align: left; }
   tr, table { break-inside: avoid; page-break-inside: avoid; }
   pre, code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; }
-  pre { background: #f5f5f5; padding: 3mm; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
-  pre.mermaid { background: none; text-align: center; break-inside: avoid; page-break-inside: avoid; }
-  pre.mermaid svg { max-width: 100%; }
+  pre { background: #f5f5f5; padding: ${MERMAID_PADDING_MM}mm; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  /*
+   * 図は縦横どちらも 1 ページに収める。box-sizing:border-box で padding を高さ上限に含め、
+   * svg 側は width:auto/height:auto + max-width/max-height で縦横比を保ったまま縮める。
+   * overflow:hidden は縮小が効かない異常系のときに隣のページへ滲み出させないための保険。
+   */
+  pre.mermaid {
+    background: none;
+    text-align: center;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+    max-height: ${MERMAID_CONTAINER_MAX_HEIGHT_MM}mm;
+    overflow: hidden;
+  }
+  pre.mermaid svg {
+    display: block;
+    margin: 0 auto;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: ${MERMAID_SVG_MAX_HEIGHT_MM}mm;
+  }
   img { max-width: 100%; }
   a { color: #1a4fa3; }
   `;

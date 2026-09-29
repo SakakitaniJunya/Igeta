@@ -6,8 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { chromium } from 'playwright-core';
 import { findChromiumExecutable } from './Chromium.js';
 import { runExport } from './ExportPipeline.js';
+import { PRINTABLE_HEIGHT_MM } from './PdfLayout.js';
 
 const workspaces: string[] = [];
 
@@ -260,6 +262,72 @@ describe('runExport — PDF 化', () => {
       const bytes = readFileSync(outcome.pdfPath);
       assert.equal(bytes.subarray(0, 5).toString('ascii'), '%PDF-');
       assert.ok(statSync(outcome.pdfPath).size > 1000);
+    },
+  );
+});
+
+describe('runExport — 縦に長い mermaid 図の高さ上限', () => {
+  const executable = findChromiumExecutable();
+
+  it(
+    '縦に長い図でも、描画後の高さが 1 ページの印字可能領域以下に収まる',
+    { skip: executable === null ? 'Chromium キャッシュが見つからない (npx playwright install chromium で用意すると走る)' : false },
+    async () => {
+      const dir = makeWorkspace();
+      // 1 ページに収まらないほど縦に長い flowchart (TB) をわざと作る
+      const nodes = Array.from({ length: 25 }, (_, i) => `n${i}["段階 ${i}"]`).join(' --> ');
+      writeFileSync(
+        join(dir, '00-intro.md'),
+        ['# はじめに', '', '```mermaid', 'flowchart TB', nodes, '```', ''].join('\n'),
+      );
+      const manifestPath = join(dir, 'deliverable.json');
+      writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          title: 'T',
+          issuer: 'I',
+          version: '1.0',
+          date: '2026-09-29',
+          chapters: ['00-intro.md'],
+          output: 'out/x.pdf',
+        }),
+      );
+
+      const outcome = await runExport({ manifestPath, htmlOnly: true });
+      assert.equal(outcome.kind, 'ok');
+      if (outcome.kind !== 'ok') return;
+
+      const executablePath = findChromiumExecutable();
+      assert.ok(executablePath !== null);
+      const browser = await chromium.launch({ executablePath, headless: true });
+      try {
+        const page = await browser.newPage();
+        await page.goto(`file://${outcome.htmlPath}`, { waitUntil: 'load' });
+        await page.waitForFunction(
+          () => (globalThis as unknown as { __mermaidDone__?: boolean }).__mermaidDone__ === true,
+          { timeout: 30_000 },
+        );
+        interface RectLike {
+          getBoundingClientRect(): { height: number };
+        }
+        const heightsMm = await page.evaluate(() => {
+          const MM_PER_PX = 25.4 / 96;
+          const doc = (globalThis as unknown as { document: { querySelectorAll(selector: string): RectLike[] } })
+            .document;
+          return Array.from(doc.querySelectorAll('pre.mermaid')).map(
+            (el) => el.getBoundingClientRect().height * MM_PER_PX,
+          );
+        });
+        assert.ok(heightsMm.length > 0, '図が 1 個も見つからない');
+        for (const heightMm of heightsMm) {
+          assert.ok(
+            heightMm <= PRINTABLE_HEIGHT_MM + 1,
+            `図の高さ ${heightMm}mm が 1 ページの印字可能領域 ${PRINTABLE_HEIGHT_MM}mm を超えている`,
+          );
+        }
+      } finally {
+        await browser.close();
+      }
     },
   );
 });
