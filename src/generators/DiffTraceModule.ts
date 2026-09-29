@@ -19,6 +19,7 @@ const BRACKET_ID_RE = /\[([A-Z]{2,8}-\d{3})\]/g;
 interface DocRecord {
   readonly relPath: string;
   readonly kind: string | undefined;
+  readonly id: string | undefined;
   readonly lines: readonly string[];
 }
 
@@ -82,6 +83,17 @@ function readKind(lines: readonly string[]): string | undefined {
   return undefined;
 }
 
+function readId(lines: readonly string[]): string | undefined {
+  if (lines[0]?.trim() !== '---') return undefined;
+  for (let i = 1; i < lines.length; i += 1) {
+    const line = lines[i] ?? '';
+    if (line.trim() === '---') return undefined;
+    const matched = /^id:\s*(\S+)/.exec(line);
+    if (matched !== null) return matched[1];
+  }
+  return undefined;
+}
+
 const TASK_MARKER_RE = /^-\s*\[[ xX]\]/;
 
 interface ParseTasksResult {
@@ -133,7 +145,16 @@ function collectDefinedIds(docs: readonly DocRecord[], prefix: string): Map<stri
   return homes;
 }
 
+/** frontmatter id が無い場合だけのフォールバック (連番付きのファイル名 stem)。 */
 const toDocId = (relPath: string): string => relPath.replace(/^.*\//, '').replace(/\.md$/, '');
+
+/**
+ * 修飾 ID として書く文字列は frontmatter id を優先する (main 決定、round 3 C4)。ファイル名には
+ * 先頭連番 (`02-tenancy.md`) が付くが、id は連番を持たない kebab-slug (`id: tenancy`) が正典。
+ */
+function qualifierFor(relPath: string, relPathToId: ReadonlyMap<string, string>): string {
+  return relPathToId.get(relPath) ?? toDocId(relPath);
+}
 
 export interface DiffTraceOptions {
   readonly targetRoot: string;
@@ -167,8 +188,10 @@ export class DiffTraceModule {
 
     const docs: DocRecord[] = listMarkdown(this.#docsDir).map((file) => {
       const lines = readFileSync(file, 'utf8').split(/\r?\n/);
-      return { relPath: relative(this.#root, file), kind: readKind(lines), lines };
+      return { relPath: relative(this.#root, file), kind: readKind(lines), id: readId(lines), lines };
     });
+    const relPathToId = new Map<string, string>();
+    for (const doc of docs) if (doc.id !== undefined) relPathToId.set(doc.relPath, doc.id);
 
     // 申告の裏取りは tasks の path 記載に依存する。tasks 文書が無ければ裏取りそのものができない
     // (main 決定 A2)。空の結果を緑にすると「申告は正しい」と誤解させるので exit 2 にする。
@@ -214,7 +237,7 @@ export class DiffTraceModule {
     const impactedReqIds = [...impactedReqTokens].map((token) => {
       const homes = reqHomes.get(token);
       if (homes === undefined || homes.length === 0) return token;
-      if (homes.length === 1) return `${toDocId(homes[0] ?? '')}/${token}`;
+      if (homes.length === 1) return `${qualifierFor(homes[0] ?? '', relPathToId)}/${token}`;
       return token; // 曖昧。missingFromDeclaration/declaredButNotTouched の比較では素のトークンとして扱う
     });
 

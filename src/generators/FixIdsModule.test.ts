@@ -101,29 +101,60 @@ describe('FixIdsModule', () => {
     assert.equal(plan.find((p) => p.file.endsWith('function-list.md')), undefined, JSON.stringify(plan));
   });
 
-  it('負例: 同一行に「空白区切りで修飾済み」と「裸」が両方あるとき、修飾済みの方は壊さない (code-reviewer round 3 C4)', () => {
-    // tenancy.md が REQ-114 を一意に定義する (requirements.md は REQ-001 を定義するので競合しない)
-    writeDoc(root, 'product/tenancy.md', requirementsDoc().replace('id: requirements', 'id: tenancy').replace(/REQ-001/g, 'REQ-114'));
+  it('負例: 同一行に「空白区切りで修飾済み」と「裸」が両方あるとき、修飾済みの方は壊さない (code-reviewer round 3 C4、main 再現 fixture)', () => {
+    // main の再現そのもの: frontmatter id (tenancy) とファイル名 stem (02-tenancy) が食い違う。
+    // requirements.md は REQ-001 を定義するので REQ-114 とは競合しない。
+    writeDoc(root, 'product/02-tenancy.md', requirementsDoc().replace('id: requirements', 'id: tenancy').replace(/REQ-001/g, 'REQ-114'));
     writeDoc(
       root,
       '00-map.md',
       mapDoc().replace(
         '| 下流 | [要件定義書](./product/requirements.md) | — |',
-        '| 下流 | [要件定義書](./product/requirements.md) / [tenancy](./product/tenancy.md) | — |',
+        '| 下流 | [要件定義書](./product/requirements.md) / [tenancy](./product/02-tenancy.md) | — |',
       ),
     );
     writeDoc(
       root,
-      'design/basic/function-list.md',
+      'design/basic/01-function-list.md',
       functionListDoc('。FN-001 tenancy REQ-114 と REQ-114 の両方を参照'),
     );
     const plan = new FixIdsModule({ targetRoot: root, igetaRoot: root }).plan();
-    const hit = plan.find((p) => p.file.endsWith('function-list.md'));
+    const hit = plan.find((p) => p.file.endsWith('01-function-list.md'));
     assert.ok(hit, JSON.stringify(plan));
+    // 期待どおり id (tenancy) で修飾する。stem (02-tenancy) では書かない
     assert.match(hit?.after ?? '', /FN-001 tenancy REQ-114 と tenancy\/REQ-114 の両方を参照/);
-    // 空白区切りで既に修飾済みだった先頭の出現 ("tenancy REQ-114") が "tenancy tenancy/REQ-114" に
-    // 壊れていないこと (二重修飾の再現ケース)
-    assert.doesNotMatch(hit?.after ?? '', /tenancy tenancy\/REQ-114/);
+    // 空白区切りで既に修飾済みだった先頭の出現 ("tenancy REQ-114") が壊れていないこと
+    // (id/stem の食い違いで「未修飾」と誤認し、二重修飾する再現ケース)
+    assert.doesNotMatch(hit?.after ?? '', /tenancy (tenancy|02-tenancy)\/REQ-114/);
+    assert.doesNotMatch(hit?.after ?? '', /02-tenancy\/REQ-114/); // stem 形式では書かない
+  });
+
+  it('負例: id とファイル名 stem が食い違う場合の一般形 (`crosscutting REQ-nnn` 型、code-reviewer round 3 C4)', () => {
+    // frontmatter id: crosscutting、ファイル名 stem: 04-crosscutting という manabi-zone の実例と同じ食い違い
+    writeDoc(
+      root,
+      'product/04-crosscutting.md',
+      requirementsDoc().replace('id: requirements', 'id: crosscutting').replace(/REQ-001/g, 'REQ-201'),
+    );
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace(
+        '| 下流 | [要件定義書](./product/requirements.md) | — |',
+        '| 下流 | [要件定義書](./product/requirements.md) / [crosscutting](./product/04-crosscutting.md) | — |',
+      ),
+    );
+    writeDoc(
+      root,
+      'design/basic/01-function-list.md',
+      functionListDoc('。FN-001 crosscutting REQ-201 と REQ-201 の両方を参照'),
+    );
+    const plan = new FixIdsModule({ targetRoot: root, igetaRoot: root }).plan();
+    const hit = plan.find((p) => p.file.endsWith('01-function-list.md'));
+    assert.ok(hit, JSON.stringify(plan));
+    assert.match(hit?.after ?? '', /FN-001 crosscutting REQ-201 と crosscutting\/REQ-201 の両方を参照/);
+    assert.doesNotMatch(hit?.after ?? '', /crosscutting (crosscutting|04-crosscutting)\/REQ-201/);
+    assert.doesNotMatch(hit?.after ?? '', /04-crosscutting\/REQ-201/);
   });
 
   it('write() は plan() 後にファイルが変わっていたら drifted に積んで書かない (non-blocking N-b)', () => {

@@ -786,6 +786,34 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.deepEqual(result.unambiguousFixes, []); // 既に広義の修飾済みなので fix-ids の対象にもしない
   });
 
+  it('修飾 ID: frontmatter id とファイル名 stem が食い違うとき、修飾は id を使う (code-reviewer round 3 C4)', () => {
+    // main の再現 fixture: frontmatter id は tenancy だが、ファイル名は連番付き 02-tenancy.md
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc({ requirementsLink: '[要件定義書](./product/requirements.md) / [tenancy](./product/02-tenancy.md)' }),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'product/02-tenancy.md', requirementsDoc().replace('id: requirements', 'id: tenancy').replace(/REQ-001/g, 'REQ-114'));
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc().replace(
+        '## 3. カバレッジ確認',
+        'FN-001 tenancy REQ-114 と REQ-114 の両方を参照。\n\n## 3. カバレッジ確認',
+      ),
+    );
+    const { report, result } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    // 裸の 2 回目の出現だけが違反になり、メッセージは id (tenancy) を使う。stem (02-tenancy) では書かない
+    assert.match(report.format(), /他ファイルの ID は修飾 ID \(<doc-id>\/REQ-114\) で参照する: REQ-114 は .*02-tenancy\.md 由来 \(例: tenancy\/REQ-114\)/);
+    assert.doesNotMatch(report.format(), /例: 02-tenancy\/REQ-114/);
+    const fix = result.unambiguousFixes.find((f) => f.token === 'REQ-114');
+    assert.ok(fix, JSON.stringify(result.unambiguousFixes));
+    assert.equal(fix?.homeId, 'tenancy');
+  });
+
   it('修飾 ID: 定義元が 1 件に一意な裸参照は unambiguousFixes に構造化データを積む (non-blocking N-a)', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());

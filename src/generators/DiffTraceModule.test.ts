@@ -89,6 +89,22 @@ describe('DiffTraceModule', () => {
     assert.match(result.cannotCheckReason ?? '', /kind: tasks の文書が無い/);
   });
 
+  it('修飾は frontmatter id を使う。ファイル名の連番 (stem) では書かない (code-reviewer round 3 C4)', () => {
+    writeDoc(root, 'product/02-tenancy.md', ['---', 'id: tenancy', 'kind: requirements', '---', '', '| REQ-114 |', ''].join('\n'));
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      ['---', 'id: function-list', 'kind: function-list', '---', '', '| FN-002 | REQ-114 |', ''].join('\n'),
+    );
+    writeDoc(
+      root,
+      'design/tasks/feature.md',
+      ['---', 'id: tasks-feature', 'kind: tasks', '---', '', '- [ ] T002 [P] [FN-002] 実装する (src/tenancy.ts)', ''].join('\n'),
+    );
+    const result = new DiffTraceModule({ targetRoot: root }).trace(['src/tenancy.ts'], []);
+    assert.deepEqual(result.impactedReqIds, ['tenancy/REQ-114']);
+  });
+
   it('cannotCheck (code-reviewer round 3 C3): docs/ が無ければ裏取りできていない', () => {
     rmSync(join(root, 'docs'), { recursive: true, force: true });
     const result = new DiffTraceModule({ targetRoot: root }).trace([], []);

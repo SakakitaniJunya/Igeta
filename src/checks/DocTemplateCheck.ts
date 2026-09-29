@@ -631,26 +631,43 @@ const inRange = (i: number, [start, end]: readonly [number, number]): boolean =>
 const isExemptRelatedRow = (i: number, relatedRange: readonly [number, number], line: string): boolean =>
   inRange(i, relatedRange) && line.trim().startsWith('|');
 
+/** frontmatter id が無い場合だけのフォールバック (ファイル名から拡張子を外しただけ、連番は残る)。 */
 const toDocId = (relPath: string): string => relPath.replace(/^.*\//, '').replace(/\.md$/, '');
 
 /**
- * トークン直前の語が候補 homeId のいずれかと完全一致するなら「広義の修飾済み」とみなす
- * (code-reviewer round 3 C1)。manabi-zone では `tenancy REQ-114` のように、スラッシュではなく
- * 空白 1 個で doc-id を前置く書き方が多用されている。これを「未修飾」と誤認すると、fix-ids が
- * `tenancy tenancy/REQ-114` のように二重修飾で本文を壊す。検査の判定そのものをここで直す
- * (fix-ids 側だけの対症療法にしない一箇所修正)。
+ * 修飾 ID として書く/認識する文字列。**frontmatter id を優先する** (main 決定、round 3 C4)。
+ * ファイル名には先頭連番 (`02-tenancy.md`) が付くが、id は連番を持たない kebab-slug
+ * (`id: tenancy`) が正典で、並べ替えても安定する。決定台帳も id 形式で書いている。
+ * id が取れない (frontmatter に無い) doc だけファイル名 stem にフォールバックする。
  */
-function isSpaceQualified(line: string, matchIndex: number, homes: readonly string[]): boolean {
+function qualifierFor(relPath: string, relPathToId: ReadonlyMap<string, string>): string {
+  return relPathToId.get(relPath) ?? toDocId(relPath);
+}
+
+/**
+ * トークン直前の語が候補 homeId (frontmatter id **または** ファイル名 stem) のいずれかと完全一致
+ * するなら「広義の修飾済み」とみなす (code-reviewer C1、round 3 C4 で id/stem 両対応に修正)。
+ * manabi-zone では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
+ * 方が多用されている。id と stem の両方を見るのは、既存本文が stem 形式で書かれていても (後方互換)
+ * 誤って未修飾と判定して fix-ids が二重修飾で本文を壊さないようにするため。
+ */
+function isSpaceQualified(
+  line: string,
+  matchIndex: number,
+  homes: readonly string[],
+  relPathToId: ReadonlyMap<string, string>,
+): boolean {
   const before = line.slice(0, matchIndex);
   const precedingWord = /([A-Za-z0-9][A-Za-z0-9-]*)\s+$/.exec(before)?.[1];
   if (precedingWord === undefined) return false;
-  return homes.some((home) => toDocId(home) === precedingWord);
+  return homes.some((home) => precedingWord === relPathToId.get(home) || precedingWord === toDocId(home));
 }
 
 function checkQualifiedIds(
   doc: ResolvedDoc,
   idHomes: ReadonlyMap<string, readonly string[]>,
   idIndexRel: ReadonlyMap<string, string>,
+  relPathToId: ReadonlyMap<string, string>,
   refRegex: RegExp,
   relatedRange: readonly [number, number],
   add: AddViolation,
@@ -675,16 +692,16 @@ function checkQualifiedIds(
         continue;
       }
       if (homes === undefined || homes.includes(doc.relPath)) continue; // 未知の ID、または同一ファイル内
-      if (isSpaceQualified(line, matched.index, homes)) continue; // 広義の修飾済み (C1)
+      if (isSpaceQualified(line, matched.index, homes, relPathToId)) continue; // 広義の修飾済み (C1/C4)
       if (homes.length === 1) {
         const home = homes[0] ?? '';
-        const homeId = toDocId(home);
+        const homeId = qualifierFor(home, relPathToId);
         add(i + 1, `他ファイルの ID は修飾 ID (<doc-id>/${token}) で参照する: ${token} は ${home} 由来 (例: ${homeId}/${token})`);
         addFix(i + 1, matched.index, token, homeId);
       } else {
         // この番号は複数ファイルのローカル採番で独立に使われている (欠陥ではない)。
         // 裸で参照するとどちらの意味か分からないので、修飾 ID でどの文書のものかを明示させる。
-        const examples = homes.map((home) => `${toDocId(home)}/${token}`).join(' か ');
+        const examples = homes.map((home) => `${qualifierFor(home, relPathToId)}/${token}`).join(' か ');
         add(i + 1, `他ファイルの ID は修飾 ID で参照する: ${token} は複数の文書のローカル採番 (${homes.join(', ')}) にあるため、${examples} のどちらかを明示する`);
       }
     }
@@ -905,6 +922,9 @@ export class DocTemplateCheck implements Check {
         idOccurrences.set(id, occurrences);
       }
     }
+    // relPath → frontmatter id の逆引き。修飾 ID を書く/認識するときは id を正とする (round 3 C4)。
+    const relPathToId = new Map<string, string>();
+    for (const [id, relPath] of idIndexRel) relPathToId.set(relPath, id);
 
     const violations: Violation[] = [];
     const unmanaged: string[] = [];
@@ -973,7 +993,7 @@ export class DocTemplateCheck implements Check {
 
     let unambiguousFixes: readonly QualifiedIdFix[] = [];
     if (this.#options.requireHumanReview ?? false) {
-      const layer = this.#analyzeHumanReviewLayer(ctx.targetRoot, resolved, idIndexRel);
+      const layer = this.#analyzeHumanReviewLayer(ctx.targetRoot, resolved, idIndexRel, relPathToId);
       violations.push(...layer.violations);
       unambiguousFixes = layer.fixes;
     }
@@ -992,6 +1012,7 @@ export class DocTemplateCheck implements Check {
     targetRoot: string,
     resolved: readonly ResolvedDoc[],
     idIndexRel: ReadonlyMap<string, string>,
+    relPathToId: ReadonlyMap<string, string>,
   ): { violations: Violation[]; fixes: QualifiedIdFix[] } {
     const violations: Violation[] = [];
     const fixes: QualifiedIdFix[] = [];
@@ -1035,7 +1056,7 @@ export class DocTemplateCheck implements Check {
       const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
       checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
       if (refRegex !== null) {
-        checkQualifiedIds(doc, idHomes, idIndexRel, refRegex, relatedRange, add, (line, column, token, homeId) => {
+        checkQualifiedIds(doc, idHomes, idIndexRel, relPathToId, refRegex, relatedRange, add, (line, column, token, homeId) => {
           fixes.push({ file: doc.relPath, line, column, token, homeId });
         });
       }
