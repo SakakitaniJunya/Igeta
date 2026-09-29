@@ -313,6 +313,7 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   ['implementation-order', null],
   ['document-taxonomy', null],
   ['explanation', null],
+  ['delivery-chapter', null],
   ['runbook', null],
 ]);
 

@@ -58,6 +58,7 @@ const NON_ARC42_KINDS = new Set([
   'document-taxonomy',
   'explanation',
   'runbook',
+  'delivery-chapter',
 ]);
 // 階層の根になれる文書種別 (type / kind のどちらかで判定)。上流も下流も持たなくてよい。
 // 要件定義は全設計書の上流、ADR は決定そのもの、guide / runbook / explanation は横断・独立 (taxonomy §1)。

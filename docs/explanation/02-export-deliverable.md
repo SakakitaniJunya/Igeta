@@ -1,0 +1,85 @@
+---
+id: export-deliverable
+title: igeta export — 提出用 PDF 出力基盤
+type: explanation
+kind: explanation
+status: active
+canonical: true
+owners: [eng]
+created: 2026-09-29
+depends_on: []
+relates_to: [docs-index]
+---
+
+# igeta export — 提出用 PDF 出力基盤
+
+> **TL;DR**: `igeta export` は、章ごとに分けた Markdown を先方提出用の **PDF 1 冊**にまとめる CLI コマンド。
+> - manifest (`deliverable.json`) が章の順序・表紙情報・出力先を持つ。**正 (SoT) は章 Markdown 側**で、PDF は生成物
+> - `forbid` に一致する語 (社内 ID など) が 1 件でもあれば **PDF を 1 つも書かずに落ちる**
+> - Mermaid 図はネットワーク無しでその場で描画する。描画に失敗した図があれば同様に落ちる
+
+## 関連
+
+| 区分 | 文書 | 対応 ID |
+|---|---|---|
+| 上流 (depends_on) | `templates/docs/delivery/` (manifest と章の雛形) | — |
+| 下流 | `src/export/` (実装) / `src/cli/commands/ExportCommand.ts` | — |
+
+## 1. なぜ作ったか
+
+受託開発の設計書は、社内では章ごとの Markdown (Igeta の設計書体系) で管理していても、先方への提出物は
+「1 冊の PDF」を求められることが多い。Markdown を手でコピーして体裁を整える作業は毎回発生し、社内 ID
+(決定番号・要件番号など) を消し忘れて提出してしまう事故も起きる。`export` はこの変換を機械化し、
+**社内 ID の混入を機械で止める**ことを主目的にした。
+
+## 2. deliverable.json の項目
+
+| 項目 | 必須 | 意味 |
+|---|---|---|
+| `title` | ✓ | 表紙の題名。PDF のヘッダにも出る |
+| `subtitle` | — | 表紙の副題。省略可 |
+| `recipient` | ✓ | 表紙に**そのまま**出す宛先。「様」「御中」は自動で付けない (`〇〇株式会社 御中` のように書く) |
+| `issuer` | ✓ | 表紙に出す発行者名 |
+| `version` | ✓ | 表紙に出すバージョン表記 |
+| `date` | ✓ | 表紙に出す日付表記 |
+| `chapters` | ✓ | 束ねる章 Markdown の相対パス配列。**この順に PDF へ並ぶ** |
+| `forbid` | — | 本文に出てはいけない語の正規表現配列 (§3) |
+| `output` | ✓ | 出力先。`.pdf` で終わる相対パス。同じ場所に `.html` も書く |
+
+パスはすべて `deliverable.json` のあるディレクトリを基準に解決する。必須項目の欠落・章ファイルの不在は
+1 件も見逃さず全件まとめてエラーにする (直すたびに 1 回ずつ再実行させない)。
+
+## 3. forbid — 社内 ID の混入防止
+
+`forbid` は正規表現の配列。各章の本文 (frontmatter と `<!-- AUTOGEN -->` 区間を除いた部分) に対して全件
+検査し、1 件でも一致すれば **どのファイルも書かずに** `ファイル:行:語` を全件出して非 0 終了する。
+決定番号・要件番号などの社内 ID 体系を forbid に列挙しておけば、社内向け Markdown をそのまま元に
+書いても提出物に漏れない。
+
+## 4. 出力の見え方
+
+1. **表紙**: `title` / `subtitle` / `recipient` / `issuer` / `version` / `date`
+2. **目次**: 各章の `#`(h1) / `##`(h2) 見出しから自動生成。章の並びは `chapters` の順
+3. **本文**: 章ごとに改ページ。表は罫線付きで、改ページで行が割れないようにする
+4. **Mermaid 図**: ` ```mermaid ` フェンスをその場で図として描画する (CDN 不使用。描画失敗は非 0 終了)
+5. **章間リンク**: `[x](03-flows.md#anchor)` は PDF 内アンカーに書き換わる。`chapters` に無いファイルや
+   外部 URL へのリンクは**リンクを外して文字だけ残し**、標準エラーに警告を出す (提出物に確認できないリンクを残さないため)
+6. **ヘッダ / フッタ**: ヘッダに文書名、フッタにページ番号 (`1 / 12` 形式)
+7. **フォント**: Hiragino Sans → Noto Sans JP → Yu Gothic の順に解決する日本語フォント指定
+
+## 5. 使い方
+
+```bash
+igeta export path/to/deliverable.json          # PDF まで生成する。Chromium が要る
+igeta export path/to/deliverable.json --html-only  # HTML だけ生成する。Chromium 不要
+```
+
+雛形は `templates/docs/delivery/deliverable.json` と `templates/docs/delivery/__chapter__.md`
+(frontmatter `kind: delivery-chapter`。arc42 章を持たない対外文書で、必須節は「関連」のみ。
+`proposal` / `guide` と同列)。
+
+## 6. 制約
+
+- Chromium は `~/Library/Caches/ms-playwright/chromium-*` 等、**既に Playwright が取得済みのもの**を探して使う。
+  見つからなければ `npx playwright install chromium` を案内して非 0 終了する (export 自体はブラウザを取得しない)
+- 章 Markdown 内の画像 (`![]()`) の埋め込みは対象外。Mermaid 図以外の図は事前に画像化して章側で埋め込む運用を想定する

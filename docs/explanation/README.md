@@ -17,5 +17,6 @@ owners: [eng]
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
 - [01-design-doc-standards.md](01-design-doc-standards.md) — **設計書テンプレが参照した外部標準** `explanation` — 設計書の背骨は arc42 12 章。読みやすさの部分 (関連 ID・依存・README 索引) だけ独自に足す。
+- [02-export-deliverable.md](02-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
 
 <!-- AUTOGEN:dir-index:end -->
