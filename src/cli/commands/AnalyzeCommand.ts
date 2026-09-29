@@ -35,6 +35,7 @@ export class AnalyzeCommand extends Command {
     const result = module.analyze();
 
     ctx.stdout(result.markdown);
+    if (result.cannotCheck) return ExitCode.CannotCheck;
     return result.hasCritical ? ExitCode.Violation : ExitCode.Ok;
   }
 }

@@ -1,5 +1,5 @@
 import type { Dirent } from 'node:fs';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 /**
@@ -45,6 +45,8 @@ export interface AnalyzeResult {
   readonly markdown: string;
   readonly findings: readonly AnalyzeFinding[];
   readonly hasCritical: boolean;
+  /** docs/ が無い等、検査自体が成立しない (code-reviewer round 3 C3)。true のとき exit 2 にする */
+  readonly cannotCheck: boolean;
 }
 
 interface DocRecord {
@@ -121,13 +123,27 @@ function collectDefinedIds(docs: readonly DocRecord[], prefix: string): Map<stri
   return homes;
 }
 
-function parseTasks(docs: readonly DocRecord[]): TaskRecord[] {
+interface ParseTasksResult {
+  readonly tasks: readonly TaskRecord[];
+  /** `- [ ]`/`- [x]` のタスク行に見えるが行形式に一致しなかった行 (non-blocking N-c) */
+  readonly parseFailures: readonly { readonly relPath: string; readonly line: number }[];
+}
+
+/** タスク行の見た目 (チェックボックス) はあるが、spec-kit の行形式には一致しない行を検出する */
+const TASK_MARKER_RE = /^-\s*\[[ xX]\]/;
+
+function parseTasks(docs: readonly DocRecord[]): ParseTasksResult {
   const tasks: TaskRecord[] = [];
+  const parseFailures: Array<{ relPath: string; line: number }> = [];
   for (const doc of docs) {
     if (doc.kind !== 'tasks') continue;
     for (let i = 0; i < doc.lines.length; i += 1) {
-      const matched = TASK_LINE_RE.exec((doc.lines[i] ?? '').trim());
-      if (matched === null) continue;
+      const raw = (doc.lines[i] ?? '').trim();
+      const matched = TASK_LINE_RE.exec(raw);
+      if (matched === null) {
+        if (TASK_MARKER_RE.test(raw)) parseFailures.push({ relPath: doc.relPath, line: i + 1 });
+        continue;
+      }
       const [, taskId, refsRaw, description, path] = matched;
       const refs = [...(refsRaw ?? '').matchAll(BRACKET_ID_RE)].map((m) => m[1] ?? '');
       tasks.push({
@@ -140,7 +156,7 @@ function parseTasks(docs: readonly DocRecord[]): TaskRecord[] {
       });
     }
   }
-  return tasks;
+  return { tasks, parseFailures };
 }
 
 function findAmbiguousWords(docs: readonly DocRecord[], words: readonly string[]): AnalyzeFinding[] {
@@ -194,6 +210,17 @@ export class AnalyzeModule {
   }
 
   analyze(): AnalyzeResult {
+    // docs/ が無いのに空の結果を緑で返すと「検査した上で問題無し」に見えてしまう (原則 8 サイレント
+    // 縮退禁止)。検査自体が成立しないので cannot-check (exit 2) にする (code-reviewer round 3 C3)。
+    if (!existsSync(this.#docsDir)) {
+      return {
+        markdown: `# 整合レポート (igeta analyze)\n\nCANNOT-CHECK docs が無い: ${relative(this.#root, this.#docsDir) || this.#docsDir}\n`,
+        findings: [],
+        hasCritical: false,
+        cannotCheck: true,
+      };
+    }
+
     const docs: DocRecord[] = listMarkdown(this.#docsDir).map((file) => {
       const lines = readFileSync(file, 'utf8').split(/\r?\n/);
       return { relPath: relative(this.#root, file), kind: readKind(lines), lines };
@@ -224,7 +251,17 @@ export class AnalyzeModule {
     }
 
     // ① 網羅: FN → タスク、タスク → REQ/FN (ダングリング参照)
-    const tasks = parseTasks(docs);
+    const { tasks, parseFailures } = parseTasks(docs);
+    if (parseFailures.length > 0) {
+      findings.push({
+        id: 'タスク行解析失敗',
+        kind: 'パース失敗',
+        severity: 'warning',
+        location: parseFailures.map((f) => `${f.relPath}:${f.line}`).join(', '),
+        summary: `${parseFailures.length} 件のタスク行がチェックボックスはあるが行形式に一致しない`,
+        recommendation: '`- [ ] T001 [P] [FN-001] 説明 (path)` の形式に直す',
+      });
+    }
     const fnMentionedInTasks = new Set<string>();
     for (const task of tasks) for (const ref of task.refs) fnMentionedInTasks.add(ref);
     for (const [fn, homes] of fnHomes) {
@@ -292,7 +329,7 @@ export class AnalyzeModule {
 
     const hasCritical = findings.some((f) => f.severity === 'critical');
     const coverage = this.#coverageOf(reqHomes, reqMentionedInFn, fnHomes, fnMentionedInTasks, docs);
-    return { markdown: this.#render(findings, coverage), findings, hasCritical };
+    return { markdown: this.#render(findings, coverage), findings, hasCritical, cannotCheck: false };
   }
 
   #coverageOf(

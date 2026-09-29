@@ -137,4 +137,26 @@ describe('AnalyzeModule', () => {
     assert.match(result.markdown, /REQ → FN: 評価対象外/);
     assert.match(result.markdown, /FN → タスク: 評価対象外/);
   });
+
+  it('docs/ が無ければ cannotCheck: true (exit 2 の根拠、サイレント縮退にしない。code-reviewer round 3 C3)', () => {
+    rmSync(join(root, 'docs'), { recursive: true, force: true });
+    const result = new AnalyzeModule({ targetRoot: root }).analyze();
+    assert.equal(result.cannotCheck, true, result.markdown);
+    assert.equal(result.hasCritical, false);
+    assert.equal(result.findings.length, 0);
+    assert.match(result.markdown, /CANNOT-CHECK docs が無い/);
+  });
+
+  it('タスク行のパース失敗は件数を warning として表示する (non-blocking N-c)', () => {
+    writeDoc(
+      root,
+      'design/tasks/feature.md',
+      ['---', 'id: tasks-feature', 'kind: tasks', '---', '', '- [ ] 行形式に一致しないタスク行', ''].join('\n'),
+    );
+    const result = new AnalyzeModule({ targetRoot: root }).analyze();
+    const hit = result.findings.find((f) => f.kind === 'パース失敗');
+    assert.ok(hit, result.markdown);
+    assert.match(hit?.summary ?? '', /1 件/);
+    assert.match(hit?.location ?? '', /design[\\/]tasks[\\/]feature\.md:6/);
+  });
 });
