@@ -582,7 +582,7 @@ function qualifierFor(relPath: string, relPathToId: ReadonlyMap<string, string>)
 /**
  * トークン直前の語が候補 homeId (frontmatter id **または** ファイル名 stem) のいずれかと完全一致
  * するなら「広義の修飾済み」とみなす (code-reviewer C1、round 3 C4 で id/stem 両対応に修正)。
- * manabi-zone では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
+ * ある案件では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
  * 方が多用されている。id と stem の両方を見るのは、既存本文が stem 形式で書かれていても (後方互換)
  * 誤って未修飾と判定して fix-ids が二重修飾で本文を壊さないようにするため。
  */
