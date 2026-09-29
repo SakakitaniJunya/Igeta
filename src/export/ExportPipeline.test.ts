@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 import { findChromiumExecutable } from './Chromium.js';
 import { runExport } from './ExportPipeline.js';
-import { PRINTABLE_HEIGHT_MM } from './PdfLayout.js';
+import { PRINTABLE_HEIGHT_MM, PRINTABLE_WIDTH_MM, mmToPx } from './PdfLayout.js';
 
 const workspaces: string[] = [];
 
@@ -323,6 +323,96 @@ describe('runExport — 縦に長い mermaid 図の高さ上限', () => {
           assert.ok(
             heightMm <= PRINTABLE_HEIGHT_MM + 1,
             `図の高さ ${heightMm}mm が 1 ページの印字可能領域 ${PRINTABLE_HEIGHT_MM}mm を超えている`,
+          );
+        }
+      } finally {
+        await browser.close();
+      }
+    },
+  );
+});
+
+describe('runExport — 表の列幅', () => {
+  const executable = findChromiumExecutable();
+
+  it(
+    '短い 1 列目と長い 3 列の表で、全セルが最小幅以上・表の幅が本文幅以下になる',
+    { skip: executable === null ? 'Chromium キャッシュが見つからない (npx playwright install chromium で用意すると走る)' : false },
+    async () => {
+      const dir = makeWorkspace();
+      const table = [
+        '| 画面 | 空のとき | 読み込み中 | エラーのとき |',
+        '|---|---|---|---|',
+        '| 商品一覧 | この条件に合う商品がありませんと表示する | 商品カードの形をしたプレースホルダーを表示する | 空き状況が取得できない場合も一覧自体は表示を続ける |',
+        '| カート | カートに商品がありませんと表示する | 明細のプレースホルダーを表示する | 空き状況を確認できませんと表示する |',
+      ].join('\n');
+      writeFileSync(join(dir, '00-intro.md'), ['# はじめに', '', table, ''].join('\n'));
+      const manifestPath = join(dir, 'deliverable.json');
+      writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          title: 'T',
+          issuer: 'I',
+          version: '1.0',
+          date: '2026-09-29',
+          chapters: ['00-intro.md'],
+          output: 'out/x.pdf',
+        }),
+      );
+
+      const outcome = await runExport({ manifestPath, htmlOnly: true });
+      assert.equal(outcome.kind, 'ok');
+      if (outcome.kind !== 'ok') return;
+
+      const executablePath = findChromiumExecutable();
+      assert.ok(executablePath !== null);
+      const browser = await chromium.launch({ executablePath, headless: true });
+      try {
+        const page = await browser.newPage();
+        // PdfRenderer.ts と同じビューポート幅 (印字できる本文幅) で読み込む
+        await page.setViewportSize({ width: mmToPx(PRINTABLE_WIDTH_MM), height: 2000 });
+        await page.goto(`file://${outcome.htmlPath}`, { waitUntil: 'load' });
+
+        interface TableMeasurement {
+          readonly bodyWidth: number;
+          readonly tableWidth: number;
+          readonly cellWidths: readonly number[];
+          readonly minWidthPx: number;
+        }
+        interface DomElementLike {
+          getBoundingClientRect(): { width: number };
+          querySelectorAll(selector: string): DomElementLike[];
+        }
+        interface DomWindowLike {
+          document: {
+            querySelector(selector: string): DomElementLike | null;
+            body: { clientWidth: number };
+          };
+          getComputedStyle(el: DomElementLike): { minWidth: string };
+        }
+        const measurement = await page.evaluate<TableMeasurement>(() => {
+          const win = globalThis as unknown as DomWindowLike;
+          const table = win.document.querySelector('table');
+          if (table === null) throw new Error('table が見つからない');
+          const cells = Array.from(table.querySelectorAll('th, td'));
+          const firstCell = cells[0];
+          if (firstCell === undefined) throw new Error('セルが見つからない');
+          return {
+            bodyWidth: win.document.body.clientWidth,
+            tableWidth: table.getBoundingClientRect().width,
+            cellWidths: cells.map((cell) => cell.getBoundingClientRect().width),
+            minWidthPx: parseFloat(win.getComputedStyle(firstCell).minWidth),
+          };
+        });
+
+        assert.ok(
+          measurement.tableWidth <= measurement.bodyWidth + 1,
+          `表の幅 ${measurement.tableWidth}px が本文幅 ${measurement.bodyWidth}px を超えている`,
+        );
+        for (const cellWidth of measurement.cellWidths) {
+          assert.ok(
+            cellWidth >= measurement.minWidthPx - 1,
+            `セルの幅 ${cellWidth}px が最小幅 ${measurement.minWidthPx}px を下回っている`,
           );
         }
       } finally {

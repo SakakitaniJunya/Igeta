@@ -11,6 +11,8 @@ import {
   PDF_MARGIN_LEFT_MM,
   PDF_MARGIN_RIGHT_MM,
   PDF_MARGIN_TOP_MM,
+  PRINTABLE_WIDTH_MM,
+  mmToPx,
 } from './PdfLayout.js';
 
 export class ChromiumNotFoundError extends Error {
@@ -51,6 +53,10 @@ export async function renderPdf(options: PdfRenderOptions): Promise<void> {
   const browser = await chromium.launch({ executablePath, headless: true });
   try {
     const page = await browser.newPage();
+    // ページ内スクリプト (表の自動幅調整など) が「印字できる幅」を基準に判断できるよう、
+    // PDF の本文幅と同じビューポート幅で読み込む。page.pdf() 自体は用紙サイズで独立に
+    // レイアウトし直すが、スクリプトの一度きりの判定はこの時点の幅を見るため合わせておく。
+    await page.setViewportSize({ width: mmToPx(PRINTABLE_WIDTH_MM), height: 2000 });
     await page.goto(`file://${options.htmlPath}`, { waitUntil: 'load' });
     await page.waitForFunction(
       () => (globalThis as unknown as { __mermaidDone__?: boolean }).__mermaidDone__ === true,

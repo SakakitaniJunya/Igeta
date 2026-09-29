@@ -59,8 +59,14 @@ function buildStyle(): string {
   .toc li.level-2 { margin-left: 8mm; font-size: 0.95em; color: #333; }
   .toc a { color: inherit; text-decoration: none; }
   .chapter { page-break-before: always; }
-  table { border-collapse: collapse; width: 100%; margin: 4mm 0; }
-  th, td { border: 1px solid #555; padding: 2mm 3mm; text-align: left; }
+  /*
+   * 表は本文幅を超えない。auto レイアウトのまま th/td に min-width を与えると、
+   * 中身が短い列 (罫線のみで折り返す余地が無い CJK) が 1 文字幅まで潰れるのを防げる。
+   * 列数が多く min-width の合計が本文幅を超えるときは、後段の fitTables() が
+   * table-layout:fixed に切り替えて「表の幅 (本文幅に収まること) > 各列の min-width」を優先する。
+   */
+  table { border-collapse: collapse; width: 100%; max-width: 100%; margin: 4mm 0; table-layout: auto; }
+  th, td { border: 1px solid #555; padding: 2mm 3mm; text-align: left; min-width: 4.5em; overflow-wrap: break-word; }
   tr, table { break-inside: avoid; page-break-inside: avoid; }
   pre, code { font-family: 'SFMono-Regular', Consolas, Menlo, monospace; }
   pre { background: #f5f5f5; padding: ${MERMAID_PADDING_MM}mm; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
@@ -143,6 +149,26 @@ window.__mermaidErrors__ = [];
 })();
 `;
 
+/**
+ * 表の幅を本文幅に収める。auto レイアウト (既定) のままだと、th/td の min-width の
+ * 合計が本文幅を超える表 (列数が多い表) はその分だけ本文幅からはみ出す。
+ * その場合だけ table-layout:fixed に切り替え、列を等分することで表を本文幅に収める
+ * (= 表の幅を優先し、各列の min-width は妥協する)。document.body.clientWidth を本文幅の
+ * 基準にするため、PdfRenderer.ts は PDF の印字幅と同じビューポート幅で読み込む。
+ */
+const TABLE_FIT_SCRIPT = `
+(function () {
+  var tables = document.querySelectorAll('table');
+  var bodyWidth = document.body.clientWidth;
+  for (var i = 0; i < tables.length; i++) {
+    var table = tables[i];
+    if (table.getBoundingClientRect().width > bodyWidth + 1) {
+      table.style.tableLayout = 'fixed';
+    }
+  }
+})();
+`;
+
 export function buildHtmlDocument(options: BuildHtmlOptions): string {
   const { meta, chapters, toc } = options;
   const mermaidJs = readMermaidRuntime();
@@ -161,6 +187,7 @@ export function buildHtmlDocument(options: BuildHtmlOptions): string {
 ${buildCover(meta)}
 ${buildToc(toc)}
 ${chaptersHtml}
+<script>${TABLE_FIT_SCRIPT}</script>
 <script>${mermaidJs}</script>
 <script>${MERMAID_RUNNER_SCRIPT}</script>
 </body>
