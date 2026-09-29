@@ -20,7 +20,7 @@ relates_to: []
   直接参照していないか)。Spec: docs/explanation/07-context-boundaries.md §2
 -->
 
-# まとまりの地図 — <context>
+# まとまりの地図 — <まとまり名>
 
 > **TL;DR**: <このまとまりが何を持つかを 1 文で>
 > - <一番大事な業務価値>

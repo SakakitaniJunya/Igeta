@@ -20,7 +20,7 @@ relates_to: []
   Spec: docs/explanation/07-context-boundaries.md §3
 -->
 
-# まとまりの約束 — <context>
+# まとまりの約束 — <まとまり名>
 
 > **TL;DR**: <このまとまりが他まとまりに提供するものを 1 文で>
 

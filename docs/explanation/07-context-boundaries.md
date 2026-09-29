@@ -46,6 +46,11 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
 | `depends_on` 既定値 | `[map]` (全体地図) |
 | 内容 | このまとまりの概要、含む機能 (REQ 範囲・関わる `feature-brief` へのリンク)、隣接まとまりへの入口 (§3 の約束の 1 枚) |
 
+**地図の網羅 (2 段、`template-check --require-human-review` に相乗り)**: (a) 全体の地図が存在する全部の
+まとまりの地図をリンクしているか (b) まとまりの地図が自分のまとまりの `feature-brief` 全部をリンクしているか
+を見る。既存の「地図が `requirements` を全部リンクしているか」と同じ型。まとまりの地図が 1 枚も無い案件では
+何も起きない (既存案件を赤くしない)。
+
 ## 3. まとまり同士の約束 (`context-contract`)
 
 他のまとまりに見せてよいもの (API・イベント・持っているデータ・用語) だけを書く 1 枚。150 行以内。
@@ -60,23 +65,32 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
 ## 4. 境界の検査 (`context-boundary-check`、既定 OFF)
 
 `context: A` の文書が `context: B` の文書を `depends_on`・本文リンク・修飾 ID で**直接**参照していたら違反にする。
-通すのは次の 2 種だけ:
+通すのは次の 3 種だけ:
 
-1. B の `context-contract` (1 枚)
+1. B の `context-contract` (1 枚。どの context の contract かは問わない — 契約は「外部に見せてよいもの」として
+   書かれている前提のため)
 2. 共有文書 (既定の allowlist: `glossary` / `adr` / `map` / `decision-log` / `document-taxonomy` / `explanation` /
    `guide` / `runbook`。`.igeta.json` の `sharedKinds` で上書き可)
+3. **参照元 (A) 自身が `shared` のとき** (実装で追加。§1 の「無記入 = shared」から導かれる — 全体の地図
+   (`kind: map`、`context` 無記入) が §2 の地図網羅検査で各まとまりの地図へリンクするのを、この検査が
+   矛盾して落とさないようにするため)
 
 ## 5. 量の上限 (`context-size <context>`)
 
 指定した context の**自分の文書 + 参照している隣の `context-contract`** の総行数を出す。`.igeta.json` の
 `contextSizeLimit` (既定値は未設定 = 警告しない。実測が無いうちに数値を決め打ちしない) を超えたら
-「まとまりを分ける合図」として知らせる。既定 OFF、終了コードは Violation (超過時) / Ok。
+「まとまりを分ける合図」として知らせる。既定 OFF、終了コードは Violation (超過時) / Ok / CannotCheck
+(指定した context が存在しない。実装で `context-files` §6 と揃えた)。省略時は全部のまとまりを一覧する。
 
 ## 6. AI が読む一覧 (`context-files <context>`)
 
-指定した context の**自分の文書 + 参照している `context-contract` + 共有文書 (allowlist)** の一覧をパスで出す。
+指定した context の**自分の文書 + 参照している `context-contract` + 共有文書**の一覧をパスで出す。
 AI が作業の最初に呼ぶ想定 (何を読むべきかを毎回自分で数え上げさせない)。終了コードは Ok / CannotCheck
 (context が存在しない)。
+
+**実装で足した絞り込み (設計に無い)**: 共有文書は allowlist 全部を出すと短縮にならない (§7 の狙いに反する)。
+既定では共有のうち `context: shared` の文書に限り、かつ kind が `map` / `glossary` のものだけを出す
+(自分のまとまりの地図は「自分の文書」に既に含まれる)。`--with-shared` で共有文書を全部出す。
 
 ## 7. 規模の試算 (まとまり単位)
 
