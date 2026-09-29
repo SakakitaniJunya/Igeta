@@ -23,7 +23,7 @@
 
 | 提供するもの | 中身 |
 |---|---|
-| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **43 種** |
+| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **44 種** |
 | **検査スクリプト** (`src/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/api-*` / `web-feature`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js) |
 | **ストアスクショの型** (`templates/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
@@ -100,7 +100,7 @@ flowchart LR
 | 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
-43 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+44 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/guides/03-human-review.md)**、
 足した理由は **[人間レビュー層を足した理由](docs/explanation/02-human-review-layer.md)** にある。
 
@@ -134,13 +134,18 @@ npm run docs:graph
 | `npx igeta context-boundary-check` | まとまり (context) の境界 (既定 OFF、[詳細](docs/explanation/07-context-boundaries.md)) | `context: A` の文書が `context: B` (A と違い shared でも B の `context-contract` でもない) の文書を depends_on・本文リンク・修飾 ID で直接参照している |
 | `npx igeta context-size [<context>]` | まとまりの量の上限 (既定 OFF、`.igeta.json` の `contextSizeLimit` 未設定なら無制限) | 指定したまとまり (省略時は全部一覧) の「自分の文書 + 参照している隣の `context-contract`」の総行数が上限を超えている |
 | `npx igeta context-files <context>` | (生成) | AI が読むべきファイル一覧を 1 行 1 パスで出す (既定は共有文書のうち `map`/`glossary`/自分の地図だけ、`--with-shared` で全部、`--json` で JSON 配列) |
+| `npx igeta provenance-capture <chapter> --anchor "<a>" (--from <id>/<token> \| --no-source --reason "<r>") --by <name>` | (生成、[詳細](docs/explanation/04-provenance-and-agreement.md)) | 由来 sidecar (`<章>.provenance.json`) を作る・上書きする。上書きすると承認情報を消す |
+| `npx igeta provenance-accept <chapter> (--anchor "<a>" \| --all) --by <name>` | (生成) | 別の主体が由来を承認する。`capturedBy` と同じ主体は `self-approved` で拒む |
+| `npx igeta provenance-check [<chapter> ...]` | 由来の鮮度 (既定 OFF) | `pending`/`stale`/`orphan`/`orphan-content`/`self-approved`/`source-missing`/`open-stated-as-final` (`needs-recompute` は既定警告、`--strict-normalization` で違反) |
+| `npx igeta provenance-coverage [<chapter> ...]` | 由来の順方向網羅 (既定 OFF) | delivery-chapter の H2 節 (「関連」除く) に由来が 1 件も無い |
+| `npx igeta source-coverage` | 由来の逆方向網羅 (既定 OFF) | 正本の行定義がどの章の由来にも現れない (`clientExempt`/`.igeta.json` の `coverageExemptions` で対象外にできる) |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
 | `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
 | `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (385 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (422 件) |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
 
@@ -161,7 +166,7 @@ npm run docs:graph
 ```text
 Igeta/
 ├── templates/              雛形置き場。パッケージに同梱され、使う人は `node_modules/igeta/templates/` から取る
-│   ├── docs/               設計書の雛形 43 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
+│   ├── docs/               設計書の雛形 44 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
 │   ├── .github/            使う人の .github/ にコピーする雛形 (PR テンプレ)
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
@@ -169,7 +174,7 @@ Igeta/
 ├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
 ├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
-│   ├── checks/             検査 5 種。Check を実装し Violation を返すだけで、exit も print もしない
+│   ├── checks/             検査 6 種。Check を実装し Violation を返すだけで、exit も print もしない
 │   ├── generators/         コード雛形の展開・レビューシートの生成
 │   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ
