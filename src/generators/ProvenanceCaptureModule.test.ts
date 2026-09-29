@@ -96,6 +96,44 @@ describe('capture', () => {
     if (result.kind === 'error') assert.equal(result.violation.severity, 'cannot-check');
   });
 
+  it('検査不能: 同じ見出し (anchor) が章に 2 つ以上あればあいまいとして拒否する', () => {
+    const root = makeRoot();
+    const chapterPath = writeDoc(root, 'delivery/02-reservation.md', [
+      '---', 'id: chapter-1', 'kind: delivery-chapter', 'depends_on: []', '---', '',
+      '# 章', '', '> **TL;DR**: テスト。', '',
+      '## 1. 予約の受付', '', '本文 A。', '',
+      '## 1. 予約の受付', '', '本文 B (見出しが重複)。', '',
+    ]);
+    const result = capture({
+      chapterAbsPath: chapterPath,
+      targetRoot: root,
+      anchor: '1. 予約の受付',
+      source: { kind: 'no-source', reason: 'x' },
+      by: 'agent:writer',
+      sourceIndex: null,
+    });
+    assert.equal(result.kind, 'error');
+    if (result.kind === 'error') {
+      assert.equal(result.violation.severity, 'cannot-check');
+      assert.match(result.violation.message, /あいまい/);
+    }
+  });
+
+  it('capturedBy は正規化して保存する (前後の空白・大文字小文字)', () => {
+    const root = makeRoot();
+    const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines);
+    const result = capture({
+      chapterAbsPath: chapterPath,
+      targetRoot: root,
+      anchor: '1. 予約の受付',
+      source: { kind: 'no-source', reason: 'x' },
+      by: '  Agent:Writer  ',
+      sourceIndex: null,
+    });
+    assert.equal(result.kind, 'ok');
+    if (result.kind === 'ok') assert.equal(result.sidecar.entries[0]?.capturedBy, 'agent:writer');
+  });
+
   it('検査不能: --from が解決できない', () => {
     const root = makeRoot();
     const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines);

@@ -36,7 +36,7 @@ graph LR
   class explanation-index index
   human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
   class human-review-layer explanation
-  provenance-and-agreement["由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)"]
+  provenance-and-agreement["由来・鮮度の形 (delivery-chapter 限定)"]
   class provenance-and-agreement explanation
   human-review-layer ==> audience-layers
   audience-layers ==> context-boundaries
@@ -56,7 +56,13 @@ graph LR
 - **coverage-and-learning** — [由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)](explanation/05-coverage-and-learning.md)
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
-- **provenance-and-agreement** — [由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md)
+- **provenance-and-agreement** — [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md)
+
+## ⚠️ 未解決参照 (warn — Phase 1 で error 昇格予定)
+
+frontmatter の参照先 id が存在しない箇所。ADR 起因は CI block (error)、それ以外は警告として可視化する。
+
+- provenance-and-agreement (docs/explanation/04-provenance-and-agreement.md) .relates_to → "agreement-ledger" が解決できない
 
 ## 孤立ドキュメント (誰からも参照されていない)
 

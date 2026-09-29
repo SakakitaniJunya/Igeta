@@ -35,12 +35,12 @@ const chapterLines = [
   '## 1. 予約の受付', '', '本文 1。', '',
 ];
 
-function run(root: string): { report: Report; violations: readonly Violation[] } {
+function run(root: string): { report: Report; violations: readonly Violation[]; warnings: readonly string[] } {
   const check = new SourceCoverageCheck();
   const violations = check.run({ targetRoot: root, igetaRoot: root });
   const report = new Report();
   report.addAll(violations);
-  return { report, violations };
+  return { report, violations, warnings: check.warnings };
 }
 
 describe('SourceCoverageCheck', () => {
@@ -102,6 +102,25 @@ describe('SourceCoverageCheck', () => {
     writeDoc(root, 'delivery/02-reservation.md', chapterLines);
     const { report } = run(root);
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('違反: 行頭に ID の定義を持つのに frontmatter に id が無い文書は違反にする', () => {
+    const root = makeRoot();
+    writeDoc(root, 'requirements.md', [
+      '---', 'kind: requirements', 'depends_on: []', '---', '', '# 要件', '',
+      '| REQ-114 | 予約は 30 日前まで受け付ける |',
+    ]);
+    const { report } = run(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /frontmatter に id が無く、REQ-114 を由来から参照する手段が無い/);
+  });
+
+  it('警告のみ: 行定義を持たない文書は id が無くても違反にせず warnings に出す', () => {
+    const root = makeRoot();
+    writeDoc(root, 'explanation/background.md', ['---', 'kind: explanation', 'depends_on: []', '---', '', '# 背景', '', '本文だけ。']);
+    const { report, warnings } = run(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.match(warnings.join('\n'), /id が無いため対象外にした文書が 1 件.*explanation[\\/]background\.md/);
   });
 
   it('検査不能: docs が無い', () => {

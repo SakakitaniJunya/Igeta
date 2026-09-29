@@ -1,6 +1,6 @@
 ---
 id: provenance-and-agreement
-title: 由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)
+title: 由来・鮮度の形 (delivery-chapter 限定)
 type: explanation
 kind: explanation
 status: active
@@ -8,22 +8,22 @@ canonical: true
 owners: [product, eng]
 created: 2026-09-30
 depends_on: [audience-layers]
-relates_to: [coverage-and-learning]
+relates_to: [coverage-and-learning, agreement-ledger]
 ---
 
-# 由来・鮮度・顧客との合意台帳の形 (delivery-chapter 限定)
+# 由来・鮮度の形 (delivery-chapter 限定)
 
-> **TL;DR**: 由来・鮮度・合意台帳は既存 kind **`delivery-chapter`** (提出物の章、PR #11) **だけ**に課す。
+> **TL;DR**: 由来・鮮度は既存 kind **`delivery-chapter`** (提出物の章、PR #11) **だけ**に課す。
 > 由来は本文に書かず **sidecar** (`<章>.provenance.json`) に置き、既定粒度は **H2 節** (表の行は任意)。
 > 鮮度は保存した状態を信用せず都度 SHA256 で再計算し、`self-approved`/`orphan` も違反にする。
-> 合意は `docs/delivery/<提出物名>/agreements.ledger.jsonl` (追記のみ)。
+> 顧客との合意台帳は [別紙](./08-agreement-ledger.md) に分けた (04 の行数上限のため)。
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [読み手別の入口](./03-audience-layers.md) | — |
-| 下流 | [網羅・学習](./05-coverage-and-learning.md) / `templates/docs/delivery/__chapter__.md` | — |
+| 下流 | [網羅・学習](./05-coverage-and-learning.md) / [合意台帳](./08-agreement-ledger.md) / `templates/docs/delivery/__chapter__.md` | — |
 
 ## 1. 由来 (provenance) の形 — 本文の外のどちらにするか
 
@@ -99,52 +99,44 @@ relates_to: [coverage-and-learning]
 
 1. 改行コードを `\n` に統一 (CRLF→LF)
 2. 各行の行末の空白を除去
-3. 連続する空白 (全角スペース含む) を単一の半角スペースに畳む
-4. 表の区切り線 (`|---|---|` 相当) はセル幅の整形にすぎないので固定文字列に正規化し、セル内容前後の空白は trim する
+3. 連続する空白 (全角スペース含む) を単一の半角スペースに畳む。**コードフェンスの中は対象外**
+4. 表の区切り線 (`|---|---|` 相当) はセル幅の整形にすぎないので固定文字列に正規化し、セル内容前後の空白は trim する。**コードフェンスの中は対象外**
 5. 全角・半角の文字そのもの (かな漢字英数記号) は変換しない (意味が変わる可能性があるため。3 の空白だけを正規化する)
+
+**実装で追加 (3・4)**: コードフェンスの中は字下げ・空白がそのまま意味を持つ内容 (コード例) なので、3・4 の
+畳み込み・整形を適用しない (適用すると字下げの違う別内容が同じ指紋になってしまう。code-reviewer round 1
+blocker 1)。フェンスの中も改行コード統一・行末空白除去 (1・2) は適用する。この修正で
+`normalizationVersion` を 2 に上げた。
 
 正規化ルールを変えたら `normalizationVersion` を上げる。既存エントリは一斉に `stale` へは落とさず、
 `needs-recompute` (既定は警告のみ) にして段階的に `provenance-capture` を再実行させる。
 
-## 7. 顧客との合意台帳
-
-`docs/delivery/<提出物名>/agreements.ledger.jsonl` (追記のみ、JSON Lines)。
-
-```jsonl
-{"event":"export","version":"1.2.0","date":"2026-09-30","chapters":[{"file":"02-reservation.md","sources":[{"from":"reservation-flow/REQ-114","fingerprint":"sha256:3b1e...c9"}]}]}
-{"event":"approve","targetVersion":"1.2.0","approvedBy":"発注側の責任者","approvedAt":"2026-10-02"}
-```
-
-`export` は既存 `ExportCommand` に `--record-agreement` を足して成功時に追記。`agreement-approve` は人が押す。
-`agreement-check` は最新の approve が指す版の `sources` を今の正本で再計算し、`.igeta.json` の `reagreementRules`
-(kind + 節単位まで) に当たる変更を「再合意が要る」として一覧する。
-
-## 8. CLI 一覧 (フラットな名前)
+## 7. CLI 一覧 (フラットな名前、由来の分)
 
 | コマンド | 種別 | 終了コード |
 |---|---|---|
 | `provenance-capture <file> --anchor "<a>" (--from <id>/<token> \| --no-source --reason "<reason>") --by <name>` | 生成 | Ok / CannotCheck |
-| `provenance-accept <file> (--anchor "<a>" \| --all) --by <name>` | 生成 | Ok / **Violation** (`self-approved` を拒んだとき) / CannotCheck |
+| `provenance-accept <file> (--anchor "<a>" \| --all) --by <name>` | 生成 | Ok / **Violation** (`self-approved` を拒んだとき、または一部が承認できなかったとき) / CannotCheck |
 | `provenance-check [<file> ...] [--strict-normalization]` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
 | `provenance-coverage [<file> ...]` | 検査 (既定 OFF、順方向) | Ok / Violation / CannotCheck |
 | `source-coverage` | 検査 (既定 OFF、逆方向) | Ok / Violation / CannotCheck |
-| `agreement-approve <version> --by <name>` | 生成 | Ok / CannotCheck |
-| `agreement-check` | 検査 (既定 OFF) | Ok / Violation / CannotCheck |
-| `export --record-agreement` | 既存 flag 追加 (PR #11 merge 後) | 既存 `export` の終了コードに従う |
 
 **実装で変えた点**: `--captured-by`/`--exempt` は `--by`/`--no-source --reason` にした (`provenance-accept`
-の `--by` と揃え、「由来なし宣言」を `--no-source` で明示する)。`agreement-*`/`--record-agreement` は
-次の実装対象 (今回は作らない)。
+の `--by` と揃え、「由来なし宣言」を `--no-source` で明示する)。合意台帳・`--record-agreement` の CLI は
+[別紙](./08-agreement-ledger.md) に分けた。
 
-## 9. 確定した前提・前提修正
+## 8. 確定した前提・前提修正
 
 - 決定 ID: 3 桁形式を標準のまま。`DEC-\d{3}` が日付入り ID (`DEC-YYYYMMDD-NN`) に部分一致する誤検出を前提修正として直す (適用手順は [別紙](./05-coverage-and-learning.md))
-- 再合意の判定粒度: kind + 節単位まで (列単位は持たない)
 - **`open-stated-as-final` の判定 (05 §8 手順 3、実装で明記)**: 章の frontmatter `status` が
   `fixed`/`accepted` (確定を主張) **かつ**、`from` の解決先の `status` が `fixed`/`accepted` でない
-  **または**解決先に `OPEN-nnn` の参照がある (正本が未決) の両方を満たしたときだけ違反にする
+  (**未設定も含む**。code-reviewer round 1 blocker 2) **または**解決先に `OPEN-nnn` の参照がある
+  (正本が未決) の両方を満たしたときだけ違反にする
 
-## 10. 限界
+## 9. 限界
 
 - `orphan-content`/`self-approved` は機械で防げるが、承認は「押した」ことしか記録しない。値の正しさそのものは見抜けない
 - `needs-recompute` を既定で警告のみにしたのは正規化変更時の一斉違反を避けるためだが、放置すれば陳腐化した指紋が残り続ける (運用で `--strict-normalization` へ切り替える判断が要る)
+- self-approved の比較は前後の空白除去・大文字小文字統一・Unicode NFKC 正規化までは行うが、**別名 (同じ主体が
+  違う名乗りをする、例: `reviewer@example.com` と `reviewer` を同じ人が使う) は機械で見抜けない**
+  (code-reviewer round 1 blocker 3)

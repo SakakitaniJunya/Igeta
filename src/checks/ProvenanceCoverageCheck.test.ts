@@ -71,6 +71,19 @@ describe('ProvenanceCoverageCheck', () => {
     assert.match(report.format(), /2\. ご挨拶/);
   });
 
+  it('違反: 同じ章に同じ見出し (anchor) が 2 つ以上あれば違反にする', () => {
+    const root = makeRoot();
+    writeDoc(root, 'delivery/02-reservation.md', [
+      '---', 'id: chapter-1', 'kind: delivery-chapter', 'depends_on: []', '---', '',
+      '# 章', '', '> **TL;DR**: テスト。', '',
+      '## 1. 予約の受付', '', '本文 A。', '',
+      '## 1. 予約の受付', '', '本文 B (見出しが重複)。', '',
+    ]);
+    const { report } = run(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /見出し \(anchor\) が章に 2 件重複している: 1\. 予約の受付/);
+  });
+
   it('正例: delivery-chapter 以外は対象にならない (chapter が 0 件)', () => {
     const root = makeRoot();
     writeDoc(root, 'requirements.md', ['---', 'id: x', 'kind: requirements', 'depends_on: []', '---', '', '# x']);

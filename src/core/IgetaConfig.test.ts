@@ -115,7 +115,7 @@ describe('loadIgetaConfig', () => {
     assert.ok('violation' in result, JSON.stringify(result));
   });
 
-  it('CannotCheck: --config で明示した場所が無い (省略時の既定値フォールバックと違う。code-reviewer round 1 blocker 1)', () => {
+  it('CannotCheck: --config で明示した場所が無い (省略時の既定値フォールバックと違う)', () => {
     const root = makeRoot();
     const result = loadIgetaConfig(root, join(root, 'nonexistent.json'));
     assert.ok('violation' in result, JSON.stringify(result));

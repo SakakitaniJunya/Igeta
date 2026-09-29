@@ -91,6 +91,19 @@ describe('accept', () => {
     assert.equal(sidecar.sidecar.entries[0]?.acceptedBy, undefined);
   });
 
+  it('拒否: 前後の空白・大文字小文字だけ違う同一主体も self-approved になる', () => {
+    const { root, chapterPath, chapterRelPath } = setup(); // capturedBy: 'agent:writer'
+    const result = accept({
+      chapterAbsPath: chapterPath,
+      chapterRelPath,
+      target: { kind: 'anchor', anchor: '1. 予約の受付' },
+      by: '  Agent:Writer  ',
+      sourceIndex: buildSourceIndex(root, join(root, 'docs')),
+    });
+    assert.equal(result.violations.length, 1);
+    assert.match(result.violations[0]?.message ?? '', /self-approved/);
+  });
+
   it('--all: 複数件を一括で accept できる', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     // 2 件目 (由来なし宣言) を足す

@@ -19,6 +19,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { normalizeActor } from '../core/ActorName.js';
 import { findDeliveryChapters, extractDeliveryBlocks } from '../core/DeliveryBlocks.js';
 import type { DeliveryBlock } from '../core/DeliveryBlocks.js';
 import { computeFingerprint, CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
@@ -51,9 +52,14 @@ export interface EntryEvaluation {
   readonly detail?: string;
 }
 
+/**
+ * 正本が未決かどうか。status が無い (未設定) 場合も未決に含める — 「確定していると明示していない」
+ * ことと「未決」を区別しない (status: fixed/accepted を明示していない限り未決扱いにする。
+ * code-reviewer round 1 blocker 2、旧実装は status が無いとこの条件が素通りしていた)。
+ */
 function isSourceUnresolved(resolution: ReturnType<typeof resolveSource>): boolean {
   if (resolution.kind === 'missing') return true;
-  return (resolution.doc.status !== null && !FINAL_STATUSES.has(resolution.doc.status)) || OPEN_REF_RE.test(resolution.text);
+  return resolution.doc.status === null || !FINAL_STATUSES.has(resolution.doc.status) || OPEN_REF_RE.test(resolution.text);
 }
 
 function evaluateEntry(
@@ -69,7 +75,7 @@ function evaluateEntry(
     const resolution = sourceIndex === null ? { kind: 'missing' as const } : resolveSource(sourceIndex, entry.from);
     if (resolution.kind === 'missing') return { anchor: entry.anchor, state: 'source-missing' };
     if (entry.acceptedBy === undefined) return { anchor: entry.anchor, state: 'pending' };
-    if (entry.acceptedBy === entry.capturedBy) return { anchor: entry.anchor, state: 'self-approved' };
+    if (entry.acceptedBy !== undefined && normalizeActor(entry.acceptedBy) === normalizeActor(entry.capturedBy)) return { anchor: entry.anchor, state: 'self-approved' };
     if (isSourceUnresolved(resolution) && chapterStatus !== null && FINAL_STATUSES.has(chapterStatus)) {
       return { anchor: entry.anchor, state: 'open-stated-as-final' };
     }
@@ -81,7 +87,7 @@ function evaluateEntry(
   }
 
   if (entry.acceptedBy === undefined) return { anchor: entry.anchor, state: 'pending' };
-  if (entry.acceptedBy === entry.capturedBy) return { anchor: entry.anchor, state: 'self-approved' };
+  if (entry.acceptedBy !== undefined && normalizeActor(entry.acceptedBy) === normalizeActor(entry.capturedBy)) return { anchor: entry.anchor, state: 'self-approved' };
   if (entry.normalizationVersion !== CURRENT_NORMALIZATION_VERSION) return { anchor: entry.anchor, state: 'needs-recompute' };
   if (computeFingerprint(block.text) !== entry.blockFingerprint) return { anchor: entry.anchor, state: 'orphan-content' };
   return { anchor: entry.anchor, state: 'ok' };
@@ -133,6 +139,27 @@ export class ProvenanceCheck {
         violations.push({ severity: 'cannot-check', message: extracted.message });
         continue;
       }
+
+      // 同じ見出し (anchor) が章に 2 つ以上あると、1 エントリで両方が「網羅済み」になってしまう
+      // (anchor は文字列一致でしか塊を特定できないため)。sidecar の有無に関わらず検査する
+      // (code-reviewer round 1 blocker 5、provenance-coverage と同じ判定)。
+      const linesByAnchor = new Map<string, number[]>();
+      for (const block of extracted.blocks) {
+        const lines = linesByAnchor.get(block.anchor) ?? [];
+        lines.push(block.line);
+        linesByAnchor.set(block.anchor, lines);
+      }
+      for (const [anchor, lines] of linesByAnchor) {
+        if (lines.length > 1) {
+          violations.push({
+            severity: 'violation',
+            file: chapterRelPath,
+            line: lines[0],
+            message: `見出し (anchor) が章に ${lines.length} 件重複している: ${anchor} (行 ${lines.join(', ')}。見出しを変えて区別する)`,
+          });
+        }
+      }
+
       const sidecarResult = readSidecar(chapterAbsPath);
       if (sidecarResult.kind === 'invalid') {
         violations.push(sidecarResult.violation);

@@ -42,6 +42,26 @@ export class ProvenanceCoverageCheck {
         violations.push({ severity: 'cannot-check', message: extracted.message });
         continue;
       }
+      // 同じ見出し (anchor) が章に 2 つ以上あると、sidecar の 1 エントリが両方を「網羅済み」に
+      // してしまう (anchor は文字列一致でしか塊を特定できないため)。見出しを変えて区別させる
+      // (code-reviewer round 1 blocker 5)。
+      const linesByAnchor = new Map<string, number[]>();
+      for (const block of extracted.blocks) {
+        const lines = linesByAnchor.get(block.anchor) ?? [];
+        lines.push(block.line);
+        linesByAnchor.set(block.anchor, lines);
+      }
+      for (const [anchor, lines] of linesByAnchor) {
+        if (lines.length > 1) {
+          violations.push({
+            severity: 'violation',
+            file: chapterRelPath,
+            line: lines[0],
+            message: `見出し (anchor) が章に ${lines.length} 件重複している: ${anchor} (行 ${lines.join(', ')}。見出しを変えて区別する)`,
+          });
+        }
+      }
+
       const sidecarResult = readSidecar(chapterAbsPath);
       if (sidecarResult.kind === 'invalid') {
         violations.push(sidecarResult.violation);

@@ -6,6 +6,7 @@
 // 問題でも他の解決できるエントリはそのまま accept して書き込む (全か無かにしない)。
 
 import { readFileSync } from 'node:fs';
+import { normalizeActor } from '../core/ActorName.js';
 import { extractDeliveryBlocks } from '../core/DeliveryBlocks.js';
 import { computeFingerprint, CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
 import type { ProvenanceEntry } from '../core/ProvenanceSidecar.js';
@@ -51,10 +52,14 @@ export function accept(request: AcceptRequest): AcceptResult {
   const violations: Violation[] = [];
   const accepted: string[] = [];
   const acceptedAt = (request.now ?? new Date()).toISOString().slice(0, 10);
+  const by = normalizeActor(request.by);
   const updated = new Map<string, ProvenanceEntry>();
 
   for (const entry of targets) {
-    if (entry.capturedBy === request.by) {
+    // 前後の空白・大文字小文字・全角半角の書式の違いだけで self-approved の判定が揺れないよう、
+    // 比較の前に両方を同じ正規化にかける (code-reviewer round 1 blocker 3)。別名 (同じ主体の
+    // 別の名乗り) は機械で見抜けない (04-provenance-and-agreement.md §9)。
+    if (normalizeActor(entry.capturedBy) === by) {
       violations.push({
         severity: 'violation',
         message: `self-approved: ${entry.anchor} は capturedBy (${entry.capturedBy}) と同じ主体で accept できない`,
@@ -70,7 +75,7 @@ export function accept(request: AcceptRequest): AcceptResult {
       updated.set(entry.anchor, {
         ...entry,
         blockFingerprint: computeFingerprint(block.text),
-        acceptedBy: request.by,
+        acceptedBy: by,
         acceptedAt,
         normalizationVersion: CURRENT_NORMALIZATION_VERSION,
       });
@@ -89,7 +94,7 @@ export function accept(request: AcceptRequest): AcceptResult {
     updated.set(entry.anchor, {
       ...entry,
       fingerprint: computeFingerprint(resolution.text),
-      acceptedBy: request.by,
+      acceptedBy: by,
       acceptedAt,
       normalizationVersion: CURRENT_NORMALIZATION_VERSION,
     });

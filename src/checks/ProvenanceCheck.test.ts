@@ -36,9 +36,9 @@ const chapterLines = (heading = '1. 予約の受付'): string[] => [
   `## ${heading}`, '', '予約は 30 日前まで受け付ける。', '',
 ];
 
-function requirementsDoc(row = '予約は 30 日前まで受け付ける', status = 'draft'): string[] {
+function requirementsDoc(row = '予約は 30 日前まで受け付ける', status: string | null = 'draft'): string[] {
   return [
-    '---', 'id: reservation-flow', 'kind: requirements', `status: ${status}`, 'depends_on: []', '---', '', '# 要件', '',
+    '---', 'id: reservation-flow', 'kind: requirements', ...(status === null ? [] : [`status: ${status}`]), 'depends_on: []', '---', '', '# 要件', '',
     `| REQ-114 | ${row} |`,
   ];
 }
@@ -212,6 +212,25 @@ describe('ProvenanceCheck', () => {
     assert.match(report.format(), /open-stated-as-final/);
   });
 
+  it('違反: open-stated-as-final (正本に status が無い場合も未決に含める)', () => {
+    const root = makeRoot();
+    const chapterLinesFixed = [
+      '---', 'id: chapter-1', 'kind: delivery-chapter', 'status: fixed', 'depends_on: []', '---', '',
+      '# 章', '', '> **TL;DR**: テスト。', '',
+      '## 1. 予約の受付', '', '予約は 30 日前まで受け付ける。', '',
+    ];
+    const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLinesFixed);
+    // status を frontmatter に書かない (未設定)
+    writeDoc(root, 'requirements.md', requirementsDoc('予約は 30 日前まで受け付ける', null));
+    const sourceIndex1 = buildSourceIndex(root, join(root, 'docs'));
+    capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex: sourceIndex1 });
+    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
+
+    const { report } = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /open-stated-as-final/);
+  });
+
   it('正例: sidecar が 1 つも無い既存案件では何も赤くならない (opt-in)', () => {
     const root = makeRoot();
     writeDoc(root, 'delivery/02-reservation.md', chapterLines());
@@ -224,5 +243,18 @@ describe('ProvenanceCheck', () => {
     writeDoc(root, 'requirements.md', requirementsDoc());
     const { report } = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('違反: 同じ章に同じ見出し (anchor) が 2 つ以上あれば違反にする (sidecar の有無に関わらず)', () => {
+    const root = makeRoot();
+    writeDoc(root, 'delivery/02-reservation.md', [
+      '---', 'id: chapter-1', 'kind: delivery-chapter', 'depends_on: []', '---', '',
+      '# 章', '', '> **TL;DR**: テスト。', '',
+      '## 1. 予約の受付', '', '本文 A。', '',
+      '## 1. 予約の受付', '', '本文 B (見出しが重複)。', '',
+    ]);
+    const { report } = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /見出し \(anchor\) が章に 2 件重複している: 1\. 予約の受付/);
   });
 });

@@ -31,4 +31,22 @@ describe('computeFingerprint', () => {
   it('全角・半角の文字そのものは変換しない (連続する空白だけを正規化する)', () => {
     assert.notEqual(normalizeForFingerprint('３０日'), normalizeForFingerprint('30日'));
   });
+
+  it('コードフェンスの中は字下げの違いで指紋が変わる', () => {
+    const a = ['```ts', 'function f() {', '  return 1;', '}', '```'].join('\n');
+    const b = ['```ts', 'function f() {', '    return 1;', '}', '```'].join('\n');
+    assert.notEqual(computeFingerprint(a), computeFingerprint(b));
+  });
+
+  it('コードフェンスの外の整形 (連続する空白・表の列幅) は指紋を変えない', () => {
+    const a = ['```ts', 'const  x = 1;', '```', '', '本文  の  整形。'].join('\n');
+    const b = ['```ts', 'const  x = 1;', '```', '', '本文 の 整形。'].join('\n');
+    assert.equal(computeFingerprint(a), computeFingerprint(b));
+  });
+
+  it('コードフェンスの中でも行末の空白・改行コードの違いは指紋に影響しない', () => {
+    const a = '```\r\ncode  \r\n```\r\n';
+    const b = '```\ncode\n```\n';
+    assert.equal(computeFingerprint(a), computeFingerprint(b));
+  });
 });
