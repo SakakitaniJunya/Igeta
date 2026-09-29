@@ -49,7 +49,9 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
 **地図の網羅 (2 段、`template-check --require-human-review` に相乗り)**: (a) 全体の地図が存在する全部の
 まとまりの地図をリンクしているか (b) まとまりの地図が自分のまとまりの `feature-brief` 全部をリンクしているか
 を見る。既存の「地図が `requirements` を全部リンクしているか」と同じ型。まとまりの地図が 1 枚も無い案件では
-何も起きない (既存案件を赤くしない)。
+何も起きない (既存案件を赤くしない)。**まとまりの地図が 1 枚以上ある案件では、`context` 無記入の
+`feature-brief` はどのまとまりの地図からも求められず素通りしてしまうため、「未割り当て」として違反にする**
+(実装で追加。code-reviewer round 1 non-blocking 3)。
 
 ## 3. まとまり同士の約束 (`context-contract`)
 
@@ -71,9 +73,15 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
    書かれている前提のため)
 2. 共有文書 (既定の allowlist: `glossary` / `adr` / `map` / `decision-log` / `document-taxonomy` / `explanation` /
    `guide` / `runbook`。`.igeta.json` の `sharedKinds` で上書き可)
-3. **参照元 (A) 自身が `shared` のとき** (実装で追加。§1 の「無記入 = shared」から導かれる — 全体の地図
-   (`kind: map`、`context` 無記入) が §2 の地図網羅検査で各まとまりの地図へリンクするのを、この検査が
-   矛盾して落とさないようにするため)
+3. **参照元 (A) の `context` が `shared` かつ kind も共有の kind (`sharedKinds`) のとき** (実装で追加。
+   §1 の「無記入 = shared」から導かれる — 全体の地図 (`kind: map`、`context` 無記入) が §2 の地図網羅
+   検査で各まとまりの地図へリンクするのを、この検査が矛盾して落とさないようにするため)。**kind 条件を
+   必ず添える** — `context` を書き忘れただけの任意の kind の文書まで境界検査を丸ごと免れると、検査が
+   機能しなくなる (code-reviewer round 1 non-blocking 2)
+
+`context` 無記入・kind も共有でない文書 (**未割り当て**) は上記 3. の例外に当たらず、参照元として検査
+対象のまま (免除しない)。移行の進み具合が分かるよう、件数・一覧を検査の `warnings` (非 blocking、違反
+にはしない) に出す。
 
 ## 5. 量の上限 (`context-size <context>`)
 
@@ -115,3 +123,6 @@ AI が作業の最初に呼ぶ想定 (何を読むべきかを毎回自分で数
 - allowlist (`sharedKinds`) の初期値は実例からの起点ではなく既存 kind 一覧からの類推。運用で見直しが要る
 - `context-contract` の「見せてよいもの」の妥当性は機械では判定しない (書いた人の自己申告)
 - まとまりの分割・統合 (境界を引き直す) の手順は今回書いていない。§7 の実測ができてから設計する
+- docs を歩く処理 (`buildContextGraph` 等) はシンボリックリンクをそのまま辿る。既存 2 検査
+  (`docs-graph`/`template-check`) と同じ型の既知の限界で、この検査だけを直す話ではないため今回は
+  見送る (code-reviewer round 1、全体で直す話は別作業とする)

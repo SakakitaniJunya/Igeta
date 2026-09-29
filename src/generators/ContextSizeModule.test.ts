@@ -79,4 +79,18 @@ describe('ContextSizeModule', () => {
     assert.equal(result.violations.length, 1);
     assert.equal(result.violations[0]?.severity, 'cannot-check');
   });
+
+  it('複数の文書が同じ隣の約束を参照しても二重に数えない (code-reviewer round 1 non-blocking 6)', () => {
+    // reservation の 2 文書 (既存の requirements.md に加えてもう 1 本) が両方とも
+    // 同じ payment/contract.md を参照する。行数は 1 回分しか足されないこと。
+    writeDoc(root, 'contexts/reservation/flow.md', [
+      '---', 'id: reservation-flow', 'kind: business-flow', 'context: reservation', 'depends_on: []', '---', '',
+      '# 予約フロー', '', '[決済の約束](../payment/contract.md) を参照する (2 本目の参照)。',
+    ]);
+    const result = new ContextSizeModule({ targetRoot: root }).analyze('reservation');
+    const entry = result.entries[0];
+    assert.ok(entry, JSON.stringify(result));
+    const contractFiles = entry.files.filter((f) => f.relPath.endsWith('contexts/payment/contract.md'));
+    assert.equal(contractFiles.length, 1, JSON.stringify(entry.files));
+  });
 });

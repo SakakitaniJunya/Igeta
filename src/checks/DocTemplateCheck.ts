@@ -15,7 +15,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
-import { readContext } from '../core/Context.js';
+import { readContext, SHARED_CONTEXT } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
@@ -1016,6 +1016,20 @@ export class DocTemplateCheck implements Check {
             line: 1,
           });
         }
+      }
+    }
+    // まとまりの地図が 1 枚以上ある案件では、context 無記入の feature-brief はどのまとまりの地図からも
+    // 求められずに素通りしてしまう (code-reviewer round 1 non-blocking 3)。「未割り当て」として違反にする。
+    if (contextMapDocs.length > 0) {
+      for (const brief of resolved) {
+        if (brief.kind !== 'feature-brief') continue;
+        if (readContext(brief.kind, brief.meta.data) !== SHARED_CONTEXT) continue;
+        violations.push({
+          severity: 'violation',
+          message: '未割り当て: feature-brief に context が無記入 (まとまりの地図がある案件では context を指定する)',
+          file: brief.relPath,
+          line: 1,
+        });
       }
     }
 

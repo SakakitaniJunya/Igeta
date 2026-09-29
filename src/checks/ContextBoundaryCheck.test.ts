@@ -23,12 +23,12 @@ function writeDoc(root: string, relPath: string, lines: readonly string[]): void
   writeFileSync(target, `${lines.join('\n')}\n`);
 }
 
-function run(root: string): { report: Report; violations: readonly Violation[] } {
+function run(root: string): { report: Report; violations: readonly Violation[]; warnings: readonly string[] } {
   const check = new ContextBoundaryCheck();
   const violations = check.run({ targetRoot: root, igetaRoot: root });
   const report = new Report();
   report.addAll(violations);
-  return { report, violations };
+  return { report, violations, warnings: check.warnings };
 }
 
 after(() => {
@@ -115,6 +115,52 @@ describe('ContextBoundaryCheck', () => {
     writeDoc(root, 'contexts/payment/requirements.md', [
       '---', 'id: payment-requirements', 'kind: requirements', 'context: payment', 'depends_on: []', '---', '',
       '# 決済要件', '', '| REQ-001 | 内容 |',
+    ]);
+    const { report } = run(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /別のまとまり \(payment\)/);
+  });
+
+  it('違反: 未割り当て (context 無記入・共有 kind でもない) の文書が別まとまりの内部を参照したら違反にする (code-reviewer round 1 non-blocking 2)', () => {
+    // requirements は sharedKinds の既定に無い。context も無記入 (shared) なので、
+    // 旧実装 (参照元が shared なら無条件で免除) だと検査を丸ごと免れてしまっていた。
+    writeDoc(root, 'product/requirements.md', [
+      '---', 'id: requirements', 'kind: requirements', 'depends_on: []', '---', '',
+      '# 要件定義書', '', '[決済の内部要件](../contexts/payment/requirements.md) を直接参照する。',
+    ]);
+    writeDoc(root, 'contexts/payment/requirements.md', [
+      '---', 'id: payment-requirements', 'kind: requirements', 'context: payment', 'depends_on: []', '---', '',
+      '# 決済要件',
+    ]);
+    const { report, warnings } = run(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /別のまとまり \(payment\) の文書を直接参照している/);
+    assert.match(warnings.join('\n'), /未割り当て.*1 件.*product[\\/]requirements\.md/);
+  });
+
+  it('正例: 未割り当ての文書同士 (どちらも context 無記入) は違反にしない。warnings に両方出す', () => {
+    writeDoc(root, 'product/requirements.md', [
+      '---', 'id: requirements', 'kind: requirements', 'depends_on: []', '---', '',
+      '# 要件定義書', '', '[機能一覧](../design/function-list.md) を参照。',
+    ]);
+    writeDoc(root, 'design/function-list.md', [
+      '---', 'id: function-list', 'kind: function-list', 'depends_on: []', '---', '',
+      '# 機能一覧',
+    ]);
+    const { report, warnings } = run(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.match(warnings.join('\n'), /未割り当て.*2 件/);
+  });
+
+  it('違反: depends_on だけによる境界違反 (本文リンクが無くても検出する)', () => {
+    writeDoc(root, 'contexts/reservation/requirements.md', [
+      '---', 'id: reservation-requirements', 'kind: requirements', 'context: reservation',
+      'depends_on: [payment-requirements]', '---', '',
+      '# 予約要件',
+    ]);
+    writeDoc(root, 'contexts/payment/requirements.md', [
+      '---', 'id: payment-requirements', 'kind: requirements', 'context: payment', 'depends_on: []', '---', '',
+      '# 決済要件',
     ]);
     const { report } = run(root);
     assert.equal(report.exitCode, ExitCode.Violation, report.format());

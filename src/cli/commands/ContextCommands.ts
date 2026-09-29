@@ -57,8 +57,12 @@ export class ContextSizeCommand extends Command {
 
     const report = new Report();
     report.addAll(result.violations);
-    if (report.isEmpty && result.entries.length > 0) ctx.stdout(`OK ${this.name}`);
-    if (!report.isEmpty) ctx.stderr(report.format());
+    if (report.isEmpty) {
+      // 対象 0 件のまま無言で exit 0 にしない (code-reviewer round 1 non-blocking 5)。
+      ctx.stdout(result.entries.length > 0 ? `OK ${this.name}` : `OK ${this.name} (対象のまとまりが無い)`);
+    } else {
+      ctx.stderr(report.format());
+    }
     return report.exitCode;
   }
 }

@@ -157,7 +157,8 @@ function contextMapDoc({ id = 'reservation-map', context = 'reservation', briefL
 
 interface FeatureBriefDocOptions {
   readonly id?: string;
-  readonly context?: string;
+  /** null なら context フィールド自体を省く (未割り当てのテスト用) */
+  readonly context?: string | null;
 }
 
 // kind: feature-brief の必須節をすべて満たす最小 doc (templates/docs/product/features/__feature__.md 相当)
@@ -166,7 +167,7 @@ function featureBriefDoc({ id = 'reservation-flow', context = 'reservation' }: F
     '---',
     `id: ${id}`,
     'kind: feature-brief',
-    `context: ${context}`,
+    ...(context === null ? [] : [`context: ${context}`]),
     'depends_on: []',
     '---',
     '',
@@ -803,6 +804,31 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
     writeDoc(root, 'product/features/payment-flow.md', featureBriefDoc({ id: 'payment-flow', context: 'payment' }));
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('地図の網羅の2段化 (b): context 無記入の feature-brief は「未割り当て」として違反にする (まとまりの地図が 1 枚以上あるとき、code-reviewer round 1 non-blocking 3)', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    writeDoc(root, 'product/features/unassigned-flow.md', featureBriefDoc({ id: 'unassigned-flow', context: null }));
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /未割り当て: feature-brief に context が無記入/);
+    assert.match(report.format(), /product[\\/]features[\\/]unassigned-flow\.md/);
+  });
+
+  it('地図の網羅の2段化 (b): まとまりの地図が 1 枚も無ければ context 無記入の feature-brief でも違反にしない (既存案件を赤くしない)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'product/features/unassigned-flow.md', featureBriefDoc({ id: 'unassigned-flow', context: null }));
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
