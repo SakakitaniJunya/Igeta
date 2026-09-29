@@ -391,6 +391,54 @@ describe('DocGraphCheck の決定台帳 AUTOGEN (仮置き一覧)', () => {
     assert.equal(result.status, 0, result.detail);
   });
 
+  it('負例: 引用「」内の「仮置き」は台帳に集めない (template-check の判定と一致させる、code-reviewer 実バグ #2)', async () => {
+    writeDoc(root, 'product/requirements.md', [
+      '---', 'id: requirements', 'title: 要件定義書', 'type: design', 'kind: requirements', 'arc42: 1',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 要件定義書', '', '前版は「仮置き」と書かれていたが、正式値に更新した。', '',
+    ]);
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
+    const index = readFileSync(join(root, 'docs', '01-decisions.md'), 'utf8');
+    assert.match(index, /_該当なし_/, index);
+  });
+
+  it('負例: 否定直後の「仮置き」は台帳に集めない (template-check の判定と一致させる、code-reviewer 実バグ #2)', async () => {
+    writeDoc(root, 'product/requirements.md', [
+      '---', 'id: requirements', 'title: 要件定義書', 'type: design', 'kind: requirements', 'arc42: 1',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 要件定義書', '', 'この値は仮置きではない。', '',
+    ]);
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
+    const index = readFileSync(join(root, 'docs', '01-decisions.md'), 'utf8');
+    assert.match(index, /_該当なし_/, index);
+  });
+
+  it('負例: HTML コメント内の「仮置き」は台帳に集めない (template-check の判定と一致させる、code-reviewer 実バグ #2)', async () => {
+    writeDoc(root, 'product/requirements.md', [
+      '---', 'id: requirements', 'title: 要件定義書', 'type: design', 'kind: requirements', 'arc42: 1',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 要件定義書', '', '<!-- 著者向けの注記: 仮置きで30日とする例を書く予定 -->', '',
+    ]);
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
+    const index = readFileSync(join(root, 'docs', '01-decisions.md'), 'utf8');
+    assert.match(index, /_該当なし_/, index);
+  });
+
+  it('正例: 否定の decoy を先に置いても後続の本物の仮置きは拾う (round 3 C2 と同じ判定)', async () => {
+    writeDoc(root, 'product/requirements.md', [
+      '---', 'id: requirements', 'title: 要件定義書', 'type: design', 'kind: requirements', 'arc42: 1',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 要件定義書', '', '前者は仮置きではないが、後者は仮置きで30日とする (OPEN-001)。', '',
+    ]);
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
+    const index = readFileSync(join(root, 'docs', '01-decisions.md'), 'utf8');
+    assert.match(index, /OPEN-001/, index);
+  });
+
   it('正例: 他文書の AUTOGEN 索引 (ADR 一覧の title 列など) に「仮置き」が写っても仮置き一覧に拾わない (code-reviewer 実バグ #2)', async () => {
     // ADR のタイトルに「仮置き」が入っていると、docs-graph --write が adr/README.md の
     // AUTOGEN:adr-index 区間へそのタイトルを写す。この索引行は他文書の要約の引用であって、
@@ -433,5 +481,22 @@ describe('DocGraphCheck の決定台帳 AUTOGEN (仮置き一覧)', () => {
     assert.equal(afterFirstWrite, afterSecondWrite);
     const result = await run(root, 'check');
     assert.equal(result.status, 0, result.detail);
+  });
+
+  it('正例: 決定台帳が docs/ 直下以外にあっても仮置き一覧のリンクが正しい相対パスになる (code-reviewer 実バグ #3)', async () => {
+    // 決定台帳を docs/governance/01-decisions.md に置く。以前は「docs/ を剥がすだけ」で
+    // href を作っていたため、決定台帳自身のディレクトリからの相対パスにならず、
+    // docs/governance/product/requirements.md という存在しないパスを指すリンクになっていた。
+    rmSync(join(root, 'docs', '01-decisions.md'));
+    writeDoc(root, 'governance/01-decisions.md', decisionLog());
+    const result = await run(root, 'write');
+    assert.equal(result.status, 0, result.detail);
+    const index = readFileSync(join(root, 'docs', 'governance', '01-decisions.md'), 'utf8');
+    const hrefMatch = /\|\s*OPEN-001\s*\|\s*\[docs\/product\/requirements\.md:\d+\]\(([^)]+)\)/.exec(index);
+    assert.ok(hrefMatch, `仮置き一覧の行が見つからない:\n${index}`);
+    const href = (hrefMatch?.[1] ?? '').replace(/#L\d+$/, '');
+    assert.equal(href, '../product/requirements.md', index);
+    // リンクが実際に実在するファイルへ解決することも確認する (リンク切れ検出)
+    assert.ok(existsSync(join(root, 'docs', 'governance', href)), `リンクが解決できない: docs/governance/${href}`);
   });
 });

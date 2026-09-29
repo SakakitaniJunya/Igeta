@@ -17,7 +17,9 @@ import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
-import { collectRowDefinedTokens, makeAutogenTracker } from '../core/IdDefinitions.js';
+import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
+import type { LineKind } from '../core/LineClassifier.js';
+import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
@@ -66,29 +68,6 @@ const TENTATIVE_MARK = '仮置き';
  */
 const FINAL_STATUSES = new Set(['fixed', 'accepted']);
 const OPEN_ID_RE = /OPEN-\d{3}/;
-
-// 決定帰属・仮置きの誤検出対策 (code-reviewer B2)。
-// 「」『』内に完全に収まる語は引用 (置き換え前の表記の引用・訂正の記録) であって現在の主張ではない。
-// 語の直後の否定・伝聞は「そう主張していない」ことの表明なので除外する。
-const NEGATION_TAIL_RE = /^(ではな(い|かった)|でな(い|かった)|していな(い|かった)|しなかった|せず)/;
-const HEARSAY_TAIL_RE = /^.{0,4}と(書かれてい|書いてあっ|記載されてい|言われてい)/;
-
-/** index が「」『』の対で開いた引用の内側かどうか (深さ 1 以上)。 */
-function isQuotedAt(line: string, index: number): boolean {
-  let depth = 0;
-  for (let i = 0; i < index; i += 1) {
-    const ch = line[i];
-    if (ch === '「' || ch === '『') depth += 1;
-    else if (ch === '」' || ch === '』') depth = Math.max(0, depth - 1);
-  }
-  return depth > 0;
-}
-
-/** keywordEnd 直後が否定・伝聞の言い回しなら true (主張ではないので除外する)。 */
-function isNegatedOrHearsayAfter(line: string, keywordEnd: number): boolean {
-  const tail = line.slice(keywordEnd, keywordEnd + 16);
-  return NEGATION_TAIL_RE.test(tail) || HEARSAY_TAIL_RE.test(tail);
-}
 
 /**
  * 「他ファイルの ID は修飾 ID で参照する」違反のうち、定義元が 1 件に一意に決まるもの (=機械的に
@@ -140,6 +119,8 @@ interface ResolvedDoc {
   readonly meta: Frontmatter;
   readonly kind: string;
   readonly template: TemplateEntry;
+  /** lines の行ごとの分類 (autogen / html-comment / code-fence / body)。checkDoc 時点で 1 回だけ計算する */
+  readonly kinds: readonly LineKind[];
 }
 
 interface PathSlot {
@@ -413,6 +394,7 @@ function checkIds(
   bodyStart: number,
   data: FrontmatterData,
   template: TemplateEntry,
+  kinds: readonly LineKind[],
   add: AddViolation,
 ): void {
   if (template.idPattern === 'class-name') {
@@ -426,8 +408,6 @@ function checkIds(
   // bare-numeric = T001 形式 (spec-kit の tasks)。既定は PREFIX-nnn。
   const bare = template.idPattern === 'bare-numeric';
   let count = 0;
-  const inFence = makeFenceTracker();
-  const inComment = makeCommentTracker();
   for (const prefix of template.idPrefixes) {
     const pattern = bare
       ? new RegExp(`\\b${prefix}\\d[0-9A-Za-z_-]*`, 'g')
@@ -444,10 +424,10 @@ function checkIds(
       return suffix !== undefined && /[nx]/.test(suffix);
     };
     for (let i = bodyStart; i < lines.length; i += 1) {
+      // AUTOGEN・HTML コメント・コードフェンスは本文の主張ではないので検査対象外にする
+      // (code-reviewer 実バグ #4 系。写された行 (AUTOGEN) を台帳が責められないようにする)。
+      if (kinds[i] !== 'body') continue;
       const line = lines[i] ?? '';
-      const fenced = inFence(line);
-      const commented = inComment(line); // HTML コメント内の例示は主張ではない (code-reviewer 実バグ #4 系)
-      if (fenced || commented) continue;
       for (const token of line.match(pattern) ?? []) {
         if (isPlaceholder(token)) continue;
         count += 1;
@@ -502,20 +482,11 @@ function checkDecisionLogRows(lines: readonly string[], bodyStart: number, add: 
 }
 
 /** doc 本文の行数。<!-- AUTOGEN --> 区間 (生成される仮置き一覧など) は上限の外に置く。 */
-function countCheckableLines(lines: readonly string[]): number {
+function countCheckableLines(lines: readonly string[], kinds: readonly LineKind[]): number {
   let total = lines.length;
   if (lines[lines.length - 1] === '') total -= 1; // 末尾の改行 1 個は行数に数えない
-  let inAutogen = false;
-  for (const line of lines) {
-    if (/<!--\s*AUTOGEN[A-Za-z:-]*:start/.test(line)) {
-      inAutogen = true;
-      continue;
-    }
-    if (/<!--\s*AUTOGEN[A-Za-z:-]*:end/.test(line)) {
-      inAutogen = false;
-      continue;
-    }
-    if (inAutogen) total -= 1;
+  for (const kind of kinds) {
+    if (kind === 'autogen') total -= 1;
   }
   return total;
 }
@@ -534,26 +505,6 @@ function makeFenceTracker(): (line: string) => boolean {
       return true; // フェンス行自体は対象外
     }
     return fence !== null;
-  };
-}
-
-/**
- * HTML コメント (`<!-- ... -->`、複数行にまたがる場合を含む) の中を判定するトグル。コードフェンスと
- * 同様、コメント内の記述 (著者向けの注記・記入例) は本文の主張ではないので検査対象外にする
- * (code-reviewer 実バグ #10)。フェンスと同じ行単位の粒度: コメントの開始/終了を含む行自体も
- * 対象外にする。
- */
-function makeCommentTracker(): (line: string) => boolean {
-  let inComment = false;
-  return (line: string): boolean => {
-    if (inComment) {
-      if (line.includes('-->')) inComment = false;
-      return true;
-    }
-    const startIdx = line.indexOf('<!--');
-    if (startIdx === -1) return false;
-    if (line.indexOf('-->', startIdx + 4) === -1) inComment = true;
-    return true;
   };
 }
 
@@ -653,23 +604,15 @@ function checkQualifiedIds(
   relPathToId: ReadonlyMap<string, string>,
   refRegex: RegExp,
   relatedRange: readonly [number, number],
+  kinds: readonly LineKind[],
   add: AddViolation,
   addFix: (line: number, column: number, token: string, homeId: string) => void,
 ): void {
-  const inFence = makeFenceTracker();
-  const inComment = makeCommentTracker();
-  const inAutogen = makeAutogenTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    // AUTOGEN・HTML コメント・コードフェンスは手で書いた本文の主張ではないので検査対象外にする
+    // (code-reviewer 実バグ #1/#10)。分類は 1 か所 (classifyLines) に統一する。
+    if (kinds[i] !== 'body') continue;
     const line = doc.lines[i] ?? '';
-    // 3 つのトグルは必ず全部この行を見せてから判定する。AUTOGEN の開始/終了マーカーは単行の
-    // HTML コメントでもあるため、inComment の continue を先にすると inAutogen が
-    // その行を見られず、区間の状態が更新されない (code-reviewer 実バグ #1 の再発防止)。
-    const fenced = inFence(line);
-    const commented = inComment(line); // HTML コメント内の例示は主張ではない (code-reviewer 実バグ #10)
-    // AUTOGEN 区間 (決定台帳の「仮置き一覧」等) は他文書の行をそのまま写す索引で、手で書いた
-    // 本文の主張ではない (code-reviewer 実バグ #1)
-    const autogen = inAutogen(line);
-    if (fenced || commented || autogen) continue;
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     for (const matched of line.matchAll(refRegex)) {
       const docIdPart = matched[1];
@@ -717,48 +660,17 @@ function checkQualifiedIds(
  * まで確定を名乗れない。関連の対応 ID 列を含め本文全体を見る (未決が残っているかどうかが論点で、
  * 引用・関連の区別は関係ない)。
  */
-function checkAcceptedGate(doc: ResolvedDoc, add: AddViolation): void {
+function checkAcceptedGate(doc: ResolvedDoc, kinds: readonly LineKind[], add: AddViolation): void {
   if (doc.kind !== 'requirements' && doc.kind !== 'feature-brief') return;
   const status = scalar(doc.meta.data, 'status');
   if (status === undefined || !FINAL_STATUSES.has(status)) return;
-  const inFence = makeFenceTracker(); // コードフェンス内の例示は主張ではない (non-blocking N-d)
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    if (kinds[i] !== 'body') continue; // コードフェンス等の例示は主張ではない (non-blocking N-d)
     const line = doc.lines[i] ?? '';
-    if (inFence(line)) continue;
     const open = line.match(OPEN_ID_RE)?.[0];
     if (open !== undefined) {
       add(i + 1, `status: ${status} だが ${open} を参照している (未決の関門。解決してから確定にする)`);
     }
-  }
-}
-
-/**
- * 行内の**全出現**を独立に判定する (code-reviewer round 3 C2)。以前は最初のマッチだけを見ていたため、
- * 「CEOが決定ではないという説もあるが、実務上はCEOが決定した」のように否定の decoy を先に置くと、
- * 後続の本物の主張を見逃していた。パターンごとに matchAll で全出現を回し、1 件でも
- * 引用・否定・伝聞でないものがあれば「主張がある」と判定する。
- */
-function hasValidAttribution(line: string, patterns: readonly RegExp[]): boolean {
-  for (const pattern of patterns) {
-    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-    const global = new RegExp(pattern.source, flags);
-    for (const matched of line.matchAll(global)) {
-      const index = matched.index;
-      if (index === undefined) continue;
-      if (!isQuotedAt(line, index) && !isNegatedOrHearsayAfter(line, index + matched[0].length)) return true;
-    }
-  }
-  return false;
-}
-
-/** 「仮置き」の全出現を独立に判定する (同じ理由で C2)。 */
-function hasValidTentativeMark(line: string): boolean {
-  let from = 0;
-  for (;;) {
-    const index = line.indexOf(TENTATIVE_MARK, from);
-    if (index === -1) return false;
-    if (!isQuotedAt(line, index) && !isNegatedOrHearsayAfter(line, index + TENTATIVE_MARK.length)) return true;
-    from = index + TENTATIVE_MARK.length;
   }
 }
 
@@ -767,6 +679,7 @@ function checkDecisionAttribution(
   idHomes: ReadonlyMap<string, readonly string[]>,
   patterns: readonly RegExp[],
   relatedRange: readonly [number, number],
+  kinds: readonly LineKind[],
   add: AddViolation,
 ): void {
   // decision-log・adr・human-review (この検査自身を解説するガイド) は語彙として
@@ -775,18 +688,15 @@ function checkDecisionAttribution(
   // 違って本文全体が「OPEN-nnn」「DEC-nnn」という**placeholder 記法の解説**であり、実在の決定・
   // 仮置きへの言及ではない (code-reviewer 実バグ #5)。
   if (doc.kind === 'decision-log' || doc.kind === 'adr' || doc.kind === 'human-review') return;
-  const inFence = makeFenceTracker();
-  const inAutogen = makeAutogenTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
-    const line = doc.lines[i] ?? '';
-    if (inFence(line)) continue;
     // AUTOGEN 区間は他文書の行をそのまま写す索引で、手で書いた本文の主張ではない
-    // (code-reviewer 実バグ #1)
-    if (inAutogen(line)) continue;
+    // (code-reviewer 実バグ #1)。分類は 1 か所 (classifyLines) に統一する。
+    if (kinds[i] !== 'body') continue;
+    const line = doc.lines[i] ?? '';
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
 
-    if (hasValidAttribution(line, patterns)) {
+    if (hasLiveMatch(line, patterns)) {
       const dec = line.match(/DEC-\d{3}/)?.[0];
       if (dec === undefined) {
         add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
@@ -795,7 +705,7 @@ function checkDecisionAttribution(
       }
     }
 
-    if (hasValidTentativeMark(line)) {
+    if (hasLiveOccurrence(line, TENTATIVE_MARK)) {
       const open = line.match(/OPEN-\d{3}/)?.[0];
       if (open === undefined) {
         add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
@@ -834,6 +744,7 @@ function checkDoc(
   template: TemplateEntry,
   idIndex: ReadonlyMap<string, string>,
   requireKind: boolean,
+  kinds: readonly LineKind[],
 ): Violation[] {
   const violations: Violation[] = [];
   const { data, bodyStart } = meta;
@@ -854,7 +765,7 @@ function checkDoc(
   }
 
   checkRelated(lines, sections, bodyStart, add);
-  checkIds(lines, bodyStart, data, template, add);
+  checkIds(lines, bodyStart, data, template, kinds, add);
 
   if (template.kind === 'requirements') checkEars(lines, bodyStart, add);
   if (template.kind === 'decision-log') checkDecisionLogRows(lines, bodyStart, add);
@@ -862,7 +773,7 @@ function checkDoc(
   checkArc42(template.kind, data, add, requireKind);
 
   if (template.lineLimit !== null) {
-    const total = countCheckableLines(lines);
+    const total = countCheckableLines(lines, kinds);
     if (total > template.lineLimit) {
       add(1, `行数上限 (${template.lineLimit}) を超えている: ${total} 行`);
     }
@@ -986,8 +897,9 @@ export class DocTemplateCheck implements Check {
         continue;
       }
       checkedCount += 1;
-      violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind));
-      resolved.push({ relPath, file, lines, meta, kind, template });
+      const kinds = classifyLines(lines);
+      violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind, kinds));
+      resolved.push({ relPath, file, lines, meta, kind, template, kinds });
     }
 
     if (requireKind) {
@@ -1064,13 +976,13 @@ export class DocTemplateCheck implements Check {
       const add: AddViolation = (line, message) =>
         violations.push({ severity: 'violation', message, file: doc.relPath, line });
       const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
-      checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
+      checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, doc.kinds, add);
       if (refRegex !== null) {
-        checkQualifiedIds(doc, idHomes, idIndexRel, relPathToId, refRegex, relatedRange, add, (line, column, token, homeId) => {
+        checkQualifiedIds(doc, idHomes, idIndexRel, relPathToId, refRegex, relatedRange, doc.kinds, add, (line, column, token, homeId) => {
           fixes.push({ file: doc.relPath, line, column, token, homeId });
         });
       }
-      checkAcceptedGate(doc, add);
+      checkAcceptedGate(doc, doc.kinds, add);
     }
 
     return { violations, fixes };
