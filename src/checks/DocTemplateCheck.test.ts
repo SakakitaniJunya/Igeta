@@ -678,6 +678,26 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.match(report.format(), /DEC-999 が決定台帳に無い/);
   });
 
+  it('前提修正: 日付入り決定 ID (DEC-20260917-02) の先頭 3 桁が実在の DEC-nnn へ部分一致しない (誤検出防止)', () => {
+    // DEC-202 を本物の決定として台帳に登録した状態で、別文書が日付入りの原文表記
+    // (DEC-20260917-02、移行元案件の旧 ID 形式) を引用しても「DEC-202 への言及」と誤認してはいけない。
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(
+      root,
+      '01-decisions.md',
+      decisionLogDoc({ decRows: '| DEC-202 | 2026-09-17 | CEO | 青色でいく | 青色申告を継続する | requirements.md |' }),
+    );
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace('> **TL;DR**: 要件。', '> **TL;DR**: 要件。CEO が決定した (DEC-20260917-02)。'),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /決定の帰属を主張しているが DEC-nnn の参照が無い/);
+    assert.doesNotMatch(report.format(), /DEC-202 が決定台帳に無い/);
+  });
+
   it('決定の帰属: kind: adr 自身は除外する (code-reviewer B1、ADR の Decision 節を誤検出しない)', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
@@ -845,6 +865,24 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     );
     const ok = check(root, { requireHumanReview: true });
     assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
+  });
+
+  it('前提修正: 日付入り未決 ID (OPEN-20260917-02) の先頭 3 桁が実在の OPEN-nnn へ部分一致しない (誤検出防止)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(
+      root,
+      '01-decisions.md',
+      decisionLogDoc({ openRows: '| OPEN-202 | 猶予日数 | 30日 | 30日 | requirements.md |' }),
+    );
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace('| REQ-001 | 内容 |', '| REQ-001 | 内容 |\n\n仮置きで30日とする (OPEN-20260917-02)。'),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /「仮置き」に OPEN-nnn の参照が無い/);
+    assert.doesNotMatch(report.format(), /OPEN-202 が決定台帳に無い/);
   });
 
   it('仮置き: AUTOGEN の仮置き一覧 (索引) にしか無い OPEN は「決定台帳に無い」扱いになる (code-reviewer 実バグ #3)', () => {
@@ -1237,6 +1275,23 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
       requirementsDoc()
         .replace('kind: requirements', 'kind: requirements\nstatus: fixed')
         .replace('| REQ-001 | 内容 |', ['| REQ-001 | 内容 |', '', '```', '例: OPEN-001 のような書き方をしない', '```'].join('\n')),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('前提修正: 未決の関門は日付入り ID (OPEN-20260917-02) を未決の OPEN-nnn 参照と誤認しない', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc()
+        .replace('kind: requirements', 'kind: requirements\nstatus: fixed')
+        .replace(
+          '| REQ-001 | 内容 |',
+          '| REQ-001 | 内容 |\n\n旧システムの参照番号は OPEN-20260917-02 だった (未決事項ではない)。',
+        ),
     );
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());

@@ -591,7 +591,9 @@ async function collectTentativeMarks(
         file: relative(root, f),
         line: i + 1,
         text: line.trim(),
-        openRef: line.match(/OPEN-\d{3}/)?.[0] ?? null,
+        // 3 桁の直後に数字・ハイフン+数字が続くものは部分一致させない (前提修正。日付入り ID
+        // `OPEN-20260917-02` の先頭 3 桁を実在の OPEN-nnn に誤認しない。03-audience-layers.md §7)
+        openRef: line.match(/OPEN-\d{3}(?!\d)(?!-\d)/)?.[0] ?? null,
       });
     }
   }

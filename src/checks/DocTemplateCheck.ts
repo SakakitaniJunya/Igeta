@@ -67,7 +67,10 @@ const TENTATIVE_MARK = '仮置き';
  * accepted は spec-kit の語彙・将来 kind が使う可能性のある値として合わせて見る。
  */
 const FINAL_STATUSES = new Set(['fixed', 'accepted']);
-const OPEN_ID_RE = /OPEN-\d{3}/;
+// 3 桁の直後に数字・ハイフン+数字が続くものは 3 桁 ID として扱わない (前提修正。日付入り ID
+// `DEC-20260917-02`/`OPEN-20260917-02` — 移行元案件の旧 ID 形式の原文引用 — の先頭 3 桁を実在の
+// 3 桁 ID に部分一致させない。03-audience-layers.md §7)。
+const OPEN_ID_RE = /OPEN-\d{3}(?!\d)(?!-\d)/;
 
 /**
  * 「他ファイルの ID は修飾 ID で参照する」違反のうち、定義元が 1 件に一意に決まるもの (=機械的に
@@ -698,7 +701,8 @@ function checkDecisionAttribution(
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
 
     if (hasLiveMatch(line, patterns)) {
-      const dec = line.match(/DEC-\d{3}/)?.[0];
+      // 3 桁の直後に数字・ハイフン+数字が続くものは部分一致させない (前提修正、OPEN_ID_RE と同じ理由)
+      const dec = line.match(/DEC-\d{3}(?!\d)(?!-\d)/)?.[0];
       if (dec === undefined) {
         add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
       } else if (!idHomes.has(dec)) {
@@ -707,7 +711,7 @@ function checkDecisionAttribution(
     }
 
     if (hasLiveOccurrence(line, TENTATIVE_MARK)) {
-      const open = line.match(/OPEN-\d{3}/)?.[0];
+      const open = line.match(OPEN_ID_RE)?.[0];
       if (open === undefined) {
         add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
       } else if (!idHomes.has(open)) {
