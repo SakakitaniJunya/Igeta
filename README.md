@@ -70,12 +70,18 @@
 11. **1 文書は読み切れる長さ**
     冒頭に `> **TL;DR**` (手順書は `> **When to use**`) を必須とし、1 文書 200 行 (ADR 150 行 / 手順書・タスク 100 行) を上限にする。超えたら分割する。
 
+### 読み手 — 人の入口と機械の正本を分ける
+
+12. **人の入口と機械の正本を分ける**
+    原則 11 を守っても、文書群が数十枚に増えれば人は全部を読めない。**地図 (`docs/00-map.md`) と決定台帳 (`docs/01-decisions.md`) だけを人間の入口**にし、要件・設計の本体 (L1/L2) は実装者・AI が読む正本として変えない。人の決定 (`DEC-nnn`) と仮置き (`OPEN-nnn`) は台帳に集め、他ファイルの ID は `<doc-id>/PREFIX-nnn` の修飾形式で参照する — ローカル採番の ID を裸で持ち出すと、どのファイルの ID か分からなくなるため。
+
 <!-- markdownlint-enable MD029 -->
 
 ## 文書体系
 
 ```mermaid
 flowchart LR
+  M["人間の入口<br/>00-map.md + 01-decisions.md"] -.-> R
   R["要件定義<br/>product/"] --> B["基本設計<br/>design/basic/"]
   B --> D["詳細設計<br/>design/detail/"]
   D --> T["テスト<br/>design/test/"]
@@ -86,6 +92,7 @@ flowchart LR
 
 | 日本の工程 | arc42 の章 | 置き場所 |
 |---|---|---|
+| 人間の入口 (地図・決定台帳) | arc42 の外側 | `docs/00-map.md` / `docs/01-decisions.md` (原則 12) |
 | 要件定義 | §1 導入と目標 / §2 制約 | `docs/product/` (機能要件は [EARS](https://alistairmavin.com/ears/) 記法) |
 | 基本設計 (外部設計) | §3 コンテキスト / §4 解決戦略 / §5 上位 (画面・API・テーブル) / §7 配置 | `docs/design/basic/` |
 | 詳細設計 (内部設計) | §5 下位 (ドメイン・モジュール) / §6 実行時ビュー / §8 横断概念 | `docs/design/detail/` |
@@ -94,6 +101,8 @@ flowchart LR
 | 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
 
 39 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/guides/03-human-review.md)**、
+足した理由は **[人間レビュー層を足した理由](docs/explanation/02-human-review-layer.md)** にある。
 
 ## はじめかた
 
@@ -119,13 +128,15 @@ npm run docs:graph
 
 | コマンド | 検査内容 | 落ちる条件 |
 |---|---|---|
-| `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 |
-| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 |
+| `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 / 行数上限超過 (`line_limit` を持つ kind のみ) |
+| `npm run docs:template-check -- --require-human-review` | 人間レビュー層 (既定 OFF・段階導入) | `kind: requirements` が地図からリンクされていない / 決定の帰属主張に `DEC-nnn` が無いか台帳に無い / 「仮置き」に `OPEN-nnn` が無いか台帳に無い / 他ファイルの ID を修飾形式 `<doc-id>/PREFIX-nnn` で書いていない |
+| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (79 件) |
+| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (108 件) |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
 
@@ -143,6 +154,7 @@ npm run docs:graph
 Igeta/
 ├── templates/              雛形置き場。パッケージに同梱され、使う人は `node_modules/igeta/templates/` から取る
 │   ├── docs/               設計書の雛形 39 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
+│   ├── .github/            使う人の .github/ にコピーする雛形 (PR テンプレ)
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
 │   └── web-feature/        フロントエンド 1 機能分 (ページ・3 状態・文言カタログ)
@@ -150,7 +162,7 @@ Igeta/
 ├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
 │   ├── checks/             検査 4 種。Check を実装し Violation を返すだけで、exit も print もしない
-│   ├── generators/         コード雛形の展開
+│   ├── generators/         コード雛形の展開・レビューシートの生成
 │   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ
 └── .github/workflows/      CI
