@@ -553,6 +553,48 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.match(report.format(), /DEC-999 が決定台帳に無い/);
   });
 
+  it('決定の帰属: kind: adr 自身は除外する (code-reviewer B1、ADR の Decision 節を誤検出しない)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(
+      root,
+      'adr/0001-x.md',
+      [
+        '---', 'id: adr-0001-x', 'kind: adr', 'arc42: 9', 'depends_on: []', '---', '',
+        '> **TL;DR**: 決定。', '',
+        '## 関連', '',
+        '- **上流 (depends_on)**: なし', '- **下流**: 実装', '',
+        ...['Status', 'Context', 'Decision Drivers', 'Decision', '却下した選択肢', 'Consequences', 'Confirmation', '再検討トリガ'].flatMap(
+          (x) => [`## ${x}`, '', x === 'Decision' ? 'CEO が決定した内容。仮置きの値も含む (暫定 30 日)。' : '内容', ''],
+        ),
+      ].join('\n'),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('決定の帰属: 引用「」内の帰属主張・否定・伝聞は除外する (code-reviewer B2)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace(
+        '## 5. スコープ外',
+        [
+          '出典を「CEO 決定」から「欠落レビューで発見」に訂正 (引用は主張ではない)。',
+          'これは CEO が決定ではない (否定は主張ではない)。',
+          '会話ログでは CEO が決定したと書かれていた (伝聞は主張ではない)。',
+          '',
+          '## 5. スコープ外',
+        ].join('\n'),
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
   it('仮置き: OPEN-nnn の参照が無ければ違反、書けば通る', () => {
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
@@ -572,6 +614,27 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     );
     const ok = check(root, { requireHumanReview: true });
     assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
+  });
+
+  it('仮置き: 引用「」内・否定・伝聞は除外する (code-reviewer B2)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace(
+        '## 5. スコープ外',
+        [
+          '前版は「仮置き」と書かれていたが、正式値に更新した (引用は主張ではない)。',
+          'この値は仮置きではない (否定は主張ではない)。',
+          'メモには 30 日を仮置きしたと書かれていた (伝聞は主張ではない)。',
+          '',
+          '## 5. スコープ外',
+        ].join('\n'),
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
   it('修飾 ID: 他ファイルの ID を裸で参照したら違反、<doc-id>/PREFIX-nnn で参照すれば通る', () => {
@@ -649,5 +712,22 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     writeDoc(root, 'design/basic/function-list.md', functionListDoc());
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('修飾 ID: 「## 関連」節でも表の外の自由記述は検査する (code-reviewer B3、表の行だけが除外)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(
+      root,
+      'design/basic/function-list.md',
+      functionListDoc().replace(
+        '| 下流 | [画面設計](./screen-spec.md) | SCR-001 |',
+        '| 下流 | [画面設計](./screen-spec.md) | SCR-001 |\n\n表の外の自由記述: REQ-001 を裸で参照。',
+      ),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.match(report.format(), /他ファイルの ID は修飾 ID \(<doc-id>\/REQ-001\) で参照する/);
   });
 });

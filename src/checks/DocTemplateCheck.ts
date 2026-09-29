@@ -51,6 +51,29 @@ export const DEFAULT_DECISION_ATTRIBUTION_PATTERNS: readonly RegExp[] = [
 
 const TENTATIVE_MARK = '仮置き';
 
+// 決定帰属・仮置きの誤検出対策 (code-reviewer B2)。
+// 「」『』内に完全に収まる語は引用 (置き換え前の表記の引用・訂正の記録) であって現在の主張ではない。
+// 語の直後の否定・伝聞は「そう主張していない」ことの表明なので除外する。
+const NEGATION_TAIL_RE = /^(ではな(い|かった)|でな(い|かった)|していな(い|かった)|しなかった|せず)/;
+const HEARSAY_TAIL_RE = /^.{0,4}と(書かれてい|書いてあっ|記載されてい|言われてい)/;
+
+/** index が「」『』の対で開いた引用の内側かどうか (深さ 1 以上)。 */
+function isQuotedAt(line: string, index: number): boolean {
+  let depth = 0;
+  for (let i = 0; i < index; i += 1) {
+    const ch = line[i];
+    if (ch === '「' || ch === '『') depth += 1;
+    else if (ch === '」' || ch === '』') depth = Math.max(0, depth - 1);
+  }
+  return depth > 0;
+}
+
+/** keywordEnd 直後が否定・伝聞の言い回しなら true (主張ではないので除外する)。 */
+function isNegatedOrHearsayAfter(line: string, keywordEnd: number): boolean {
+  const tail = line.slice(keywordEnd, keywordEnd + 16);
+  return NEGATION_TAIL_RE.test(tail) || HEARSAY_TAIL_RE.test(tail);
+}
+
 export interface DocTemplateResult {
   readonly violations: readonly Violation[];
   /** テンプレに登録されている kind の種類数 */
@@ -538,6 +561,14 @@ function relatedSectionRange(lines: readonly string[], bodyStart: number): reado
 
 const inRange = (i: number, [start, end]: readonly [number, number]): boolean => i >= start && i < end;
 
+/**
+ * 「## 関連」節のうち、**表の行だけ**を検査対象から外す (code-reviewer B3)。
+ * 隣の「文書」列が ID の帰属を明示するのは表の行だけで、節内の自由記述 (表の外) は
+ * 他の本文と同じルールで検査する — 「関連」に逃げ込んで裸参照や無帰属の主張を書けないようにする。
+ */
+const isExemptRelatedRow = (i: number, relatedRange: readonly [number, number], line: string): boolean =>
+  inRange(i, relatedRange) && line.trim().startsWith('|');
+
 function checkQualifiedIds(
   doc: ResolvedDoc,
   idHomes: ReadonlyMap<string, readonly string[]>,
@@ -550,7 +581,7 @@ function checkQualifiedIds(
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';
     if (inFence(line)) continue;
-    if (inRange(i, relatedRange)) continue;
+    if (isExemptRelatedRow(i, relatedRange, line)) continue;
     for (const matched of line.matchAll(refRegex)) {
       const docIdPart = matched[1];
       const token = `${matched[2] ?? ''}-${matched[3] ?? ''}`;
@@ -586,16 +617,27 @@ function checkDecisionAttribution(
   relatedRange: readonly [number, number],
   add: AddViolation,
 ): void {
-  // decision-log 自身は台帳の正本。列名 (「仮置き値」) や見出し (「仮置き一覧」) が
-  // 語彙として「仮置き」「決定」を含むのは当然で、自分自身への帰属を求めない。
-  if (doc.kind === 'decision-log') return;
+  // decision-log・adr 自身は決定の正本 (台帳・MADR)。列名 (「仮置き値」) や見出し (「仮置き一覧」)、
+  // ADR の Decision 節が語彙として「仮置き」「決定」を含むのは当然で、自分自身への帰属を求めない。
+  if (doc.kind === 'decision-log' || doc.kind === 'adr') return;
   const inFence = makeFenceTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';
     if (inFence(line)) continue;
-    if (inRange(i, relatedRange)) continue;
+    if (isExemptRelatedRow(i, relatedRange, line)) continue;
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
-    if (patterns.some((pattern) => pattern.test(line))) {
+
+    let attribution: RegExpExecArray | null = null;
+    for (const pattern of patterns) {
+      const matched = pattern.exec(line);
+      // パターンは全て文字列 "決定" で終わる (DEFAULT_DECISION_ATTRIBUTION_PATTERNS 参照)。
+      // 引用 (「」『』内) と否定・伝聞 (〜ではない・〜と書かれていた 等) は主張ではないので除外する。
+      if (matched !== null && !isQuotedAt(line, matched.index) && !isNegatedOrHearsayAfter(line, matched.index + matched[0].length)) {
+        attribution = matched;
+        break;
+      }
+    }
+    if (attribution !== null) {
       const dec = line.match(/DEC-\d{3}/)?.[0];
       if (dec === undefined) {
         add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
@@ -603,7 +645,9 @@ function checkDecisionAttribution(
         add(i + 1, `${dec} が決定台帳に無い`);
       }
     }
-    if (line.includes(TENTATIVE_MARK)) {
+
+    const tentativeIndex = line.indexOf(TENTATIVE_MARK);
+    if (tentativeIndex !== -1 && !isQuotedAt(line, tentativeIndex) && !isNegatedOrHearsayAfter(line, tentativeIndex + TENTATIVE_MARK.length)) {
       const open = line.match(/OPEN-\d{3}/)?.[0];
       if (open === undefined) {
         add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
