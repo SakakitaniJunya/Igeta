@@ -55,6 +55,51 @@ describe('parseManifest', () => {
     assert.equal(manifest.outputPdfPath, join(dir, 'out', 'design-document.pdf'));
     assert.equal(manifest.outputHtmlPath, join(dir, 'out', 'design-document.html'));
     assert.deepEqual(manifest.forbid, []);
+    assert.deepEqual(manifest.omitSections, ['関連']);
+  });
+
+  it('recipient は省略可。省略・空文字はどちらも null になる (必須項目エラーにしない)', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const { recipient: _omit, ...withoutRecipient } = VALID_BASE;
+    const path1 = writeManifest(dir, withoutRecipient);
+    assert.equal(parseManifest(path1).recipient, null);
+
+    const path2 = writeManifest(dir, { ...VALID_BASE, recipient: '' });
+    assert.equal(parseManifest(path2).recipient, null);
+
+    const path3 = writeManifest(dir, { ...VALID_BASE, recipient: '  ' });
+    assert.equal(parseManifest(path3).recipient, null);
+  });
+
+  it('recipient が文字列以外なら violation', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, recipient: 42 });
+    assert.throws(() => parseManifest(path), ManifestError);
+  });
+
+  it('omitSections を上書きできる', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, omitSections: ['社内メモ'] });
+    const manifest = parseManifest(path);
+    assert.deepEqual(manifest.omitSections, ['社内メモ']);
+  });
+
+  it('omitSections に [] を渡すと空配列のまま保持する (既定を上書きして何も除かない)', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, omitSections: [] });
+    const manifest = parseManifest(path);
+    assert.deepEqual(manifest.omitSections, []);
+  });
+
+  it('omitSections が文字列配列でなければエラー', () => {
+    const dir = makeWorkspace();
+    writeChapter(dir, '00-intro.md');
+    const path = writeManifest(dir, { ...VALID_BASE, omitSections: [1, 2] });
+    assert.throws(() => parseManifest(path), ManifestError);
   });
 
   it('存在しない manifest は ManifestError', () => {
@@ -77,7 +122,7 @@ describe('parseManifest', () => {
     } catch (error) {
       assert.ok(error instanceof ManifestError);
       const messages = error.messages.join('\n');
-      for (const field of ['title', 'recipient', 'issuer', 'version', 'date']) {
+      for (const field of ['title', 'issuer', 'version', 'date']) {
         assert.match(messages, new RegExp(field));
       }
       assert.match(messages, /chapters/);

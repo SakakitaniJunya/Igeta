@@ -10,6 +10,7 @@ import { scanForbidden } from './ForbidScan.js';
 import { buildHtmlDocument } from './HtmlDocument.js';
 import { ManifestError, parseManifest } from './Manifest.js';
 import { joinStrippedLines, stripFrontmatterAndAutogen } from './MarkdownStrip.js';
+import { omitSections } from './OmitSections.js';
 import { ChromiumNotFoundError, MermaidRenderError, renderPdf } from './PdfRenderer.js';
 
 export interface ExportOptions {
@@ -42,7 +43,9 @@ export async function runExport(options: ExportOptions): Promise<ExportOutcome> 
     const absPath = manifest.chapterPaths[i];
     if (absPath === undefined) throw new Error('manifest.chapterPaths と chapters の対応が壊れている');
     const content = readFileSync(absPath, 'utf8');
-    return { relPath, absPath, lines: stripFrontmatterAndAutogen(content) };
+    const stripped = stripFrontmatterAndAutogen(content);
+    const lines = omitSections(stripped, manifest.omitSections);
+    return { relPath, absPath, lines };
   });
 
   const forbidHits: ForbidHit[] = strippedByChapter.flatMap(({ relPath, lines }) =>

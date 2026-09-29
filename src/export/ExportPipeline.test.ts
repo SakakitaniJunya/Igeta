@@ -120,6 +120,126 @@ describe('runExport — html-only', () => {
     assert.match(html, /サンプル株式会社 御中/); // recipient をそのまま出す (様を付けない)
     assert.ok(!html.includes('サンプル株式会社 御中 様'));
   });
+
+  it('recipient を省略・空文字にすると表紙に宛名の行を出さない (空の枠や undefined も出さない)', async () => {
+    const dir = makeWorkspace();
+    const { manifestPath } = writeFixture(dir, { recipient: '' });
+
+    const outcome = await runExport({ manifestPath, htmlOnly: true });
+    assert.equal(outcome.kind, 'ok');
+    if (outcome.kind !== 'ok') return;
+
+    const html = readFileSync(outcome.htmlPath, 'utf8');
+    const metaSection = /<div class="meta">([\s\S]*?)<\/section>/.exec(html)?.[1] ?? '';
+    assert.notEqual(metaSection, '');
+    assert.ok(!metaSection.includes('undefined'));
+    assert.ok(!metaSection.includes('<div></div>'));
+    assert.match(metaSection, /CreaNest 株式会社/); // issuer は出る
+  });
+});
+
+describe('runExport — omitSections', () => {
+  function writeChapterWithRelated(dir: string): string {
+    const manifestPath = join(dir, 'deliverable.json');
+    writeFileSync(
+      join(dir, '00-intro.md'),
+      [
+        '# はじめに',
+        '',
+        '## 関連',
+        '',
+        '| 区分 | 文書 | 対応 ID |',
+        '|---|---|---|',
+        '| 上流 (depends_on) | 社内設計書 | DEC-1 |',
+        '',
+        '## 概要',
+        '',
+        '先方に見せる本文。',
+        '',
+      ].join('\n'),
+    );
+    return manifestPath;
+  }
+
+  it('既定で「関連」節を除き、中身 (forbid 一致語含む) をどこにも出力しない', async () => {
+    const dir = makeWorkspace();
+    const manifestPath = writeChapterWithRelated(dir);
+    writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        title: 'T',
+        recipient: 'R',
+        issuer: 'I',
+        version: '1.0',
+        date: '2026-09-29',
+        chapters: ['00-intro.md'],
+        forbid: ['DEC-\\d'],
+        output: 'out/x.pdf',
+      }),
+    );
+
+    const outcome = await runExport({ manifestPath, htmlOnly: true });
+    assert.equal(outcome.kind, 'ok');
+    if (outcome.kind !== 'ok') return;
+    const html = readFileSync(outcome.htmlPath, 'utf8');
+    assert.ok(!html.includes('DEC-1'));
+    assert.ok(!html.includes('上流 (depends_on)'));
+    assert.match(html, /先方に見せる本文/);
+  });
+
+  it('omitSections を上書きすれば別の節を除ける', async () => {
+    const dir = makeWorkspace();
+    writeFileSync(
+      join(dir, '00-intro.md'),
+      ['# はじめに', '', '## 社内メモ', '', 'DEC-1 の背景。', '', '## 概要', '', '本文。', ''].join('\n'),
+    );
+    const manifestPath = join(dir, 'deliverable.json');
+    writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        title: 'T',
+        recipient: 'R',
+        issuer: 'I',
+        version: '1.0',
+        date: '2026-09-29',
+        chapters: ['00-intro.md'],
+        forbid: ['DEC-\\d'],
+        omitSections: ['社内メモ'],
+        output: 'out/x.pdf',
+      }),
+    );
+
+    const outcome = await runExport({ manifestPath, htmlOnly: true });
+    assert.equal(outcome.kind, 'ok');
+    if (outcome.kind !== 'ok') return;
+    const html = readFileSync(outcome.htmlPath, 'utf8');
+    assert.ok(!html.includes('DEC-1'));
+    assert.match(html, /本文。/);
+  });
+
+  it('omitSections: [] を渡すと「関連」節も除かれず、forbid に引っかかる', async () => {
+    const dir = makeWorkspace();
+    const manifestPath = writeChapterWithRelated(dir);
+    writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        title: 'T',
+        recipient: 'R',
+        issuer: 'I',
+        version: '1.0',
+        date: '2026-09-29',
+        chapters: ['00-intro.md'],
+        forbid: ['DEC-\\d'],
+        omitSections: [],
+        output: 'out/x.pdf',
+      }),
+    );
+
+    const outcome = await runExport({ manifestPath, htmlOnly: true });
+    assert.equal(outcome.kind, 'forbid-violation');
+    if (outcome.kind !== 'forbid-violation') return;
+    assert.equal(outcome.hits[0]?.word, 'DEC-1');
+  });
 });
 
 describe('runExport — PDF 化', () => {

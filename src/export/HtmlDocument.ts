@@ -9,7 +9,8 @@ import type { ChapterHtml, TocEntry } from './ChapterRenderer.js';
 export interface DocumentMeta {
   readonly title: string;
   readonly subtitle: string | null;
-  readonly recipient: string;
+  /** null または空文字なら表紙に宛名の行を出さない */
+  readonly recipient: string | null;
   readonly issuer: string;
   readonly version: string;
   readonly date: string;
@@ -75,7 +76,7 @@ function buildCover(meta: DocumentMeta): string {
     <div class="title">${escapeHtml(meta.title)}</div>
     ${meta.subtitle !== null && meta.subtitle !== '' ? `<div class="subtitle">${escapeHtml(meta.subtitle)}</div>` : ''}
     <div class="meta">
-      <div>${escapeHtml(meta.recipient)}</div>
+      ${meta.recipient !== null && meta.recipient !== '' ? `<div>${escapeHtml(meta.recipient)}</div>` : ''}
       <div>${escapeHtml(meta.issuer)}</div>
       <div>version ${escapeHtml(meta.version)} / ${escapeHtml(meta.date)}</div>
     </div>

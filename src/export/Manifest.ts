@@ -9,7 +9,8 @@ import { dirname, join, resolve } from 'node:path';
 export interface DeliverableManifest {
   readonly title: string;
   readonly subtitle: string | null;
-  readonly recipient: string;
+  /** 表紙の宛名。空文字または省略のときは null (表紙に宛名の行を出さない) */
+  readonly recipient: string | null;
   readonly issuer: string;
   readonly version: string;
   readonly date: string;
@@ -17,6 +18,11 @@ export interface DeliverableManifest {
   readonly chapters: readonly string[];
   /** forbid の正規表現ソース文字列 */
   readonly forbid: readonly string[];
+  /**
+   * 出力から除く H2 節の見出し文字列。既定は `["関連"]` (社内向けの上流/下流表を提出物に出さない)。
+   * `[]` を渡すと何も除かない。
+   */
+  readonly omitSections: readonly string[];
   /** manifest に書かれたままの相対パス (表示用)。`.pdf` で終わる */
   readonly output: string;
 }
@@ -42,7 +48,8 @@ export class ManifestError extends Error {
   }
 }
 
-const REQUIRED_STRING_FIELDS = ['title', 'recipient', 'issuer', 'version', 'date'] as const;
+const REQUIRED_STRING_FIELDS = ['title', 'issuer', 'version', 'date'] as const;
+const DEFAULT_OMIT_SECTIONS: readonly string[] = ['関連'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -88,6 +95,11 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
     errors.push('subtitle は文字列でなければならない');
   }
 
+  const recipientRaw = raw['recipient'];
+  if (recipientRaw !== undefined && typeof recipientRaw !== 'string') {
+    errors.push('recipient は文字列でなければならない');
+  }
+
   const chaptersRaw = raw['chapters'];
   if (!isStringArray(chaptersRaw) || chaptersRaw.length === 0) {
     errors.push('必須項目が無い、または空: chapters (1 件以上の章ファイルの配列)');
@@ -96,6 +108,11 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
   const forbidRaw = raw['forbid'];
   if (forbidRaw !== undefined && !isStringArray(forbidRaw)) {
     errors.push('forbid は文字列の配列でなければならない');
+  }
+
+  const omitSectionsRaw = raw['omitSections'];
+  if (omitSectionsRaw !== undefined && !isStringArray(omitSectionsRaw)) {
+    errors.push('omitSections は文字列の配列でなければならない');
   }
 
   if (!isNonEmptyString(raw['output'])) {
@@ -139,12 +156,13 @@ export function parseManifest(manifestPath: string): ResolvedManifest {
   return {
     title: raw['title'] as string,
     subtitle: typeof subtitleRaw === 'string' ? subtitleRaw : null,
-    recipient: raw['recipient'] as string,
+    recipient: typeof recipientRaw === 'string' && recipientRaw.trim() !== '' ? recipientRaw : null,
     issuer: raw['issuer'] as string,
     version: raw['version'] as string,
     date: raw['date'] as string,
     chapters,
     forbid: isStringArray(forbidRaw) ? forbidRaw : [],
+    omitSections: isStringArray(omitSectionsRaw) ? omitSectionsRaw : DEFAULT_OMIT_SECTIONS,
     output,
     manifestPath: absoluteManifestPath,
     manifestDir,
