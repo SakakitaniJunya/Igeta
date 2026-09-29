@@ -17,7 +17,7 @@ import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
-import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
+import { collectRowDefinedTokens, makeAutogenTracker } from '../core/IdDefinitions.js';
 import type { Violation } from '../core/Report.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
@@ -426,20 +426,33 @@ function checkIds(
   // bare-numeric = T001 形式 (spec-kit の tasks)。既定は PREFIX-nnn。
   const bare = template.idPattern === 'bare-numeric';
   let count = 0;
+  const inFence = makeFenceTracker();
+  const inComment = makeCommentTracker();
   for (const prefix of template.idPrefixes) {
     const pattern = bare
       ? new RegExp(`\\b${prefix}\\d[0-9A-Za-z_-]*`, 'g')
       : new RegExp(`\\b${prefix}-[A-Za-z0-9_-]+`, 'g');
     const strict = bare ? new RegExp(`^${prefix}\\d{3}$`) : new RegExp(`^${prefix}-\\d{3}$`);
-    // 汎用の説明用プレースホルダ (`PREFIX-nnn` / `PREFIXnnn`、小文字の nnn) はテンプレ・ガイド全体で
-    // 「この接頭辞の ID 一般」を指す記法として使っており、実際の ID ではない (code-reviewer 実バグ #4)。
-    const placeholder = bare ? `${prefix}nnn` : `${prefix}-nnn`;
+    // 汎用の説明用プレースホルダはテンプレ・ガイド全体で「この接頭辞の ID 一般」を指す記法として
+    // 使っており、実際の ID ではない (code-reviewer 実バグ #4)。2 種類の書き方がある: 全桁を
+    // 汎用にする `nnn` (`PREFIX-nnn`) と、百番台だけを示す `Nxx` (`REQ-1xx`・`XC-4xx` 等、先頭は
+    // 実数字、残り 2 桁が `x`)。3 桁部分が数字・`n`・`x` だけで構成され、`n`/`x` を 1 文字でも
+    // 含むなら実 ID ではなくプレースホルダとして扱う。
+    const suffixRe = bare ? new RegExp(`^${prefix}([0-9nx]{3})$`) : new RegExp(`^${prefix}-([0-9nx]{3})$`);
+    const isPlaceholder = (token: string): boolean => {
+      const suffix = suffixRe.exec(token)?.[1];
+      return suffix !== undefined && /[nx]/.test(suffix);
+    };
     for (let i = bodyStart; i < lines.length; i += 1) {
-      for (const token of (lines[i] ?? '').match(pattern) ?? []) {
-        if (token === placeholder) continue;
+      const line = lines[i] ?? '';
+      const fenced = inFence(line);
+      const commented = inComment(line); // HTML コメント内の例示は主張ではない (code-reviewer 実バグ #4 系)
+      if (fenced || commented) continue;
+      for (const token of line.match(pattern) ?? []) {
+        if (isPlaceholder(token)) continue;
         count += 1;
         if (!strict.test(token)) {
-          add(i + 1, `ID 形式が不正: ${token} (${placeholder} の 3 桁)`);
+          add(i + 1, `ID 形式が不正: ${token} (${bare ? `${prefix}nnn` : `${prefix}-nnn`} の 3 桁)`);
         }
       }
     }
@@ -645,10 +658,18 @@ function checkQualifiedIds(
 ): void {
   const inFence = makeFenceTracker();
   const inComment = makeCommentTracker();
+  const inAutogen = makeAutogenTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';
-    if (inFence(line)) continue;
-    if (inComment(line)) continue; // HTML コメント内の例示は主張ではない (code-reviewer 実バグ #10)
+    // 3 つのトグルは必ず全部この行を見せてから判定する。AUTOGEN の開始/終了マーカーは単行の
+    // HTML コメントでもあるため、inComment の continue を先にすると inAutogen が
+    // その行を見られず、区間の状態が更新されない (code-reviewer 実バグ #1 の再発防止)。
+    const fenced = inFence(line);
+    const commented = inComment(line); // HTML コメント内の例示は主張ではない (code-reviewer 実バグ #10)
+    // AUTOGEN 区間 (決定台帳の「仮置き一覧」等) は他文書の行をそのまま写す索引で、手で書いた
+    // 本文の主張ではない (code-reviewer 実バグ #1)
+    const autogen = inAutogen(line);
+    if (fenced || commented || autogen) continue;
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     for (const matched of line.matchAll(refRegex)) {
       const docIdPart = matched[1];
@@ -755,9 +776,13 @@ function checkDecisionAttribution(
   // 仮置きへの言及ではない (code-reviewer 実バグ #5)。
   if (doc.kind === 'decision-log' || doc.kind === 'adr' || doc.kind === 'human-review') return;
   const inFence = makeFenceTracker();
+  const inAutogen = makeAutogenTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';
     if (inFence(line)) continue;
+    // AUTOGEN 区間は他文書の行をそのまま写す索引で、手で書いた本文の主張ではない
+    // (code-reviewer 実バグ #1)
+    if (inAutogen(line)) continue;
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
 

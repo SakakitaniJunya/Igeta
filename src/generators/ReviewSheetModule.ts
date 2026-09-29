@@ -2,6 +2,7 @@ import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
+import { makeAutogenTracker } from '../core/IdDefinitions.js';
 
 /**
  * レビューシート生成。人間レビュー層 (docs/00-map.md・docs/01-decisions.md) を前提に、
@@ -73,10 +74,24 @@ function splitCells(line: string): string[] {
     .map((cell) => cell.trim());
 }
 
-/** id トークン (例: REQ-101) が最初の列にある行を見つけ、直近の table 見出し行を header にして返す */
+/**
+ * id トークン (例: REQ-101) が最初の列にある行を見つけ、直近の table 見出し行を header にして返す。
+ * AUTOGEN 区間 (決定台帳の「仮置き一覧」等) は他文書の行をそのまま写す索引であって定義ではないため
+ * 除外する (code-reviewer 実バグ #6)。除外しないと、§2 に本物の定義が無い OPEN でも索引の行
+ * (`場所`・`本文` 列) を「定義」として解決してしまい、間違ったフィールドを表示する。
+ */
 function findTableRow(lines: readonly string[], idToken: string): { headers: readonly string[]; cells: readonly string[] } | null {
   const rowRe = new RegExp(`^\\|\\s*${idToken}\\s*\\|`);
-  const rowIndex = lines.findIndex((line) => rowRe.test(line.trim()));
+  const inAutogen = makeAutogenTracker();
+  let rowIndex = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? '';
+    if (inAutogen(line)) continue;
+    if (rowRe.test(line.trim())) {
+      rowIndex = i;
+      break;
+    }
+  }
   if (rowIndex === -1) return null;
   let headerIndex = rowIndex;
   while (headerIndex > 0 && (lines[headerIndex - 1] ?? '').trim().startsWith('|')) headerIndex -= 1;
