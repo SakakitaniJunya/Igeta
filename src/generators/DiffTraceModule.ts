@@ -1,5 +1,5 @@
 import type { Dirent } from 'node:fs';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 /**
@@ -37,8 +37,15 @@ export interface DiffTraceResult {
   readonly missingFromDeclaration: readonly string[];
   /** (b) 申告したが差分が触れていない REQ (advisory) */
   readonly declaredButNotTouched: readonly string[];
-  /** (c) タスクに載っていない変更ファイル (advisory) */
+  /** (c) タスクに載っていない変更ファイル (advisory)。一部だけの不一致はここに残るだけで検査不能にはしない */
   readonly untrackedChangedFiles: readonly string[];
+  /**
+   * 「申告の裏取りができていない」(main 決定 A2)。docs/ が無い (C3)・kind: tasks の文書が 1 本も
+   * 無い・変更ファイルが 1 件もタスクに一致しない、のいずれか。exit 2 にする根拠。
+   * サイレント縮退禁止 (原則 8): 裏取りできていないのに exit 0 (緑) にしない。
+   */
+  readonly cannotCheck: boolean;
+  readonly cannotCheckReason?: string;
 }
 
 function listMarkdown(dir: string): string[] {
@@ -75,19 +82,32 @@ function readKind(lines: readonly string[]): string | undefined {
   return undefined;
 }
 
-function parseTasks(docs: readonly DocRecord[]): TaskRecord[] {
+const TASK_MARKER_RE = /^-\s*\[[ xX]\]/;
+
+interface ParseTasksResult {
+  readonly tasks: readonly TaskRecord[];
+  /** チェックボックスはあるが行形式に一致しなかった行数 (non-blocking N-c) */
+  readonly parseFailureCount: number;
+}
+
+function parseTasks(docs: readonly DocRecord[]): ParseTasksResult {
   const tasks: TaskRecord[] = [];
+  let parseFailureCount = 0;
   for (const doc of docs) {
     if (doc.kind !== 'tasks') continue;
     for (const line of doc.lines) {
-      const matched = TASK_LINE_RE.exec(line.trim());
-      if (matched === null) continue;
+      const raw = line.trim();
+      const matched = TASK_LINE_RE.exec(raw);
+      if (matched === null) {
+        if (TASK_MARKER_RE.test(raw)) parseFailureCount += 1;
+        continue;
+      }
       const [, taskId, refsRaw, , path] = matched;
       const refs = [...(refsRaw ?? '').matchAll(BRACKET_ID_RE)].map((m) => m[1] ?? '');
       tasks.push({ taskId: taskId ?? '', refs, path: (path ?? '').trim(), relPath: doc.relPath });
     }
   }
-  return tasks;
+  return { tasks, parseFailureCount };
 }
 
 /** 変更ファイルとタスクの path をゆるく突き合わせる (どちらかがどちらかを含めば一致とみなす) */
@@ -130,12 +150,33 @@ export class DiffTraceModule {
   }
 
   trace(changedFiles: readonly string[], declaredReqIds: readonly string[]): DiffTraceResult {
+    const cannotCheck = (reason: string): DiffTraceResult => ({
+      markdown: `# 差分からの追跡 (review-sheet --diff)\n\nCANNOT-CHECK ${reason}\n`,
+      impactedReqIds: [],
+      missingFromDeclaration: [],
+      declaredButNotTouched: [],
+      untrackedChangedFiles: [],
+      cannotCheck: true,
+      cannotCheckReason: reason,
+    });
+
+    // docs/ が無いのに空の結果を緑で返すと「裏取りできた」ように見える (原則 8。code-reviewer round 3 C3)
+    if (!existsSync(this.#docsDir)) {
+      return cannotCheck(`docs が無い: ${relative(this.#root, this.#docsDir) || this.#docsDir}`);
+    }
+
     const docs: DocRecord[] = listMarkdown(this.#docsDir).map((file) => {
       const lines = readFileSync(file, 'utf8').split(/\r?\n/);
       return { relPath: relative(this.#root, file), kind: readKind(lines), lines };
     });
 
-    const tasks = parseTasks(docs);
+    // 申告の裏取りは tasks の path 記載に依存する。tasks 文書が無ければ裏取りそのものができない
+    // (main 決定 A2)。空の結果を緑にすると「申告は正しい」と誤解させるので exit 2 にする。
+    if (!docs.some((d) => d.kind === 'tasks')) {
+      return cannotCheck('kind: tasks の文書が無いため、申告の裏取りができていない (--diff は tasks の path 記載に依存する)');
+    }
+
+    const { tasks, parseFailureCount } = parseTasks(docs);
     const reqHomes = collectDefinedIds(docs.filter((d) => d.kind === 'requirements'), 'REQ');
     const fnHomes = collectDefinedIds(docs.filter((d) => d.kind === 'function-list'), 'FN');
     // FN → REQ: FN の定義元ファイル本文にある REQ トークンを「その FN が指す REQ」とみなす
@@ -152,6 +193,14 @@ export class DiffTraceModule {
 
     const touchedTasks = tasks.filter((task) => changedFiles.some((file) => taskTouchesFile(task.path, file)));
     const untrackedChangedFiles = changedFiles.filter((file) => !tasks.some((task) => taskTouchesFile(task.path, file)));
+
+    // 変更ファイルが 1 件もタスクに一致しなければ、裏取りが一切できていない (main 決定 A2)。
+    // 一部だけ不一致 (untrackedChangedFiles が一部残る) は従来どおり advisory のまま。
+    if (changedFiles.length > 0 && touchedTasks.length === 0) {
+      return cannotCheck(
+        `変更ファイルが 1 件もタスクに一致しなかったため、申告の裏取りができていない (--diff は tasks の path 記載に依存する): ${changedFiles.join(', ')}`,
+      );
+    }
 
     const impactedReqTokens = new Set<string>();
     for (const task of touchedTasks) {
@@ -182,11 +231,19 @@ export class DiffTraceModule {
     });
 
     return {
-      markdown: this.#render(touchedTasks, impactedReqIds, missingFromDeclaration, declaredButNotTouched, untrackedChangedFiles),
+      markdown: this.#render(
+        touchedTasks,
+        impactedReqIds,
+        missingFromDeclaration,
+        declaredButNotTouched,
+        untrackedChangedFiles,
+        parseFailureCount,
+      ),
       impactedReqIds,
       missingFromDeclaration,
       declaredButNotTouched,
       untrackedChangedFiles,
+      cannotCheck: false,
     };
   }
 
@@ -196,8 +253,12 @@ export class DiffTraceModule {
     missingFromDeclaration: readonly string[],
     declaredButNotTouched: readonly string[],
     untrackedChangedFiles: readonly string[],
+    parseFailureCount: number,
   ): string {
     const lines: string[] = ['# 差分からの追跡 (review-sheet --diff)', ''];
+    if (parseFailureCount > 0) {
+      lines.push(`> WARN: タスク行がチェックボックスはあるが行形式に一致しない箇所が ${parseFailureCount} 件ある (non-blocking N-c)`, '');
+    }
     lines.push('## 変更ファイル → タスク → FN/REQ', '');
     if (touchedTasks.length === 0) {
       lines.push('_該当するタスクが無い_', '');

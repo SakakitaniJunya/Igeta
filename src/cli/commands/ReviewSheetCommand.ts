@@ -77,6 +77,8 @@ export class ReviewSheetCommand extends Command {
     const result = new DiffTraceModule({ targetRoot }).trace(changedFiles, declaredReqIds);
 
     ctx.stdout(result.markdown);
+    // 裏取りできていないのに exit 0 (緑) にしない (原則 8。main 決定 A2 / code-reviewer round 3 C3)
+    if (result.cannotCheck) return ExitCode.CannotCheck;
     if (result.missingFromDeclaration.length > 0) {
       ctx.stderr(`\n申告に無いが影響する REQ が ${result.missingFromDeclaration.length} 件ある (上の Markdown §(a) を参照)`);
       return ExitCode.Violation;
