@@ -20,7 +20,7 @@ relates_to: [map, decisions]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [文書体系](./01-document-taxonomy.md) | — |
-| 下流 | [地図](../00-map.md) / [決定台帳](../01-decisions.md) / `igeta review-sheet` / `igeta analyze` | — |
+| 下流 | [地図](../00-map.md) / [決定台帳](../01-decisions.md) / `igeta review-sheet` | — |
 
 ## 1. 読む順 (5〜10 分)
 
@@ -31,8 +31,6 @@ relates_to: [map, decisions]
 3. **機能ブリーフ (`kind: feature-brief`、あれば)** — 対象機能の WHAT/WHY・ユーザーストーリー・対象外・関わる `REQ` ID の一覧を 1 枚で把握する。要件文・受入条件はここには無い (§4 の review-sheet で展開する)。
 4. **対象の要件 (`REQ-nnn`)** — 地図・台帳・機能ブリーフから見えた対象の要件定義書を読む。他ファイルの ID は `<doc-id>/PREFIX-nnn` の修飾形式で書かれているので、どのファイルの ID かが必ず分かる。
 5. **レビューシート** — PR の差分を読む直前に `igeta review-sheet` を実行し、対象 REQ の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚にする (§4)。
-
-45 ファイル規模で「どこが穴か」を先に知りたいときは、読む前に `igeta analyze` (§5) を走らせる。
 
 ## 2. 機能ブリーフと未決の関門
 
@@ -60,36 +58,21 @@ npx igeta review-sheet requirements/REQ-101 requirements/REQ-102
 
 # PR 本文から <doc-id>/PREFIX-nnn を抜き出して対象にする
 npx igeta review-sheet --pr-body pr-body.txt
-
-# 変更ファイル → タスク → FN → REQ を辿り、PR 本文の申告と突き合わせる
-npx igeta review-sheet --diff origin/main..HEAD --pr-body pr-body.txt
 ```
 
 `<doc-id>` は要件定義書などの frontmatter `id`。ファイル名ではなく `id` で指定する。解決できない ID は
-Markdown に「解決できない」と明記され、コマンドは exit 1 で終わる (サイレント縮退禁止)。`--diff` は
-「申告に無いが影響する REQ」があるときだけ exit 1 にする (申告より広く触れているのに気付けないのが一番危険)。
+Markdown に「解決できない」と明記され、コマンドは exit 1 で終わる (サイレント縮退禁止)。
 
-## 5. 整合レポート (`igeta analyze`)
+`review-sheet --diff` (変更ファイル → タスク → FN → REQ を辿り、PR 本文の申告と突き合わせる) と
+`igeta analyze` (整合レポート)・`igeta fix-ids` (修飾 ID の機械的な書き換え) は試験中で、別 PR
+(`feat/human-review-tools`) で扱う。
 
-読み取り専用・非破壊。網羅 (`REQ`→`FN`→タスクの欠落)・タスクが存在しない ID を参照しているダングリング
-参照・未決 (`OPEN`)・曖昧語 (既定は「速い」「適切に」等、`--ambiguous-words` は今後の拡張予定)・ID の
-ローカル採番の重複を 1 枚の表 + 網羅率 + 次の一手で出す。critical (ダングリング参照) だけ exit 1。
-
-## 6. 段階導入・移行の実測
+## 5. 段階導入
 
 `igeta template-check --require-human-review` は既存プロジェクトを一斉に赤くしないため既定 OFF。
-manabi-zone (86 ファイル) への実測では 584 件の指摘のうち **539 件 (92%) が修飾 ID 不足**だった。
-移行手順:
+`docs/00-map.md` と `docs/01-decisions.md` を用意できた時点で `--require-human-review` を CI に足す。
 
-1. `igeta analyze` で全体の穴 (網羅・ダングリング参照) を先に把握する。
-2. `igeta fix-ids` (既定 dry-run) で、定義元が 1 件に一意な裸の ID 参照だけを機械的に修飾する。
-   複数ファイルのローカル採番で曖昧なものは対象外 (推測で書き換えると本文の意味を取り違えるため、人が
-   `<doc-id>/PREFIX-nnn` を選ぶ)。manabi-zone では 539 件中 183 件がこの一意なケースだった。`--write` を
-   付けるまで 1 バイトも書き込まない。
-3. 残り (複数ファイルのローカル採番・決定の帰属・仮置きの参照漏れ) は人が直す。
-4. `docs/00-map.md` と `docs/01-decisions.md` を用意できた時点で `--require-human-review` を CI に足す。
-
-## 7. 検査の限界 (機械が見ていないもの)
+## 6. 検査の限界 (機械が見ていないもの)
 
 - **既定 OFF の緑は「人間レビュー層がある」ことを意味しない。** `--require-human-review` を付けていない
   緑は、地図・決定台帳が無くても出る (①のテンプレ適合しか見ていない)。
@@ -97,8 +80,3 @@ manabi-zone (86 ファイル) への実測では 584 件の指摘のうち **539
   (別ファイルへの分割・年度で切る等) は、この検査は決めない。プロジェクトごとに運用で決める。
 - **地図の内容の陳腐化は検査外。** 検査が見るのは「`kind: requirements` の全文書がリンクされているか」
   だけで、地図の説明文が実態と合っているかは機械で判定できない。人が定期的に読み直す前提。
-- **`review-sheet --diff` は `design/tasks/` のタスク行の `path` 記載に依存する。** `kind: tasks` の
-  文書が 1 本も無い、または変更ファイルが 1 件もタスクに一致しないときは「裏取りができていない」ため
-  exit 2 (検査不能) にする (0 件を緑にしない、原則 8)。一部のファイルだけ一致しない場合は advisory の
-  ままなので exit 1/0 になる。タスクの `path` を書く運用を採用していないプロジェクトでは、この機能で
-  虚偽報告 (実例 3) を機械的に防ぐことはできない。

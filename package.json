@@ -30,8 +30,6 @@
     "docs:lint": "markdownlint-cli2",
     "docs:template-check": "node dist/cli.js template-check --require-kind",
     "docs:review-sheet": "node dist/cli.js review-sheet",
-    "docs:analyze": "node dist/cli.js analyze",
-    "docs:fix-ids": "node dist/cli.js fix-ids",
     "scaffold": "node dist/cli.js scaffold",
     "secret-scan": "node dist/cli.js secret-scan --internal-ids",
     "test": "npm run test:scripts",
