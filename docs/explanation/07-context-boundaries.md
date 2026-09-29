@@ -55,7 +55,7 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
 | テンプレ置き場 | `templates/docs/contexts/contracts/__context__.md` |
 | 実ファイル置き場 | `docs/contexts/contracts/<context-slug>.md` |
 | `depends_on` 既定値 | `[<自分の context-map の id>]` |
-| 書かないもの | 内部実装・内部だけで使う REQ・仮置きの詳細 |
+| 書かないもの | 内部実装・内部だけで使う REQ・未確定の値の詳細 |
 
 ## 4. 境界の検査 (`context-boundary-check`、既定 OFF)
 
