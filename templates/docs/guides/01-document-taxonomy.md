@@ -47,6 +47,9 @@ flowchart LR
 
 ```mermaid
 flowchart TB
+  MAP["地図<br/>map"] -.->|本文リンク| REQ
+  DEC["決定台帳<br/>decision-log"] -.->|DEC/OPEN 参照| REQ
+
   REQ["要件定義<br/>requirements"]
 
   subgraph basic["基本設計 design/basic/"]
@@ -109,6 +112,9 @@ flowchart TB
 ```
 
 図に無い `glossary` (用語集) / `as-is-overview` (稼働後の構成) / `guide` / `explanation` / `runbook` は、特定の上流を持たない横断・独立の文書。
+`map` / `decision-log` (図中の `MAP` / `DEC`) も上流を持たない独立の文書だが、他とは向きが逆で「人間が最初に読む入口」。
+`depends_on` ではなく本文リンク (地図から要件定義への「詳細への入口」) と ID 参照 (決定台帳の `DEC-nnn`/`OPEN-nnn`) で要件定義とつながる。
+検査 (`igeta template-check --require-human-review`) はこの本文リンク・ID 参照の有無を見る。詳しくは [人間レビュー層の読み方](03-human-review.md)。
 
 ## 2. 種類一覧
 
@@ -120,6 +126,8 @@ flowchart TB
 docs/
 ├── README.md                         全体の索引 (arc42 章順・自動生成)
 ├── dependencies.md                   文書間の依存グラフ (自動生成)
+├── 00-map.md                         地図 (MAP)。人間の入口。何を作るか・誰が使うか・主要フロー
+├── 01-decisions.md                   決定台帳 (DEC/OPEN)。人間の入口。決めたこと・未決のこと
 ├── product/                          要件定義 — 何を作るか
 │   └── 01-requirements.md            要件定義書 (REQ)。機能要件は EARS 記法
 ├── design/                           設計 (TO-BE)。実装前はすべてここ
@@ -162,6 +170,7 @@ docs/
 ├── guides/                           書き方・進め方の手引き (how-to)
 │   ├── 01-document-taxonomy.md       文書体系 (このファイル)
 │   ├── 02-implementation-order.md    実装順序と各ステップの DoD
+│   ├── 03-human-review.md            地図・決定台帳・レビューシートの読み方
 │   └── NN-<slug>.md                  その他の手引き
 ├── explanation/NN-<slug>.md          調査・背景 — 決定の材料 (決定は adr/)
 └── runbooks/NN-<シナリオ>.md          運用手順書。1 手順 1 コマンド (RUN)
@@ -169,6 +178,8 @@ docs/
 
 | フォルダ (工程) | kind | 何を書くか | arc42 | パス (`templates/docs/` = `docs/`) | ID 接頭辞 | 上限 |
 |---|---|---|---|---|---|---|
+| `docs/` 人間の入口 | `map` | 何を作るか・誰が使うか・主要フロー (図)・やらないこと・詳細への入口。kind: requirements の全文書をここからリンクする | — | `00-map.md` | — | 150 |
+| `docs/` 人間の入口 | `decision-log` | 決めたこと (DEC) と未決のこと (OPEN) の台帳。1 決定 1 行、行数上限は付けない (決定の数に比例して増えるのが正しい) | — | `01-decisions.md` | DEC / OPEN | — |
 | `product/` 要件定義 | `requirements` | 何を作るか。機能要件 (EARS 記法) と品質目標の要約、制約、ステークホルダー。全設計書の上流 | §1 | `product/01-requirements.md` | REQ | 200 |
 | `design/basic/` 基本設計 | `function-list` | 機能の一覧と、各機能が要件・画面・API・テストのどれに対応するかの対応表 | §1 | `design/basic/01-function-list.md` | FN | 200 |
 | `design/basic/` 基本設計 | `solution-strategy` | 技術選定・最上位の分割・品質目標の達成手段を短く。以後の設計の前提 | §4 | `design/basic/02-solution-strategy.md` | SS | 200 |
@@ -202,6 +213,7 @@ docs/
 | `proposal/` 対外提案 | `proposal` | 顧客に提出する提案書 (背景〜設計〜代替案を 1 枚で)。accepted → ADR へ昇格 | — | `proposal/__slug__.md` | — | 200 |
 | `guides/` 手引き | `document-taxonomy` | 文書体系 (このファイル)。種類・配置・ID・関連の正典 | — | `guides/01-document-taxonomy.md` | — | 150 |
 | `guides/` 手引き | `implementation-order` | 実装順序と各ステップの DoD。scaffold 前に読む。§1 の着手順の表だけプロジェクトで埋める | — | `guides/02-implementation-order.md` | — | 100 |
+| `guides/` 手引き | `human-review` | 地図・決定台帳・レビューシートの読む順と、要件を直すときの手順 | — | `guides/03-human-review.md` | — | 100 |
 | `guides/` 手引き | `guide` | how-to。手順を 100 行以内で | — | `guides/__slug__.md` | — | 100 |
 | `guides/` 手引き | `tutorial` | 学習者向け。テンプレ無し・kind 予約のみ。`guides/__slug__.md` を「学習目標 / 前提 / ステップ / 到達確認」で流用 | — | (`guides/__slug__.md`) | — | 100 |
 | `explanation/` 背景 | `explanation` | 決定の材料になる調査・背景。決定そのものは `adr/` に書く | — | `explanation/__slug__.md` | — | 200 |
@@ -221,3 +233,4 @@ docs/
 | テスト・運用 | `docs/design/test/` と `docs/design/ops/` | 「本数が少ないうちは flat」にしない。移動コストを後払いしているだけで、閾値を跨いだ瞬間に参照が壊れる |
 | 運用手順書 | 設計は `design/ops/01-operations.md`、手順は `docs/runbooks/<scenario>.md` (100 行以下) | 方針と手順を同じ文書に混ぜると 100 行に収まらない |
 | `docs/proposal/` | 独立させる | 対外提案書は設計 Doc と性格が違う。`design/` に混ぜると顧客提出物が設計変更で動く |
+| 地図・決定台帳の置き場 | `docs/` 直下 (`00-map.md` / `01-decisions.md`)。サブフォルダに入れない | 人間の入口であることをパスで示す。`docs/README.md` と同じ階層に置き、他のどの工程フォルダより先に目に入るようにする ([人間レビュー層を足した理由](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/02-human-review-layer.md)) |
