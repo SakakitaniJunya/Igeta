@@ -100,4 +100,24 @@ describe('FixIdsModule', () => {
     const plan = new FixIdsModule({ targetRoot: root, igetaRoot: root }).plan();
     assert.equal(plan.find((p) => p.file.endsWith('function-list.md')), undefined, JSON.stringify(plan));
   });
+
+  it('write() は plan() 後にファイルが変わっていたら drifted に積んで書かない (non-blocking N-b)', () => {
+    writeDoc(root, 'design/basic/function-list.md', functionListDoc('。他ファイルの REQ-001 を裸で参照。'));
+    const module = new FixIdsModule({ targetRoot: root, igetaRoot: root });
+    const plan = module.plan();
+    assert.ok(plan.length > 0, 'this test needs at least one planned fix');
+
+    // plan() 後にファイルの当該行を書き換える (競合を再現する)
+    const fnPath = join(root, 'docs', 'design', 'basic', 'function-list.md');
+    const lines = readFileSync(fnPath, 'utf8').split(/\r?\n/);
+    const target = plan[0];
+    assert.ok(target);
+    lines[target.line - 1] = '差分が入ったので before と一致しない';
+    writeFileSync(fnPath, lines.join('\n'));
+
+    const result = module.write(plan);
+    assert.equal(result.written.length, 0, JSON.stringify(result));
+    assert.equal(result.drifted.length, 1, JSON.stringify(result));
+    assert.equal(readFileSync(fnPath, 'utf8'), lines.join('\n'), '書かなかったのでファイルは変わらない');
+  });
 });

@@ -36,8 +36,14 @@ export class FixIdsCommand extends Command {
     }
 
     if (args.has('write')) {
-      module.write(plan);
-      for (const entry of plan) ctx.stdout(`WRITE ${entry.file}:${entry.line}`);
+      const result = module.write(plan);
+      for (const entry of result.written) ctx.stdout(`WRITE ${entry.file}:${entry.line}`);
+      if (result.drifted.length > 0) {
+        for (const entry of result.drifted) {
+          ctx.stderr(`DRIFT ${entry.file}:${entry.line} (plan() 時点と内容が変わっていたため書かなかった)`);
+        }
+        return ExitCode.CannotCheck;
+      }
       return ExitCode.Ok;
     }
 
