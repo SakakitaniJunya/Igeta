@@ -18,6 +18,10 @@ relates_to: []
   メタ情報はここに書いてよい。本文 (# 見出し以降) がそのまま PDF になる。
   社内 ID (DEC-/REQ- など) を本文に残すと deliverable.json の forbid が検出して
   export を止める。
+
+  由来 (この節がどの正本の要約かの記録): 節を書いたら `igeta provenance-capture` で
+  `<basename>.provenance.json` (見本は同じフォルダの `__chapter__.provenance.json`) に記録する。
+  手順は guides/04-provenance-workflow.md、仕組み全体は 04-provenance-and-agreement.md にある。
 -->
 
 # <章のタイトル>

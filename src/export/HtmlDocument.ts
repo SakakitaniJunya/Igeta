@@ -1,10 +1,10 @@
 // 章 HTML・目次・表紙情報から、自己完結 (ネットワーク不要) の 1 枚 HTML を組み立てる。
 // Mermaid ランタイムは CDN を使わず、mermaid パッケージ同梱の dist/mermaid.min.js を
-// そのままインライン <script> として埋め込む。
+// そのままインライン <script> として埋め込む (読み込み・実行スクリプトは MermaidRuntime.ts
+// に切り出してあり、checks/MermaidCheck.ts の早期検査と共有する)。
 
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import type { ChapterHtml, TocEntry } from './ChapterRenderer.js';
+import { MERMAID_RUNNER_SCRIPT, readMermaidRuntime } from './MermaidRuntime.js';
 import { MERMAID_CONTAINER_MAX_HEIGHT_MM, MERMAID_PADDING_MM, MERMAID_SVG_MAX_HEIGHT_MM } from './PdfLayout.js';
 
 export interface DocumentMeta {
@@ -30,13 +30,6 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-/** mermaid パッケージ同梱の UMD ビルドを読む。npm パッケージとして解決するため相対パス固定にしない。 */
-function readMermaidRuntime(): string {
-  const require = createRequire(import.meta.url);
-  const path = require.resolve('mermaid/dist/mermaid.min.js');
-  return readFileSync(path, 'utf8');
 }
 
 const FONT_STACK =
@@ -122,32 +115,6 @@ ${items}
     </ol>
   </section>`;
 }
-
-/**
- * mermaid.render を図ごとに呼び、1 件でも失敗したら window.__mermaidErrors__ に積む。
- * すべて処理し終えたら window.__mermaidDone__ を true にする (Playwright 側がこれを待つ)。
- */
-const MERMAID_RUNNER_SCRIPT = `
-window.__mermaidDone__ = false;
-window.__mermaidErrors__ = [];
-(async () => {
-  try {
-    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
-    const nodes = document.querySelectorAll('pre.mermaid');
-    for (const el of nodes) {
-      const code = el.textContent ?? '';
-      try {
-        const { svg } = await mermaid.render(el.id + '-svg', code);
-        el.innerHTML = svg;
-      } catch (error) {
-        window.__mermaidErrors__.push({ id: el.id, message: String(error && error.message ? error.message : error) });
-      }
-    }
-  } finally {
-    window.__mermaidDone__ = true;
-  }
-})();
-`;
 
 /**
  * 表の幅を本文幅に収める。auto レイアウト (既定) のままだと、th/td の min-width の

@@ -21,7 +21,7 @@ function templateKindCount(): number {
 }
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-doctpl-'));
   workspaces.push(root);
   cpSync(join(IGETA_ROOT, 'templates', 'docs'), join(root, 'templates', 'docs'), { recursive: true });
   mkdirSync(join(root, 'docs'), { recursive: true });
@@ -117,6 +117,86 @@ function requirementsDoc(): string {
       '| REQ-001 | 内容 |',
       '',
     ]),
+  ].join('\n');
+}
+
+interface ContextMapDocOptions {
+  readonly id?: string;
+  readonly context?: string;
+  readonly briefLink?: string;
+}
+
+// kind: context-map の必須節をすべて満たす最小 doc (templates/docs/contexts/maps/__context__.md 相当)
+function contextMapDoc({ id = 'reservation-map', context = 'reservation', briefLink = 'なし' }: ContextMapDocOptions = {}): string {
+  return [
+    '---',
+    `id: ${id}`,
+    'kind: context-map',
+    `context: ${context}`,
+    'line_limit: 150',
+    'depends_on: [map]',
+    'relates_to: []',
+    '---',
+    '',
+    '> **TL;DR**: テスト。',
+    '',
+    '## 関連',
+    '',
+    '| 区分 | 文書 | 対応 ID |',
+    '|---|---|---|',
+    '| 上流 (depends_on) | [全体の地図](./00-map.md) | — |',
+    '| 下流 | feature-brief 全部 | — |',
+    '',
+    ...['1. 概要', '2. 含む機能'].flatMap((s) => [`## ${s}`, '', 'x', '']),
+    '## 3. 隣接まとまりへの入口',
+    '',
+    briefLink === 'なし' ? 'x' : briefLink,
+    '',
+  ].join('\n');
+}
+
+interface FeatureBriefDocOptions {
+  readonly id?: string;
+  /** null なら context フィールド自体を省く (未割り当てのテスト用) */
+  readonly context?: string | null;
+}
+
+// kind: feature-brief の必須節をすべて満たす最小 doc (templates/docs/product/features/__feature__.md 相当)
+function featureBriefDoc({ id = 'reservation-flow', context = 'reservation' }: FeatureBriefDocOptions = {}): string {
+  return [
+    '---',
+    `id: ${id}`,
+    'kind: feature-brief',
+    ...(context === null ? [] : [`context: ${context}`]),
+    'depends_on: []',
+    '---',
+    '',
+    '> **TL;DR**: テスト。',
+    '',
+    '## 関連',
+    '',
+    '| 区分 | 文書 | 対応 ID |',
+    '|---|---|---|',
+    '| 上流 (depends_on) | [地図](../../00-map.md) | — |',
+    '| 下流 | 関わる REQ ID | REQ-* |',
+    '',
+    '## 1. WHAT/WHY',
+    '',
+    'x',
+    '',
+    '## 2. ユーザーストーリー',
+    '',
+    '| 優先度 | ストーリー | 単独で試せる | Given | When | Then |',
+    '|---|---|---|---|---|---|',
+    '',
+    '## 3. 対象外',
+    '',
+    '- x',
+    '',
+    '## 4. 関わる REQ ID',
+    '',
+    '- x',
+    '',
   ].join('\n');
 }
 
@@ -463,7 +543,7 @@ describe('DocTemplateCheck', () => {
   });
 
   it('テンプレ置き場が無ければ検査不能 (exit 2)', () => {
-    const empty = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-empty-'));
+    const empty = mkdtempSync(join(tmpdir(), 'igeta-doctpl-empty-'));
     workspaces.push(empty);
     mkdirSync(join(empty, 'docs'), { recursive: true });
     const { report } = check(empty);
@@ -486,7 +566,7 @@ describe('DocTemplateCheck', () => {
   });
 
   it('テンプレは igetaRoot 側から解決する (targetRoot に templates/ が無くてもよい)', () => {
-    const bare = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-bare-'));
+    const bare = mkdtempSync(join(tmpdir(), 'igeta-doctpl-bare-'));
     workspaces.push(bare);
     mkdirSync(join(bare, 'docs'), { recursive: true });
     writeDoc(bare, 'product/requirements.md', requirementsDoc());
@@ -654,6 +734,105 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.match(report.format(), /00-map\.md が無い/);
   });
 
+  it('地図の網羅の2段化 (a): まとまりの地図が無ければ何も起きない (既存案件を赤くしない)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('地図の網羅の2段化 (a): まとまりの地図が 00-map.md からリンクされていなければ違反', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(
+      report.format(),
+      /まとまりの地図が 00-map\.md からリンクされていない: docs[\\/]contexts[\\/]maps[\\/]reservation\.md/,
+    );
+  });
+
+  it('地図の網羅の2段化 (a): 00-map.md からリンクしていれば通る', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('地図の網羅の2段化 (b): まとまりの地図が自分の feature-brief をリンクしていなければ違反、リンクすれば通る', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    writeDoc(root, 'product/features/reservation-flow.md', featureBriefDoc());
+    const missing = check(root, { requireHumanReview: true });
+    assert.equal(missing.report.exitCode, ExitCode.Violation, missing.report.format());
+    assert.match(
+      missing.report.format(),
+      /feature-brief がまとまりの地図からリンクされていない: docs[\\/]product[\\/]features[\\/]reservation-flow\.md/,
+    );
+
+    writeDoc(
+      root,
+      'contexts/maps/reservation.md',
+      contextMapDoc({ briefLink: '[予約の受付](../../product/features/reservation-flow.md)' }),
+    );
+    const ok = check(root, { requireHumanReview: true });
+    assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
+  });
+
+  it('地図の網羅の2段化 (b): 別のまとまりの feature-brief は数えない', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    writeDoc(root, 'product/features/payment-flow.md', featureBriefDoc({ id: 'payment-flow', context: 'payment' }));
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('地図の網羅の2段化 (b): context 無記入の feature-brief は「未割り当て」として違反にする (まとまりの地図が 1 枚以上あるとき、code-reviewer round 1 non-blocking 3)', () => {
+    writeDoc(
+      root,
+      '00-map.md',
+      mapDoc().replace('## 5. 詳細への入口\n\nx', '## 5. 詳細への入口\n\n[予約まとまりの地図](./contexts/maps/reservation.md)'),
+    );
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'contexts/maps/reservation.md', contextMapDoc());
+    writeDoc(root, 'product/features/unassigned-flow.md', featureBriefDoc({ id: 'unassigned-flow', context: null }));
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /未割り当て: feature-brief に context が無記入/);
+    assert.match(report.format(), /product[\\/]features[\\/]unassigned-flow\.md/);
+  });
+
+  it('地図の網羅の2段化 (b): まとまりの地図が 1 枚も無ければ context 無記入の feature-brief でも違反にしない (既存案件を赤くしない)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(root, 'product/requirements.md', requirementsDoc());
+    writeDoc(root, 'product/features/unassigned-flow.md', featureBriefDoc({ id: 'unassigned-flow', context: null }));
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
   it('決定の帰属: 「CEO が決定」等の表記に DEC-nnn が無ければ違反', () => {
     writeDoc(root, '01-decisions.md', decisionLogDoc());
     writeDoc(
@@ -676,6 +855,26 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Violation);
     assert.match(report.format(), /DEC-999 が決定台帳に無い/);
+  });
+
+  it('前提修正: 日付入り決定 ID (DEC-20260917-02) の先頭 3 桁が実在の DEC-nnn へ部分一致しない (誤検出防止)', () => {
+    // DEC-202 を本物の決定として台帳に登録した状態で、別文書が日付入りの原文表記
+    // (DEC-20260917-02、移行元案件の旧 ID 形式) を引用しても「DEC-202 への言及」と誤認してはいけない。
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(
+      root,
+      '01-decisions.md',
+      decisionLogDoc({ decRows: '| DEC-202 | 2026-09-17 | CEO | 青色でいく | 青色申告を継続する | requirements.md |' }),
+    );
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace('> **TL;DR**: 要件。', '> **TL;DR**: 要件。CEO が決定した (DEC-20260917-02)。'),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /決定の帰属を主張しているが DEC-nnn の参照が無い/);
+    assert.doesNotMatch(report.format(), /DEC-202 が決定台帳に無い/);
   });
 
   it('決定の帰属: kind: adr 自身は除外する (code-reviewer B1、ADR の Decision 節を誤検出しない)', () => {
@@ -845,6 +1044,24 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     );
     const ok = check(root, { requireHumanReview: true });
     assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
+  });
+
+  it('前提修正: 日付入り未決 ID (OPEN-20260917-02) の先頭 3 桁が実在の OPEN-nnn へ部分一致しない (誤検出防止)', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(
+      root,
+      '01-decisions.md',
+      decisionLogDoc({ openRows: '| OPEN-202 | 猶予日数 | 30日 | 30日 | requirements.md |' }),
+    );
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc().replace('| REQ-001 | 内容 |', '| REQ-001 | 内容 |\n\n仮置きで30日とする (OPEN-20260917-02)。'),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /「仮置き」に OPEN-nnn の参照が無い/);
+    assert.doesNotMatch(report.format(), /OPEN-202 が決定台帳に無い/);
   });
 
   it('仮置き: AUTOGEN の仮置き一覧 (索引) にしか無い OPEN は「決定台帳に無い」扱いになる (code-reviewer 実バグ #3)', () => {
@@ -1237,6 +1454,23 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
       requirementsDoc()
         .replace('kind: requirements', 'kind: requirements\nstatus: fixed')
         .replace('| REQ-001 | 内容 |', ['| REQ-001 | 内容 |', '', '```', '例: OPEN-001 のような書き方をしない', '```'].join('\n')),
+    );
+    const { report } = check(root, { requireHumanReview: true });
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('前提修正: 未決の関門は日付入り ID (OPEN-20260917-02) を未決の OPEN-nnn 参照と誤認しない', () => {
+    writeDoc(root, '00-map.md', mapDoc());
+    writeDoc(root, '01-decisions.md', decisionLogDoc());
+    writeDoc(
+      root,
+      'product/requirements.md',
+      requirementsDoc()
+        .replace('kind: requirements', 'kind: requirements\nstatus: fixed')
+        .replace(
+          '| REQ-001 | 内容 |',
+          '| REQ-001 | 内容 |\n\n旧システムの参照番号は OPEN-20260917-02 だった (未決事項ではない)。',
+        ),
     );
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());

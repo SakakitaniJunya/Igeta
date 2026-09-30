@@ -183,6 +183,8 @@ docs/
 | `docs/` 人間の入口 | `decision-log` | 決めたこと (DEC) と未決のこと (OPEN) の台帳。1 決定 1 行、行数上限は付けない (決定の数に比例して増えるのが正しい) | — | `01-decisions.md` | DEC / OPEN | — |
 | `product/` 要件定義 | `requirements` | 何を作るか。機能要件 (EARS 記法) と品質目標の要約、制約、ステークホルダー。全設計書の上流 | §1 | `product/01-requirements.md` | REQ | 200 |
 | `product/features/` 機能ブリーフ | `feature-brief` | spec-kit の spec.md 相当。機能単位の WHAT/WHY・ユーザーストーリー (P1/P2/P3・Given/When/Then)・対象外・関わる REQ ID の一覧だけを 1 枚に。要件文・受入条件は書かない (`igeta review-sheet` で REQ ID から展開する) | §1 | `product/features/__feature__.md` | REQ (参照のみ) | 150 |
+| `contexts/maps/` まとまりの地図 | `context-map` | 業務のまとまり (context) 1 個分の概要・含む機能 (REQ 範囲・関わる feature-brief へのリンク)・隣接まとまりへの入口 (`context-contract` へのリンク)。全体の地図の次に読む | — | `contexts/maps/__context__.md` | — | 150 |
+| `contexts/contracts/` まとまりの約束 | `context-contract` | 他のまとまりに見せてよいもの (API・イベント・持っているデータ・用語) だけ。内部実装・内部専用の REQ は書かない。`context-boundary-check` が越えてよい参照として通す唯一の内部文書 | — | `contexts/contracts/__context__.md` | — | 150 |
 | `design/basic/` 基本設計 | `function-list` | 機能の一覧と、各機能が要件・画面・API・テストのどれに対応するかの対応表 | §1 | `design/basic/01-function-list.md` | FN | 200 |
 | `design/basic/` 基本設計 | `solution-strategy` | 技術選定・最上位の分割・品質目標の達成手段を短く。以後の設計の前提 | §4 | `design/basic/02-solution-strategy.md` | SS | 200 |
 | `design/basic/` 基本設計 | `nonfunctional` | 性能・可用性・セキュリティなどの品質要求を測定可能な数値で | §10 | `design/basic/03-nonfunctional.md` | NFR | 200 |

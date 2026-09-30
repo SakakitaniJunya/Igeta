@@ -69,6 +69,11 @@ const NON_ARC42_KINDS = new Set([
   'map',
   'decision-log',
   'human-review',
+  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  'context-map',
+  'context-contract',
+  // 由来 (provenance) の手引き。固定名の単独文書 (01-document-taxonomy 等と同型)
+  'provenance-workflow',
 ]);
 // 階層の根になれる文書種別 (type / kind のどちらかで判定)。上流も下流も持たなくてよい。
 // 要件定義は全設計書の上流、ADR は決定そのもの、guide / runbook / explanation は横断・独立 (taxonomy §1)。
@@ -591,7 +596,9 @@ async function collectTentativeMarks(
         file: relative(root, f),
         line: i + 1,
         text: line.trim(),
-        openRef: line.match(/OPEN-\d{3}/)?.[0] ?? null,
+        // 3 桁の直後に数字・ハイフン+数字が続くものは部分一致させない (前提修正。日付入り ID
+        // `OPEN-20260917-02` の先頭 3 桁を実在の OPEN-nnn に誤認しない。03-audience-layers.md §7)
+        openRef: line.match(/OPEN-\d{3}(?!\d)(?!-\d)/)?.[0] ?? null,
       });
     }
   }

@@ -7,6 +7,7 @@ import { chromium } from 'playwright-core';
 import type { Page } from 'playwright-core';
 import type { MermaidBlock } from './ChapterRenderer.js';
 import { findChromiumExecutable, PLAYWRIGHT_INSTALL_HINT } from './Chromium.js';
+import { waitForMermaidRender } from './MermaidRuntime.js';
 import {
   PDF_MARGIN_BOTTOM_MM,
   PDF_MARGIN_LEFT_MM,
@@ -36,11 +37,6 @@ export interface PdfRenderOptions {
   readonly pdfPath: string;
   readonly title: string;
   readonly mermaidBlocks: readonly MermaidBlock[];
-}
-
-interface MermaidError {
-  readonly id: string;
-  readonly message: string;
 }
 
 function escapeHtml(text: string): string {
@@ -77,13 +73,7 @@ export async function renderPdf(options: PdfRenderOptions): Promise<void> {
     // レイアウトし直すが、スクリプトの一度きりの判定はこの時点の幅を見るため合わせておく。
     await page.setViewportSize({ width: mmToPx(PRINTABLE_WIDTH_MM), height: 2000 });
     await page.goto(htmlUrl, { waitUntil: 'load' });
-    await page.waitForFunction(
-      () => (globalThis as unknown as { __mermaidDone__?: boolean }).__mermaidDone__ === true,
-      { timeout: 60_000 },
-    );
-    const mermaidErrors = await page.evaluate<MermaidError[]>(
-      () => (globalThis as unknown as { __mermaidErrors__: MermaidError[] }).__mermaidErrors__,
-    );
+    const mermaidErrors = await waitForMermaidRender(page);
     if (mermaidErrors.length > 0) {
       const byId = new Map(options.mermaidBlocks.map((b) => [b.id, b.chapterRelPath]));
       const messages = mermaidErrors.map((error) => {

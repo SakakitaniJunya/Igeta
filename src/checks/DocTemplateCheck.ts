@@ -15,6 +15,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
+import { readContext, SHARED_CONTEXT } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
@@ -40,7 +41,7 @@ export interface DocTemplateOptions {
    */
   readonly requireHumanReview?: boolean;
   /**
-   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は company-person の
+   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は ある案件の
    * 実例 (「CEO 2026-09-29 決定」「〜が決定」) から採った 3 パターン。
    * キーワード判定は文書 lint であり会社 OS の「選ぶ」判断ではないので設定として持てる。
    */
@@ -48,7 +49,7 @@ export interface DocTemplateOptions {
 }
 
 /**
- * decisionAttributionPatterns の既定値。company-person の実例から採った表記。
+ * decisionAttributionPatterns の既定値。ある案件の実例から採った表記。
  * 「が決定」の主語は**人を指す語だけ**にする (code-reviewer 実バグ #6)。主語を問わない
  * `[^\s|]...が決定` は「価格が決定されるまで」「日程が決定次第」のような無生物主語まで誤検出した。
  * 人名+さん等、CEO/代表以外の主語を検出したいプロジェクトは decisionAttributionPatterns を丸ごと
@@ -67,7 +68,10 @@ const TENTATIVE_MARK = '仮置き';
  * accepted は spec-kit の語彙・将来 kind が使う可能性のある値として合わせて見る。
  */
 const FINAL_STATUSES = new Set(['fixed', 'accepted']);
-const OPEN_ID_RE = /OPEN-\d{3}/;
+// 3 桁の直後に数字・ハイフン+数字が続くものは 3 桁 ID として扱わない (前提修正。日付入り ID
+// `DEC-20260917-02`/`OPEN-20260917-02` — 移行元案件の旧 ID 形式の原文引用 — の先頭 3 桁を実在の
+// 3 桁 ID に部分一致させない。03-audience-layers.md §7)。
+const OPEN_ID_RE = /OPEN-\d{3}(?!\d)(?!-\d)/;
 
 /**
  * 「他ファイルの ID は修飾 ID で参照する」違反のうち、定義元が 1 件に一意に決まるもの (=機械的に
@@ -333,6 +337,12 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   ['map', null],
   ['decision-log', null],
   ['human-review', null],
+  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  ['context-map', null],
+  ['context-contract', null],
+  // 由来 (provenance) の手引き。01-document-taxonomy 等と同じく固定名の単独文書で、
+  // 汎用 kind: guide (__slug__.md) と kind を共有できない (テンプレ登録は kind 単位で 1 枚)
+  ['provenance-workflow', null],
 ]);
 
 function checkArc42(
@@ -582,7 +592,7 @@ function qualifierFor(relPath: string, relPathToId: ReadonlyMap<string, string>)
 /**
  * トークン直前の語が候補 homeId (frontmatter id **または** ファイル名 stem) のいずれかと完全一致
  * するなら「広義の修飾済み」とみなす (code-reviewer C1、round 3 C4 で id/stem 両対応に修正)。
- * manabi-zone では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
+ * ある案件では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
  * 方が多用されている。id と stem の両方を見るのは、既存本文が stem 形式で書かれていても (後方互換)
  * 誤って未修飾と判定して fix-ids が二重修飾で本文を壊さないようにするため。
  */
@@ -698,7 +708,8 @@ function checkDecisionAttribution(
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
 
     if (hasLiveMatch(line, patterns)) {
-      const dec = line.match(/DEC-\d{3}/)?.[0];
+      // 3 桁の直後に数字・ハイフン+数字が続くものは部分一致させない (前提修正、OPEN_ID_RE と同じ理由)
+      const dec = line.match(/DEC-\d{3}(?!\d)(?!-\d)/)?.[0];
       if (dec === undefined) {
         add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
       } else if (!idHomes.has(dec)) {
@@ -707,7 +718,7 @@ function checkDecisionAttribution(
     }
 
     if (hasLiveOccurrence(line, TENTATIVE_MARK)) {
-      const open = line.match(/OPEN-\d{3}/)?.[0];
+      const open = line.match(OPEN_ID_RE)?.[0];
       if (open === undefined) {
         add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
       } else if (!idHomes.has(open)) {
@@ -963,6 +974,65 @@ export class DocTemplateCheck implements Check {
             line: 1,
           });
         }
+      }
+    }
+
+    // ①-2 地図の網羅 (2 段、docs/explanation/07-context-boundaries.md §8): まとまりの地図が
+    // 1 枚も無い案件では何も起きない (既存案件を赤くしない)。
+    // (a) 全体の地図が、存在する全部のまとまりの地図をリンクしているか
+    // (b) まとまりの地図が、自分のまとまりの feature-brief 全部へリンクしているか
+    const contextMapDocs = resolved.filter((doc) => doc.kind === 'context-map');
+    if (contextMapDocs.length > 0 && mapDoc !== undefined) {
+      const mapTargets = new Set(
+        extractLinkTargets(mapDoc.lines, mapDoc.meta.bodyStart)
+          .map((target) => resolveLinkAbs(mapDoc.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const contextMap of contextMapDocs) {
+        if (!mapTargets.has(contextMap.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `まとまりの地図が 00-map.md からリンクされていない: ${contextMap.relPath}`,
+            file: mapDoc.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+    for (const contextMap of contextMapDocs) {
+      const ownContext = readContext(contextMap.kind, contextMap.meta.data);
+      const featureBriefs = resolved.filter(
+        (doc) => doc.kind === 'feature-brief' && readContext(doc.kind, doc.meta.data) === ownContext,
+      );
+      if (featureBriefs.length === 0) continue;
+      const targets = new Set(
+        extractLinkTargets(contextMap.lines, contextMap.meta.bodyStart)
+          .map((target) => resolveLinkAbs(contextMap.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const brief of featureBriefs) {
+        if (!targets.has(brief.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `feature-brief がまとまりの地図からリンクされていない: ${brief.relPath}`,
+            file: contextMap.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+    // まとまりの地図が 1 枚以上ある案件では、context 無記入の feature-brief はどのまとまりの地図からも
+    // 求められずに素通りしてしまう (code-reviewer round 1 non-blocking 3)。「未割り当て」として違反にする。
+    if (contextMapDocs.length > 0) {
+      for (const brief of resolved) {
+        if (brief.kind !== 'feature-brief') continue;
+        if (readContext(brief.kind, brief.meta.data) !== SHARED_CONTEXT) continue;
+        violations.push({
+          severity: 'violation',
+          message: '未割り当て: feature-brief に context が無記入 (まとまりの地図がある案件では context を指定する)',
+          file: brief.relPath,
+          line: 1,
+        });
       }
     }
 
