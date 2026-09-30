@@ -28,14 +28,18 @@ graph LR
   class docs-index index
   explanation-index["explanation — 索引"]
   class explanation-index index
+  export-deliverable["igeta export — 提出用 PDF 出力基盤"]
+  class export-deliverable explanation
   human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
   class human-review-layer explanation
   design-doc-standards -.- docs-index
+  export-deliverable -.- docs-index
 ```
 ## ドキュメント一覧 (type 別)
 ### explanation
 
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
+- **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md)
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)

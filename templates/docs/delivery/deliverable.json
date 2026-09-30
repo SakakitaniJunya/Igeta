@@ -1,0 +1,12 @@
+{
+  "title": "<設計書のタイトル>",
+  "subtitle": "<副題 (任意。無ければキーごと削除)>",
+  "recipient": "<先方名。宛名を出したくない場合は省略可 (空文字も省略と同じ扱い)>",
+  "issuer": "<発行者名>",
+  "version": "1.0",
+  "date": "YYYY-MM-DD",
+  "chapters": ["00-intro.md", "01-overview.md"],
+  "forbid": ["DEC-\\d", "REQ-\\d"],
+  "omitSections": ["関連"],
+  "output": "out/design-document.pdf"
+}

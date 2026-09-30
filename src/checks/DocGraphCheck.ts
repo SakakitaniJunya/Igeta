@@ -64,6 +64,7 @@ const NON_ARC42_KINDS = new Set([
   'document-taxonomy',
   'explanation',
   'runbook',
+  'delivery-chapter',
   // 人間レビュー層: 地図と決定台帳、その読み方の手引き。人の入口であって arc42 の関心事の分類には乗らない
   'map',
   'decision-log',

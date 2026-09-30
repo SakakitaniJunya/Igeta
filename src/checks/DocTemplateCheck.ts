@@ -327,6 +327,7 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   ['implementation-order', null],
   ['document-taxonomy', null],
   ['explanation', null],
+  ['delivery-chapter', null],
   ['runbook', null],
   // 人間レビュー層: 地図と決定台帳。人の入口であって arc42 の関心事の分類には乗らない
   ['map', null],

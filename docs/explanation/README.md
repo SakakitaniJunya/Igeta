@@ -18,5 +18,6 @@ owners: [eng]
 
 - [01-design-doc-standards.md](01-design-doc-standards.md) — **設計書テンプレが参照した外部標準** `explanation` — 設計書の背骨は arc42 12 章。読みやすさの部分 (関連 ID・依存・README 索引) だけ独自に足す。
 - [02-human-review-layer.md](02-human-review-layer.md) — **人間レビュー層 (地図・決定台帳・レビューシート) を足した理由** `explanation` — 1 文書 200 行の上限を守っていても、文書が 45 枚に増えると人は読めない。読み手の仕事
+- [06-export-deliverable.md](06-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
 
 <!-- AUTOGEN:dir-index:end -->
