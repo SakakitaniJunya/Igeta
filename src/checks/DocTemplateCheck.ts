@@ -15,9 +15,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
+import { readContext, SHARED_CONTEXT } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
+import type { LineKind } from '../core/LineClassifier.js';
+import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
@@ -38,7 +41,7 @@ export interface DocTemplateOptions {
    */
   readonly requireHumanReview?: boolean;
   /**
-   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は company-person の
+   * 「CEO が決定」等、人の決定を主張する表記の検出パターン。既定は ある案件の
    * 実例 (「CEO 2026-09-29 決定」「〜が決定」) から採った 3 パターン。
    * キーワード判定は文書 lint であり会社 OS の「選ぶ」判断ではないので設定として持てる。
    */
@@ -46,7 +49,7 @@ export interface DocTemplateOptions {
 }
 
 /**
- * decisionAttributionPatterns の既定値。company-person の実例から採った表記。
+ * decisionAttributionPatterns の既定値。ある案件の実例から採った表記。
  * 「が決定」の主語は**人を指す語だけ**にする (code-reviewer 実バグ #6)。主語を問わない
  * `[^\s|]...が決定` は「価格が決定されるまで」「日程が決定次第」のような無生物主語まで誤検出した。
  * 人名+さん等、CEO/代表以外の主語を検出したいプロジェクトは decisionAttributionPatterns を丸ごと
@@ -65,30 +68,10 @@ const TENTATIVE_MARK = '仮置き';
  * accepted は spec-kit の語彙・将来 kind が使う可能性のある値として合わせて見る。
  */
 const FINAL_STATUSES = new Set(['fixed', 'accepted']);
-const OPEN_ID_RE = /OPEN-\d{3}/;
-
-// 決定帰属・仮置きの誤検出対策 (code-reviewer B2)。
-// 「」『』内に完全に収まる語は引用 (置き換え前の表記の引用・訂正の記録) であって現在の主張ではない。
-// 語の直後の否定・伝聞は「そう主張していない」ことの表明なので除外する。
-const NEGATION_TAIL_RE = /^(ではな(い|かった)|でな(い|かった)|していな(い|かった)|しなかった|せず)/;
-const HEARSAY_TAIL_RE = /^.{0,4}と(書かれてい|書いてあっ|記載されてい|言われてい)/;
-
-/** index が「」『』の対で開いた引用の内側かどうか (深さ 1 以上)。 */
-function isQuotedAt(line: string, index: number): boolean {
-  let depth = 0;
-  for (let i = 0; i < index; i += 1) {
-    const ch = line[i];
-    if (ch === '「' || ch === '『') depth += 1;
-    else if (ch === '」' || ch === '』') depth = Math.max(0, depth - 1);
-  }
-  return depth > 0;
-}
-
-/** keywordEnd 直後が否定・伝聞の言い回しなら true (主張ではないので除外する)。 */
-function isNegatedOrHearsayAfter(line: string, keywordEnd: number): boolean {
-  const tail = line.slice(keywordEnd, keywordEnd + 16);
-  return NEGATION_TAIL_RE.test(tail) || HEARSAY_TAIL_RE.test(tail);
-}
+// 3 桁の直後に数字・ハイフン+数字が続くものは 3 桁 ID として扱わない (前提修正。日付入り ID
+// `DEC-20260917-02`/`OPEN-20260917-02` — 移行元案件の旧 ID 形式の原文引用 — の先頭 3 桁を実在の
+// 3 桁 ID に部分一致させない。03-audience-layers.md §7)。
+const OPEN_ID_RE = /OPEN-\d{3}(?!\d)(?!-\d)/;
 
 /**
  * 「他ファイルの ID は修飾 ID で参照する」違反のうち、定義元が 1 件に一意に決まるもの (=機械的に
@@ -140,6 +123,8 @@ interface ResolvedDoc {
   readonly meta: Frontmatter;
   readonly kind: string;
   readonly template: TemplateEntry;
+  /** lines の行ごとの分類 (autogen / html-comment / code-fence / body)。checkDoc 時点で 1 回だけ計算する */
+  readonly kinds: readonly LineKind[];
 }
 
 interface PathSlot {
@@ -346,11 +331,18 @@ const ARC42_BY_KIND = new Map<string, number | null>([
   ['implementation-order', null],
   ['document-taxonomy', null],
   ['explanation', null],
+  ['delivery-chapter', null],
   ['runbook', null],
   // 人間レビュー層: 地図と決定台帳。人の入口であって arc42 の関心事の分類には乗らない
   ['map', null],
   ['decision-log', null],
   ['human-review', null],
+  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  ['context-map', null],
+  ['context-contract', null],
+  // 由来 (provenance) の手引き。01-document-taxonomy 等と同じく固定名の単独文書で、
+  // 汎用 kind: guide (__slug__.md) と kind を共有できない (テンプレ登録は kind 単位で 1 枚)
+  ['provenance-workflow', null],
 ]);
 
 function checkArc42(
@@ -413,6 +405,7 @@ function checkIds(
   bodyStart: number,
   data: FrontmatterData,
   template: TemplateEntry,
+  kinds: readonly LineKind[],
   add: AddViolation,
 ): void {
   if (template.idPattern === 'class-name') {
@@ -431,8 +424,23 @@ function checkIds(
       ? new RegExp(`\\b${prefix}\\d[0-9A-Za-z_-]*`, 'g')
       : new RegExp(`\\b${prefix}-[A-Za-z0-9_-]+`, 'g');
     const strict = bare ? new RegExp(`^${prefix}\\d{3}$`) : new RegExp(`^${prefix}-\\d{3}$`);
+    // 汎用の説明用プレースホルダはテンプレ・ガイド全体で「この接頭辞の ID 一般」を指す記法として
+    // 使っており、実際の ID ではない (code-reviewer 実バグ #4)。2 種類の書き方がある: 全桁を
+    // 汎用にする `nnn` (`PREFIX-nnn`) と、百番台だけを示す `Nxx` (`REQ-1xx`・`XC-4xx` 等、先頭は
+    // 実数字、残り 2 桁が `x`)。3 桁部分が数字・`n`・`x` だけで構成され、`n`/`x` を 1 文字でも
+    // 含むなら実 ID ではなくプレースホルダとして扱う。
+    const suffixRe = bare ? new RegExp(`^${prefix}([0-9nx]{3})$`) : new RegExp(`^${prefix}-([0-9nx]{3})$`);
+    const isPlaceholder = (token: string): boolean => {
+      const suffix = suffixRe.exec(token)?.[1];
+      return suffix !== undefined && /[nx]/.test(suffix);
+    };
     for (let i = bodyStart; i < lines.length; i += 1) {
-      for (const token of (lines[i] ?? '').match(pattern) ?? []) {
+      // AUTOGEN・HTML コメント・コードフェンスは本文の主張ではないので検査対象外にする
+      // (code-reviewer 実バグ #4 系。写された行 (AUTOGEN) を台帳が責められないようにする)。
+      if (kinds[i] !== 'body') continue;
+      const line = lines[i] ?? '';
+      for (const token of line.match(pattern) ?? []) {
+        if (isPlaceholder(token)) continue;
         count += 1;
         if (!strict.test(token)) {
           add(i + 1, `ID 形式が不正: ${token} (${bare ? `${prefix}nnn` : `${prefix}-nnn`} の 3 桁)`);
@@ -485,20 +493,11 @@ function checkDecisionLogRows(lines: readonly string[], bodyStart: number, add: 
 }
 
 /** doc 本文の行数。<!-- AUTOGEN --> 区間 (生成される仮置き一覧など) は上限の外に置く。 */
-function countCheckableLines(lines: readonly string[]): number {
+function countCheckableLines(lines: readonly string[], kinds: readonly LineKind[]): number {
   let total = lines.length;
   if (lines[lines.length - 1] === '') total -= 1; // 末尾の改行 1 個は行数に数えない
-  let inAutogen = false;
-  for (const line of lines) {
-    if (/<!--\s*AUTOGEN[A-Za-z:-]*:start/.test(line)) {
-      inAutogen = true;
-      continue;
-    }
-    if (/<!--\s*AUTOGEN[A-Za-z:-]*:end/.test(line)) {
-      inAutogen = false;
-      continue;
-    }
-    if (inAutogen) total -= 1;
+  for (const kind of kinds) {
+    if (kind === 'autogen') total -= 1;
   }
   return total;
 }
@@ -593,7 +592,7 @@ function qualifierFor(relPath: string, relPathToId: ReadonlyMap<string, string>)
 /**
  * トークン直前の語が候補 homeId (frontmatter id **または** ファイル名 stem) のいずれかと完全一致
  * するなら「広義の修飾済み」とみなす (code-reviewer C1、round 3 C4 で id/stem 両対応に修正)。
- * manabi-zone では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
+ * ある案件では `tenancy REQ-114` のように、スラッシュではなく空白 1 個で doc-id を前置く書き
  * 方が多用されている。id と stem の両方を見るのは、既存本文が stem 形式で書かれていても (後方互換)
  * 誤って未修飾と判定して fix-ids が二重修飾で本文を壊さないようにするため。
  */
@@ -616,13 +615,15 @@ function checkQualifiedIds(
   relPathToId: ReadonlyMap<string, string>,
   refRegex: RegExp,
   relatedRange: readonly [number, number],
+  kinds: readonly LineKind[],
   add: AddViolation,
   addFix: (line: number, column: number, token: string, homeId: string) => void,
 ): void {
-  const inFence = makeFenceTracker();
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    // AUTOGEN・HTML コメント・コードフェンスは手で書いた本文の主張ではないので検査対象外にする
+    // (code-reviewer 実バグ #1/#10)。分類は 1 か所 (classifyLines) に統一する。
+    if (kinds[i] !== 'body') continue;
     const line = doc.lines[i] ?? '';
-    if (inFence(line)) continue;
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     for (const matched of line.matchAll(refRegex)) {
       const docIdPart = matched[1];
@@ -670,48 +671,17 @@ function checkQualifiedIds(
  * まで確定を名乗れない。関連の対応 ID 列を含め本文全体を見る (未決が残っているかどうかが論点で、
  * 引用・関連の区別は関係ない)。
  */
-function checkAcceptedGate(doc: ResolvedDoc, add: AddViolation): void {
+function checkAcceptedGate(doc: ResolvedDoc, kinds: readonly LineKind[], add: AddViolation): void {
   if (doc.kind !== 'requirements' && doc.kind !== 'feature-brief') return;
   const status = scalar(doc.meta.data, 'status');
   if (status === undefined || !FINAL_STATUSES.has(status)) return;
-  const inFence = makeFenceTracker(); // コードフェンス内の例示は主張ではない (non-blocking N-d)
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    if (kinds[i] !== 'body') continue; // コードフェンス等の例示は主張ではない (non-blocking N-d)
     const line = doc.lines[i] ?? '';
-    if (inFence(line)) continue;
     const open = line.match(OPEN_ID_RE)?.[0];
     if (open !== undefined) {
       add(i + 1, `status: ${status} だが ${open} を参照している (未決の関門。解決してから確定にする)`);
     }
-  }
-}
-
-/**
- * 行内の**全出現**を独立に判定する (code-reviewer round 3 C2)。以前は最初のマッチだけを見ていたため、
- * 「CEOが決定ではないという説もあるが、実務上はCEOが決定した」のように否定の decoy を先に置くと、
- * 後続の本物の主張を見逃していた。パターンごとに matchAll で全出現を回し、1 件でも
- * 引用・否定・伝聞でないものがあれば「主張がある」と判定する。
- */
-function hasValidAttribution(line: string, patterns: readonly RegExp[]): boolean {
-  for (const pattern of patterns) {
-    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-    const global = new RegExp(pattern.source, flags);
-    for (const matched of line.matchAll(global)) {
-      const index = matched.index;
-      if (index === undefined) continue;
-      if (!isQuotedAt(line, index) && !isNegatedOrHearsayAfter(line, index + matched[0].length)) return true;
-    }
-  }
-  return false;
-}
-
-/** 「仮置き」の全出現を独立に判定する (同じ理由で C2)。 */
-function hasValidTentativeMark(line: string): boolean {
-  let from = 0;
-  for (;;) {
-    const index = line.indexOf(TENTATIVE_MARK, from);
-    if (index === -1) return false;
-    if (!isQuotedAt(line, index) && !isNegatedOrHearsayAfter(line, index + TENTATIVE_MARK.length)) return true;
-    from = index + TENTATIVE_MARK.length;
   }
 }
 
@@ -720,20 +690,26 @@ function checkDecisionAttribution(
   idHomes: ReadonlyMap<string, readonly string[]>,
   patterns: readonly RegExp[],
   relatedRange: readonly [number, number],
+  kinds: readonly LineKind[],
   add: AddViolation,
 ): void {
-  // decision-log・adr 自身は決定の正本 (台帳・MADR)。列名 (「仮置き値」) や見出し (「仮置き一覧」)、
-  // ADR の Decision 節が語彙として「仮置き」「決定」を含むのは当然で、自分自身への帰属を求めない。
-  if (doc.kind === 'decision-log' || doc.kind === 'adr') return;
-  const inFence = makeFenceTracker();
+  // decision-log・adr・human-review (この検査自身を解説するガイド) は語彙として
+  // 「仮置き」「決定」「OPEN-nnn」「DEC-nnn」を含むのが当然で、自分自身への帰属を求めない。
+  // human-review はこの仕組みを人に説明するガイド (実例そのものではなく解説) で、他の kind と
+  // 違って本文全体が「OPEN-nnn」「DEC-nnn」という**placeholder 記法の解説**であり、実在の決定・
+  // 仮置きへの言及ではない (code-reviewer 実バグ #5)。
+  if (doc.kind === 'decision-log' || doc.kind === 'adr' || doc.kind === 'human-review') return;
   for (let i = doc.meta.bodyStart; i < doc.lines.length; i += 1) {
+    // AUTOGEN 区間は他文書の行をそのまま写す索引で、手で書いた本文の主張ではない
+    // (code-reviewer 実バグ #1)。分類は 1 か所 (classifyLines) に統一する。
+    if (kinds[i] !== 'body') continue;
     const line = doc.lines[i] ?? '';
-    if (inFence(line)) continue;
     if (isExemptRelatedRow(i, relatedRange, line)) continue;
     if (/^#{1,6}\s/.test(line)) continue; // 見出し行は主張ではない
 
-    if (hasValidAttribution(line, patterns)) {
-      const dec = line.match(/DEC-\d{3}/)?.[0];
+    if (hasLiveMatch(line, patterns)) {
+      // 3 桁の直後に数字・ハイフン+数字が続くものは部分一致させない (前提修正、OPEN_ID_RE と同じ理由)
+      const dec = line.match(/DEC-\d{3}(?!\d)(?!-\d)/)?.[0];
       if (dec === undefined) {
         add(i + 1, `決定の帰属を主張しているが DEC-nnn の参照が無い: ${line.trim()}`);
       } else if (!idHomes.has(dec)) {
@@ -741,8 +717,8 @@ function checkDecisionAttribution(
       }
     }
 
-    if (hasValidTentativeMark(line)) {
-      const open = line.match(/OPEN-\d{3}/)?.[0];
+    if (hasLiveOccurrence(line, TENTATIVE_MARK)) {
+      const open = line.match(OPEN_ID_RE)?.[0];
       if (open === undefined) {
         add(i + 1, `「${TENTATIVE_MARK}」に OPEN-nnn の参照が無い: ${line.trim()}`);
       } else if (!idHomes.has(open)) {
@@ -780,6 +756,7 @@ function checkDoc(
   template: TemplateEntry,
   idIndex: ReadonlyMap<string, string>,
   requireKind: boolean,
+  kinds: readonly LineKind[],
 ): Violation[] {
   const violations: Violation[] = [];
   const { data, bodyStart } = meta;
@@ -800,7 +777,7 @@ function checkDoc(
   }
 
   checkRelated(lines, sections, bodyStart, add);
-  checkIds(lines, bodyStart, data, template, add);
+  checkIds(lines, bodyStart, data, template, kinds, add);
 
   if (template.kind === 'requirements') checkEars(lines, bodyStart, add);
   if (template.kind === 'decision-log') checkDecisionLogRows(lines, bodyStart, add);
@@ -808,7 +785,7 @@ function checkDoc(
   checkArc42(template.kind, data, add, requireKind);
 
   if (template.lineLimit !== null) {
-    const total = countCheckableLines(lines);
+    const total = countCheckableLines(lines, kinds);
     if (total > template.lineLimit) {
       add(1, `行数上限 (${template.lineLimit}) を超えている: ${total} 行`);
     }
@@ -932,8 +909,9 @@ export class DocTemplateCheck implements Check {
         continue;
       }
       checkedCount += 1;
-      violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind));
-      resolved.push({ relPath, file, lines, meta, kind, template });
+      const kinds = classifyLines(lines);
+      violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind, kinds));
+      resolved.push({ relPath, file, lines, meta, kind, template, kinds });
     }
 
     if (requireKind) {
@@ -999,6 +977,65 @@ export class DocTemplateCheck implements Check {
       }
     }
 
+    // ①-2 地図の網羅 (2 段、docs/explanation/07-context-boundaries.md §8): まとまりの地図が
+    // 1 枚も無い案件では何も起きない (既存案件を赤くしない)。
+    // (a) 全体の地図が、存在する全部のまとまりの地図をリンクしているか
+    // (b) まとまりの地図が、自分のまとまりの feature-brief 全部へリンクしているか
+    const contextMapDocs = resolved.filter((doc) => doc.kind === 'context-map');
+    if (contextMapDocs.length > 0 && mapDoc !== undefined) {
+      const mapTargets = new Set(
+        extractLinkTargets(mapDoc.lines, mapDoc.meta.bodyStart)
+          .map((target) => resolveLinkAbs(mapDoc.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const contextMap of contextMapDocs) {
+        if (!mapTargets.has(contextMap.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `まとまりの地図が 00-map.md からリンクされていない: ${contextMap.relPath}`,
+            file: mapDoc.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+    for (const contextMap of contextMapDocs) {
+      const ownContext = readContext(contextMap.kind, contextMap.meta.data);
+      const featureBriefs = resolved.filter(
+        (doc) => doc.kind === 'feature-brief' && readContext(doc.kind, doc.meta.data) === ownContext,
+      );
+      if (featureBriefs.length === 0) continue;
+      const targets = new Set(
+        extractLinkTargets(contextMap.lines, contextMap.meta.bodyStart)
+          .map((target) => resolveLinkAbs(contextMap.file, targetRoot, target))
+          .filter((target): target is string => target !== null),
+      );
+      for (const brief of featureBriefs) {
+        if (!targets.has(brief.file)) {
+          violations.push({
+            severity: 'violation',
+            message: `feature-brief がまとまりの地図からリンクされていない: ${brief.relPath}`,
+            file: contextMap.relPath,
+            line: 1,
+          });
+        }
+      }
+    }
+    // まとまりの地図が 1 枚以上ある案件では、context 無記入の feature-brief はどのまとまりの地図からも
+    // 求められずに素通りしてしまう (code-reviewer round 1 non-blocking 3)。「未割り当て」として違反にする。
+    if (contextMapDocs.length > 0) {
+      for (const brief of resolved) {
+        if (brief.kind !== 'feature-brief') continue;
+        if (readContext(brief.kind, brief.meta.data) !== SHARED_CONTEXT) continue;
+        violations.push({
+          severity: 'violation',
+          message: '未割り当て: feature-brief に context が無記入 (まとまりの地図がある案件では context を指定する)',
+          file: brief.relPath,
+          line: 1,
+        });
+      }
+    }
+
     // ②③ 決定の帰属・仮置きの OPEN 参照、④ 修飾 ID。いずれも DEC-nnn/OPEN-nnn/REQ-nnn 等の
     // 定義元 (idHomes) を全 doc から作ってから判定する
     const idHomes = buildIdHomes(resolved);
@@ -1010,13 +1047,13 @@ export class DocTemplateCheck implements Check {
       const add: AddViolation = (line, message) =>
         violations.push({ severity: 'violation', message, file: doc.relPath, line });
       const relatedRange = relatedSectionRange(doc.lines, doc.meta.bodyStart);
-      checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, add);
+      checkDecisionAttribution(doc, idHomes, attributionPatterns, relatedRange, doc.kinds, add);
       if (refRegex !== null) {
-        checkQualifiedIds(doc, idHomes, idIndexRel, relPathToId, refRegex, relatedRange, add, (line, column, token, homeId) => {
+        checkQualifiedIds(doc, idHomes, idIndexRel, relPathToId, refRegex, relatedRange, doc.kinds, add, (line, column, token, homeId) => {
           fixes.push({ file: doc.relPath, line, column, token, homeId });
         });
       }
-      checkAcceptedGate(doc, add);
+      checkAcceptedGate(doc, doc.kinds, add);
     }
 
     return { violations, fixes };

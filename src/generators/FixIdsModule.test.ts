@@ -147,7 +147,7 @@ describe('FixIdsModule', () => {
   });
 
   it('負例: id とファイル名 stem が食い違う場合の一般形 (`crosscutting REQ-nnn` 型、code-reviewer round 3 C4)', () => {
-    // frontmatter id: crosscutting、ファイル名 stem: 04-crosscutting という manabi-zone の実例と同じ食い違い
+    // frontmatter id: crosscutting、ファイル名 stem: 04-crosscutting というある案件の実例と同じ食い違い
     writeDoc(
       root,
       'product/04-crosscutting.md',

@@ -1,6 +1,6 @@
 {
   "name": "igeta",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "日本の設計書を、Markdown で。基本設計・詳細設計を arc42 に載せ CI で検査する設計書テンプレート集",
   "license": "MIT",
   "repository": {
@@ -29,6 +29,7 @@
     "docs:graph": "node dist/cli.js docs-graph",
     "docs:lint": "markdownlint-cli2",
     "docs:template-check": "node dist/cli.js template-check --require-kind",
+    "export": "node dist/cli.js export",
     "docs:review-sheet": "node dist/cli.js review-sheet",
     "docs:analyze": "node dist/cli.js analyze",
     "docs:fix-ids": "node dist/cli.js fix-ids",
@@ -42,5 +43,10 @@
     "dependency-cruiser": "^16.10.0",
     "markdownlint-cli2": "^0.18.1",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "markdown-it": "15.0.2",
+    "mermaid": "12.0.0",
+    "playwright-core": "1.63.0"
   }
 }

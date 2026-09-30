@@ -2,6 +2,7 @@ import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
+import { classifyLines } from '../core/LineClassifier.js';
 
 /**
  * レビューシート生成。人間レビュー層 (docs/00-map.md・docs/01-decisions.md) を前提に、
@@ -73,10 +74,25 @@ function splitCells(line: string): string[] {
     .map((cell) => cell.trim());
 }
 
-/** id トークン (例: REQ-101) が最初の列にある行を見つけ、直近の table 見出し行を header にして返す */
+/**
+ * id トークン (例: REQ-101) が最初の列にある行を見つけ、直近の table 見出し行を header にして返す。
+ * AUTOGEN 区間 (決定台帳の「仮置き一覧」等) ・HTML コメント・コードフェンスは他文書の行をそのまま
+ * 写す索引・例示であって定義ではないため除外する (code-reviewer 実バグ #6。分類は
+ * core/LineClassifier.ts の classifyLines に統一し、DocTemplateCheck 側の判定と食い違わないようにする)。
+ * 除外しないと、§2 に本物の定義が無い OPEN でも索引の行 (`場所`・`本文` 列) を「定義」として解決
+ * してしまい、間違ったフィールドを表示する。
+ */
 function findTableRow(lines: readonly string[], idToken: string): { headers: readonly string[]; cells: readonly string[] } | null {
   const rowRe = new RegExp(`^\\|\\s*${idToken}\\s*\\|`);
-  const rowIndex = lines.findIndex((line) => rowRe.test(line.trim()));
+  const kinds = classifyLines(lines);
+  let rowIndex = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (kinds[i] !== 'body') continue;
+    if (rowRe.test((lines[i] ?? '').trim())) {
+      rowIndex = i;
+      break;
+    }
+  }
   if (rowIndex === -1) return null;
   let headerIndex = rowIndex;
   while (headerIndex > 0 && (lines[headerIndex - 1] ?? '').trim().startsWith('|')) headerIndex -= 1;
@@ -90,14 +106,18 @@ function findTableRow(lines: readonly string[], idToken: string): { headers: rea
  * 修飾 ID (`<docId>/<token>`) の完全一致、または**他 doc への修飾参照になっていない**裸の token
  * だけを拾う (code-reviewer 実バグ #5)。裸の token を部分文字列一致で拾うと、`other-doc/REQ-101`
  * のような**別文書**の同番号 REQ への修飾参照まで「この REQ の決定」として混ざってしまう。
+ * AUTOGEN 区間 (仮置き一覧の索引行) は他文書の行をそのまま写した索引であって、決定台帳自身が
+ * その DEC/OPEN について書いた行ではないため除外する (code-reviewer 実バグ #1)。
  */
 function findDecisionRows(decisionLog: DocRecord | undefined, docId: string, token: string): string[] {
   if (decisionLog === undefined) return [];
   const qualifiedRe = new RegExp(`\\b${docId}/${token}\\b`);
   const bareRe = new RegExp(`(?<![A-Za-z0-9-]/)\\b${token}\\b`);
+  const kinds = classifyLines(decisionLog.lines);
   const rows: string[] = [];
-  for (const line of decisionLog.lines) {
-    const trimmed = line.trim();
+  for (let i = 0; i < decisionLog.lines.length; i += 1) {
+    if (kinds[i] !== 'body') continue;
+    const trimmed = (decisionLog.lines[i] ?? '').trim();
     if (!/^\|\s*(DEC|OPEN)-\d{3}\s*\|/.test(trimmed)) continue;
     if (qualifiedRe.test(trimmed) || bareRe.test(trimmed)) rows.push(trimmed);
   }
