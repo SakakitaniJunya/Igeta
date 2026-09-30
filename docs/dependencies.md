@@ -40,13 +40,20 @@ graph LR
   class export-deliverable explanation
   human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
   class human-review-layer explanation
+  map["地図 — Igeta が何をするか・誰が使うか・主要フロー"]
+  class map map
+  product-index["product — 索引"]
+  class product-index index
   provenance-and-agreement["由来・鮮度の形 (delivery-chapter 限定)"]
   class provenance-and-agreement explanation
+  requirements["要件定義書 (draft)"]
+  class requirements product
   provenance-and-agreement ==> agreement-ledger
   human-review-layer ==> audience-layers
   audience-layers ==> context-boundaries
   provenance-and-agreement ==> coverage-and-learning
   audience-layers ==> provenance-and-agreement
+  audience-layers ==> requirements
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
   audience-layers -.- provenance-and-agreement
@@ -54,10 +61,15 @@ graph LR
   audience-layers -.- context-boundaries
   design-doc-standards -.- docs-index
   export-deliverable -.- docs-index
+  map -.- requirements
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
 ```
 ## ドキュメント一覧 (type 別)
+### map
+
+- **map** — [地図 — Igeta が何をするか・誰が使うか・主要フロー](00-map.md)
+
 ### explanation
 
 - **agreement-ledger** — [顧客との合意台帳の形 (提出・承認・その後の変更)](explanation/08-agreement-ledger.md)
@@ -74,4 +86,5 @@ graph LR
 | ID | Type | Path |
 |---|---|---|
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
+| product-index | index | [`docs/product/README.md`](product/README.md) |
 
