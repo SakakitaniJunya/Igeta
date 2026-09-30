@@ -1,6 +1,6 @@
 // node --test dist/checks/AgreementCheck.test.js
 // 合意台帳の一連 (記録 → 承認 → 検査) を、モジュールを直接呼んで確かめる。
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -350,6 +350,49 @@ describe('AgreementCheck', () => {
     assert.equal(approveAgreement({ submissionDir: fx.submissionDir, version: '1.1', by: '発注側の責任者' }).kind, 'ok');
     const afterApprove = runCheck(fx);
     assert.equal(afterApprove.report.exitCode, ExitCode.Ok, afterApprove.report.format());
+  });
+
+  it('基準は提出順で選ぶ: 承認と提出が交差した台帳でも、基準が過去へ戻らない', () => {
+    const fx = makeFixture();
+    record(fx); // 1.0 (30 日前) を記録
+    write(fx.root, CHAPTER, chapter('予約は 60 日前まで受け付けます。'));
+    write(fx.root, `${SUBMISSION}/deliverable.json`, manifestJson('2.0'));
+    assert.equal(record(fx).kind, 'ok'); // 2.0 (60 日前) を記録
+    // 承認ガード導入前の台帳を再現: 新しい版 2.0 の承認の後に、古い版 1.0 の承認が追記されている
+    const ledgerPath = ledgerPathFor(fx.submissionDir);
+    appendFileSync(ledgerPath, `${JSON.stringify({ event: 'approve', targetVersion: '2.0', approvedBy: 'x', approvedAt: '2026-01-12' })}\n`);
+    appendFileSync(ledgerPath, `${JSON.stringify({ event: 'approve', targetVersion: '1.0', approvedBy: 'x', approvedAt: '2026-01-13' })}\n`);
+    // 基準は「最後の承認 1.0」ではなく「承認済みのうち提出が最も後の 2.0」→ 本文 60 日前と一致して Ok
+    const { report } = runCheck(fx);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+  });
+
+  it('検査不能: 台帳の chapters[].file が提出物のディレクトリの外を指す', () => {
+    const fx = makeFixture();
+    write(fx.root, `${SUBMISSION}/${LEDGER_FILENAME}`, [
+      JSON.stringify({ event: 'export', version: '1.0', date: '2026-01-10', manifest: 'deliverable.json', omitSections: [], chapters: [{ file: '../../requirements.md', chapterFingerprint: 'sha256:0', sources: [] }] }),
+      JSON.stringify({ event: 'approve', targetVersion: '1.0', approvedBy: 'x', approvedAt: '2026-01-12' }),
+      '',
+    ].join('\n'));
+    const { report } = runCheck(fx);
+    assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
+    assert.match(report.format(), /外を指している/);
+  });
+
+  it('検査不能: 章が symlink で提出物のディレクトリの外を指す', () => {
+    const fx = makeFixture();
+    const outside = write(fx.root, 'docs/outside.md', '# 外の文書\n');
+    const link = join(fx.submissionDir, 'linked.md');
+    rmSync(link, { force: true });
+    symlinkSync(outside, link);
+    write(fx.root, `${SUBMISSION}/${LEDGER_FILENAME}`, [
+      JSON.stringify({ event: 'export', version: '1.0', date: '2026-01-10', manifest: 'deliverable.json', omitSections: [], chapters: [{ file: 'linked.md', chapterFingerprint: 'sha256:0', sources: [] }] }),
+      JSON.stringify({ event: 'approve', targetVersion: '1.0', approvedBy: 'x', approvedAt: '2026-01-12' }),
+      '',
+    ].join('\n'));
+    const { report } = runCheck(fx);
+    assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
+    assert.match(report.format(), /外を指している/);
   });
 
   it('検査不能: 台帳に壊れた行がある (黙って読み飛ばさない)', () => {

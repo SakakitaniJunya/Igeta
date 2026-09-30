@@ -22,7 +22,7 @@ const hasWarnings = (check: Check): check is Check & HasWarnings =>
 export abstract class CheckCommand extends Command {
   protected readonly argSpec: ArgSpec = {};
 
-  protected abstract createCheck(args: ParsedArgs): Check;
+  protected abstract createCheck(args: ParsedArgs, ctx: CommandContext): Check;
 
   override async run(argv: readonly string[], ctx: CommandContext): Promise<ExitCode> {
     const args = parseArgs(argv, {
@@ -39,7 +39,7 @@ export abstract class CheckCommand extends Command {
       igetaRoot: ctx.igetaRoot,
     };
 
-    const check = this.createCheck(args);
+    const check = this.createCheck(args, ctx);
     const report = new Report();
     report.addAll(await check.run(checkCtx));
 

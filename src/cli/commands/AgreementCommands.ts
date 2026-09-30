@@ -54,11 +54,11 @@ export class AgreementCheckCommand extends CheckCommand {
 
   protected override readonly argSpec = { valueOptions: ['docs', 'dir', 'config'] };
 
-  protected createCheck(args: ParsedArgs): Check {
+  protected createCheck(args: ParsedArgs, ctx: CommandContext): Check {
     const dir = args.get('dir');
     return new AgreementCheck({
       docsDir: args.get('docs'),
-      submissionDir: dir === undefined ? undefined : resolve(dir),
+      submissionDir: dir === undefined ? undefined : resolve(ctx.cwd, dir),
       configPath: args.get('config'),
     });
   }

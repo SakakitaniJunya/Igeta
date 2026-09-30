@@ -8,9 +8,9 @@
 //       - 当たらない                                 → 通知のみ (警告)
 // 承認された版が無い台帳は違反にしない (まだ合意が無い状態は正当)。台帳が 1 つも無ければ Ok。
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
-import type { AgreementExportEvent } from '../core/AgreementLedger.js';
+import type { AgreementApproveEvent, AgreementExportEvent } from '../core/AgreementLedger.js';
 import { LEDGER_FILENAME, readLedger } from '../core/AgreementLedger.js';
 import type { Check, CheckContext } from '../core/Check.js';
 import { computeFingerprint } from '../core/Fingerprint.js';
@@ -19,6 +19,7 @@ import { loadIgetaConfig } from '../core/IgetaConfig.js';
 import type { Violation } from '../core/Report.js';
 import type { SourceDoc, SourceIndex } from '../core/SourceResolver.js';
 import { buildSourceIndex, resolveSource } from '../core/SourceResolver.js';
+import { isPathWithinRealDir } from '../export/Manifest.js';
 import { UnclosedAutogenError } from '../export/MarkdownStrip.js';
 import { chapterFingerprint } from '../generators/AgreementRecordModule.js';
 
@@ -123,16 +124,30 @@ export class AgreementCheck implements Check {
       return [{ severity: 'cannot-check', message: `合意台帳が無い: ${relDir}` }];
     }
 
-    let approvedVersion: string | null = null;
-    for (const event of ledger.events) if (event.event === 'approve') approvedVersion = event.targetVersion;
-    if (approvedVersion === null) {
+    // 基準は「承認済みの版のうち、提出の記録が最も後の版」。agreement-approve は
+    // 基準より前に提出された版の承認を拒否するため、通常は「最後に承認された版」と一致する。
+    // 承認と提出が交差する古い台帳 (ガード導入前) でも、基準が過去へ戻らないように
+    // 承認の記録順ではなく提出の記録順で選ぶ。
+    const approvedVersions = new Set(
+      ledger.events.filter((e): e is AgreementApproveEvent => e.event === 'approve').map((e) => e.targetVersion),
+    );
+    if (approvedVersions.size === 0) {
       this.#warnings.push(`${relDir}: 承認された版がまだ無い (検査する基準が無い)`);
       return [];
     }
-    const baseline = ledger.events.find((e): e is AgreementExportEvent => e.event === 'export' && e.version === approvedVersion);
-    if (baseline === undefined) {
-      return [{ severity: 'cannot-check', message: `${relDir}: 承認された版 ${approvedVersion} の提出の記録が台帳に無い` }];
+    let baseline: AgreementExportEvent | undefined;
+    let baselineVersion: string | null = null;
+    for (const event of ledger.events) {
+      if (event.event === 'export' && approvedVersions.has(event.version)) {
+        baseline = event;
+        baselineVersion = event.version;
+      }
     }
+    if (baseline === undefined || baselineVersion === null) {
+      const approved = [...approvedVersions].join(', ');
+      return [{ severity: 'cannot-check', message: `${relDir}: 承認された版 (${approved}) の提出の記録が台帳に無い` }];
+    }
+    const approvedVersion = baselineVersion;
 
     const violations: Violation[] = [];
     for (const chapter of baseline.chapters) {
@@ -140,6 +155,12 @@ export class AgreementCheck implements Check {
       const relPath = relative(targetRoot, absPath);
       if (!existsSync(absPath)) {
         violations.push({ severity: 'violation', file: relPath, message: `再合意が要る: 承認した版 ${approvedVersion} にあった章が無い` });
+        continue;
+      }
+      // lexical には収まるが実体が外を指す symlink を弾く (ledger parse は lexical 検査まで。
+      // 記録の正当性は manifest が realpath で担保しているので、ここは改ざん・後付け symlink 対策)。
+      if (!isPathWithinRealDir(realpathSync(dir), absPath)) {
+        violations.push({ severity: 'cannot-check', file: relPath, message: `章の実体が提出物のディレクトリの外を指している: ${chapter.file}` });
         continue;
       }
       try {

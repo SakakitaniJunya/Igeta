@@ -93,7 +93,7 @@ function nearestExistingAncestor(lexicalPath: string): string {
  * 実在しない末尾部分は symlink になりようがないため、実在する最も近い祖先だけ realpath し、
  * 残りはそのまま繋げる。章ファイル (既に存在する) にも出力先 (まだ存在しない) にも使える。
  */
-function isPathWithinRealDir(realDir: string, lexicalTarget: string): boolean {
+export function isPathWithinRealDir(realDir: string, lexicalTarget: string): boolean {
   const ancestor = nearestExistingAncestor(lexicalTarget);
   const realAncestor = realpathSync(ancestor);
   const remainder = relative(ancestor, lexicalTarget);

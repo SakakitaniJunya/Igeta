@@ -5,7 +5,7 @@
 // 一意に決められない (manifest 自身は 1 段浅いことが多い設計) ため、呼び出し側が決めて渡す。
 
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { Violation } from './Report.js';
 
 export const LEDGER_FILENAME = 'agreements.ledger.jsonl';
@@ -51,7 +51,18 @@ export type ReadLedgerResult =
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value !== '';
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((v) => typeof v === 'string');
 
-function validateExportEvent(record: Record<string, unknown>, path: string, lineNo: number): AgreementExportEvent | string {
+/**
+ * 章の相対パスが提出物のディレクトリの中に収まるか (lexical 判定)。
+ * 台帳は人が書き換えうるファイルなので、`../` や絶対パスで外を読ませる行を拒否する
+ * (Manifest.ts の章パス検査と同じ型。symlink の実体まではここでは見ない)。
+ */
+function isChapterPathWithin(submissionDir: string, file: string): boolean {
+  if (isAbsolute(file)) return false;
+  const rel = relative(submissionDir, resolve(submissionDir, file));
+  return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`));
+}
+
+function validateExportEvent(record: Record<string, unknown>, path: string, lineNo: number, submissionDir: string): AgreementExportEvent | string {
   if (!isNonEmptyString(record['version'])) return `${path}:${lineNo} export に version が無い`;
   if (!isNonEmptyString(record['date'])) return `${path}:${lineNo} export に date が無い`;
   if (!isNonEmptyString(record['manifest'])) return `${path}:${lineNo} export に manifest が無い`;
@@ -63,6 +74,9 @@ function validateExportEvent(record: Record<string, unknown>, path: string, line
     if (typeof raw !== 'object' || raw === null) return `${path}:${lineNo} export の chapters の要素がオブジェクトでない`;
     const c = raw as Record<string, unknown>;
     if (!isNonEmptyString(c['file'])) return `${path}:${lineNo} export の chapters[].file が無い`;
+    if (!isChapterPathWithin(submissionDir, c['file'])) {
+      return `${path}:${lineNo} export の chapters[].file が提出物のディレクトリの外を指している: ${c['file']}`;
+    }
     if (!isNonEmptyString(c['chapterFingerprint'])) return `${path}:${lineNo} export の chapters[].chapterFingerprint が無い`;
     const sourcesRaw = c['sources'];
     if (!Array.isArray(sourcesRaw)) return `${path}:${lineNo} export の chapters[].sources が配列でない`;
@@ -123,7 +137,7 @@ export function readLedger(submissionDir: string): ReadLedgerResult {
     }
     const record = raw as Record<string, unknown>;
     if (record['event'] === 'export') {
-      const result = validateExportEvent(record, path, lineNo);
+      const result = validateExportEvent(record, path, lineNo, submissionDir);
       if (typeof result === 'string') return { kind: 'invalid', violation: { severity: 'cannot-check', message: result } };
       events.push(result);
     } else if (record['event'] === 'approve') {
