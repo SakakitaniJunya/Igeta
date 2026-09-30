@@ -21,7 +21,7 @@ function templateKindCount(): number {
 }
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-doctpl-'));
   workspaces.push(root);
   cpSync(join(IGETA_ROOT, 'templates', 'docs'), join(root, 'templates', 'docs'), { recursive: true });
   mkdirSync(join(root, 'docs'), { recursive: true });
@@ -543,7 +543,7 @@ describe('DocTemplateCheck', () => {
   });
 
   it('テンプレ置き場が無ければ検査不能 (exit 2)', () => {
-    const empty = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-empty-'));
+    const empty = mkdtempSync(join(tmpdir(), 'igeta-doctpl-empty-'));
     workspaces.push(empty);
     mkdirSync(join(empty, 'docs'), { recursive: true });
     const { report } = check(empty);
@@ -566,7 +566,7 @@ describe('DocTemplateCheck', () => {
   });
 
   it('テンプレは igetaRoot 側から解決する (targetRoot に templates/ が無くてもよい)', () => {
-    const bare = mkdtempSync(join(tmpdir(), 'yatsu-doctpl-bare-'));
+    const bare = mkdtempSync(join(tmpdir(), 'igeta-doctpl-bare-'));
     workspaces.push(bare);
     mkdirSync(join(bare, 'docs'), { recursive: true });
     writeDoc(bare, 'product/requirements.md', requirementsDoc());

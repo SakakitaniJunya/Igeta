@@ -9,7 +9,7 @@ import { DEFAULT_IGETA_CONFIG, loadIgetaConfig } from './IgetaConfig.js';
 const workspaces: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-igetaconfig-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-igetaconfig-'));
   workspaces.push(root);
   return root;
 }

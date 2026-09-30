@@ -21,6 +21,7 @@ owners: [eng]
   - [03-audience-layers.md](03-audience-layers.md) — **読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由** `explanation` — 読み手は顧客・開発者・AI の 3 種。顧客 (非エンジニア) が読むのは提出物の PDF だけ
     - [04-provenance-and-agreement.md](04-provenance-and-agreement.md) — **由来・鮮度の形 (delivery-chapter 限定)** `explanation` — 由来・鮮度は既存 kind delivery-chapter (提出物の章、PR #11) だけに課す。
       - [05-coverage-and-learning.md](05-coverage-and-learning.md) — **由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)** `explanation` — 由来・鮮度 は「由来が古いか」だけを見る。ここでは
+      - [08-agreement-ledger.md](08-agreement-ledger.md) — **顧客との合意台帳の形 (提出・承認・その後の変更)** `explanation` — 提出物を出すたびに、何を見せたか (版・章の指紋・由来が指す正本の指紋) を追記のみの台帳に残す。
     - [07-context-boundaries.md](07-context-boundaries.md) — **まとまり (業務コンテキスト) の境界で読み込む量を短くする理由** `explanation` — 設計書を業務のまとまり (context) ごとに分け、人も AI も**1 つのまとまりだけ読めば
 
 <!-- AUTOGEN:dir-index:end -->

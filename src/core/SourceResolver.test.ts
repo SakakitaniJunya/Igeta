@@ -12,7 +12,7 @@ after(() => {
 });
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-sourceresolver-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-sourceresolver-'));
   workspaces.push(root);
   return root;
 }

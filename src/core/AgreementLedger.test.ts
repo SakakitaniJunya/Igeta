@@ -13,7 +13,7 @@ after(() => {
 });
 
 function makeDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'yatsu-ledger-'));
+  const dir = mkdtempSync(join(tmpdir(), 'igeta-ledger-'));
   workspaces.push(dir);
   return dir;
 }

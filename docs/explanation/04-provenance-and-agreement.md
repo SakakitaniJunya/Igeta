@@ -104,8 +104,7 @@ relates_to: [coverage-and-learning, agreement-ledger]
 5. 全角・半角の文字そのもの (かな漢字英数記号) は変換しない (意味が変わる可能性があるため。3 の空白だけを正規化する)
 
 **実装で追加 (3・4)**: コードフェンスの中は字下げ・空白がそのまま意味を持つ内容 (コード例) なので、3・4 の
-畳み込み・整形を適用しない (適用すると字下げの違う別内容が同じ指紋になってしまう。code-reviewer round 1
-blocker 1)。フェンスの中も改行コード統一・行末空白除去 (1・2) は適用する。この修正で
+畳み込み・整形を適用しない (適用すると字下げの違う別内容が同じ指紋になってしまう)。フェンスの中も改行コード統一・行末空白除去 (1・2) は適用する。この修正で
 `normalizationVersion` を 2 に上げた。
 
 正規化ルールを変えたら `normalizationVersion` を上げる。既存エントリは一斉に `stale` へは落とさず、
@@ -130,7 +129,7 @@ blocker 1)。フェンスの中も改行コード統一・行末空白除去 (1�
 - 決定 ID: 3 桁形式を標準のまま。`DEC-\d{3}` が日付入り ID (`DEC-YYYYMMDD-NN`) に部分一致する誤検出を前提修正として直す (適用手順は [別紙](./05-coverage-and-learning.md))
 - **`open-stated-as-final` の判定 (05 §8 手順 3、実装で明記)**: 章の frontmatter `status` が
   `fixed`/`accepted` (確定を主張) **かつ**、`from` の解決先の `status` が `fixed`/`accepted` でない
-  (**未設定も含む**。code-reviewer round 1 blocker 2) **または**解決先に `OPEN-nnn` の参照がある
+  (**未設定も含む**) **または**解決先に `OPEN-nnn` の参照がある
   (正本が未決) の両方を満たしたときだけ違反にする
 
 ## 9. 限界
@@ -139,4 +138,3 @@ blocker 1)。フェンスの中も改行コード統一・行末空白除去 (1�
 - `needs-recompute` を既定で警告のみにしたのは正規化変更時の一斉違反を避けるためだが、放置すれば陳腐化した指紋が残り続ける (運用で `--strict-normalization` へ切り替える判断が要る)
 - self-approved の比較は前後の空白除去・大文字小文字統一・Unicode NFKC 正規化までは行うが、**別名 (同じ主体が
   違う名乗りをする、例: `reviewer@example.com` と `reviewer` を同じ人が使う) は機械で見抜けない**
-  (code-reviewer round 1 blocker 3)

@@ -35,7 +35,7 @@ const doc = (
 ];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-graph-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-graph-'));
   workspaces.push(root);
   writeDoc(root, 'product/requirements.md', doc('requirements', 'design', 'requirements', 1, '要件定義書'));
   writeDoc(root, 'adr/0001-x.md', [
@@ -341,7 +341,7 @@ describe('DocGraphCheck の決定台帳 AUTOGEN (仮置き一覧)', () => {
   ];
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'yatsu-graph-tentative-'));
+    root = mkdtempSync(join(tmpdir(), 'igeta-graph-tentative-'));
     workspaces.push(root);
     writeDoc(root, '01-decisions.md', decisionLog());
     writeDoc(root, 'product/requirements.md', [

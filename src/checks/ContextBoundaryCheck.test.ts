@@ -12,7 +12,7 @@ import { ContextBoundaryCheck } from './ContextBoundaryCheck.js';
 const workspaces: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-ctxboundary-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-ctxboundary-'));
   workspaces.push(root);
   return root;
 }

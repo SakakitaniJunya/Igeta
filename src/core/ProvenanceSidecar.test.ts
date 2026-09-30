@@ -16,7 +16,7 @@ describe('ProvenanceSidecar', () => {
   let root: string;
   let chapterPath: string;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'yatsu-sidecar-'));
+    root = mkdtempSync(join(tmpdir(), 'igeta-sidecar-'));
     workspaces.push(root);
     chapterPath = join(root, '02-reservation.md');
     writeFileSync(chapterPath, '# 章');

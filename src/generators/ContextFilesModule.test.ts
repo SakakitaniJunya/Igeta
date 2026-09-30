@@ -9,7 +9,7 @@ import { ContextFilesModule } from './ContextFilesModule.js';
 const workspaces: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-ctxfiles-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-ctxfiles-'));
   workspaces.push(root);
   return root;
 }

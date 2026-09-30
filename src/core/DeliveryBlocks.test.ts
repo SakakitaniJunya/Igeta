@@ -77,7 +77,7 @@ describe('extractDeliveryBlocks', () => {
 
 describe('findDeliveryChapters', () => {
   it('kind: delivery-chapter の文書だけを集める', () => {
-    const root = mkdtempSync(join(tmpdir(), 'yatsu-delivery-'));
+    const root = mkdtempSync(join(tmpdir(), 'igeta-delivery-'));
     workspaces.push(root);
     const write = (rel: string, content: string): void => {
       const target = join(root, rel);

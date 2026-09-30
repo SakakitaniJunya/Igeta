@@ -17,7 +17,7 @@ after(() => {
 });
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-sourcecoverage-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-sourcecoverage-'));
   workspaces.push(root);
   return root;
 }

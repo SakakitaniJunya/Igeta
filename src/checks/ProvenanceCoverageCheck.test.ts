@@ -15,7 +15,7 @@ after(() => {
 });
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-provcoverage-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-provcoverage-'));
   workspaces.push(root);
   return root;
 }

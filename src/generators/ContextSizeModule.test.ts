@@ -9,7 +9,7 @@ import { ContextSizeModule } from './ContextSizeModule.js';
 const workspaces: string[] = [];
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-ctxsize-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-ctxsize-'));
   workspaces.push(root);
   return root;
 }

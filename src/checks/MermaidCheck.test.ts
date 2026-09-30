@@ -15,7 +15,7 @@ after(() => {
 });
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'yatsu-mermaidcheck-'));
+  const root = mkdtempSync(join(tmpdir(), 'igeta-mermaidcheck-'));
   workspaces.push(root);
   return root;
 }
