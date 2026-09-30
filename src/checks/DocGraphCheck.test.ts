@@ -236,7 +236,7 @@ describe('DocGraphCheck の本文リンク検査', () => {
     const domain = readFileSync(join(root, 'docs', 'design', 'detail', 'domain', 'README.md'), 'utf8');
     assert.match(
       domain,
-      /^- \[catalog\.md\]\(catalog\.md\) — \*\*catalog\*\* `design` — 「何を貸すか」を持つ。在庫の個体は持たない \(それは 索引\)。Item が集約。 ← 上流: \[function-list\]\(\.\.\/\.\.\/basic\/function-list\.md\)$/m,
+      /^- \[catalog\.md\]\(catalog\.md\) — \*\*catalog\*\* _\(読み手: AI\)_ `design` — 「何を貸すか」を持つ。在庫の個体は持たない \(それは 索引\)。Item が集約。 ← 上流: \[function-list\]\(\.\.\/\.\.\/basic\/function-list\.md\)$/m,
     );
     // 親 (detail/) の索引では、子ディレクトリの行に README の「目的」を出す
     const detail = readFileSync(join(root, 'docs', 'design', 'detail', 'README.md'), 'utf8');
@@ -522,5 +522,85 @@ describe('DocGraphCheck の決定台帳 AUTOGEN (仮置き一覧)', () => {
     assert.equal(href, '../product/requirements.md', index);
     // リンクが実際に実在するファイルへ解決することも確認する (リンク切れ検出)
     assert.ok(existsSync(join(root, 'docs', 'governance', href)), `リンクが解決できない: docs/governance/${href}`);
+  });
+});
+
+describe('DocGraphCheck の読み手表示 (REQ-101)', () => {
+  let root: string;
+  const converge = async (r: string): Promise<void> => {
+    assert.equal((await run(r, 'write')).status, 0);
+    assert.equal((await run(r, 'write')).status, 0);
+  };
+
+  beforeEach(async () => {
+    root = makeRoot();
+    await converge(root);
+  });
+
+  it('kind から読み手を機械判定し、ディレクトリ索引の行に出す (顧客 / 開発者 / AI / 共通)', async () => {
+    writeDoc(root, 'proposal/prop.md', [
+      '---', 'id: proposal-x', 'title: 提案書', 'type: prd', 'kind: proposal',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 提案書', '',
+    ]);
+    writeDoc(root, 'delivery/01-chapter.md', [
+      '---', 'id: delivery-x', 'title: 提出物の章', 'type: prd', 'kind: delivery-chapter',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 提出物の章', '',
+    ]);
+    writeDoc(root, '00-map.md', [
+      '---', 'id: map', 'title: 地図', 'type: map', 'kind: map',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# 地図', '',
+    ]);
+    await converge(root);
+    // AI (正本側の kind)
+    const product = readFileSync(join(root, 'docs', 'product', 'README.md'), 'utf8');
+    assert.match(product, /\[requirements\.md\]\(requirements\.md\) — \*\*要件定義書\*\* _\(読み手: AI\)_/, product);
+    const basic = readFileSync(join(root, 'docs', 'design', 'basic', 'README.md'), 'utf8');
+    assert.match(basic, /\[function-list\.md\]\(function-list\.md\) — \*\*機能一覧\*\* _\(読み手: AI\)_/, basic);
+    // 顧客 (delivery-chapter) / 共通 (対象外の kind)
+    const delivery = readFileSync(join(root, 'docs', 'delivery', 'README.md'), 'utf8');
+    assert.match(delivery, /\[01-chapter\.md\]\(01-chapter\.md\) — \*\*提出物の章\*\* _\(読み手: 顧客\)_/, delivery);
+    const proposal = readFileSync(join(root, 'docs', 'proposal', 'README.md'), 'utf8');
+    assert.match(proposal, /\[prop\.md\]\(prop\.md\) — \*\*提案書\*\* _\(読み手: 共通\)_/, proposal);
+    // 開発者 (map は docs/ 直下なので章別索引の「arc42 章外」行に出る)
+    const top = readFileSync(join(root, 'docs', 'README.md'), 'utf8');
+    assert.match(top, /\[地図\]\(00-map\.md\) _\(読み手: 開発者\)_/, top);
+  });
+
+  it('章別索引 (docs/README.md) にも読み手を出し、凡例を添える', async () => {
+    const index = readFileSync(join(root, 'docs', 'README.md'), 'utf8');
+    assert.match(index, /\*\*§1 Introduction and Goals\*\*.*\[要件定義書\]\(product\/requirements\.md\) _\(読み手: AI\)_/, index);
+    assert.match(index, /> `_\(読み手: …\)_` は frontmatter `kind` から機械判定した読み手/, index);
+    // ディレクトリへの誘導行 (→ [adr/](adr/README.md)) は文書ではないので読み手を付けない
+    assert.doesNotMatch(index, /adr\/README\.md\) _\(読み手:/);
+  });
+
+  it('kind を直せば次回生成で表示が変わる。kind 無し・対応表に無い kind は「共通」に倒す', async () => {
+    // kind 無し (frontmatter に kind が無い文書)
+    writeDoc(root, 'runbooks/deploy.md', [
+      '---', 'id: deploy-runbook', 'title: デプロイ手順', 'type: runbook',
+      'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---',
+      '', '# デプロイ手順', '',
+    ]);
+    // 対応表に無い kind
+    writeDoc(root, 'misc/note.md', [
+      '---', 'id: note-x', 'title: ノート', 'type: guide', 'kind: future-kind',
+      'status: active', 'owners: [eng]', 'depends_on: [requirements]', 'relates_to: []', '---',
+      '', '# ノート', '',
+    ]);
+    await converge(root);
+    const runbooks = readFileSync(join(root, 'docs', 'runbooks', 'README.md'), 'utf8');
+    assert.match(runbooks, /\[deploy\.md\]\(deploy\.md\) — \*\*デプロイ手順\*\* _\(読み手: 共通\)_/, runbooks);
+    const misc = readFileSync(join(root, 'docs', 'misc', 'README.md'), 'utf8');
+    assert.match(misc, /\[note\.md\]\(note\.md\) — \*\*ノート\*\* _\(読み手: 共通\)_/, misc);
+
+    // kind を feature-brief に直す → 再生成で「開発者」に変わる
+    writeDoc(root, 'design/basic/function-list.md', doc('function-list', 'design', 'feature-brief', 1, '機能一覧', ['requirements']));
+    assert.equal((await run(root, 'write')).status, 0);
+    const basic = readFileSync(join(root, 'docs', 'design', 'basic', 'README.md'), 'utf8');
+    assert.match(basic, /\[function-list\.md\]\(function-list\.md\) — \*\*機能一覧\*\* _\(読み手: 開発者\)_/, basic);
+    assert.equal((await run(root, 'check')).status, 0);
   });
 });

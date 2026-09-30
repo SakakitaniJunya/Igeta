@@ -239,3 +239,18 @@ docs/
 | 運用手順書 | 設計は `design/ops/01-operations.md`、手順は `docs/runbooks/<scenario>.md` (100 行以下) | 方針と手順を同じ文書に混ぜると 100 行に収まらない |
 | `docs/proposal/` | 独立させる | 対外提案書は設計 Doc と性格が違う。`design/` に混ぜると顧客提出物が設計変更で動く |
 | 地図・決定台帳の置き場 | `docs/` 直下 (`00-map.md` / `01-decisions.md`)。サブフォルダに入れない | 人間の入口であることをパスで示す。`docs/README.md` と同じ階層に置き、他のどの工程フォルダより先に目に入るようにする ([人間レビュー層を足した理由](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/02-human-review-layer.md)) |
+
+## 4. 読み手 3 種 (kind → 読み手)
+
+読み手は**顧客・開発者・AI** の 3 種。どれにも専有されない文書 (双方が読む解説・手引き) は「共通」。各文書の読み手は frontmatter `kind` から機械判定し、索引 (dir-index) の行に `_(読み手: …)_` で出る。`audience` のような専用フィールドは持たない (kind が区別を既に担う)。設計の確定版は docs/explanation/03-audience-layers.md §3。
+
+| 読み手 | 対象 kind |
+|---|---|
+| AI (正本) | `requirements` / `function-list` / `solution-strategy` / `domain-*` / `aggregate-map` / `module-spec` / `screen-spec` / `api-spec` / `table-spec` / `business-flow` / `sequence-spec` / `state-machine` / `job` / `infra-design` / `crosscutting` / `code-definitions` / `messages` / `permission-matrix` / `i18n` / `data-management` / `secrets-management` / `nonfunctional` / `test-plan` / `test-spec` / `risks-tech-debt` / `glossary` / `as-is-overview` / `external-integration` / `operations` / `migration-plan` / `adr` / `tasks` |
+| 開発者 | `map` / `context-map` / `context-contract` / `decision-log` / `feature-brief` |
+| 顧客 | `delivery-chapter` |
+| 共通 (対象外。表に無い kind・kind 無しもこちら) | `explanation` / `guide` / `runbook` / `proposal` / `document-taxonomy` / `human-review` / `index` |
+
+**この対応表は `src/core/Audience.ts` の `AUDIENCE_KINDS` (正本) の転記**。`domain-*` は前方一致 (`domain-overview` / `domain-model` 等)。kind を足す・読み手を変えるときは正本だけを直し、この表を写し直す。
+
+読み手ごとの入口は `docs/README.md` の「読み手別の入口」節 (顧客 → delivery-chapter の提出物 PDF / 開発者 → 全体の地図 → まとまりの地図 → `igeta review-sheet` / AI → 自分のまとまりの正本と約束)。読む順の詳細は [人間レビュー層の読み方](03-human-review.md)。

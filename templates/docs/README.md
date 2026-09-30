@@ -10,6 +10,17 @@ owners: [eng]
 
 > このディレクトリの目的: 本プロダクトの設計書ルート。文書の種類と配置は docs/guides/01-document-taxonomy.md が正典。
 
+## 読み手別の入口
+
+<!--
+  文言の正本は src/core/Audience.ts の AUDIENCE_ENTRANCE (REQ-103)。
+  この節は AUTOGEN:dir-index 区間の外なので、索引の再生成では消えない。
+-->
+
+- **顧客** (非エンジニア): 提出物の章 (`kind: delivery-chapter` / `delivery/`) を `igeta export` で束ねた PDF だけを読む
+- **開発者**: 全体の地図 (`00-map.md`) → まとまりの地図 (`kind: context-map` / `contexts/maps/`) → `igeta review-sheet` で今回の変更のレビューシートを読む
+- **AI**: 自分のまとまりの正本と隣のまとまりの約束 (`kind: context-contract` / `contexts/contracts/`) だけを読む。対象の一覧は `igeta context-files` で得る
+
 ## 索引
 
 <!--
