@@ -124,7 +124,8 @@ describe('addDiscrepancy', () => {
 
   it('検査不能: 末尾が改行で終わっていないログには追記しない', () => {
     const { root, submissionDir } = setup();
-    writeFileSync(discrepancyLogPathFor(submissionDir), '{"date":"2026-09-30"'); // 途中で切れた行
+    // 行自体は正しい JSON だが末尾改行が無い = 前の追記が途中で切れた形
+    writeFileSync(discrepancyLogPathFor(submissionDir), '{"date":"2026-09-30","location":"x","sourceId":null,"category":"scope-overstatement","caughtBy":null,"fixedInCommit":null}');
     const result = addDiscrepancy({
       submissionDir,
       location: CHAPTER,
@@ -135,6 +136,23 @@ describe('addDiscrepancy', () => {
     if (result.kind !== 'rejected') return;
     assert.equal(result.violation.severity, 'cannot-check');
     assert.match(result.violation.message, /改行で終わっていない/);
+  });
+
+  it('検査不能: 壊れた行を含むログには追記しない (書き込み側も台帳と同じ作法)', () => {
+    const { root, submissionDir } = setup();
+    writeFileSync(discrepancyLogPathFor(submissionDir), '{"date":"2026-09-30"}\n'); // 壊れた行 + 末尾改行
+    const result = addDiscrepancy({
+      submissionDir,
+      location: CHAPTER,
+      category: 'scope-overstatement',
+      targetRoot: root,
+    });
+    assert.equal(result.kind, 'rejected');
+    if (result.kind !== 'rejected') return;
+    assert.equal(result.violation.severity, 'cannot-check');
+    // 追記されず、壊れた 1 行のまま
+    const lines = readFileSync(discrepancyLogPathFor(submissionDir), 'utf8').split('\n').filter((l) => l !== '');
+    assert.equal(lines.length, 1);
   });
 });
 

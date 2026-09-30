@@ -42,6 +42,10 @@ export function addDiscrepancy(request: DiscrepancyAddRequest): DiscrepancyAddRe
       violation: { severity: 'cannot-check', message: `提出物のディレクトリが無い: ${request.submissionDir}` },
     };
   }
+  // 台帳と同じ作法: 壊れた行を含むログへは追記しない (追記できたように見えるのに
+  // 集計に載らない記録が増えるのを防ぐ。台帳は AgreementApproveModule で同じ検査をしている)。
+  const existing = readDiscrepancyLog(request.submissionDir);
+  if (existing.kind === 'invalid') return { kind: 'rejected', violation: existing.violation };
   if (!isDiscrepancyCategory(request.category)) {
     return {
       kind: 'rejected',
