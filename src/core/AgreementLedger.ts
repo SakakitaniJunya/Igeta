@@ -137,7 +137,19 @@ export function readLedger(submissionDir: string): ReadLedgerResult {
   return { kind: 'ok', events };
 }
 
-/** 追記のみ。既存行は書き換えない。 */
-export function appendLedgerEvent(submissionDir: string, event: AgreementEvent): void {
-  appendFileSync(ledgerPathFor(submissionDir), `${JSON.stringify(event)}\n`);
+/**
+ * 追記のみ。既存行は書き換えない。
+ * 末尾が改行で終わっていない台帳には追記しない (前の行と繋がって両方が壊れるため)。
+ * 追記できたら null、できなければ理由を返す。
+ */
+export function appendLedgerEvent(submissionDir: string, event: AgreementEvent): Violation | null {
+  const path = ledgerPathFor(submissionDir);
+  if (existsSync(path)) {
+    const current = readFileSync(path, 'utf8');
+    if (current !== '' && !current.endsWith('\n')) {
+      return { severity: 'cannot-check', message: `${path} の末尾が改行で終わっていない (前の追記が途中で切れた疑い。追記しない)` };
+    }
+  }
+  appendFileSync(path, `${JSON.stringify(event)}\n`);
+  return null;
 }

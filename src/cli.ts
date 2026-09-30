@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { IGETA_ROOT } from './core/Paths.js';
 import { Cli } from './cli/Cli.js';
+import { AgreementApproveCommand, AgreementCheckCommand } from './cli/commands/AgreementCommands.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
@@ -38,6 +39,8 @@ const cli = new Cli()
   .register(new ProvenanceCheckCommand())
   .register(new ProvenanceCoverageCommand())
   .register(new SourceCoverageCommand())
+  .register(new AgreementApproveCommand())
+  .register(new AgreementCheckCommand())
   .register(new MermaidCheckCommand())
   .register(new ScaffoldCommand())
   .register(new ExportCommand())
