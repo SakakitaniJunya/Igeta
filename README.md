@@ -179,7 +179,7 @@ Igeta/
 ├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
 ├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
-│   ├── checks/             検査 6 種。Check を実装し Violation を返すだけで、exit も print もしない
+│   ├── checks/             検査 7 種。Check を実装し Violation を返すだけで、exit も print もしない
 │   ├── generators/         コード雛形の展開・レビューシートの生成
 │   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ
