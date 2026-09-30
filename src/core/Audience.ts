@@ -29,6 +29,7 @@ export const AUDIENCE_KINDS: Readonly<Record<Audience, readonly string[]>> = {
     'function-list',
     'solution-strategy',
     'domain-*',
+    'aggregate-map', // design/detail/domain/ 配下だが `domain-*` の前方一致では拾えない
     'module-spec',
     'screen-spec',
     'api-spec',
@@ -55,6 +56,7 @@ export const AUDIENCE_KINDS: Readonly<Record<Audience, readonly string[]>> = {
     'operations',
     'migration-plan',
     'adr',
+    'tasks', // 実装タスク分解 (design/tasks/) — AI が実行する作業面
   ],
   developer: ['map', 'context-map', 'context-contract', 'decision-log', 'feature-brief'],
   customer: ['delivery-chapter'],

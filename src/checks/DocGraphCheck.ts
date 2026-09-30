@@ -672,7 +672,10 @@ function summaryOf(content: string | undefined): string {
 const audienceMark = (fm: Frontmatter): string =>
   ` _(読み手: ${AUDIENCE_LABEL[audienceOfKind(fmString(fm, 'kind'))]})_`;
 
-/** 生成する索引に添える読み手表示の凡例 (ディレクトリ索引・章別索引の両方で使う) */
+/** 生成する索引に添える読み手表示の凡例 (ディレクトリ索引・章別索引の両方で使う)。
+ *  参照先の `docs/guides/01-document-taxonomy.md` は消費 repo のパス (Igeta 自身では
+ *  templates/docs/guides/01-document-taxonomy.md が実体)。索引は消費 repo に生成される
+ *  のでこのパスのままにする。 */
 const AUDIENCE_LEGEND =
   '`_(読み手: …)_` は frontmatter `kind` から機械判定した読み手 (顧客 / 開発者 / AI / 共通)。' +
   '対応表は文書体系ガイド (docs/guides/01-document-taxonomy.md)「読み手 3 種」を参照';

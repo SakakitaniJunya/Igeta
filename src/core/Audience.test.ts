@@ -35,6 +35,8 @@ describe('audienceOfKind (kind → 読み手の機械判定)', () => {
       'operations',
       'migration-plan',
       'adr',
+      'aggregate-map', // domain/ 配下だが `domain-*` の前方一致では拾えないので表に明示
+      'tasks', // 実装タスク分解 (design/tasks/)
     ]) {
       assert.equal(audienceOfKind(kind), 'ai', kind);
     }
@@ -71,8 +73,6 @@ describe('audienceOfKind (kind → 読み手の機械判定)', () => {
   });
 
   it('表に無い kind・kind 無しは shared に倒す (新しい kind は足さない前提)', () => {
-    assert.equal(audienceOfKind('tasks'), 'shared');
-    assert.equal(audienceOfKind('aggregate-map'), 'shared'); // 確定表の `domain-*` に名前が載らない kind
     assert.equal(audienceOfKind('unknown-future-kind'), 'shared');
     assert.equal(audienceOfKind(''), 'shared');
     assert.equal(audienceOfKind(undefined), 'shared');

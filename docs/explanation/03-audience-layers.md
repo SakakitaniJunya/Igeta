@@ -62,7 +62,7 @@ relates_to: [provenance-and-agreement, coverage-and-learning, context-boundaries
 
 | 読み手 | 対象 kind |
 |---|---|
-| AI (正本) | `requirements` / `function-list` / `solution-strategy` / `domain-*` / `module-spec` / `screen-spec` / `api-spec` / `table-spec` / `business-flow` / `sequence-spec` / `state-machine` / `job` / `infra-design` / `crosscutting` / `code-definitions` / `messages` / `permission-matrix` / `i18n` / `data-management` / `secrets-management` / `nonfunctional` / `test-plan` / `test-spec` / `risks-tech-debt` / `glossary` / `as-is-overview` / `external-integration` / `operations` / `migration-plan` / `adr` |
+| AI (正本) | `requirements` / `function-list` / `solution-strategy` / `domain-*` / `aggregate-map` / `module-spec` / `screen-spec` / `api-spec` / `table-spec` / `business-flow` / `sequence-spec` / `state-machine` / `job` / `infra-design` / `crosscutting` / `code-definitions` / `messages` / `permission-matrix` / `i18n` / `data-management` / `secrets-management` / `nonfunctional` / `test-plan` / `test-spec` / `risks-tech-debt` / `glossary` / `as-is-overview` / `external-integration` / `operations` / `migration-plan` / `adr` / `tasks` |
 | 開発者 | `map` / `context-map` / `context-contract` / `decision-log` / `feature-brief` |
 | 顧客 | `delivery-chapter` |
 | 対象外 (双方が読む解説・手引き) | `explanation` / `guide` / `runbook` / `proposal` / `document-taxonomy` / `human-review` / `index` |
