@@ -146,7 +146,9 @@ npm run docs:graph
 | `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
 | `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる |
 | `npx igeta agreement-check` | 顧客との合意 | 承認した版から変わった章・正本を、再合意が要るものと通知のみに分けて出す。`export --record-agreement` で提出を記録し、`agreement-approve` で承認を記録する ([詳細](docs/explanation/08-agreement-ledger.md)) |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (485 件) |
+| `npx igeta discrepancy-add <dir> --location "<path>[#<anchor>]" --category <cat>` | (生成、[詳細](docs/explanation/05-coverage-and-learning.md)) | 評価で見つかった食い違いを `<dir>/discrepancies.log.jsonl` に 1 行追記。category は閉集合の外・location のファイルが実在しないと違反 |
+| `npx igeta discrepancy-report` | 食い違いの集計 (既定 OFF・手動) | category ごとの件数と事前捕捉率を出す。違反ではなく集計情報なので、ログが壊れているときだけ検査不能 |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (504 件) |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
 

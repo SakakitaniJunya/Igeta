@@ -57,6 +57,11 @@ relates_to: [audience-layers]
 記録は評価ラウンド・検査違反・発注側からの指摘のたびに 1 行追記する。**節単位が既定粒度**(§ [別紙](./04-provenance-and-agreement.md)
 §3) なので件数は章の節数に比例し、台帳・sidecar は提出の回数に比例して増える (章のサイズには比例しない)。
 
+追記は `igeta discrepancy-add <提出物のディレクトリ> --location "<repo 相対パス>[#<anchor>]" --category <種類>
+[--source <doc-id>/PREFIX-nnn] [--caught-by <検査名>] [--fixed-in <sha>]`。location のパス部が実在しないと違反。
+`category` は §4 の一覧をコード内の閉集合で管理し、集合外は有効値を全部出して違反にする
+(綴り違いが別 category として静かに集計されるのを防ぐ)。壊れた行・末尾の改行なしは検査不能 (台帳と同じ作法)。
+
 ## 4. 種類の初期一覧 (実例から)
 
 | category | 何か |
@@ -69,7 +74,8 @@ relates_to: [audience-layers]
 
 ## 5. 集計 — `discrepancy-report`
 
-種類ごとの件数と「検査が事前に捕まえた割合」(`caughtBy` が非 null の割合) を出す。[別紙](./04-provenance-and-agreement.md)
+`igeta discrepancy-report [--root <dir>] [--docs <dir>] [--dir <dir>]`。`--dir` が無ければ `<root>/docs` 配下の
+全ログを拾い、種類ごとの件数と「検査が事前に捕まえた割合」(`caughtBy` が非 null の割合) を出す。[別紙](./04-provenance-and-agreement.md)
 の仕組みを**やめる条件**はこの数字で測る (例: `scope-overstatement`/`open-stated-as-final` の事前捕捉率が
 25% (4 件中 1 件) 以下なら由来+指紋をやめる、`mermaid-unrenderable` が 0% (2 件中 0 件) なら早期検査をやめる)。
 既定 OFF、手動実行 (CI 常時実行はしない)。
