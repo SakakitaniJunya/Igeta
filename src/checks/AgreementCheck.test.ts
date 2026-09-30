@@ -209,6 +209,34 @@ describe('合意台帳: 承認 (agreement-approve)', () => {
     const second = approveAgreement({ submissionDir: fx.submissionDir, version: '1.0', by: '別の承認者' });
     assert.ok(second.kind === 'rejected' && second.violation.severity === 'violation');
   });
+
+  it('正常系: 承認の後に提出した新しい版は承認できる', () => {
+    const fx = makeFixture();
+    record(fx);
+    assert.equal(approveAgreement({ submissionDir: fx.submissionDir, version: '1.0', by: '発注側の責任者' }).kind, 'ok');
+    write(fx.root, `${SUBMISSION}/deliverable.json`, manifestJson('2.0'));
+    record(fx);
+    const result = approveAgreement({ submissionDir: fx.submissionDir, version: '2.0', by: '発注側の責任者' });
+    assert.equal(result.kind, 'ok');
+  });
+
+  it('違反: 最後に承認された版より前に提出された版は承認できない (基準は後戻りしない)', () => {
+    const fx = makeFixture();
+    record(fx);
+    write(fx.root, `${SUBMISSION}/deliverable.json`, manifestJson('2.0'));
+    record(fx);
+    assert.equal(approveAgreement({ submissionDir: fx.submissionDir, version: '2.0', by: '発注側の責任者' }).kind, 'ok');
+    const result = approveAgreement({ submissionDir: fx.submissionDir, version: '1.0', by: '発注側の責任者' });
+    assert.ok(result.kind === 'rejected' && result.violation.severity === 'violation');
+    if (result.kind !== 'rejected') return;
+    assert.match(result.violation.message, /基準は後の提出にだけ進む/);
+    // 台帳の基準 (最後の承認) が 2.0 のまま変わっていないことを確かめる
+    const ledger = readLedger(fx.submissionDir);
+    assert.ok(ledger.kind === 'ok');
+    if (ledger.kind !== 'ok') return;
+    const last = ledger.events.findLast((e) => e.event === 'approve');
+    assert.ok(last !== undefined && last.event === 'approve' && last.targetVersion === '2.0');
+  });
 });
 
 describe('AgreementCheck', () => {
