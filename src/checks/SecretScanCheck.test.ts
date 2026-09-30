@@ -88,6 +88,57 @@ describe('SecretScanCheck', () => {
     assert.match(report.format(), /ローカル絶対パス\): \/Users\/sakaki\/project\/igeta/);
   });
 
+  it('/Users/Shared は macOS の共用ディレクトリなので検出しない', () => {
+    writeFile(
+      root,
+      'scripts/setup.sh',
+      [
+        'cp file /Users/Shared',
+        'cp file /Users/Shared/auto-work',
+        'cp file /Users/Shared/devin-work/sub',
+      ].join('\n'),
+    );
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.ok(report.isEmpty);
+  });
+
+  it('/Users/Shared を装った .. の上位ディレクトリ迂回は検出する', () => {
+    writeFile(
+      root,
+      'scripts/evade.sh',
+      [
+        'cd /Users/Shared/../alice/x',
+        'cd /Users/Shared/./../alice',
+        'cd /Users/Shared/..',
+      ].join('\n'),
+    );
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.equal(report.violations.length, 3, report.format());
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Shared\/\.\.\/alice\/x/);
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Shared\/\.\/\.\.\/alice/);
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Shared\/\.\./);
+  });
+
+  it('/Users/Shared に似た個人パスは引き続き検出する', () => {
+    writeFile(
+      root,
+      'scripts/run.sh',
+      [
+        'cd /Users/alice/project',
+        'cd /Users/Sharedfoo/project',
+        'cd /Users/shared/project',
+      ].join('\n'),
+    );
+    const report = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.equal(report.violations.length, 3, report.format());
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/alice\/project/);
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/Sharedfoo\/project/);
+    assert.match(report.format(), /ローカル絶対パス\): \/Users\/shared\/project/);
+  });
+
   it('メールアドレスを検出する', () => {
     writeFile(root, 'docs/contact.md', '担当: taro.yamada@creanest.co.jp\n');
     const report = runCheck(root);
