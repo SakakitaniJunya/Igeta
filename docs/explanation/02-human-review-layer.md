@@ -58,14 +58,17 @@ relates_to: []
 | L0 決定台帳 | `docs/01-decisions.md` (kind: `decision-log`) | 人間の入口 | 実例 2: `DEC-nnn` / `OPEN-nnn` を機械で検査し、帰属の主張と「仮置き」を台帳に強制する |
 | L0.5 機能ブリーフ | `docs/product/features/__feature__.md` (kind: `feature-brief`, 上限 150 行) | コードレビューする人 | 実例 1: 機能単位で WHAT/WHY・ユーザーストーリー・対象外・関わる REQ ID だけを 1 枚にし、要件文・受入条件は書かない (SoT は要件定義書のまま二重化しない) |
 | 未決の関門 | `requirements`/`feature-brief` の `status: fixed` ゲート (`checkAcceptedGate`) | 人間の入口を守る仕組み | 実例 2: 「仮置き」(`OPEN-nnn`) が残ったまま「確定」を名乗れない。決定の取り違えを**確定前に**止める |
+| 整合レポート | `igeta analyze` (読み取り専用・非破壊) | 人間の入口 (穴を探す) | 実例 1: REQ→FN→タスクの網羅の穴・曖昧語・ID のローカル採番の重複を、45 枚を読まずに一覧する |
 | L1 要件 / L2 詳細設計 | 既存のまま | 実装者・AI | 変更しない (1 文書は読み切れる長さという原則は既に満たしている) |
 | 変更単位 | PR テンプレ + `igeta review-sheet` | コードレビューする人 | 実例 4: `<doc-id>/PREFIX-nnn` の修飾 ID で対象 REQ を 1 枚に展開する |
-| 試験中 (別 PR) | `igeta analyze` / `igeta review-sheet --diff` / `igeta fix-ids` | — | 実例 1・3・4 への追加対応として検討中。`feat/human-review-tools` で扱う |
+| 差分の裏取り | `igeta review-sheet --diff <base>..<head>` | コードレビューする人 | 実例 3 (虚偽報告) への対応。「変更ファイル→タスク→FN→REQ」を機械的に辿り、PR の申告 REQ と比べる。**防げる範囲は §5 で正直に書く (tasks の path 記載に依存し、全プロジェクトの実例 3 を防ぐわけではない)** |
+| 移行の実務 | `igeta fix-ids` (既定 dry-run) | 移行する人 | 実例 4: 定義元が 1 件に一意な裸参照だけを機械的に修飾 ID へ書き換える |
 
 検査 (`igeta template-check --require-human-review`) は①map/decision-log のテンプレ適合・行数上限・DEC/OPEN 行の必須列
 ②地図が `kind: requirements` を全部リンクしているか③決定の帰属の主張に `DEC-nnn` があり台帳に実在するか
 ④「仮置き」に `OPEN-nnn` があり台帳に実在するか⑤他ファイルの ID を修飾形式で書いているか⑥未決の関門
-(`status: fixed` なのに `OPEN-nnn` を参照していないか) の 6 種。
+(`status: fixed` なのに `OPEN-nnn` を参照していないか) の 6 種。`igeta analyze` は critical (タスクが存在しない
+ID を参照している) だけを exit 1 にする別コマンド (書き込みは一切しない)。
 
 ## 4. 段階導入・既定の強さの判断
 
@@ -82,7 +85,7 @@ relates_to: []
 
 - **修飾 ID 検査の対象範囲**: 現状は kind 解決済みの doc の本文のみを見る。kind 未設定 (`unmanaged`) の doc の本文までは追わない。段階導入の第一歩としては十分だが、将来 `--require-kind` と組み合わせた時の相互作用は要確認
 - **決定の帰属パターンの初期値**: ある案件の実例 (「CEO 2026-09-29 決定」「〜が決定」) から採った 3 パターンのみ。他の言い回し (「代表が承認」等) は各プロジェクトが `decisionAttributionPatterns` で追加する前提だが、CLI からの上書き手段はまだ無い (プログラム的な利用のみ)
-- **`review-sheet --diff` (実例 3 の虚偽報告対応)**: 試験中のため `feat/human-review-tools` に分離した。防げる範囲・防げない範囲の判断は分離先の PR で扱う
+- **`review-sheet --diff` が実例 3 (虚偽報告) に対して実際に防げる範囲**: 防げるのは「`design/tasks/` にタスク行 `- [ ] T001 [P] [FN-001] 説明 (path)` があり、その `path` が変更ファイルと一致する」場合だけ。**防げない**のは (a) `kind: tasks` の文書が 1 本も無いプロジェクト (b) タスクの `path` 記載が実際の変更ファイルと食い違っている場合 (c) 変更が `path` に書かれていないファイルだけで起きた場合。(a)(b)(c) は「裏取りできていない」ことを exit 2 (検査不能) で明示する設計にした (A2)。全プロジェクトの虚偽報告を機械的に防ぐ機能ではなく、**タスクの path を書く運用を採用したプロジェクトだけ**が得られる保証であることを正直に書く
 - **未決の関門の status 語彙**: 既存の requirements テンプレは `fixed` (spec-kit の accepted 相当)。`FINAL_STATUSES = {'fixed','accepted'}` として両方受理する。将来 kind が `accepted` を正式採用するなら追記が要る
-- **fix-ids の構造化 API 化**: 当初は DocTemplateCheck の違反メッセージ文言を正規表現でパースしていたが、文言が変わると追随できず脆かった。のちに `DocTemplateResult.unambiguousFixes` (file/line/token/homeId の構造化フィールド) を DocTemplateCheck 側に追加し、fix-ids はそれを読むだけにした (文言に依存しない)
-- **空白区切りの疑似修飾 (`09-auth REQ-128`)**: ある SaaS 案件の実例で多用されている、スラッシュではなく空白 1 個でトークン直前に doc-id を置く書き方。これを checkQualifiedIds が「未修飾」と誤認し、fix-ids が二重に修飾して `09-auth 09-auth/REQ-128` に壊すバグがあった。**直前の語が候補 homeId のいずれかと完全一致する場合は「広義の修飾済み」として checkQualifiedIds 自体が違反にしない**方式を採った (fix-ids 側だけで防ぐ対症療法ではなく、検査の判定を直すことで fix-ids のバグも自動的に消える一箇所修正)
+- **fix-ids の構造化 API 化**: 当初は DocTemplateCheck の違反メッセージ文言を正規表現でパースしていたが、文言が変わると追随できず脆かった。round 3 で `DocTemplateResult.unambiguousFixes` (file/line/token/homeId の構造化フィールド) を DocTemplateCheck 側に追加し、fix-ids はそれを読むだけにした (文言に依存しない)
+- **空白区切りの疑似修飾 (`09-auth REQ-128`)**: ある SaaS 案件の実例で多用されている、スラッシュではなく空白 1 個でトークン直前に doc-id を置く書き方。これを checkQualifiedIds が「未修飾」と誤認し、fix-ids が二重に修飾して `09-auth 09-auth/REQ-128` に壊すバグがあった (code-reviewer C1)。**直前の語が候補 homeId のいずれかと完全一致する場合は「広義の修飾済み」として checkQualifiedIds 自体が違反にしない**方式を採った (fix-ids 側だけで防ぐ対症療法ではなく、検査の判定を直すことで fix-ids のバグも自動的に消える一箇所修正)
