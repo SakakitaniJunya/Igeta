@@ -13,127 +13,129 @@ relates_to: [context-boundaries, audience-directories]
 
 # どの文書をどこに置き、増えたらどう分けるか
 
-> **TL;DR**: 全体のフォルダ木 (正本、§1)。「1 文書の単位」([粒度](./09-reader-granularity.md) §2) が決まれば
-> 下位フォルダの鍵が決まる、という1つの原理 (§2) から、kind 47 種全部の置き場所を導く (§3)。直下に置けるのは
-> 生成索引と入口文書だけ、15 本を超えたら違反 (§4)
+> **TL;DR**: フォルダ木の正本 (§1) と、kind 47 種すべての置き場所 (§3)。第1階層は承認者 (`person`/`ai`/`client`)、
+> その下は**まとまり (`context`) ごとのフォルダ**。人は自分のまとまりのフォルダと全体共通 (`shared`) だけを
+> 開けば、読んで決めるものが全部そろう。決定の記録と提案書は年で分ける。1 フォルダ 15 本を超えたら違反
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [人とAIと顧客で、なぜ・どう書き分けるか](./09-reader-granularity.md) | — |
-| 下流 | ADR-0001/0004 / `src/core/Role.ts` / `src/checks/FolderSizeCheck.ts` | — |
+| 上流 (depends_on) | [人が読んで決める文書の型と量](./09-reader-granularity.md) | — |
+| 下流 | ADR-0001 / ADR-0004 / `src/core/Role.ts` / `src/checks/FolderSizeCheck.ts` | — |
 
 ## 1. 全体のフォルダ木 (正本)
 
 ```text
+AGENTS.md                              AI の入口
 docs/
-├── common/
-│   ├── decisions/<year>/NNNN-slug.md      (adr、年で分ける)
-│   ├── how-to/{01-document-taxonomy,02-implementation-order,03-human-review,04-provenance-workflow,NN-slug}.md
-│   ├── runbooks/NN-slug.md
-│   ├── proposal/<year>/NN-slug.md
-│   ├── explanation/NN-slug.md
-│   ├── contexts/contracts/<context>.md
-│   └── architecture/02-glossary.md
-├── ai/specs/
-│   ├── product/01-requirements.md
-│   └── design/{basic,detail,test,ops,tasks}/...・architecture/{01-overview,02-external-integration}.md
-├── person/guides/
-│   ├── 00-map.md
-│   ├── 01-decisions.md
-│   ├── contexts/maps/<context>.md
-│   └── features/NN-slug.md
-└── client/delivery/<提出物名>/...
+├── README.md / dependencies.md        生成索引 (直下に置けるのはこの 2 つだけ)
+├── person/                            人が読んで決める
+│   ├── requirements/NN-slug.md        要件
+│   ├── design/
+│   │   ├── shared/                    全体共通 (context 無記入の文書)
+│   │   │   ├── 00-map.md              全体の地図 (人の入口)
+│   │   │   └── NN-<kind>.md           機能一覧・方針と費用・品質の目標・権限・データの扱い・用語 ほか
+│   │   └── <context>/                 まとまりごと
+│   │       ├── 00-map.md              まとまりの地図
+│   │       ├── flows/NN-slug.md       業務の決まり
+│   │       ├── screens/NN-slug.md     画面と流れ
+│   │       └── features/NN-slug.md    機能ブリーフ
+│   ├── decisions/
+│   │   ├── 01-decisions.md            決定台帳 (仮・未決の一覧を生成)
+│   │   └── <year>/NNNN-slug.md        決定の記録 (ADR)
+│   └── handbook/
+│       ├── how-to/NN-slug.md          手引き (文書体系ガイドを含む)
+│       ├── explanation/NN-slug.md     解説
+│       └── runbooks/NN-slug.md        人が作業する手順
+├── ai/specs/                          AI が書いて AI が使う
+│   ├── shared/NN-<kind>.md            横断の決まり・区分値・文言・基盤の構成・ドメインの全体 ほか
+│   ├── <context>/
+│   │   ├── contract.md                他のまとまりへの約束
+│   │   └── {api,tables,domain,sequences,state-machines,modules,jobs,tests}/NN-slug.md
+│   └── tasks/NN-slug.md               実装タスク
+└── client/                            顧客と合意する
+    ├── delivery/<提出物名>/            提出物の章と付属ファイル
+    └── proposals/<year>/NN-slug.md    提案書
 ```
 
-## 2. 単位が下位フォルダの鍵を決める (1つの原理)
+## 2. 下位フォルダを決める原理
 
-[粒度](./09-reader-granularity.md) §2 の「1 文書の単位」が決まれば、分け方は自動的に決まる。
-
-| 読み手 | 単位 | 鍵 |
+| 文書の性質 | 分ける鍵 | 理由 |
 |---|---|---|
-| AI | 画面/API資源/テーブル/集約 1 つ | 単位が最初から多いと分かっているため `context` で最初から分ける |
-| 人 | 問い 1 つ | `map`/`context-map`/`decision-log` は既に1ファイル=1単位 (分割不要)。`feature-brief` は機能数だけ増えるため `context`+15本閾値の対象 |
-| 顧客 | 業務トピック 1 つ=章 1 | 提出物ごとに既にフォルダが分かれている (`delivery/<提出物名>/`)。分割不要 |
-| 共通 | 決定/提案 1 つ (ADR・proposal) | 単位は増え続け一度書いたら変わらないため、書いた時点で決まる**年**で束ねる |
-| 共通 | 手順/解説 1 つ (runbook・how-to・explanation) | 年には主題上の意味が無い (CEO指摘「脳死」)。**`context`** (業務のまとまりだけでなく「運用する仕組み・主題」にも意味を広げる) |
+| いまの決まり・作り方 (常に最新を保つ) | **まとまり (`context`)** | 人も AI も「1 つのまとまりだけ読めば作業できる」。フォルダが読む単位になる |
+| 日付のある記録 (ADR・提案書) | **年** | 書いた時点で決まり、後から変わらない。動かさないのでリンクが切れない |
+| 人が作業する手順・解説 | 種類 (how-to / explanation / runbooks)。15 本を超えたら主題 (`context`) | 作業のときに探すので種類で引く |
 
-**15本を超えたときの実際の形**: 「一部だけ下位フォルダへ」は許さない。**超えたら全部を下位フォルダへ移し、
-直下は README.md だけにする** (半端な状態を作らない)。例: `common/runbooks/<context>/NN-slug.md`、
-`person/guides/features/<context>/NN-slug.md`。`context` 無記入 (`shared`) の文書も例外にせず、文字列
-`shared` を 1 つの `context` 値として扱い `common/runbooks/shared/NN-slug.md` のように同じ規則で分ける。
+`context` はフィールド (frontmatter) とフォルダ名の両方に書き、食い違ったら違反にする。これは
+[まとまりの境界](./07-context-boundaries.md) §2 の「まとまりはフォルダで表さない」を改める (実装時に 07 を改訂)。
+改める理由: 人が読む量の上限を、フォルダの単位で測って守るため。
 
 ## 3. kind 47 種の置き場所
 
-### AI (31 kind)
+振り分けの問いは 1 つ: 「AI が勝手に変えたら、事業・お金・顧客との約束・使う人の体験・法令が変わるか」。
 
-| kind | 置き場所 | 直下可否 | 鍵 |
-|---|---|---|---|
-| requirements | `ai/specs/product/01-requirements.md` | 固定1本 | — |
-| function-list/solution-strategy/nonfunctional | `ai/specs/design/basic/01〜03.md`(固定) | 固定1本 | — |
-| crosscutting/code-definitions/messages | `.../design/basic/04〜06.md`(固定) | 固定1本 | — |
-| permission-matrix/infra-design/i18n | `.../design/basic/07〜09.md`(固定) | 固定1本 | — |
-| data-management/secrets-management (テンプレ未実装・予約) | 同上予定 | 固定1本 | — |
-| business-flow/screen-spec/api-spec/table-spec | `.../design/basic/{flows,screens,api,tables}/` | 不可(常にサブフォルダ) | `context` |
-| domain-overview/aggregate-map | `.../design/detail/domain/01,02`(固定) | 固定1本 | — |
-| domain-model/sequence-spec/state-machine/module-spec | `.../design/detail/{domain,sequences,state-machines,modules}/` | 不可 | `context` |
-| job/test-spec/tasks | `.../design/{detail/jobs,test/specs,tasks}/` | 可(15本超で分割) | `context` |
-| test-plan/risks-tech-debt | `.../design/{test/01-test-plan,01-risks-tech-debt}.md` | 固定1本 | — |
-| operations/migration-plan | `.../design/ops/01,02.md`(固定) | 固定1本 | — |
-| as-is-overview/external-integration | `ai/specs/architecture/` | 固定1本ずつ | — |
+### `person/` — いまの決まり (16 kind)
 
-(12 行・31 kind)
+| kind | 置き場所 | 人が決める理由 |
+|---|---|---|
+| map | `person/design/shared/00-map.md` | 何を作り、何を作らないか |
+| context-map | `person/design/<context>/00-map.md` | まとまりの範囲 |
+| requirements | `person/requirements/` | 満たすべきことと受入条件 |
+| function-list / solution-strategy / nonfunctional | `person/design/shared/` (固定番号) | 作る範囲、使う技術と費用、品質の目標 |
+| permission-matrix / data-management / glossary | `person/design/shared/` (固定番号) | 誰が何をできるか、持つデータと個人情報、顧客と合わせた言葉 |
+| as-is-overview / risks-tech-debt | `person/design/shared/` (固定番号) | 現状の理解、受け入れるリスク |
+| operations / migration-plan | `person/design/shared/` (固定番号) | 人が行う運用、利用者に影響する移行 |
+| business-flow | `person/design/<context>/flows/` | 業務の決まり (期限・金額・例外のときどうするか) |
+| screen-spec | `person/design/<context>/screens/` | どんな画面があり、どう流れるか |
+| feature-brief | `person/design/<context>/features/` | 機能の目的と優先順位 |
 
-### common (11 kind)
+### `person/` — 決定の記録と手引き (9 kind)
 
-| kind | 置き場所 | 直下可否 | 鍵 |
-|---|---|---|---|
-| glossary | `common/architecture/02-glossary.md` | 固定1本 | — |
-| adr | `common/decisions/<year>/` | 不可(常に年) | **年** |
-| proposal | `common/proposal/` | 可(15本超) | **年** |
-| guide(how-to)/runbook/explanation | `common/{how-to,runbooks,explanation}/` | 可(15本超) | `context` |
-| implementation-order/document-taxonomy/human-review/provenance-workflow | `common/how-to/01〜04`(固定番号) | 固定1本ずつ | — |
-| context-contract | `common/contexts/contracts/` | 不可 | `context`(自身が単位) |
+| kind | 置き場所 | 読む時 |
+|---|---|---|
+| adr | `person/decisions/<year>/` | 決めるその時に 1 本を読んで承認する |
+| decision-log | `person/decisions/01-decisions.md` | 仮・未決の一覧を見て決める |
+| guide / explanation / runbook | `person/handbook/{how-to,explanation,runbooks}/` | その作業をする人が、作業の前に読む |
+| document-taxonomy / implementation-order / human-review / provenance-workflow | `person/handbook/how-to/01〜04` (固定番号) | 同上 |
 
-(6 行・11 kind)
+### `ai/` (20 kind)
 
-### person (4 kind)
+| kind | 置き場所 | AI に任せる理由 |
+|---|---|---|
+| crosscutting / code-definitions / messages / i18n | `ai/specs/shared/` (固定番号) | 作り方の横断の決まり |
+| infra-design / secrets-management / external-integration / test-plan | `ai/specs/shared/` (固定番号) | 構成の細部と検証の手順。選定と費用は人の solution-strategy が決める |
+| domain-overview / aggregate-map | `ai/specs/shared/` (固定番号) | 内部の構造 |
+| context-contract | `ai/specs/<context>/contract.md` | まとまりの間の技術的な約束 |
+| api-spec / table-spec / domain-model / sequence-spec | `ai/specs/<context>/{api,tables,domain,sequences}/` | 内部の設計 |
+| state-machine / module-spec / job / test-spec | `ai/specs/<context>/{state-machines,modules,jobs,tests}/` | 内部の設計 |
+| tasks | `ai/specs/tasks/` | 実装の段取り |
 
-| kind | 置き場所 | 直下可否 | 鍵 |
-|---|---|---|---|
-| map/decision-log | `person/guides/{00-map,01-decisions}.md` | 固定1本・直下許容 | — |
-| context-map | `person/guides/contexts/maps/` | 不可 | `context` |
-| feature-brief | `person/guides/features/` | 可(15本超で分割) | `context` |
+### `client/` (2 kind)
 
-(3 行・4 kind)
+| kind | 置き場所 |
+|---|---|
+| delivery-chapter | `client/delivery/<提出物名>/` |
+| proposal | `client/proposals/<year>/` |
 
-### client (1 kind)
+**計 16 + 9 (person) + 20 (ai) + 2 (client) = 47 kind。** `ARC42_BY_KIND` (`src/checks/DocTemplateCheck.ts`) の全件。
+`index` は生成物で数えない。`tutorial` は予約済みでテンプレ未実装のため 47 の外。登録するときは `person/handbook/` に置く。
 
-| kind | 置き場所 | 直下可否 | 鍵 |
-|---|---|---|---|
-| delivery-chapter | `client/delivery/<提出物名>/` | 不可(常に提出物名) | 提出物名(既存) |
+画面の項目の型や入力チェックの細目、表の列の定義は文書にしない。コードが正本で、コードから導ける
+([解決戦略](../design/basic/02-solution-strategy.md) の「コードから導けることは書かない」)。業務に効く決まり
+(例: 緊急連絡先は必須) は、`person/` の決まりの表に 1 行で書く。
 
-(1 行・1 kind)
+## 4. 直下の決まりと本数の上限
 
-**計 31 (ai) + 11 (common) + 4 (person) + 1 (client) = 47 kind。** `ARC42_BY_KIND`(`src/checks/DocTemplateCheck.ts`)
-の全件と一致 (`index` は生成物で kind 登録の対象外、本数に含めない)。
-
-**`tutorial`(文書体系ガイドで予約済み、Diátaxis の tutorial)**: `common/` 配下。テンプレ未実装、`ARC42_BY_KIND`
-未登録のため上記 47 の数え合わせの**外**に置く (登録されたら 48 になる)。
-
-## 4. 直下ファイルの決まりと 15 本の上限
-
-**直下に文書を置けるかどうかは、kind ごとの全数表 (§3) の「直下可否」列だけで決まる。表に無い置き方は違反**
-(個別のフォルダ列挙はしない。`common/` の 7 フォルダを含め全フォルダに同じ 1 つの根拠が当てはまる)。
-例: `person/guides/` 直下は `map`/`decision-log` の「固定1本・直下許容」により `00-map.md`・`01-decisions.md`
-が置ける。`ai/specs/` 直下は表に「直下許容」の行が無いため、生成索引 (README.md) 以外は違反。
-
-閾値は1フォルダ**15本**で違反 (新レイアウトの repo、既定強制)。根拠 (director 実測): 利用 repo A は最大10本
-(無害)、利用 repo B は design 配下1フォルダ33本・業務文書1フォルダ16本、旧社内 repo は ADR35・guides26・
-runbooks21本。15 は全ての既知の痛みを捉え、無害な実例を誤検知しない最小値。
+- **直下に文書を置けるか**は §1 の木と §3 の表だけで決まる。木に無い場所 (例: `docs/person/` の直下、
+  `design/` の直下) に文書を置いたら違反。そこに置けるのは生成索引 (README.md) だけ
+- **1 フォルダ 15 本を超えたら違反** (新レイアウトの repo)。実測では、問題の起きたフォルダは 16〜35 本、
+  問題の無い repo は最大 10 本だった。15 はその間の値
+- 超えたときの分け方は 1 つに固定する。`flows/` などまとまりの中のフォルダが超えたら、**まとまりを分ける**
+  合図として扱う (下位フォルダを足さない)。`handbook/` の 3 フォルダは主題 (`context`) の下位フォルダへ全部移す。
+  `decisions/<year>/` は年で既に分かれている
 
 ## 5. 限界
 
-- `context` フィールドの意味を「業務のまとまり」から「運用する仕組み・主題」へ広げた。既存の説明 (context-boundaries.md §1) への追記が実装時に要る
-- kind 全数表は、実装時に文書体系ガイド §2 へ転記し、正典をガイドの 1 か所にする (それまでは本書が置き場所の正本)
+- まとまりの分け方・統合の手順 (境界を引き直す) はまだ設計していない。15 本と量の上限が「分ける合図」を出すところまで
+- この表は、実装時に文書体系ガイド §2 へ転記し、正典をガイドの 1 か所にする (それまでは本書が正本)

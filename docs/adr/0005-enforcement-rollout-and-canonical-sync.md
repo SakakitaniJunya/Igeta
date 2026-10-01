@@ -14,11 +14,9 @@ relates_to: [audience-directories]
 
 # ADR-0005: 検査の既定切替・正典の一致・消費repo/scaffoldの追随
 
-> **TL;DR**: 検査の強さはレイアウトの実在だけで決まる (設定で迂回できない): 新 4 フォルダが無い repo (旧レイアウト)
-> は**毎回「`docs-migrate` を実行してください」と警告を出し**、次のメジャー版で違反へ切り替える (期限つき、
-> CEO 確認は director が行う)。新 4 フォルダが 1 つでもあれば `RoleBoundaryCheck`/`AgentsEntrypointCheck`/
-> `FolderSizeCheck`(15本閾値、ADR-0004) は全部**即違反**(CI 赤)。ルールの正典は文書体系ガイド 1 か所、
-> コードの `Role.ts` はその転記であることを新設テストで固定する
+> **TL;DR**: 検査の強さはレイアウトの実在だけで決まる (設定で迂回できない)。`docs/person`・`ai`・`client` が
+> 1 つでもあれば全検査が**即違反** (CI 赤)。無い repo (旧レイアウト) は毎回警告を出し、次のメジャー版で違反にする。
+> ルールの正典は文書体系ガイド 1 か所で、コードの表との一致をテストで固定する
 
 ## 関連
 
@@ -42,13 +40,14 @@ relates_to: [audience-directories]
 
 ## Decision
 
-**1. 検査既定の切替 (抜け道を塞ぐ)**: `docs/common`・`ai`・`person`・`client` のいずれかが実在する repo では
-`RoleBoundaryCheck`・`AgentsEntrypointCheck`・`FolderSizeCheck`(ADR-0004、15本) を全部**即 violation** にする。
+**1. 検査既定の切替 (抜け道を塞ぐ)**: `docs/person`・`ai`・`client` のいずれかが実在する repo では
+`RoleBoundaryCheck`・`PersonFormCheck`・`AgentsEntrypointCheck`・`FolderSizeCheck`(ADR-0004、15本) を全部**即
+violation** にする。`docs/common/` が残っていたら違反 (v3 の配置。先行して手で移した repo 向け)。
 **いずれも実在しない repo では、検査のたびに警告を出し次のメジャーバージョンで違反に切り替える** (期限の明記、
-CEO 確認は director)。**新レイアウトの repo では、`docs/` 直下 (README.md・dependencies.md 除く) で 4 フォルダにも
+CEO 確認は director)。**新レイアウトの repo では、`docs/` 直下 (README.md・dependencies.md 除く) で 3 フォルダにも
 `nonDocPaths`(ADR-0003 §7) にも属さない文書を違反にする** (「どこにも属さない第3の場所」を作らない。arch-review FIX)
 
-**2. 正典の一致**: 文書体系ガイド (新パス `templates/docs/common/how-to/01-document-taxonomy.md`、§4) の
+**2. 正典の一致**: 文書体系ガイド (新パス `templates/docs/person/handbook/how-to/01-document-taxonomy.md`、§4) の
 kind→置き場所表を正典とし、
 `src/core/Role.ts` の `ROLE_OF_KIND` はその転記と明記する (既存 `Audience.ts` と同じ型)。新設テスト
 `TaxonomyGuideSync.test.ts` がガイドの表を markdown から構造的に読み取り `ROLE_OF_KIND` と突き合わせ、
@@ -59,10 +58,13 @@ kind→置き場所表を正典とし、
 生成する。各 repo の制約文書 (「docs の構成規約を守る」に当たる条文) は文書体系ガイドを指す既存の参照のままで
 よい (ガイド自体が改訂されるため、repo 側の文言変更は不要)
 
-**4. `igeta init`/`scaffold`**: 新規 repo には最初から新 4 フォルダ構成を生成する。旧レイアウトの雛形は削除する。
-**`templates/docs/` も `docs/` と同じ 4 階層に再編する** (例: 文書体系ガイドの新パスは
-`templates/docs/common/how-to/01-document-taxonomy.md`)。`TaxonomyGuideSync.test.ts`(§2) が指すガイドのパスも
+**4. `igeta init`/`scaffold`**: 新規 repo には最初から新しい 3 フォルダ構成を生成する。旧レイアウトの雛形は削除する。
+**`templates/docs/` も `docs/` と同じ階層に再編する** (例: 文書体系ガイドの新パスは
+`templates/docs/person/handbook/how-to/01-document-taxonomy.md`)。`person/` の「いまの決まり」のテンプレは、
+人の型 (結論 → 図 → 決まりの表 → 決めてほしいこと) に作り直す。`TaxonomyGuideSync.test.ts`(§2) が指すガイドのパスも
 この新パスに揃える
+
+**5. 人の承認の強制**: 人の承認が要る変更の見分け方は ADR-0008 に分ける
 
 **実装で決める論点 (設計はここに1か所にまとめる、詳細は実装時)**: `context-files` の既定allowlistが`map`を
 含める/外すかの最終判断、`AGENTS.md`の節構成の文面、`review-sheet`/`context-files`/`context-boundary-check`内の
@@ -86,10 +88,10 @@ kind→置き場所表を正典とし、
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
 | `TaxonomyGuideSync.test.ts` (新設) | ガイド表 vs `ROLE_OF_KIND` | 1 kind でも置き場所が食い違う |
-| `RoleBoundaryCheck`/`AgentsEntrypointCheck` のレイアウト検出テスト | 新 4 フォルダの有無 | 存在するのに検査が作動しない回帰 |
+| `RoleBoundaryCheck`/`AgentsEntrypointCheck` のレイアウト検出テスト | 新しい 3 フォルダの有無 | 存在するのに検査が作動しない回帰 |
 | `InitCommand`/`ScaffoldCommand` のテスト更新 | 新規生成物 | 旧レイアウトのパスを生成したら落ちる |
-| 旧レイアウト警告のテスト (新設) | 新4フォルダが無い repo | 警告が出ない、または次期メジャーで違反に切り替わらない回帰 |
-| 「第3の場所」検査 (新設) | `docs/` 直下 | 4フォルダ・`nonDocPaths` どちらにも属さない文書を見逃す回帰 |
+| 旧レイアウト警告のテスト (新設) | 新しい 3 フォルダが無い repo | 警告が出ない、または次期メジャーで違反に切り替わらない回帰 |
+| 「第3の場所」検査 (新設) | `docs/` 直下 | 3 フォルダ・`nonDocPaths` どちらにも属さない文書を見逃す回帰 |
 
 ## 再検討トリガ
 

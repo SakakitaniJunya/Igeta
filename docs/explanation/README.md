@@ -23,8 +23,8 @@ owners: [eng]
       - [05-coverage-and-learning.md](05-coverage-and-learning.md) — **由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)** _(読み手: 共通)_ `explanation` — 由来・鮮度 は「由来が古いか」だけを見る。ここでは
       - [08-agreement-ledger.md](08-agreement-ledger.md) — **顧客との合意台帳の形 (提出・承認・その後の変更)** _(読み手: 共通)_ `explanation` — 提出物を出すたびに、何を見せたか (版・章の指紋・由来が指す正本の指紋) を追記のみの台帳に残す。
     - [07-context-boundaries.md](07-context-boundaries.md) — **まとまり (業務コンテキスト) の境界で読み込む量を短くする理由** _(読み手: 共通)_ `explanation` — 設計書を業務のまとまり (context) ごとに分け、人も AI も**1 つのまとまりだけ読めば
-    - [09-reader-granularity.md](09-reader-granularity.md) — **人と AI と顧客で、なぜ・どう書き分けるか** _(読み手: 共通)_ `explanation` — AI・人・顧客・共通は「読む目的」「1 回に読む単位」「書き方」が違う。違いは一般の仕組みから来る (§1)。
-      - [10-folder-placement.md](10-folder-placement.md) — **どの文書をどこに置き、増えたらどう分けるか** _(読み手: 共通)_ `explanation` — 全体のフォルダ木 (正本、§1)。「1 文書の単位」(粒度 §2) が決まれば
+    - [09-reader-granularity.md](09-reader-granularity.md) — **人が読んで決める文書の型と量** _(読み手: 共通)_ `explanation` — person/ の文書は、人が全部読んで決められる型と量で書く。型は「結論 → 図 → 決まりの表 →
+      - [10-folder-placement.md](10-folder-placement.md) — **どの文書をどこに置き、増えたらどう分けるか** _(読み手: 共通)_ `explanation` — フォルダ木の正本 (§1) と、kind 47 種すべての置き場所 (§3)。第1階層は承認者 (person/ai/client)、
 - [06-export-deliverable.md](06-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** _(読み手: 共通)_ `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
 
 <!-- AUTOGEN:dir-index:end -->

@@ -16,13 +16,14 @@ owners: [eng]
 
 | # | タイトル | Status | proposed | accepted |
 |---|---|---|---|---|
-| [0001](0001-document-role-directories.md) | ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く | proposed | — | — |
-| [0002](0002-role-boundary-invariants.md) | ADR-0002 読み手境界を守る不変条件と機械検査の対応 | proposed | — | — |
+| [0001](0001-document-role-directories.md) | ADR-0001 docs/ の第1階層を「誰が承認するか」で 3 つに分ける | proposed | — | — |
+| [0002](0002-role-boundary-invariants.md) | ADR-0002 承認者の境界を守る不変条件と機械検査の対応 | proposed | — | — |
 | [0003](0003-docs-model-migration-and-dogfooding.md) | ADR-0003 移行コマンド (適用まで) と対象範囲 | proposed | — | — |
-| [0004](0004-folder-internal-structure-and-growth.md) | ADR-0004 4フォルダの内部構造と、増えたときの分け方 | proposed | — | — |
+| [0004](0004-folder-internal-structure-and-growth.md) | ADR-0004 フォルダの内部構造と、増えたときの分け方 | proposed | — | — |
 | [0005](0005-enforcement-rollout-and-canonical-sync.md) | ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随 | proposed | — | — |
 | [0006](0006-provenance-migration-handling.md) | ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い | proposed | — | — |
 | [0007](0007-fingerprint-link-normalization.md) | ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える | proposed | — | — |
+| [0008](0008-human-approval-scope.md) | ADR-0008 人の承認が要る変更を、差分のパスで見分ける | proposed | — | — |
 
 <!-- AUTOGEN:adr-index:end -->
 

@@ -16,6 +16,6 @@ owners: [eng]
 
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。`_(読み手: …)_` は frontmatter `kind` から機械判定した読み手 (顧客 / 開発者 / AI / 共通)。対応表は文書体系ガイド (docs/guides/01-document-taxonomy.md)「読み手 3 種」を参照。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
-- [02-solution-strategy.md](02-solution-strategy.md) — **文書モデルの解決戦略 — 読み手4つに分け、検査で守り、モデル陳腐化に強くする** _(読み手: AI)_ `design` _(draft)_ — Igeta の文書モデルは「コードから導けないものだけ手で書く」「読み手は置き場所で分かる」 ← 上流: [requirements](../../product/01-requirements.md), [audience-directories](../../product/02-audience-directories.md)
+- [02-solution-strategy.md](02-solution-strategy.md) — **文書モデルの解決戦略 — 承認者で 3 つに分け、検査で守り、モデル陳腐化に強くする** _(読み手: AI)_ `design` _(draft)_ — Igeta の文書モデルは「コードから導けないものだけ手で書く」「人が決める文書と AI が作る文書を ← 上流: [requirements](../../product/01-requirements.md), [audience-directories](../../product/02-audience-directories.md)
 
 <!-- AUTOGEN:dir-index:end -->

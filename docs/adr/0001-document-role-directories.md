@@ -1,6 +1,6 @@
 ---
 id: adr-0001-document-role-directories
-title: ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く
+title: ADR-0001 docs/ の第1階層を「誰が承認するか」で 3 つに分ける
 type: adr
 kind: adr
 arc42: 9
@@ -12,89 +12,89 @@ depends_on: [audience-layers]
 relates_to: [audience-directories, context-boundaries]
 ---
 
-# ADR-0001: docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く
+# ADR-0001: docs/ の第1階層を「誰が承認するか」で 3 つに分ける
 
-> **TL;DR**: docs/ 第1階層は読み手 4 つ (`common`/`ai`/`person`/`client`、全て小文字)。各直下に、前版 (v2)
-> で確認した世界の慣習語彙を第2階層として置く (`common/decisions`=MADR、`ai/specs`=spec-kit・OpenSpec、
-> `person/guides`、`client/delivery`)。AI の入口は repo 直下 `AGENTS.md` (`ai/`・`common/` を指す)。
-> v2 (`specs`/`decisions`/`guides`/`delivery` を第1階層) は CEO 差し戻しにより撤回: 慣習語彙は「正本である」こと
-> は示すが「誰向けか」は示さず、CEO 最初の指摘に答えていなかった
-> - 小文字固定の理由: 既存フォルダが全部小文字。macOS は大文字小文字を区別せず Linux の CI は区別するため、
->   大文字始まりは食い違いの元になる
+> **TL;DR**: docs/ 直下は `person/`・`ai/`・`client/` の 3 つ。分ける基準は読み手ではなく**承認者**。
+> `person/` = 人が読んで承認しないと確定しない文書。置いたものは全部、人が読んで決める。
+> `ai/` = AI が書き、評価する AI が裁く文書。人は読まなくてよい。`client/` = 顧客と合意して渡す文書。
+> 「人も AI も読む」置き場所 (`common/`) は作らない。AI は `person/` を上流として読み、従う
 
 ## 関連
 
 - **上流 (depends_on)**: [読み手別の入口](../explanation/03-audience-layers.md)
-- **下流**: ADR-0002 / ADR-0003 / [要件定義書 — 読み手別ディレクトリ](../product/02-audience-directories.md) / `AGENTS.md` (新設)
+- **下流**: ADR-0002 / ADR-0003 / ADR-0004 / ADR-0005 / ADR-0008 / [人が読んで決める文書の型と量](../explanation/09-reader-granularity.md) / [置き場所](../explanation/10-folder-placement.md)
 
 ## Status
 
-2026-10-01 提案。v1 (`source`/`entrance`/`delivery`)・v2 (`specs`/`decisions`/`guides`/`delivery` を第1階層) は
-いずれも差し戻し。本版 (v3) は CEO の直接指示に基づく。arch-review の裁定待ち。
+2026-10-02 提案 (v4)。v1〜v3 は差し戻し。v3 (`common`/`ai`/`person`/`client` の 4 分割) は実装前に撤回した。
 
 ## Context
 
-CEO 原文 (v3): 「に分けるのはどう？わかりやすくない？その下に上記の設計にして欲しい / Common/ AI/ Person/ Client」。
-v2 は「読み手の生の名前は shared の置き場所が無い」という v1 の却下理由を世界の慣習語彙で回避したが、結果として
-「フォルダ名だけでは誰向けか分からない」という CEO の最初の指摘 (「どれが人間でどれがAIか」) に戻ってしまった。
-CEO は読み手名を第1階層、v2 で確認した慣習語彙を第2階層にする形で両方を解いた。
+v3 は「誰が読むか」で分けたため、人も AI も読む文書の置き場所 `common/` が要り、曖昧な境目になった。実案件 1 件で測ると、設計を判断する図 42 枚のうち 41 枚が `ai/` 側に
+あり、`person/` には地図しか無かった。人が決めるべき業務の決まり・画面・構成が、人の読まない場所にあった。
+逆に、基本設計をそのまま `person/` へ移すと 37 本・約 31 万字 (通読に約 10 時間) で、読みきれない。
+原因は置き場所ではなく、1 本の文書に「人が決める内容」と「作り方の詳細」が混ざっていることだった。
 
 ## Decision Drivers
 
-- 第1階層は読み手がフォルダ名だけで分かること / 第2階層は v2 の外部慣習語彙を無駄にしないこと / 全小文字規約を守ること
+- 境目が 1 つの問いで決まり、機械で強制できること (読む人の気分で変わらない)
+- `person/` に置いたものは全部読める量であること (任意で読む段を作らない)
+- 人が決める設計が `person/` だけで揃うこと (要件・業務の決まり・画面・構成と費用・データの扱い・品質・決定)
 
 ## Decision
 
-**採用:**
+**採用: 承認者で 3 つに分ける。**
 
-(簡略図。全体の内部構造の正本は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §1)
+| フォルダ | 何を置くか | 誰が承認するか | 人は読むか |
+|---|---|---|---|
+| `docs/person/` | 人の承認なしに変えてはいけない内容 | 人 | **全部読んで決める** |
+| `docs/ai/` | 作り方の詳細 (内部の設計) | 評価する AI | 読まなくてよい |
+| `docs/client/` | 顧客に渡して合意するもの | 人 (渡す前) と顧客 | 渡す前に全部読む |
+
+**置き場所を決める問い (1 つだけ)**: 「AI がこれを勝手に変えたら、事業・お金・顧客との約束・使う人の体験・
+法令のどれかが変わるか」。変わるなら `person/`。変わらない (作り方の話) なら `ai/`。
+
+基本設計 (外から見た振る舞い) と詳細設計 (中の作り) の線と同じ。kind 47 種の振り分けと木の正本は [置き場所](../explanation/10-folder-placement.md)。
 
 ```text
-AGENTS.md                ← AI の入口 (ai/ と common/ を指す)
+AGENTS.md            ← AI の入口 (person/ を上流、ai/ を自分の持ち場として指す)
 docs/
-├── README.md / dependencies.md   ← 生成索引・依存グラフ (4分割を束ねる、直下に残す)
-├── common/                 ← 人も AI も読む
-│   └── decisions/          ← ADR (adr)
-├── ai/                     ← AI が実装のために読む
-│   └── specs/              ← requirements・design 配下・architecture
-├── person/                 ← 人が読む
-│   └── guides/             ← map・context-map・decision-log・feature-brief
-└── client/                 ← 顧客に渡す
-    └── delivery/           ← delivery-chapter (変更なし)
+├── person/          ← 人が読んで決める
+│   ├── requirements/   要件
+│   ├── design/         基本設計 (業務の決まり・画面・構成と費用・データの扱い・品質)
+│   ├── decisions/      決定の記録
+│   └── handbook/       人が作業する手順・解説
+├── ai/specs/        ← AI が書いて AI が使う (詳細設計・実装タスク)
+└── client/          ← 顧客と合意する (提出物・提案書)
 ```
 
-| フォルダ | 典拠 (開いて確認したもの) |
-|---|---|
-| `ai/specs/` | [spec-kit](https://github.com/github/spec-kit/blob/main/spec-driven.md)・[OpenSpec](https://github.com/Fission-AI/OpenSpec) (v2 で確認済み) |
-| `common/decisions/` | [MADR](https://adr.github.io/madr/) (v2 で確認済み) |
-| `person/guides/` | CEO の直接指示。外部慣習の裏付けは確認していない (正直に書く) |
-| `client/delivery/` | Igeta 既存の用語。変更なし |
-| `AGENTS.md` | [agents.md](https://agents.md/) (v2 で確認済み) |
-
-`common/` には `decisions/` 以外にも複数 kind が入る (全数は ADR-0004 / [置き場所](../explanation/10-folder-placement.md) §3)。深い文書は kind 解決がパス非依存のため許容する。
+**量を保つ決まり**: `person/` の文書は人の型で書き、量に上限を置いて検査で落とす
+([人が読んで決める文書の型と量](../explanation/09-reader-granularity.md))。実測では、業務フロー 3 本
+(15,366 字) が、人が決める内容だけにすると 1 枚 (1,961 字、元の 13%) になった。
+**承認の強制**: `person/`・`client/` を変える変更は人が承認しないと確定しない (ADR-0008)。
+フォルダ名は小文字 (既存が全部小文字。macOS と Linux で大文字小文字の扱いが違うため)。
 
 ## 却下した選択肢
 
-- **v2 (慣習語彙を第1階層)**: 「正本である」ことは示すが「誰向けか」は示さない。CEO の最初の指摘に答えない
-- **v1 の却下理由 (生の読み手名は shared の置き場所が無い) を維持する**: 誤りだったと訂正する。`common/` で解消する
-- **CEO 原文のまま大文字始まり**: 既存フォルダは全小文字。macOS は大文字小文字を区別せず Linux の CI は区別するため
-  食い違いの元になる (director が CEO へ確認予定)
+- **v3 (読み手で 4 分割、`common/` あり)**: 「両方が読む」が曖昧な境目になる。人が決める設計が `ai/` に入る
+- **宛先で 3 分割し、基本設計を `ai/` に置く**: 人が判断する図と決まりが `person/` に無く、設計を作りきれない
+- **基本設計をそのまま `person/` へ移す**: 読みきれない (上の実測)。文書を移すのではなく、分け直す必要がある
+- **`person/` を「必ず読む」と「決めるときだけ開く」の 2 段にする**: 読まなくてよい文書が人の場所に入り、境目が曖昧になる
 
 ## Consequences
 
-- 良い方向: 第1階層が読み手を直接示す。v2 の慣習語彙の調査も第2階層として活きる
-- 代償: 深い文書は5階層になる。`decisions/`(ADR) と `guides/`相当の`01-decisions.md`(決定台帳)が似た名前で紛らわしい
-  (`AGENTS.md`・`docs/README.md`の文言で明示する)
-- 代償 (フォルダ名は変えず認める): `person/guides/`(読み手) と kind `guide`(手順書、`common/how-to/`に置く) が
-  似た名前で衝突する。CEO 指示のためフォルダ名は変えない。kind `guide` は文書体系ガイド自体を含み、配置の正本を
-  ツール (migrate・検査) が読むため `common/` 側に置く。紛らわしさは `README.md`・`AGENTS.md` の説明で補うだけに留める
+- 良い方向: 置き場所がそのまま承認の要否になる。「`ai/` は人が読まなくてよい」と 1 行で言える。
+  モデルが強くなって詳細設計が要らなくなっても、`person/` は残る
+- 代償: 既存の基本設計は、人が決める内容と作り方の詳細に**分け直す**作業が要る (ADR-0003)。AI は `person/` も読む
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| ADR-0002 `RoleBoundaryCheck`/`AgentsEntrypointCheck` (新設) | `docs/common`・`ai`・`person`・`client` 配下 / repo 直下 `AGENTS.md` | kind と第1階層の食い違い / `AGENTS.md` 不在か言及不足 |
+| `RoleBoundaryCheck` (新設、ADR-0002) | `docs/person`・`ai`・`client` 配下の全文書 | kind から導く承認者と実際の第1階層が食い違う |
+| `PersonFormCheck` (新設、ADR-0002) | `person/` の「いまの決まり」の文書 | `ai/` へのリンク・`ai/` 側の ID がある / 量の上限を超える |
+| `approval-scope` (新設、ADR-0008) | 変更の差分 | `person/`・`client/` を含む変更を「人の承認が要る」と判定しない |
 
 ## 再検討トリガ
 
-- CEO が大文字始まりを再指示したら CI の大文字小文字差異を再説明してから従う。`how-to/` 衝突が混乱を招けば別名を検討する
+- 最初の実案件 1 件を全部分け直した結果、`person/` の 1 まとまりが上限に収まらなければ、上限か分け方を見直す

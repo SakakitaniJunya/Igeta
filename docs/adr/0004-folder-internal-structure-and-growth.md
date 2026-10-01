@@ -1,6 +1,6 @@
 ---
 id: adr-0004-folder-internal-structure-and-growth
-title: ADR-0004 4フォルダの内部構造と、増えたときの分け方
+title: ADR-0004 フォルダの内部構造と、増えたときの分け方
 type: adr
 kind: adr
 arc42: 9
@@ -12,11 +12,11 @@ depends_on: [adr-0001-document-role-directories]
 relates_to: [context-boundaries, audience-directories]
 ---
 
-# ADR-0004: 4フォルダの内部構造と、増えたときの分け方
+# ADR-0004: フォルダの内部構造と、増えたときの分け方
 
-> **TL;DR**: `decisions/`・`proposal/` (日付のある記録) は**年**で分ける。他の多数ファイル kind (runbook・
-> how-to・explanation 等、常設文書) は年に意味が無いため**`context`** (既存フィールドを「運用する仕組み・主題」
-> にも広げて使う) で分ける。閾値は**1フォルダ15本**で**違反**(新レイアウトの repo、既定強制)。kind 全数の
+> **TL;DR**: いまの決まりと作り方は、最初から**まとまり (`context`) のフォルダ**に置く (`person/design/<context>/`・
+> `ai/specs/<context>/`)。日付のある記録 (ADR・提案書) は**年**で分ける。閾値は**1フォルダ15本**で**違反**。
+> まとまりの中のフォルダが 15 本を超えたら、下位フォルダを足さず、まとまりを分ける合図として扱う。kind 全数の
 > 対応表・全体のフォルダ木 (正本) は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §1・§3 に置く
 > (本書は決定の核だけ)
 
@@ -43,20 +43,19 @@ director 実測: 利用 repo A は最大10本 (無害)、利用 repo B は desig
 
 ## Decision
 
-**1. 鍵は2種類だけ**: 日付記録 (`adr`/`proposal`) は**年**。他の多数ファイル kind は**`context`**
-(既存フィールドの意味を「運用する仕組み・主題」にも広げる。例: runbook の `context: deploy`)。固定単一ファイル
-kind (function-list 等) は鍵自体が無い (増えない)。kind ごとの割当は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §3 の表が正本
+**1. 鍵は2種類だけ**: 日付記録 (`adr`/`proposal`) は**年**。いまの決まりと作り方は**`context`** で、最初から
+フォルダにする (`context` 無記入は `shared/`)。フォルダ名と frontmatter の `context` が食い違えば違反。
+`handbook/` の 3 フォルダは 15 本を超えたら主題 (`context`。例: runbook の `context: deploy`) の下位フォルダへ全部移す。kind ごとの割当は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §3 の表が正本
 
-**2. 閾値15本・既定で違反**: 1フォルダ15本を超えたら、ADR-0005 のレイアウト検出と同じ条件 (新4フォルダが
+**2. 閾値15本・既定で違反**: 1フォルダ15本を超えたら、ADR-0005 のレイアウト検出と同じ条件 (新しい 3 フォルダが
 実在する repo) で**即違反**にする (既定OFFの警告から変更。CEO 原文「ルールとして設定して」に応じる)。
 15 は実測の全ての痛み (16・21・23・26・33・35本) を捉え、無害な実例 (10本以下) を誤検知しない最小値
 
 **3. 直下ファイル規則 (1 文に言い直す)**: 文書を直下に置けるかどうかは、kind ごとの全数表
 ([どの文書をどこに置くか](../explanation/10-folder-placement.md) §3) の「直下可否」列だけで決まる。
-`common/` の 7 フォルダを含め全フォルダに同じ 1 つの根拠が当てはまり、個別の列挙はしない
-(前版の「decisions/specs/guides/delivery」列挙は `common/` の 6 フォルダを落としていた誤り)
+全フォルダに同じ 1 つの根拠が当てはまり、個別の列挙はしない
 
-**4. `ai/specs/`・`client/delivery/` の内部は変えない** (既に `screens/`・`api/` 等へ最初から分けている)
+**4. `client/delivery/<提出物名>/` の内部は変えない**。`person/design/` と `ai/specs/` の内部は、まとまりごとのフォルダに組み直す (木の正本は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §1)
 
 ## 却下した選択肢
 
@@ -67,8 +66,8 @@ kind (function-list 等) は鍵自体が無い (増えない)。kind ごとの�
 ## Consequences
 
 - 良い方向: ADR の参照が壊れない。新レイアウトの repo で平置きが実際に止まる (違反のため)
-- 代償: `context` フィールドの意味を広げたため、既存の「業務のまとまり」という説明 (context-boundaries.md §1) に
-  「運用する仕組み・主題」を追記する改訂が要る
+- 代償: まとまりをフォルダにするので、[まとまりの境界](../explanation/07-context-boundaries.md) §2 の
+  「まとまりはフォルダで表さない」を改める (実装時に 07 を改訂)。まとまりを分け直すと文書が動く
 
 ## Confirmation
 
