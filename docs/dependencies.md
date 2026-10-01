@@ -34,6 +34,8 @@ graph LR
   class adr-0005-enforcement-rollout-and-canonical-sync adr
   adr-0006-provenance-migration-handling["ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い (proposed)"]
   class adr-0006-provenance-migration-handling adr
+  adr-0007-fingerprint-link-normalization["ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える (proposed)"]
+  class adr-0007-fingerprint-link-normalization adr
   adr-index["adr — 索引"]
   class adr-index index
   agreement-ledger["顧客との合意台帳の形 (提出・承認・その後の変更)"]
@@ -83,6 +85,7 @@ graph LR
   adr-0002-role-boundary-invariants ==> adr-0005-enforcement-rollout-and-canonical-sync
   adr-0003-docs-model-migration-and-dogfooding ==> adr-0005-enforcement-rollout-and-canonical-sync
   adr-0003-docs-model-migration-and-dogfooding ==> adr-0006-provenance-migration-handling
+  adr-0006-provenance-migration-handling ==> adr-0007-fingerprint-link-normalization
   provenance-and-agreement ==> agreement-ledger
   requirements ==> audience-directories
   human-review-layer ==> audience-layers
@@ -108,6 +111,8 @@ graph LR
   adr-0006-provenance-migration-handling -.- agreement-ledger
   adr-0006-provenance-migration-handling -.- coverage-and-learning
   adr-0006-provenance-migration-handling -.- export-deliverable
+  adr-0007-fingerprint-link-normalization -.- provenance-and-agreement
+  adr-0007-fingerprint-link-normalization -.- agreement-ledger
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
   audience-directories -.- audience-layers
@@ -140,6 +145,7 @@ graph LR
 - **adr-0004-folder-internal-structure-and-growth** _(proposed)_ — [ADR-0004 4フォルダの内部構造と、増えたときの分け方](adr/0004-folder-internal-structure-and-growth.md)
 - **adr-0005-enforcement-rollout-and-canonical-sync** _(proposed)_ — [ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随](adr/0005-enforcement-rollout-and-canonical-sync.md)
 - **adr-0006-provenance-migration-handling** _(proposed)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md)
+- **adr-0007-fingerprint-link-normalization** _(proposed)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](adr/0007-fingerprint-link-normalization.md)
 
 ### design
 

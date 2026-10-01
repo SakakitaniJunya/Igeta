@@ -62,7 +62,7 @@ Igeta 自身の移行後の木 (4フォルダの外に何も残らないこと�
 docs/
 ├── README.md / dependencies.md        (生成、直下に残す)
 ├── common/
-│   ├── decisions/2026/0001〜0005-*.md  (ADR)
+│   ├── decisions/2026/0001〜0007-*.md  (ADR)
 │   └── explanation/01〜10-*.md         (旧 explanation 全部)
 ├── ai/specs/
 │   ├── product/{01-requirements,02-audience-directories}.md

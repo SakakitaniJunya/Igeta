@@ -42,7 +42,7 @@ owners: [eng]
 | **§6 Runtime View** (実行時ビュー) | _未作成_ |
 | **§7 Deployment View** (配置ビュー) | _未作成_ |
 | **§8 Crosscutting Concepts** (横断概念) | _未作成_ |
-| **§9 Architecture Decisions** (アーキテクチャ決定) | [ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く](adr/0001-document-role-directories.md) _(読み手: AI)_ · [ADR-0002 読み手境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md) _(読み手: AI)_ · [ADR-0003 移行コマンド (適用まで) と対象範囲](adr/0003-docs-model-migration-and-dogfooding.md) _(読み手: AI)_ · [ADR-0004 4フォルダの内部構造と、増えたときの分け方](adr/0004-folder-internal-structure-and-growth.md) _(読み手: AI)_ · [ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随](adr/0005-enforcement-rollout-and-canonical-sync.md) _(読み手: AI)_ · [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md) _(読み手: AI)_ |
+| **§9 Architecture Decisions** (アーキテクチャ決定) | [ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く](adr/0001-document-role-directories.md) _(読み手: AI)_ · [ADR-0002 読み手境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md) _(読み手: AI)_ · [ADR-0003 移行コマンド (適用まで) と対象範囲](adr/0003-docs-model-migration-and-dogfooding.md) _(読み手: AI)_ · [ADR-0004 4フォルダの内部構造と、増えたときの分け方](adr/0004-folder-internal-structure-and-growth.md) _(読み手: AI)_ · [ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随](adr/0005-enforcement-rollout-and-canonical-sync.md) _(読み手: AI)_ · [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md) _(読み手: AI)_ · [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](adr/0007-fingerprint-link-normalization.md) _(読み手: AI)_ |
 | **§10 Quality Requirements** (品質要求) | _未作成_ |
 | **§11 Risks and Technical Debt** (リスクと技術的負債) | _未作成_ |
 | **§12 Glossary** (用語集) | _未作成_ |

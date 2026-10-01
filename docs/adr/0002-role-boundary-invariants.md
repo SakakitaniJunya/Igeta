@@ -14,7 +14,7 @@ relates_to: [audience-directories, context-boundaries, provenance-and-agreement]
 
 # ADR-0002: 読み手境界を守る不変条件と機械検査の対応
 
-> **TL;DR**: ADR-0001 の `common`/`ai`/`person`/`client` 分割を「決めて終わり」にしないため、9 つの不変条件に
+> **TL;DR**: ADR-0001 の `common`/`ai`/`person`/`client` 分割を「決めて終わり」にしないため、10 の不変条件に
 > 機械検査を対応させる。新設は 3 つ (`RoleBoundaryCheck`、`DocGraphCheck` 拡張、`AgentsEntrypointCheck`)。
 > 読む範囲の規則 (AI は `ai`+`common`、人は `person`+`common`、顧客は `client` のみ) は依存方向検査で裏付ける
 > - 実データ検証: `requirements`(ai) が `audience-layers`(common) に `depends_on` している既存の実例を確認し、
@@ -55,6 +55,7 @@ relates_to: [audience-directories, context-boundaries, provenance-and-agreement]
 | 7 | 未決は未決と書く | 既存 decision-log の DEC/OPEN・`checkAcceptedGate` | 既存 |
 | 8 | 作る主体と裁く主体を分ける (delivery 限定) | 既存 `provenance-accept` の self-approved 違反 | 既存 |
 | 9 | AI の入口は repo 直下の 1 ファイル | `AgentsEntrypointCheck`: `AGENTS.md` の実在と `ai/`・`common/` への言及 | 新設 |
+| 10 | docs/ の文書は 4 フォルダか `nonDocPaths` のどちらかに属する (第 3 の場所を作らない。ADR-0005 決定 1) | `RoleBoundaryCheck`: 新レイアウトの repo で、4 フォルダにも `nonDocPaths` にも属さない文書 (直下の生成索引を除く) を違反 | 新設 |
 
 `context-contract` は `common/` 配下 (他のまとまりへの約束を人も AI も読む、§1 参照)。`map`/`decision-log` は
 既存 `context-files` の既定 allowlist に残る (`context-boundaries.md` §6) が新配置では `person/` 専有なので、
