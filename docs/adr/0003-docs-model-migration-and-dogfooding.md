@@ -1,5 +1,5 @@
 ---
-id: docs-model-migration-and-dogfooding
+id: adr-0003-docs-model-migration-and-dogfooding
 title: ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding
 type: adr
 kind: adr
@@ -8,7 +8,7 @@ status: proposed
 canonical: true
 owners: [eng]
 created: 2026-10-01
-depends_on: [document-role-directories, role-boundary-invariants]
+depends_on: [adr-0001-document-role-directories, adr-0002-role-boundary-invariants]
 relates_to: [audience-directories, export-deliverable]
 ---
 

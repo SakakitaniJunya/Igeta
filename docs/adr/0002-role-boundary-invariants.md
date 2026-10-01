@@ -1,5 +1,5 @@
 ---
-id: role-boundary-invariants
+id: adr-0002-role-boundary-invariants
 title: ADR-0002 役割境界を守る不変条件と機械検査の対応
 type: adr
 kind: adr
@@ -8,7 +8,7 @@ status: proposed
 canonical: true
 owners: [eng]
 created: 2026-10-01
-depends_on: [document-role-directories]
+depends_on: [adr-0001-document-role-directories]
 relates_to: [audience-directories, context-boundaries, provenance-and-agreement]
 ---
 

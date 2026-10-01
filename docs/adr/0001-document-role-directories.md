@@ -1,5 +1,5 @@
 ---
-id: document-role-directories
+id: adr-0001-document-role-directories
 title: ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する
 type: adr
 kind: adr

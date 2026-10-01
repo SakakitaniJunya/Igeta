@@ -22,6 +22,12 @@ graph LR
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
   classDef map fill:#fef3c7,stroke:#78350f,color:#111
   classDef decision_log fill:#fee2e2,stroke:#7f1d1d,color:#111
+  adr-0001-document-role-directories["ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する (proposed)"]
+  class adr-0001-document-role-directories adr
+  adr-0002-role-boundary-invariants["ADR-0002 役割境界を守る不変条件と機械検査の対応 (proposed)"]
+  class adr-0002-role-boundary-invariants adr
+  adr-0003-docs-model-migration-and-dogfooding["ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding (proposed)"]
+  class adr-0003-docs-model-migration-and-dogfooding adr
   adr-index["adr — 索引"]
   class adr-index index
   agreement-ledger["顧客との合意台帳の形 (提出・承認・その後の変更)"]
@@ -34,16 +40,16 @@ graph LR
   class context-boundaries explanation
   coverage-and-learning["由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)"]
   class coverage-and-learning explanation
+  design-basic-index["basic — 索引"]
+  class design-basic-index index
   design-doc-standards["設計書テンプレが参照した外部標準"]
   class design-doc-standards explanation
+  design-index["design — 索引"]
+  class design-index index
   docs-index["docs — Igeta 自身の説明書"]
   class docs-index index
-  docs-model-migration-and-dogfooding["ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding (proposed)"]
-  class docs-model-migration-and-dogfooding adr
   docs-model-strategy["文書モデルの解決戦略 — 世界の慣習の語彙で分け、検査で守り、モデル陳腐化に強くする (draft)"]
   class docs-model-strategy design
-  document-role-directories["ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する (proposed)"]
-  class document-role-directories adr
   explanation-index["explanation — 索引"]
   class explanation-index index
   export-deliverable["igeta export — 提出用 PDF 出力基盤"]
@@ -58,21 +64,26 @@ graph LR
   class provenance-and-agreement explanation
   requirements["要件定義書 (draft)"]
   class requirements product
-  role-boundary-invariants["ADR-0002 役割境界を守る不変条件と機械検査の対応 (proposed)"]
-  class role-boundary-invariants adr
+  audience-layers ==> adr-0001-document-role-directories
+  adr-0001-document-role-directories ==> adr-0002-role-boundary-invariants
+  adr-0001-document-role-directories ==> adr-0003-docs-model-migration-and-dogfooding
+  adr-0002-role-boundary-invariants ==> adr-0003-docs-model-migration-and-dogfooding
   provenance-and-agreement ==> agreement-ledger
   requirements ==> audience-directories
   human-review-layer ==> audience-layers
   audience-layers ==> context-boundaries
   provenance-and-agreement ==> coverage-and-learning
-  document-role-directories ==> docs-model-migration-and-dogfooding
-  role-boundary-invariants ==> docs-model-migration-and-dogfooding
   requirements ==> docs-model-strategy
   audience-directories ==> docs-model-strategy
-  audience-layers ==> document-role-directories
   audience-layers ==> provenance-and-agreement
   audience-layers ==> requirements
-  document-role-directories ==> role-boundary-invariants
+  adr-0001-document-role-directories -.- audience-directories
+  adr-0001-document-role-directories -.- context-boundaries
+  adr-0002-role-boundary-invariants -.- audience-directories
+  adr-0002-role-boundary-invariants -.- context-boundaries
+  adr-0002-role-boundary-invariants -.- provenance-and-agreement
+  adr-0003-docs-model-migration-and-dogfooding -.- audience-directories
+  adr-0003-docs-model-migration-and-dogfooding -.- export-deliverable
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
   audience-directories -.- audience-layers
@@ -80,20 +91,13 @@ graph LR
   audience-layers -.- coverage-and-learning
   audience-layers -.- context-boundaries
   design-doc-standards -.- docs-index
-  docs-model-migration-and-dogfooding -.- audience-directories
-  docs-model-migration-and-dogfooding -.- export-deliverable
   docs-model-strategy -.- audience-layers
   docs-model-strategy -.- context-boundaries
   docs-model-strategy -.- human-review-layer
-  document-role-directories -.- audience-directories
-  document-role-directories -.- context-boundaries
   export-deliverable -.- docs-index
   map -.- requirements
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
-  role-boundary-invariants -.- audience-directories
-  role-boundary-invariants -.- context-boundaries
-  role-boundary-invariants -.- provenance-and-agreement
 ```
 ## ドキュメント一覧 (type 別)
 ### map
@@ -102,9 +106,9 @@ graph LR
 
 ### adr
 
-- **docs-model-migration-and-dogfooding** _(proposed)_ — [ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding](adr/0003-docs-model-migration-and-dogfooding.md)
-- **document-role-directories** _(proposed)_ — [ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する](adr/0001-document-role-directories.md)
-- **role-boundary-invariants** _(proposed)_ — [ADR-0002 役割境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md)
+- **adr-0001-document-role-directories** _(proposed)_ — [ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する](adr/0001-document-role-directories.md)
+- **adr-0002-role-boundary-invariants** _(proposed)_ — [ADR-0002 役割境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md)
+- **adr-0003-docs-model-migration-and-dogfooding** _(proposed)_ — [ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding](adr/0003-docs-model-migration-and-dogfooding.md)
 
 ### design
 
@@ -126,6 +130,8 @@ graph LR
 | ID | Type | Path |
 |---|---|---|
 | adr-index | index | [`docs/adr/README.md`](adr/README.md) |
+| design-basic-index | index | [`docs/design/basic/README.md`](design/basic/README.md) |
+| design-index | index | [`docs/design/README.md`](design/README.md) |
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
 | product-index | index | [`docs/product/README.md`](product/README.md) |
 
