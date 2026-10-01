@@ -34,7 +34,7 @@ owners: [eng]
 
 | arc42 章 | 文書 |
 |---|---|
-| **§1 Introduction and Goals** (導入と目標) | [要件定義書](product/01-requirements.md) _(読み手: AI)_ |
+| **§1 Introduction and Goals** (導入と目標) | [要件定義書](product/01-requirements.md) _(読み手: AI)_ · [要件定義書 — 読み手別ディレクトリ (docs/ の物理分割)](product/02-audience-directories.md) _(読み手: AI)_ |
 | **§2 Constraints** (制約) | _未作成_ |
 | **§3 Context and Scope** (コンテキストと範囲) | _未作成_ |
 | **§4 Solution Strategy** (解決戦略) | _未作成_ |

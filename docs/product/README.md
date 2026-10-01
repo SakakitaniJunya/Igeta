@@ -17,5 +17,6 @@ owners: [eng]
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。`_(読み手: …)_` は frontmatter `kind` から機械判定した読み手 (顧客 / 開発者 / AI / 共通)。対応表は文書体系ガイド (docs/guides/01-document-taxonomy.md)「読み手 3 種」を参照。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
 - [01-requirements.md](01-requirements.md) — **要件定義書** _(読み手: AI)_ `product` _(draft)_ — docs を開いた読み手が、その文書が 顧客 / 開発者 / AI の誰向けかを即判別できない、を解く。 ← 上流: [audience-layers](../explanation/03-audience-layers.md)
+  - [02-audience-directories.md](02-audience-directories.md) — **要件定義書 — 読み手別ディレクトリ (docs/ の物理分割)** _(読み手: AI)_ `product` _(draft)_ — docs/ を開いた人が、読み手の境界をフォルダ構造から即座に読み取れない、を解く。
 
 <!-- AUTOGEN:dir-index:end -->
