@@ -42,7 +42,7 @@ relates_to: [audience-directories, context-boundaries, provenance-and-agreement]
 
 ## Decision
 
-**採用: 以下 9 条件。**
+**採用: 以下 10 条件。**
 
 | # | 不変条件 | 検査 | 新設/既存 |
 |---|---|---|---|
