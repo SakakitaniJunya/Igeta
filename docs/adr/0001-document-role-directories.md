@@ -1,6 +1,6 @@
 ---
 id: adr-0001-document-role-directories
-title: ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する
+title: ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く
 type: adr
 kind: adr
 arc42: 9
@@ -12,82 +12,88 @@ depends_on: [audience-layers]
 relates_to: [audience-directories, context-boundaries]
 ---
 
-# ADR-0001: docs/ の第1階層を世界の慣習の語彙で4分割する
+# ADR-0001: docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く
 
-> **TL;DR**: docs/ 直下を `specs`(正本) / `decisions`(ADR) / `guides`(人の入口) / `delivery`(提出物) の
-> 4 フォルダに分ける。フォルダ名は独自語ではなく spec-driven 開発・MADR・agents.md の実在する慣習から採る。
-> AI の入口はフォルダではなく repo 直下の `AGENTS.md`。`decisions` を独立させた結果、トップは CEO 原文の
-> 「三つに」と数が食い違う (却下した選択肢参照)
-> - v1 (本 ADR の前版、`source`/`entrance`/`delivery`) は director 差し戻しにより撤回。独自語で世界の慣習に
->   乗っていなかったことが理由
+> **TL;DR**: docs/ 第1階層は読み手 4 つ (`common`/`ai`/`person`/`client`、全て小文字)。各直下に、前版 (v2)
+> で確認した世界の慣習語彙を第2階層として置く (`common/decisions`=MADR、`ai/specs`=spec-kit・OpenSpec、
+> `person/guides`、`client/delivery`)。AI の入口は repo 直下 `AGENTS.md` (`ai/`・`common/` を指す)。
+> v2 (`specs`/`decisions`/`guides`/`delivery` を第1階層) は CEO 差し戻しにより撤回: 慣習語彙は「正本である」こと
+> は示すが「誰向けか」は示さず、CEO 最初の指摘に答えていなかった
+> - 小文字固定の理由: 既存フォルダが全部小文字。macOS は大文字小文字を区別せず Linux の CI は区別するため、
+>   大文字始まりは食い違いの元になる
 
 ## 関連
 
 - **上流 (depends_on)**: [読み手別の入口](../explanation/03-audience-layers.md)
-- **下流**: [要件定義書 — 読み手別ディレクトリ](../product/02-audience-directories.md) / [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) §2・§3 (改訂対象) / ADR-0002 / ADR-0003 / `AGENTS.md` (新設)
+- **下流**: ADR-0002 / ADR-0003 / [要件定義書 — 読み手別ディレクトリ](../product/02-audience-directories.md) / `AGENTS.md` (新設)
 
 ## Status
 
-2026-10-01 提案 (architect, eng-base)。v1 は director 差し戻し。本版 (v2) は再提案、arch-review の裁定待ち。
+2026-10-01 提案。v1 (`source`/`entrance`/`delivery`)・v2 (`specs`/`decisions`/`guides`/`delivery` を第1階層) は
+いずれも差し戻し。本版 (v3) は CEO の直接指示に基づく。arch-review の裁定待ち。
 
 ## Context
 
-CEO 原文: 「どれが人間が読むもので、AIがどれかわかりません」「フォルダで大きく三つに分けちゃえばいいのに」(fd.md)。
-v1 で `source`/`entrance`/`delivery` を採ったが、director 差し戻し: 「`source` はソースコードと読まれやすく、
-`entrance` は文書の分類語として使われていない」— 独自語で世界の慣習に乗っていなかった。
+CEO 原文 (v3): 「に分けるのはどう？わかりやすくない？その下に上記の設計にして欲しい / Common/ AI/ Person/ Client」。
+v2 は「読み手の生の名前は shared の置き場所が無い」という v1 の却下理由を世界の慣習語彙で回避したが、結果として
+「フォルダ名だけでは誰向けか分からない」という CEO の最初の指摘 (「どれが人間でどれがAIか」) に戻ってしまった。
+CEO は読み手名を第1階層、v2 で確認した慣習語彙を第2階層にする形で両方を解いた。
 
 ## Decision Drivers
 
-- フォルダ名は Igeta の独自語ではなく、**実在して開いて確認できる外部の慣習**から採ること
-- 決定 (ADR) は人も AI も読む、どちらの読み手にも属さない層であること
-- 既存の kind 別フォルダ構成への投資を無駄にしないこと
+- 第1階層は読み手がフォルダ名だけで分かること / 第2階層は v2 の外部慣習語彙を無駄にしないこと / 既存フォルダの全小文字規約を守ること
 
 ## Decision
 
-**採用: `specs`/`decisions`/`guides`/`delivery` の 4 分割。AI の入口は `AGENTS.md` (repo 直下、フォルダではない)。**
+**採用:**
 
-| フォルダ/ファイル | 意味 | 収める kind | 典拠 (URL・確認した引用) |
-|---|---|---|---|
-| `docs/specs/` | 正本。AI が実装のために読む | `requirements`/`design/` 配下全部 (basic・detail・test・ops・tasks)/`architecture` | [spec-kit](https://github.com/github/spec-kit/blob/main/spec-driven.md) 「Creates the proper `specs/[branch-name]/` structure for all related documents」/ [OpenSpec](https://github.com/Fission-AI/OpenSpec) 「`openspec/specs/` — 確定した要件仕様 (`changes/` と別)」 |
-| `docs/decisions/` | ADR。人も AI も読む唯一の層 | `adr` | [MADR](https://adr.github.io/madr/) 「Create folder `docs/decisions` in your project. Copy all files in folder `template`...」 |
-| `docs/guides/` | 人の入口。Diátaxis で分ける | `map`/`context-map`/`context-contract`/`decision-log`/`feature-brief`/`explanation`/`guide`/`runbook`/`proposal`/`document-taxonomy` | [Diátaxis](https://diataxis.fr/) (既に `explanation/01-design-doc-standards.md` で採用済み) |
-| `docs/delivery/` | 提出物。顧客に渡す (変更なし) | `delivery-chapter` | — |
-| `AGENTS.md` (repo 直下) | AI の入口。`specs/`・`decisions/` を指す | — (フォルダではない) | [agents.md](https://agents.md/) 「a dedicated, predictable place to provide the context and instructions to help AI coding agents work on your project」 |
+(簡略図。全体の内部構造の正本は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §1)
 
-**未確認 (開けなかった/確認できなかった)**: Kiro の `.kiro/specs/` — <https://kiro.dev/docs/specs/> を開いたが `.kiro` という
-文字列自体の言及が無く、ディレクトリパスは確認できなかった。director 原案にあった根拠だが、本 ADR では**採用の根拠から外す**
-(採用自体は spec-kit・OpenSpec の 2 件で十分)。
+```text
+AGENTS.md                ← AI の入口 (ai/ と common/ を指す)
+docs/
+├── README.md / dependencies.md   ← 生成索引・依存グラフ (4分割を束ねる、直下に残す)
+├── common/                 ← 人も AI も読む
+│   └── decisions/          ← ADR (adr)
+├── ai/                     ← AI が実装のために読む
+│   └── specs/              ← requirements・design 配下・architecture
+├── person/                 ← 人が読む
+│   └── guides/             ← map・context-map・decision-log・feature-brief
+└── client/                 ← 顧客に渡す
+    └── delivery/           ← delivery-chapter (変更なし)
+```
 
-既存 kind 別サブフォルダ構成はそのまま、各フォルダの下に 1 段深く入れる (例: `docs/specs/product/01-requirements.md`、
-`docs/guides/explanation/01-design-doc-standards.md`)。`docs/README.md`・`dependencies.md` は全 4 フォルダを束ねる
-生成索引・依存グラフのため docs/ 直下に残す。`00-map.md`・`01-decisions.md` は `guides/` の内容として `guides/` 配下へ移す。
+| フォルダ | 典拠 (開いて確認したもの) |
+|---|---|
+| `ai/specs/` | [spec-kit](https://github.com/github/spec-kit/blob/main/spec-driven.md)・[OpenSpec](https://github.com/Fission-AI/OpenSpec) (v2 で確認済み) |
+| `common/decisions/` | [MADR](https://adr.github.io/madr/) (v2 で確認済み) |
+| `person/guides/` | CEO の直接指示。外部慣習の裏付けは確認していない (正直に書く) |
+| `client/delivery/` | Igeta 既存の用語。変更なし |
+| `AGENTS.md` | [agents.md](https://agents.md/) (v2 で確認済み) |
+
+`common/` には `decisions/` 以外にも複数 kind が入る (全数・内部構造は ADR-0004 と [どの文書をどこに置くか](../explanation/10-folder-placement.md) §3 が正本)。
+深い文書 (5 階層) は kind 解決がパス非依存のため許容する。
 
 ## 却下した選択肢
 
-- **`source`/`entrance`/`delivery` (v1、本 ADR の前版)**: `source` はソースコードと読まれやすく、`entrance` は文書の
-  分類語として世界で使われていない。独自語は CEO・開発者の双方にとって学習コストになる
-- **3 分割を維持し ADR を `specs/` か `guides/` に同居させる**: CEO 原文の「三つに」と数は合うが、**決定 (ADR) は人も
-  AI も読む唯一の層で、どちらに入れても読み手の境界表示が嘘になる**。`specs/` に入れれば「ADR は AI だけが読む」という
-  誤った境界を表示し、`guides/` に入れれば「AI は決定を読まない」という誤った境界を表示する。4 分割はこの矢を示すために
-  数の一致より正確さを優先した (CEO への確認事項として再検討トリガに残す)
-- **フォルダ名の読み手直書き (`customer`/`developer`/`ai`)**: v1 から継続して却下 (shared の置き場所の問題は変わらない)
+- **v2 (慣習語彙を第1階層)**: 「正本である」ことは示すが「誰向けか」は示さない。CEO の最初の指摘に答えない
+- **v1 の却下理由 (生の読み手名は shared の置き場所が無い) を維持する**: 誤りだったと訂正する。`common/` で解消する
+- **CEO 原文のまま大文字始まり**: 既存フォルダは全小文字。macOS は大文字小文字を区別せず Linux の CI は区別するため
+  食い違いの元になる (director が CEO へ確認予定)
 
 ## Consequences
 
-- 良い方向: フォルダ名が全部、開いて確認できる外部の慣習に対応する。AI の入口が `AGENTS.md` という業界共通の
-  約束に乗ることで、他のコーディングエージェント (Claude/Copilot/Cursor 等) からも同じ入口が機能する
-- 代償: トップが CEO の「三つに」と数で食い違う (上記却下案参照、CEO 確認が要る)。`docs/decisions/`(ADR フォルダ) と
-  `guides/` 配下の `01-decisions.md`(決定台帳、kind: decision-log) が似た名前で紛らわしい (別物であることを
-  `AGENTS.md`・`docs/README.md` の文言で明示する必要がある)
+- 良い方向: 第1階層が読み手を直接示す。v2 の慣習語彙の調査も第2階層として活きる
+- 代償: 深い文書は5階層になる。`decisions/`(ADR) と `guides/`相当の`01-decisions.md`(決定台帳)が似た名前で紛らわしい
+  (`AGENTS.md`・`docs/README.md`の文言で明示する)
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| ADR-0002 `RoleBoundaryCheck` (新設) | `docs/specs`・`decisions`・`guides`・`delivery` 配下の全文書 | kind から導く区分と実際の物理フォルダが食い違う |
-| ADR-0002 `AgentsEntrypointCheck` (新設) | repo 直下 `AGENTS.md` | 存在しない、または `specs/`・`decisions/` への言及が無い |
+| ADR-0002 `RoleBoundaryCheck` (新設) | `docs/common`・`ai`・`person`・`client` 配下の全文書 | kind から導く読み手と実際の第1階層が食い違う |
+| ADR-0002 `AgentsEntrypointCheck` (新設) | repo 直下 `AGENTS.md` | 存在しない、または `ai/`・`common/` への言及が無い |
 
 ## 再検討トリガ
 
-- CEO が「三つに」を厳密な制約として再度明示した場合、`decisions/` を `specs/` か `guides/` へ同居させる案を再検討する
-- Kiro の `.kiro/specs/` が別途確認できたら、典拠に追加する (採用結果は変えない)
+- CEO が大文字始まりを再指示した場合は CI の大文字小文字差異を再説明してから従う。`how-to/` 改名が混乱を招けば別名を検討する

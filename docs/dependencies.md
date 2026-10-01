@@ -22,12 +22,16 @@ graph LR
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
   classDef map fill:#fef3c7,stroke:#78350f,color:#111
   classDef decision_log fill:#fee2e2,stroke:#7f1d1d,color:#111
-  adr-0001-document-role-directories["ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する (proposed)"]
+  adr-0001-document-role-directories["ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く (proposed)"]
   class adr-0001-document-role-directories adr
-  adr-0002-role-boundary-invariants["ADR-0002 役割境界を守る不変条件と機械検査の対応 (proposed)"]
+  adr-0002-role-boundary-invariants["ADR-0002 読み手境界を守る不変条件と機械検査の対応 (proposed)"]
   class adr-0002-role-boundary-invariants adr
-  adr-0003-docs-model-migration-and-dogfooding["ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding (proposed)"]
+  adr-0003-docs-model-migration-and-dogfooding["ADR-0003 移行コマンド (適用まで) と対象範囲 (proposed)"]
   class adr-0003-docs-model-migration-and-dogfooding adr
+  adr-0004-folder-internal-structure-and-growth["ADR-0004 4フォルダの内部構造と、増えたときの分け方 (proposed)"]
+  class adr-0004-folder-internal-structure-and-growth adr
+  adr-0005-enforcement-rollout-and-canonical-sync["ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随 (proposed)"]
+  class adr-0005-enforcement-rollout-and-canonical-sync adr
   adr-index["adr — 索引"]
   class adr-index index
   agreement-ledger["顧客との合意台帳の形 (提出・承認・その後の変更)"]
@@ -48,12 +52,14 @@ graph LR
   class design-index index
   docs-index["docs — Igeta 自身の説明書"]
   class docs-index index
-  docs-model-strategy["文書モデルの解決戦略 — 世界の慣習の語彙で分け、検査で守り、モデル陳腐化に強くする (draft)"]
+  docs-model-strategy["文書モデルの解決戦略 — 読み手4つに分け、検査で守り、モデル陳腐化に強くする (draft)"]
   class docs-model-strategy design
   explanation-index["explanation — 索引"]
   class explanation-index index
   export-deliverable["igeta export — 提出用 PDF 出力基盤"]
   class export-deliverable explanation
+  folder-placement["どの文書をどこに置き、増えたらどう分けるか"]
+  class folder-placement explanation
   human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
   class human-review-layer explanation
   map["地図 — Igeta が何をするか・誰が使うか・主要フロー"]
@@ -62,12 +68,18 @@ graph LR
   class product-index index
   provenance-and-agreement["由来・鮮度の形 (delivery-chapter 限定)"]
   class provenance-and-agreement explanation
+  reader-granularity["人と AI と顧客で、なぜ・どう書き分けるか"]
+  class reader-granularity explanation
   requirements["要件定義書 (draft)"]
   class requirements product
   audience-layers ==> adr-0001-document-role-directories
   adr-0001-document-role-directories ==> adr-0002-role-boundary-invariants
   adr-0001-document-role-directories ==> adr-0003-docs-model-migration-and-dogfooding
   adr-0002-role-boundary-invariants ==> adr-0003-docs-model-migration-and-dogfooding
+  adr-0001-document-role-directories ==> adr-0004-folder-internal-structure-and-growth
+  adr-0001-document-role-directories ==> adr-0005-enforcement-rollout-and-canonical-sync
+  adr-0002-role-boundary-invariants ==> adr-0005-enforcement-rollout-and-canonical-sync
+  adr-0003-docs-model-migration-and-dogfooding ==> adr-0005-enforcement-rollout-and-canonical-sync
   provenance-and-agreement ==> agreement-ledger
   requirements ==> audience-directories
   human-review-layer ==> audience-layers
@@ -75,7 +87,9 @@ graph LR
   provenance-and-agreement ==> coverage-and-learning
   requirements ==> docs-model-strategy
   audience-directories ==> docs-model-strategy
+  reader-granularity ==> folder-placement
   audience-layers ==> provenance-and-agreement
+  audience-layers ==> reader-granularity
   audience-layers ==> requirements
   adr-0001-document-role-directories -.- audience-directories
   adr-0001-document-role-directories -.- context-boundaries
@@ -84,6 +98,9 @@ graph LR
   adr-0002-role-boundary-invariants -.- provenance-and-agreement
   adr-0003-docs-model-migration-and-dogfooding -.- audience-directories
   adr-0003-docs-model-migration-and-dogfooding -.- export-deliverable
+  adr-0004-folder-internal-structure-and-growth -.- context-boundaries
+  adr-0004-folder-internal-structure-and-growth -.- audience-directories
+  adr-0005-enforcement-rollout-and-canonical-sync -.- audience-directories
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
   audience-directories -.- audience-layers
@@ -95,9 +112,13 @@ graph LR
   docs-model-strategy -.- context-boundaries
   docs-model-strategy -.- human-review-layer
   export-deliverable -.- docs-index
+  folder-placement -.- context-boundaries
+  folder-placement -.- audience-directories
   map -.- requirements
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
+  reader-granularity -.- folder-placement
+  reader-granularity -.- human-review-layer
 ```
 ## ドキュメント一覧 (type 別)
 ### map
@@ -106,13 +127,15 @@ graph LR
 
 ### adr
 
-- **adr-0001-document-role-directories** _(proposed)_ — [ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する](adr/0001-document-role-directories.md)
-- **adr-0002-role-boundary-invariants** _(proposed)_ — [ADR-0002 役割境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md)
-- **adr-0003-docs-model-migration-and-dogfooding** _(proposed)_ — [ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding](adr/0003-docs-model-migration-and-dogfooding.md)
+- **adr-0001-document-role-directories** _(proposed)_ — [ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く](adr/0001-document-role-directories.md)
+- **adr-0002-role-boundary-invariants** _(proposed)_ — [ADR-0002 読み手境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md)
+- **adr-0003-docs-model-migration-and-dogfooding** _(proposed)_ — [ADR-0003 移行コマンド (適用まで) と対象範囲](adr/0003-docs-model-migration-and-dogfooding.md)
+- **adr-0004-folder-internal-structure-and-growth** _(proposed)_ — [ADR-0004 4フォルダの内部構造と、増えたときの分け方](adr/0004-folder-internal-structure-and-growth.md)
+- **adr-0005-enforcement-rollout-and-canonical-sync** _(proposed)_ — [ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随](adr/0005-enforcement-rollout-and-canonical-sync.md)
 
 ### design
 
-- **docs-model-strategy** _(draft)_ — [文書モデルの解決戦略 — 世界の慣習の語彙で分け、検査で守り、モデル陳腐化に強くする](design/basic/02-solution-strategy.md)
+- **docs-model-strategy** _(draft)_ — [文書モデルの解決戦略 — 読み手4つに分け、検査で守り、モデル陳腐化に強くする](design/basic/02-solution-strategy.md)
 
 ### explanation
 
@@ -122,8 +145,10 @@ graph LR
 - **coverage-and-learning** — [由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)](explanation/05-coverage-and-learning.md)
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
 - **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md)
+- **folder-placement** — [どの文書をどこに置き、増えたらどう分けるか](explanation/10-folder-placement.md)
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
 - **provenance-and-agreement** — [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md)
+- **reader-granularity** — [人と AI と顧客で、なぜ・どう書き分けるか](explanation/09-reader-granularity.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)
 

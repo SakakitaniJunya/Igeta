@@ -55,4 +55,5 @@ flowchart LR
 |---|---|
 | いまの要件 | [要件定義書](./product/01-requirements.md) / [読み手別ディレクトリ](./product/02-audience-directories.md) |
 | 文書の種類・配置・読み手 | [文書体系ガイド](../templates/docs/guides/01-document-taxonomy.md) |
+| 読み手4分割の設計 (docs/ の再構成) | [文書モデルの解決戦略](./design/basic/02-solution-strategy.md) (ADR-0001〜0005 一覧あり) |
 | 採用した外部標準と理由 | [explanation/](./explanation/README.md) |

@@ -87,18 +87,18 @@ relates_to: [audience-layers]
 | 6 | 読み手ディレクトリの内部構造。現行の種類別サブ構造 (`product`/`design`/`adr`/…) を配下に保持 / フラット化 / 別規則。テンプレの「`templates/docs/<X>` = 配置先」の原則 (文書体系ガイド §1) をどう読み替えるか | spec-evaluator | 未整備 | REQ-104 の生成物の形・REQ-304 の推論表 |
 | 7 | Igeta 自身の docs/ をこの版で新レイアウトに移すか (dogfooding)。移すと本書自身のパス・他文書からの相対リンク・索引が変わる | product・eng | 未整備 | 本リポジトリの docs/ 移動作業 |
 
-**解決 (2026-10-01、ADR-0001〜0003。v2: director 差し戻しによりフォルダ名を世界の慣習の語彙へ改訂)**:
+**解決 (2026-10-01、ADR-0001〜0005)**:
 
 | # | 確定内容 | ADR |
 |---|---|---|
-| 1 | 「共通」は `guides/` へ畳む。ただし ADR (決定) は人も AI も読む唯一の層のため `decisions/` として独立させ、トップは 3 でなく 4 になる (CEO への確認事項として残る) | ADR-0001 |
-| 2 | フォルダ名は読み手の生の名前ではなく、開いて確認した世界の慣習の語彙 (`specs`=spec-kit/OpenSpec、`decisions`=MADR、`guides`=Diátaxis)。AI の入口はフォルダでなく repo 直下 `AGENTS.md` (agents.md 慣習) | ADR-0001 |
-| 3 | `igeta docs-migrate --dry-run` (新設) が書き換え対象 (ファイル移動・リンク・`AGENTS.md` 新設) を列挙し、適用は人手 | ADR-0003 |
-| 4 | フラグを置かず、`specs`/`decisions`/`guides`/`delivery` の実在で opt-in (旧レイアウトは無検査のまま) | ADR-0003 |
-| 5 | `README.md`/`dependencies.md` は docs/ 直下に残す。`00-map.md`/`01-decisions.md`(決定台帳) は `guides/` の内容として `guides/` 配下へ移す | ADR-0001 |
-| 6 | 既存 kind 別サブフォルダ構成は変えず、`specs`/`decisions`/`guides`/`delivery` の下に 1 段深く入れる | ADR-0003 |
-| 7 | 本 ADR 群確定後の後続実装タスクとして実施する (本設計では実施しない) | ADR-0003 |
+| 1 | 第1階層は読み手4つ (`common`/`ai`/`person`/`client`)。3→4 の数の食い違いは解消済み | ADR-0001 |
+| 2 | フォルダ名は第1階層=読み手の生の名前、第2階層=開いて確認した世界の慣習語彙 (`decisions`=MADR、`specs`=spec-kit/OpenSpec)。全小文字。AI の入口はフォルダでなく repo 直下 `AGENTS.md` | ADR-0001 |
+| 3 | `igeta docs-migrate` は dry-run 列挙だけでなく適用まで行う (大規模 repo は人手前提が成り立たないため) | ADR-0003 |
+| 4 | フラグを置かず、4 フォルダの実在で検査が即違反になる。無い repo は警告 → 次期メジャーで違反 | ADR-0003/0005 |
+| 5 | `README.md`/`dependencies.md` は docs/ 直下。`00-map.md`/`01-decisions.md` は `person/guides/` へ | ADR-0001 |
+| 6 | 既存 kind 別サブフォルダは変えず、日付記録 (adr/proposal) は年、他の多数ファイル kind は `context`、閾値15本で違反 | ADR-0004 |
+| 7 | Igeta 自身 → 既存消費2 repo の順で適用。大規模な社内 repo (凍結予定) は対象外。kind 無し文書・非製品業務文書の扱いも確定 | ADR-0003 |
 
-**残る論点 (CEO 判断待ち)**: (a) トップが 4 分割になり CEO 原文の「三つに」と数が食い違う点の確認 (ADR-0001 却下案参照)、
-(b) 旧レイアウトの後方互換に期限を切るか、(c) 既存 2 消費 repo へいつ適用するか
-(ADR-0003 の Decision 節に記載。機械的に決める材料が無く、案件スケジュールの優先度が要る)。
+**読み手別の読む粒度 (6項目×4読み手の表)・decisions の肥大化対策・検査の既定切替・正典の一致は、
+ADR-0004/0005 と [人とAIと顧客で、なぜ・どう書き分けるか](../explanation/09-reader-granularity.md)・
+[どの文書をどこに置くか](../explanation/10-folder-placement.md) で確定した。残る論点は無い。**

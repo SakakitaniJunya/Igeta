@@ -37,15 +37,15 @@ owners: [eng]
 | **§1 Introduction and Goals** (導入と目標) | [要件定義書](product/01-requirements.md) _(読み手: AI)_ · [要件定義書 — 読み手別ディレクトリ (docs/ の物理分割)](product/02-audience-directories.md) _(読み手: AI)_ |
 | **§2 Constraints** (制約) | _未作成_ |
 | **§3 Context and Scope** (コンテキストと範囲) | _未作成_ |
-| **§4 Solution Strategy** (解決戦略) | [文書モデルの解決戦略 — 世界の慣習の語彙で分け、検査で守り、モデル陳腐化に強くする](design/basic/02-solution-strategy.md) _(読み手: AI)_ |
+| **§4 Solution Strategy** (解決戦略) | [文書モデルの解決戦略 — 読み手4つに分け、検査で守り、モデル陳腐化に強くする](design/basic/02-solution-strategy.md) _(読み手: AI)_ |
 | **§5 Building Block View** (構成要素) | _未作成_ |
 | **§6 Runtime View** (実行時ビュー) | _未作成_ |
 | **§7 Deployment View** (配置ビュー) | _未作成_ |
 | **§8 Crosscutting Concepts** (横断概念) | _未作成_ |
-| **§9 Architecture Decisions** (アーキテクチャ決定) | [ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する](adr/0001-document-role-directories.md) _(読み手: AI)_ · [ADR-0002 役割境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md) _(読み手: AI)_ · [ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding](adr/0003-docs-model-migration-and-dogfooding.md) _(読み手: AI)_ |
+| **§9 Architecture Decisions** (アーキテクチャ決定) | [ADR-0001 docs/ の第1階層を読み手4つに、第2階層に世界の慣習語彙を置く](adr/0001-document-role-directories.md) _(読み手: AI)_ · [ADR-0002 読み手境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md) _(読み手: AI)_ · [ADR-0003 移行コマンド (適用まで) と対象範囲](adr/0003-docs-model-migration-and-dogfooding.md) _(読み手: AI)_ · [ADR-0004 4フォルダの内部構造と、増えたときの分け方](adr/0004-folder-internal-structure-and-growth.md) _(読み手: AI)_ · [ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随](adr/0005-enforcement-rollout-and-canonical-sync.md) _(読み手: AI)_ |
 | **§10 Quality Requirements** (品質要求) | _未作成_ |
 | **§11 Risks and Technical Debt** (リスクと技術的負債) | _未作成_ |
 | **§12 Glossary** (用語集) | _未作成_ |
-| arc42 章外 (tutorial / guide / explanation / proposal / runbook / tasks) | [地図 — Igeta が何をするか・誰が使うか・主要フロー](00-map.md) _(読み手: 開発者)_ · [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md) _(読み手: 共通)_ · [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md) _(読み手: 共通)_ · [読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由](explanation/03-audience-layers.md) _(読み手: 共通)_ · [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md) _(読み手: 共通)_ · [由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)](explanation/05-coverage-and-learning.md) _(読み手: 共通)_ · [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md) _(読み手: 共通)_ · [まとまり (業務コンテキスト) の境界で読み込む量を短くする理由](explanation/07-context-boundaries.md) _(読み手: 共通)_ · [顧客との合意台帳の形 (提出・承認・その後の変更)](explanation/08-agreement-ledger.md) _(読み手: 共通)_ |
+| arc42 章外 (tutorial / guide / explanation / proposal / runbook / tasks) | [地図 — Igeta が何をするか・誰が使うか・主要フロー](00-map.md) _(読み手: 開発者)_ · [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md) _(読み手: 共通)_ · [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md) _(読み手: 共通)_ · [読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由](explanation/03-audience-layers.md) _(読み手: 共通)_ · [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md) _(読み手: 共通)_ · [由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)](explanation/05-coverage-and-learning.md) _(読み手: 共通)_ · [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md) _(読み手: 共通)_ · [まとまり (業務コンテキスト) の境界で読み込む量を短くする理由](explanation/07-context-boundaries.md) _(読み手: 共通)_ · [顧客との合意台帳の形 (提出・承認・その後の変更)](explanation/08-agreement-ledger.md) _(読み手: 共通)_ · [人と AI と顧客で、なぜ・どう書き分けるか](explanation/09-reader-granularity.md) _(読み手: 共通)_ · [どの文書をどこに置き、増えたらどう分けるか](explanation/10-folder-placement.md) _(読み手: 共通)_ |
 
 <!-- AUTOGEN:dir-index:end -->
