@@ -86,3 +86,19 @@ relates_to: [audience-layers]
 | 5 | docs/ 直下の固定ファイル (README.md・`00-map.md`・`dependencies.md`) の扱い。直下に残す (入口・索引として) / 読み手ディレクトリへ移す (map は developer、README・dependencies は shared に該当)。直下ファイルを残すなら REQ-103 は「ディレクトリ」のみを検査対象にする | spec-evaluator | 未整備 | REQ-101・REQ-103 の対象範囲 |
 | 6 | 読み手ディレクトリの内部構造。現行の種類別サブ構造 (`product`/`design`/`adr`/…) を配下に保持 / フラット化 / 別規則。テンプレの「`templates/docs/<X>` = 配置先」の原則 (文書体系ガイド §1) をどう読み替えるか | spec-evaluator | 未整備 | REQ-104 の生成物の形・REQ-304 の推論表 |
 | 7 | Igeta 自身の docs/ をこの版で新レイアウトに移すか (dogfooding)。移すと本書自身のパス・他文書からの相対リンク・索引が変わる | product・eng | 未整備 | 本リポジトリの docs/ 移動作業 |
+
+**解決 (2026-10-01、ADR-0001〜0003。v2: director 差し戻しによりフォルダ名を世界の慣習の語彙へ改訂)**:
+
+| # | 確定内容 | ADR |
+|---|---|---|
+| 1 | 「共通」は `guides/` へ畳む。ただし ADR (決定) は人も AI も読む唯一の層のため `decisions/` として独立させ、トップは 3 でなく 4 になる (CEO への確認事項として残る) | ADR-0001 |
+| 2 | フォルダ名は読み手の生の名前ではなく、開いて確認した世界の慣習の語彙 (`specs`=spec-kit/OpenSpec、`decisions`=MADR、`guides`=Diátaxis)。AI の入口はフォルダでなく repo 直下 `AGENTS.md` (agents.md 慣習) | ADR-0001 |
+| 3 | `igeta docs-migrate --dry-run` (新設) が書き換え対象 (ファイル移動・リンク・`AGENTS.md` 新設) を列挙し、適用は人手 | ADR-0003 |
+| 4 | フラグを置かず、`specs`/`decisions`/`guides`/`delivery` の実在で opt-in (旧レイアウトは無検査のまま) | ADR-0003 |
+| 5 | `README.md`/`dependencies.md` は docs/ 直下に残す。`00-map.md`/`01-decisions.md`(決定台帳) は `guides/` の内容として `guides/` 配下へ移す | ADR-0001 |
+| 6 | 既存 kind 別サブフォルダ構成は変えず、`specs`/`decisions`/`guides`/`delivery` の下に 1 段深く入れる | ADR-0003 |
+| 7 | 本 ADR 群確定後の後続実装タスクとして実施する (本設計では実施しない) | ADR-0003 |
+
+**残る論点 (CEO 判断待ち)**: (a) トップが 4 分割になり CEO 原文の「三つに」と数が食い違う点の確認 (ADR-0001 却下案参照)、
+(b) 旧レイアウトの後方互換に期限を切るか、(c) 既存 2 消費 repo へいつ適用するか
+(ADR-0003 の Decision 節に記載。機械的に決める材料が無く、案件スケジュールの優先度が要る)。

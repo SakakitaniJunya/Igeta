@@ -37,12 +37,12 @@ owners: [eng]
 | **§1 Introduction and Goals** (導入と目標) | [要件定義書](product/01-requirements.md) _(読み手: AI)_ · [要件定義書 — 読み手別ディレクトリ (docs/ の物理分割)](product/02-audience-directories.md) _(読み手: AI)_ |
 | **§2 Constraints** (制約) | _未作成_ |
 | **§3 Context and Scope** (コンテキストと範囲) | _未作成_ |
-| **§4 Solution Strategy** (解決戦略) | _未作成_ |
+| **§4 Solution Strategy** (解決戦略) | [文書モデルの解決戦略 — 世界の慣習の語彙で分け、検査で守り、モデル陳腐化に強くする](design/basic/02-solution-strategy.md) _(読み手: AI)_ |
 | **§5 Building Block View** (構成要素) | _未作成_ |
 | **§6 Runtime View** (実行時ビュー) | _未作成_ |
 | **§7 Deployment View** (配置ビュー) | _未作成_ |
 | **§8 Crosscutting Concepts** (横断概念) | _未作成_ |
-| **§9 Architecture Decisions** (アーキテクチャ決定) | _未作成_ |
+| **§9 Architecture Decisions** (アーキテクチャ決定) | [ADR-0001 docs/ の第1階層を世界の慣習の語彙で4分割する](adr/0001-document-role-directories.md) _(読み手: AI)_ · [ADR-0002 役割境界を守る不変条件と機械検査の対応](adr/0002-role-boundary-invariants.md) _(読み手: AI)_ · [ADR-0003 移行手段・旧レイアウトの扱い・Igeta 自身の dogfooding](adr/0003-docs-model-migration-and-dogfooding.md) _(読み手: AI)_ |
 | **§10 Quality Requirements** (品質要求) | _未作成_ |
 | **§11 Risks and Technical Debt** (リスクと技術的負債) | _未作成_ |
 | **§12 Glossary** (用語集) | _未作成_ |
