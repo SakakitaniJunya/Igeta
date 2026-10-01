@@ -51,9 +51,10 @@ kind (function-list 等) は鍵自体が無い (増えない)。kind ごとの�
 実在する repo) で**即違反**にする (既定OFFの警告から変更。CEO 原文「ルールとして設定して」に応じる)。
 15 は実測の全ての痛み (16・21・23・26・33・35本) を捉え、無害な実例 (10本以下) を誤検知しない最小値
 
-**3. 直下ファイル規則**: 第2階層フォルダ (`decisions/`・`specs/`・`guides/`・`delivery/`) の直下に置けるのは
-生成索引 (README.md) と、`person/guides/` の `00-map.md`・`01-decisions.md` だけ。`ai/specs/` 自体は直下ファイルを
-持たない (`01-requirements.md` は `product/` のさらに1段下)。それ以外の kind を直下に置いたら違反
+**3. 直下ファイル規則 (1 文に言い直す)**: 文書を直下に置けるかどうかは、kind ごとの全数表
+([どの文書をどこに置くか](../explanation/10-folder-placement.md) §3) の「直下可否」列だけで決まる。
+`common/` の 7 フォルダを含め全フォルダに同じ 1 つの根拠が当てはまり、個別の列挙はしない
+(前版の「decisions/specs/guides/delivery」列挙は `common/` の 6 フォルダを落としていた誤り)
 
 **4. `ai/specs/`・`client/delivery/` の内部は変えない** (既に `screens/`・`api/` 等へ最初から分けている)
 
@@ -74,7 +75,7 @@ kind (function-list 等) は鍵自体が無い (増えない)。kind ごとの�
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
 | `FolderSizeCheck` (新設、新レイアウト検出で既定 violation) | 多数ファイル kind のフォルダ | 15本超で検出しない回帰 |
-| `RoleBoundaryCheck` 拡張 (直下ファイル規則) | 第2階層フォルダの直下 | 許可リスト外の kind が直下にあるのに違反にしない |
+| `RoleBoundaryCheck` 拡張 (直下ファイル規則) | 全フォルダの直下 | 全数表の「直下可否」列に反する配置を違反にしない |
 
 ## 再検討トリガ
 

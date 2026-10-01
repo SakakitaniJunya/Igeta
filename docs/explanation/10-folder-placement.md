@@ -59,6 +59,11 @@ docs/
 | 共通 | 決定/提案 1 つ (ADR・proposal) | 単位は増え続け一度書いたら変わらないため、書いた時点で決まる**年**で束ねる |
 | 共通 | 手順/解説 1 つ (runbook・how-to・explanation) | 年には主題上の意味が無い (CEO指摘「脳死」)。**`context`** (業務のまとまりだけでなく「運用する仕組み・主題」にも意味を広げる) |
 
+**15本を超えたときの実際の形**: 「一部だけ下位フォルダへ」は許さない。**超えたら全部を下位フォルダへ移し、
+直下は README.md だけにする** (半端な状態を作らない)。例: `common/runbooks/<context>/NN-slug.md`、
+`person/guides/features/<context>/NN-slug.md`。`context` 無記入 (`shared`) の文書も例外にせず、文字列
+`shared` を 1 つの `context` 値として扱い `common/runbooks/shared/NN-slug.md` のように同じ規則で分ける。
+
 ## 3. kind 47 種の置き場所
 
 ### AI (31 kind)
@@ -114,11 +119,15 @@ docs/
 **計 31 (ai) + 11 (common) + 4 (person) + 1 (client) = 47 kind。** `ARC42_BY_KIND`(`src/checks/DocTemplateCheck.ts`)
 の全件と一致 (`index` は生成物で kind 登録の対象外、本数に含めない)。
 
+**`tutorial`(文書体系ガイドで予約済み、Diátaxis の tutorial)**: `common/` 配下。テンプレ未実装、`ARC42_BY_KIND`
+未登録のため上記 47 の数え合わせの**外**に置く (登録されたら 48 になる)。
+
 ## 4. 直下ファイルの決まりと 15 本の上限
 
-第2階層フォルダ (`decisions/`・`specs/`・`guides/`・`delivery/`) の直下に置けるのは生成索引 (README.md) と
-`person/guides/` の `00-map.md`・`01-decisions.md` だけ。`ai/specs/` 自体は直下ファイルを持たない
-(`01-requirements.md` は `product/` のさらに1段下)。それ以外の kind を直下に置いたら違反。
+**直下に文書を置けるかどうかは、kind ごとの全数表 (§3) の「直下可否」列だけで決まる。表に無い置き方は違反**
+(個別のフォルダ列挙はしない。`common/` の 7 フォルダを含め全フォルダに同じ 1 つの根拠が当てはまる)。
+例: `person/guides/` 直下は `map`/`decision-log` の「固定1本・直下許容」により `00-map.md`・`01-decisions.md`
+が置ける。`ai/specs/` 直下は表に「直下許容」の行が無いため、生成索引 (README.md) 以外は違反。
 
 閾値は1フォルダ**15本**で違反 (新レイアウトの repo、既定強制)。根拠 (director 実測): 利用 repo A は最大10本
 (無害)、利用 repo B は design 配下1フォルダ33本・業務文書1フォルダ16本、旧社内 repo は ADR35・guides26・

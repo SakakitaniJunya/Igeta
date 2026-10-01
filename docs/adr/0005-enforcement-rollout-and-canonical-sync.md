@@ -43,12 +43,13 @@ relates_to: [audience-directories]
 ## Decision
 
 **1. 検査既定の切替 (抜け道を塞ぐ)**: `docs/common`・`ai`・`person`・`client` のいずれかが実在する repo では
-`RoleBoundaryCheck`・`AgentsEntrypointCheck`・`FolderSizeCheck`(ADR-0004、15本) を全部**即 violation** にする
-(移行は配置を即座に正しくするため中間状態を想定しない)。**いずれも実在しない repo (旧レイアウト、移行しない
-ことそのものが抜け道になっていた) では、検査のたびに「旧レイアウト。`igeta docs-migrate` を実行してください」と
-警告を出し (非 blocking)、次のメジャーバージョンで違反に切り替える** (期限の明記。CEO への確認は director が行う)
+`RoleBoundaryCheck`・`AgentsEntrypointCheck`・`FolderSizeCheck`(ADR-0004、15本) を全部**即 violation** にする。
+**いずれも実在しない repo では、検査のたびに警告を出し次のメジャーバージョンで違反に切り替える** (期限の明記、
+CEO 確認は director)。**新レイアウトの repo では、`docs/` 直下 (README.md・dependencies.md 除く) で 4 フォルダにも
+`nonDocPaths`(ADR-0003 §7) にも属さない文書を違反にする** (「どこにも属さない第3の場所」を作らない。arch-review FIX)
 
-**2. 正典の一致**: 文書体系ガイド (`templates/docs/guides/01-document-taxonomy.md`) の kind→置き場所表を正典とし、
+**2. 正典の一致**: 文書体系ガイド (新パス `templates/docs/common/how-to/01-document-taxonomy.md`、§4) の
+kind→置き場所表を正典とし、
 `src/core/Role.ts` の `ROLE_OF_KIND` はその転記と明記する (既存 `Audience.ts` と同じ型)。新設テスト
 `TaxonomyGuideSync.test.ts` がガイドの表を markdown から構造的に読み取り `ROLE_OF_KIND` と突き合わせ、
 1 行でも食い違えば落ちる (既存の「転記してください」という手書きコメントだけの運用を機械検査へ格上げする)
@@ -58,8 +59,14 @@ relates_to: [audience-directories]
 生成する。各 repo の制約文書 (「docs の構成規約を守る」に当たる条文) は文書体系ガイドを指す既存の参照のままで
 よい (ガイド自体が改訂されるため、repo 側の文言変更は不要)
 
-**4. `igeta init`/`scaffold`**: 新規 repo には最初から新 4 フォルダ構成を生成する (手で置いて間違える余地を
-無くす)。旧レイアウトの雛形は削除する (新規作成に旧レイアウトを選ぶ理由が無い)
+**4. `igeta init`/`scaffold`**: 新規 repo には最初から新 4 フォルダ構成を生成する。旧レイアウトの雛形は削除する。
+**`templates/docs/` も `docs/` と同じ 4 階層に再編する** (例: 文書体系ガイドの新パスは
+`templates/docs/common/how-to/01-document-taxonomy.md`)。`TaxonomyGuideSync.test.ts`(§2) が指すガイドのパスも
+この新パスに揃える
+
+**実装で決める論点 (設計はここに1か所にまとめる、詳細は実装時)**: `context-files` の既定allowlistが`map`を
+含める/外すかの最終判断、`AGENTS.md`の節構成の文面、`review-sheet`/`context-files`/`context-boundary-check`内の
+固定パス文字列の更新箇所、`AgentsEntrypointCheck`の判定の厳密さ (リンクの形式をどこまで見るか)
 
 ## 却下した選択肢
 
@@ -82,6 +89,7 @@ relates_to: [audience-directories]
 | `RoleBoundaryCheck`/`AgentsEntrypointCheck` のレイアウト検出テスト | 新 4 フォルダの有無 | 存在するのに検査が作動しない回帰 |
 | `InitCommand`/`ScaffoldCommand` のテスト更新 | 新規生成物 | 旧レイアウトのパスを生成したら落ちる |
 | 旧レイアウト警告のテスト (新設) | 新4フォルダが無い repo | 警告が出ない、または次期メジャーで違反に切り替わらない回帰 |
+| 「第3の場所」検査 (新設) | `docs/` 直下 | 4フォルダ・`nonDocPaths` どちらにも属さない文書を見逃す回帰 |
 
 ## 再検討トリガ
 

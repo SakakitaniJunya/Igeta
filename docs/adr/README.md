@@ -21,6 +21,7 @@ owners: [eng]
 | [0003](0003-docs-model-migration-and-dogfooding.md) | ADR-0003 移行コマンド (適用まで) と対象範囲 | proposed | — | — |
 | [0004](0004-folder-internal-structure-and-growth.md) | ADR-0004 4フォルダの内部構造と、増えたときの分け方 | proposed | — | — |
 | [0005](0005-enforcement-rollout-and-canonical-sync.md) | ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随 | proposed | — | — |
+| [0006](0006-provenance-migration-handling.md) | ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い | proposed | — | — |
 
 <!-- AUTOGEN:adr-index:end -->
 

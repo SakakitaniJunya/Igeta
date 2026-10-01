@@ -41,7 +41,7 @@ CEO は読み手名を第1階層、v2 で確認した慣習語彙を第2階層�
 
 ## Decision Drivers
 
-- 第1階層は読み手がフォルダ名だけで分かること / 第2階層は v2 の外部慣習語彙を無駄にしないこと / 既存フォルダの全小文字規約を守ること
+- 第1階層は読み手がフォルダ名だけで分かること / 第2階層は v2 の外部慣習語彙を無駄にしないこと / 全小文字規約を守ること
 
 ## Decision
 
@@ -71,8 +71,7 @@ docs/
 | `client/delivery/` | Igeta 既存の用語。変更なし |
 | `AGENTS.md` | [agents.md](https://agents.md/) (v2 で確認済み) |
 
-`common/` には `decisions/` 以外にも複数 kind が入る (全数・内部構造は ADR-0004 と [どの文書をどこに置くか](../explanation/10-folder-placement.md) §3 が正本)。
-深い文書 (5 階層) は kind 解決がパス非依存のため許容する。
+`common/` には `decisions/` 以外にも複数 kind が入る (全数は ADR-0004 / [置き場所](../explanation/10-folder-placement.md) §3)。深い文書は kind 解決がパス非依存のため許容する。
 
 ## 却下した選択肢
 
@@ -86,14 +85,16 @@ docs/
 - 良い方向: 第1階層が読み手を直接示す。v2 の慣習語彙の調査も第2階層として活きる
 - 代償: 深い文書は5階層になる。`decisions/`(ADR) と `guides/`相当の`01-decisions.md`(決定台帳)が似た名前で紛らわしい
   (`AGENTS.md`・`docs/README.md`の文言で明示する)
+- 代償 (フォルダ名は変えず認める): `person/guides/`(読み手) と kind `guide`(手順書、`common/how-to/`に置く) が
+  似た名前で衝突する。CEO 指示のためフォルダ名は変えない。kind `guide` は文書体系ガイド自体を含み、配置の正本を
+  ツール (migrate・検査) が読むため `common/` 側に置く。紛らわしさは `README.md`・`AGENTS.md` の説明で補うだけに留める
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| ADR-0002 `RoleBoundaryCheck` (新設) | `docs/common`・`ai`・`person`・`client` 配下の全文書 | kind から導く読み手と実際の第1階層が食い違う |
-| ADR-0002 `AgentsEntrypointCheck` (新設) | repo 直下 `AGENTS.md` | 存在しない、または `ai/`・`common/` への言及が無い |
+| ADR-0002 `RoleBoundaryCheck`/`AgentsEntrypointCheck` (新設) | `docs/common`・`ai`・`person`・`client` 配下 / repo 直下 `AGENTS.md` | kind と第1階層の食い違い / `AGENTS.md` 不在か言及不足 |
 
 ## 再検討トリガ
 
-- CEO が大文字始まりを再指示した場合は CI の大文字小文字差異を再説明してから従う。`how-to/` 改名が混乱を招けば別名を検討する
+- CEO が大文字始まりを再指示したら CI の大文字小文字差異を再説明してから従う。`how-to/` 衝突が混乱を招けば別名を検討する
