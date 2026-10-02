@@ -25,7 +25,7 @@ relates_to: [adr-0002-role-boundary-invariants]
 
 ## Status
 
-2026-10-02 提案 (arch-review v4 round 2 の FIX-5 を反映)。arch-review 待ち。
+2026-10-02 提案。
 
 ## Context
 
@@ -51,7 +51,9 @@ ADR-0001 は置き場所を「確定させる人」で決めた。この決ま�
 各フォルダの README.md は、生成器が管理する AUTOGEN 区間 (dir-index・adr-index・tentative-index) の中だけが変わり、
 区間の中身が再生成の結果と一致するときに限り判定から除く。それ以外は `human`。`person/`・`client/` の README.md の
 区間の外に書けるのは frontmatter と 1 行の目的だけ。HTML コメントと管理外の区間は違反 (ADR-0002 条件 10)。
-Igeta 自身の repo は `humanPaths` に `templates/**`・`src/core/Role.ts`・`src/checks/**` を足す (全利用 repo の決まりを決めるため)。
+Igeta 自身の repo は `humanPaths` に、全利用 repo の決まりを決めるもの (`templates/**`・`src/checks/**`・`src/gate/**`
+(`approval-scope` の本体を置く)・`src/core/{Role,IgetaConfig,LineClassifier}.ts`) と、Igeta 自身の機能の決めをまだ持つ
+解説 (`docs/explanation/0[3-9]-*.md`。person の行へ書き直すまで) を足す。
 旧い構成の repo では判定できないので、検査不能を返す (`ai` を返さない)。出力は終了コードでも区別する。
 
 **2. 差分の取り方**: `git diff --name-status --no-renames <merge-base>`。移動は「元の削除」と「先の追加」の 2 行として

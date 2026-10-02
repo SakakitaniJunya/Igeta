@@ -7,21 +7,21 @@ status: active
 canonical: false
 owners: [eng]
 created: 2026-10-01
-depends_on: [adr-0009-kind-placement]
+depends_on: [audience-directories]
 relates_to: [reader-granularity, context-boundaries]
 ---
 
 # どの文書をどこに置くか — 木の図と、その理由
 
-> **TL;DR**: ADR-0009 (kind 47 種の置き場所) を木の形に描いた図と、なぜこう分けるかの説明。決めの正本は
-> ADR-0009・0004・0010 で、本書はその読み方の手引き。第 1 階層は確定させる人 (`person`/`ai`/`client`)、
+> **TL;DR**: 要件定義書 02 §7 (kind 47 種の置き場所) を木の形に描いた図と、なぜこう分けるかの説明。決めの正本は
+> 要件定義書 02 §7 と ADR-0004・0009・0010 で、本書はその読み方の手引き。第 1 階層は確定させる人 (`person`/`ai`/`client`)、
 > その下はまとまり (`context`) ごとのフォルダ、日付のある記録だけ年で分ける
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | ADR-0009 (kind の置き場所) | — |
+| 上流 (depends_on) | [要件定義書 02](../product/02-audience-directories.md) §7 (kind の置き場所) | — |
 | 下流 | (生成索引が出す) | — |
 
 ## 1. 木の図
@@ -65,5 +65,6 @@ ADR と提案書は、書いた日に意味がある記録で、後から動か�
 
 ## 5. Igeta の手引きを写さない理由
 
-文書体系ガイドなど Igeta が配る手引き 4 本は、Igeta の版ごとに決まっている。利用 repo に写すと、写しが版とずれ、
-承認の要らない側で書き換えられる。利用 repo では写さず、版に固定した手引きを `AGENTS.md` と docs/README.md から指す。
+文書体系ガイド・人の審査の手引き・由来の手順の 3 本は、Igeta の版ごとに決まっている。利用 repo に写すと、写しが版と
+ずれ、承認の要らない側で書き換えられる。利用 repo では写さず、版に固定した手引きを `AGENTS.md` と docs/README.md から
+指す。実装順序の手引きは、着手順をプロジェクトが埋めるので、利用 repo の `ai/handbook/how-to/` に置く。

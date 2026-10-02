@@ -26,7 +26,7 @@ relates_to: [adr-0006-provenance-migration-handling]
 
 ## Status
 
-2026-10-01 提案。arch-review round 2 FIX-A に基づく新設。
+2026-10-01 提案。
 
 ## Context
 

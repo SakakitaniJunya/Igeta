@@ -50,11 +50,11 @@ relates_to: [provenance-and-agreement, coverage-and-learning, context-boundaries
 
 | 読み手 | 読む目的 | 読むもの | 量の上限 | 書かないもの | 検査 |
 |---|---|---|---|---|---|
-| **人** (発注側・開発者) | 決める・承認する | `person/` の自分のまとまりと全体共通を、確定前に全部。変わったら変わった行だけ (`review-sheet --diff`) | まとまり 15,000 字・全体共通 30,000 字 ([型と量](./09-reader-granularity.md)) | 作り方の詳細、`ai/` の ID | `PersonFormCheck` (ADR-0002) |
+| **人** (発注側・開発者) | 決める・承認する | `person/` の自分のまとまりと全体共通を、確定前に全部。変わったら変わった行だけ (`review-sheet --diff`) | ADR-0002 の条件 7・8 | 作り方の詳細、`ai/` の ID | `PersonFormCheck` (ADR-0002) |
 | **AI** | 実装する | `context-files` が返す範囲 (`person/` の要件・全体共通・自分のまとまり + `ai/specs/` の全体共通・自分のまとまり + 隣の約束) | `context-files` の範囲だけ | 顧客向けの言い回し、他のまとまりの内部 | 既存 `template-check` + `context-boundary-check` |
 | **顧客** (非エンジニア) | 合意・検収 | **提出物の章 (`delivery-chapter`) を束ねた PDF** (`igeta export`) | PDF 1 冊 (章の目安は [別紙](./04-provenance-and-agreement.md)) | 社内 ID・「仮」・未決の生記述 | 由来・鮮度・網羅・合意台帳 — この読み手だけに課す |
 
-kind ごとの置き場所 (47 種) は [置き場所](./10-folder-placement.md) §3 が正本。人が決める kind (要件・業務の決まり・
+kind ごとの置き場所 (47 種) は要件定義書 02 §7 が正本。人が決める kind (要件・業務の決まり・
 画面・品質・権限・データの扱いなど) は `person/`、作り方の kind と手引きは `ai/`、提出物と提案書は `client/`。
 
 ## 4. 規模で深さを変える

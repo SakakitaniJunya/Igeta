@@ -26,7 +26,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 ## Status
 
-2026-10-02 提案 (v4)。v1〜v3 は差し戻し。v3 (`common`/`ai`/`person`/`client`) は実装前に撤回した。arch-review 待ち。
+2026-10-02 提案 (v4)。v1〜v3 は取り下げた。v3 (`common`/`ai`/`person`/`client`) は実装前に撤回した。
 
 ## Context
 
@@ -63,7 +63,7 @@ docs/
 └── client/        ← delivery/・proposals/
 ```
 
-kind 47 種の置き場所は ADR-0009、型と量は ADR-0002、承認の強制は ADR-0008。
+kind 47 種の置き場所は要件定義書 02 §7 (決定は ADR-0009)、型と量は ADR-0002、承認の強制は ADR-0008。
 実測では、業務フロー 3 本を ID を変えずに人の型へ書き直すと、本文が元の 26% になった。
 フォルダ名は小文字 (既存が全部小文字。macOS と Linux で大文字小文字の扱いが違う)。
 

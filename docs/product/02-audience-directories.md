@@ -39,7 +39,7 @@ relates_to: []
 | ID | パターン | 要件文 | 対応業務 (REQ-0xx) | 受け入れ条件 |
 |---|---|---|---|---|
 | REQ-101 | Ubiquitous | システムは docs/ 直下を、`person`・`ai`・`client` の 3 ディレクトリと生成索引の 2 本だけに制限しなければならない | REQ-001 | 新しい構成の repo で、docs/ 直下に他のディレクトリや文書があると検査が落ちる (ADR-0005 決定 1) |
-| REQ-102 | Ubiquitous | システムは kind → 置き場所の対応を 1 か所の正本から導出しなければならない | REQ-001 | 対応の決めは ADR-0009 の 1 か所。`src/core/Role.ts` の表がガイドの表と一致し、`ARC42_BY_KIND` の全 kind を含む (ADR-0002 条件 1、ADR-0005 決定 2) |
+| REQ-102 | Ubiquitous | システムは kind → 置き場所の対応を 1 か所の正本から導出しなければならない | REQ-001 | 対応の正本は本書 §7 の 1 か所。`src/core/Role.ts` の表がガイドの表と一致し、`ARC42_BY_KIND` の全 kind を含む (ADR-0002 条件 1、ADR-0005 決定 2) |
 | REQ-103 | Unwanted | 文書の kind・`context` から導く置き場所と、実際の置き場所が食い違う場合、システムは検査で違反として検出しなければならない | REQ-001 | 食い違う文書を置くと検査が落ちる。kind の無い文書は移行のときに一覧で止める (ADR-0003 決定 4) |
 | REQ-104 | Event | `igeta init` / scaffold で repo を起こしたとき、システムは 3 ディレクトリの構成の docs を生成しなければならない | REQ-001 | 生成直後の repo で全検査が通り、索引が新しいパスを指す |
 | REQ-105 | Event | 旧い構成の repo を移行するとき、システムは文書の移動と相対パスの書き換えを適用まで機械的に行わなければならない | REQ-002 | 移行後に全検査が通り、本文のリンク・索引・export manifest・由来の付属ファイルが新しいパスを指す (ADR-0003・0006) |
@@ -85,3 +85,36 @@ relates_to: []
 | 5 | docs/ 直下の固定ファイル | 生成索引の 2 本だけ。地図は `person/design/shared/00-map.md`、決定台帳は `person/decisions/01-decisions.md` | ADR-0004 |
 | 6 | ディレクトリの中の構造 | まとまりごとのフォルダ。日付の記録は年。1 フォルダ 15 本で違反 | ADR-0004 |
 | 7 | Igeta 自身の移行 | 行う。Igeta 自身 → 利用 repo 2 つの順 | ADR-0003 |
+
+## 7. kind の置き場所 (正本)
+
+kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009。文書体系ガイドと `src/core/Role.ts` はこの表の転記で、
+`TaxonomyGuideSync.test.ts` が 3 つを突き合わせる。`<c>` はまとまりの名前 (`shared` を含む)。
+型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査し、(図) の kind は図も要る。図 = 図だけを検査。— = 検査しない。
+
+| 確定させる人 | kind | 置き場所 | 型の検査 |
+|---|---|---|---|
+| person | map / context-map | `person/design/shared/00-map.md` / `person/design/<c>/00-map.md` | 図 |
+| person | requirements | `person/requirements/01-requirements.md`・`person/requirements/NN-slug.md` | ○ |
+| person | function-list / solution-strategy (図) / nonfunctional / permission-matrix / data-management / as-is-overview (図) / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
+| person | business-flow (図) / screen-spec (図) / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
+| person | glossary | `person/design/shared/NN-glossary.md` | — |
+| person | adr / decision-log | `person/decisions/<year>/NNNN-slug.md` / `person/decisions/01-decisions.md` | — |
+| ai | crosscutting / code-definitions / messages / i18n / infra-design / secrets-management / external-integration / test-plan / domain-overview / aggregate-map | `ai/specs/shared/NN-*.md` (固定番号) | — |
+| ai | context-contract | `ai/specs/<c>/contract.md` | — |
+| ai | api-spec / table-spec / domain-model / sequence-spec / state-machine / module-spec / job / test-spec | `ai/specs/<c>/{api,tables,domain,sequences,state-machines,modules,jobs,tests}/NN-slug.md` | — |
+| ai | tasks | `ai/specs/tasks/NN-slug.md` | — |
+| ai | guide / explanation / runbook / implementation-order | `ai/handbook/{how-to,explanation,runbooks}/NN-slug.md` (implementation-order は `how-to/02-implementation-order.md`) | — |
+| ai | document-taxonomy / human-review / provenance-workflow | 利用 repo には置かない。`AGENTS.md` と docs/README.md から、版に固定した Igeta の手引きを指す | — |
+| client | delivery-chapter / proposal | `client/delivery/<提出物名>/` / `client/proposals/<year>/NN-slug.md` | — |
+
+計 47 kind (person 18・ai 27・client 2) で、`ARC42_BY_KIND` の全件。`tutorial` (予約済み) は 47 の外で、登録するときは `ai/handbook/` に置く。
+
+| 決まり | 内容 |
+|---|---|
+| 置ける場所 | 上の表のパスと、生成索引 (docs/ 直下の 2 本、各フォルダの README.md) だけ |
+| 15 本の対象外 | `person/decisions/<year>/`・`client/proposals/<year>/`・`client/delivery/<提出物名>/` |
+| `person/design/<c>/` と `ai/specs/<c>/` の下が 15 本を超えた | まとまりを分ける合図。下位フォルダは足さない |
+| `person/design/shared/` の固定の文書が 100 行を超えた | 行を、属するまとまりの `person/design/<c>/NN-<kind>.md` へ移す (行の移動の扱いは ADR-0006 決定 7) |
+| `person/requirements/01-requirements.md` が 150 行を超えた | まとまりごとに `person/requirements/NN-<c>.md` へ分ける (同上) |
+| `ai/specs/tasks/`・`ai/handbook/` の 3 フォルダが 15 本を超えた | まとまりの下位フォルダ (`shared` を含む) へ全部移す。`shared` が 15 本を超えたら違反のまま |

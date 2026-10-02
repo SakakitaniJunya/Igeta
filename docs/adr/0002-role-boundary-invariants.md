@@ -25,7 +25,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 ## Status
 
-2026-10-02 提案 (arch-review v4 round 2 の FIX を反映)。arch-review 待ち。
+2026-10-02 提案。
 
 ## Context
 
@@ -38,13 +38,13 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 ## Decision
 
-**採用: 以下 15 条件。** 「○ の kind」は ADR-0009 決定 1 で型の検査が ○ の kind。
+**採用: 以下 15 条件。** 「○ の kind」は要件定義書 02 §7 の表で型の検査が ○ の kind。
 人の文書の型は、結論 (3 行まで) → 図 → 決まりの表 → 決めてほしいこと の順。
 
 | # | 不変条件 | 検査 | 強さ |
 |---|---|---|---|
 | 1 | kind → 置き場所の正本は 1 か所 | `Role.test.ts`: `ARC42_BY_KIND` と集合が一致、重複 0 | 違反 |
-| 2 | 文書は ADR-0009 の表のパスにある。フォルダ名と `context` が一致する | `RoleBoundaryCheck` | 違反 |
+| 2 | 文書は要件定義書 02 §7 の表のパスにある。フォルダ名と `context` が一致する | `RoleBoundaryCheck` | 違反 |
 | 3 | 依存は上流へ: `ai` → `person`、`client` → `person`・`ai`。`person` は `ai`・`client` を指さない | `DocGraphCheck` 拡張 (`depends_on`・`relates_to`・本文リンク・修飾 ID) | 違反 |
 | 4 | `ai/specs/` の文書は `depends_on` を辿ると `person/` に届く | `DocGraphCheck` 拡張 | 違反 |
 | 5 | ○ の kind: 決まりの表が 1 つ以上あり、行頭が自分の ID の行は `状態` (決定・仮・未決・廃) を持つ | `PersonFormCheck` | 違反 |
@@ -53,10 +53,10 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 | 8 | まとまりの合計 15,000 字、全体共通 (要件 + `design/shared/`) 30,000 字まで | `PersonFormCheck` (検査の出力と `review-sheet` に出す) | 警告 → 下の測定の後のメジャー版で違反 |
 | 9 | `廃` の行は消さず、状態を戻さず、番号を使い直さない。廃の行は移動先を書かない (ai の行が元の ID を引く) | `PersonFormCheck` が CI の比べる起点 (merge-base) と比べる | 違反 |
 | 10 | `person/`・`client/` の文書に HTML コメントを書かない。AUTOGEN 区間は生成器が管理する 3 種 (dir-index・adr-index・tentative-index) だけ | `PersonFormCheck` | 違反 |
-| 11 | 仮と未決は決定台帳に集まる。`ai/` の文書に未決の節を置かない | 決定台帳の生成一覧 / `RoleBoundaryCheck` | 生成 / 違反 |
+| 11 | 仮と未決は決定台帳に集まる。`ai/` の文書に未決の節 (見出しに未決・未確定・保留・要確認・宿題・TBD・TODO) を置かない | 決定台帳の生成一覧 / `RoleBoundaryCheck` | 生成 / 違反 |
 | 12 | 人の承認が要る変更を見分ける | `approval-scope` (ADR-0008) | 違反 |
 | 13 | `accepted`・`amended` の ADR の番号を、`person/requirements/` か `person/design/` のどれかの行が引いている | `DocGraphCheck` 拡張 | 違反 |
-| 14 | 1 フォルダ 15 本まで (ADR-0009 決定 5 の対象外を除く) | `FolderSizeCheck` | 違反 |
+| 14 | 1 フォルダ 15 本まで (要件定義書 02 §7 の対象外を除く) | `FolderSizeCheck` | 違反 |
 | 15 | AI の入口は repo 直下の `AGENTS.md`。docs/ の文書は 3 フォルダか `nonDocPaths` のどちらかに属する | `AgentsEntrypointCheck` / `RoleBoundaryCheck` | 違反 |
 
 条件 8 の値は、業務フロー 3 本の実測 (本文が元の 26%) を他の文書へ当てはめた見込みから置いた。違反に上げる版は、
@@ -76,7 +76,8 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 - 良い方向: 15 条件が全部「何で守るか」を持つ。人の目に見えない書き込み口 (コメント・管理外の区間) が無い
 - 代償: 既存の基本設計は条件 5〜7 で落ちる。移行は書き直しを伴う (ADR-0003)。人の決定を `ai/` に書く誤りは、
-  どの条件でも落ちない (ADR-0001 の限界)
+  どの条件でも落ちない (ADR-0001 の限界)。条件 11 は見出しの語を見るので、別の語で書けば通る (本文の同じ語は
+  `review-sheet` の一覧に出すだけ)
 
 ## Confirmation
 

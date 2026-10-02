@@ -16,7 +16,7 @@ relates_to: [audience-directories, adr-0009-kind-placement, adr-0010-value-owner
 
 > **TL;DR**: `docs/person`・`ai`・`client` が 1 つでもある repo では、全検査が即違反 (CI 赤)。無い repo は毎回警告を出し、
 > 次のメジャー版で違反にする。警告で始める検査 (まとまりの合計字数) も、違反に上げる時期は Igeta の版で決まる。
-> どれも利用 repo の設定では変えられない。ルールの正典は文書体系ガイド 1 か所で、コードの表との一致をテストで固定する
+> どれも利用 repo の設定では変えられない。置き場所の正本は要件定義書 02 §7 で、ガイドとコードの表との一致をテストで固定する
 
 ## 関連
 
@@ -25,7 +25,7 @@ relates_to: [audience-directories, adr-0009-kind-placement, adr-0010-value-owner
 
 ## Status
 
-2026-10-02 提案 (arch-review v4 round 2 の FIX を反映)。arch-review 待ち。
+2026-10-02 提案。
 
 ## Context
 
@@ -35,7 +35,7 @@ relates_to: [audience-directories, adr-0009-kind-placement, adr-0010-value-owner
 ## Decision Drivers
 
 - 検査の強さは、構成の実在と Igeta の版だけで決まり、利用 repo の設定で変えられないこと
-- ルールの正典は 1 か所。ガイドとコードが食い違ったら検査で落ちること
+- 置き場所の正本は 1 か所 (要件定義書 02 §7)。ガイドとコードが正本と食い違ったら検査で落ちること
 
 ## Decision
 
@@ -50,9 +50,9 @@ relates_to: [audience-directories, adr-0009-kind-placement, adr-0010-value-owner
 新しい構成の repo で、docs/ 直下 (生成索引の 2 本を除く) に 3 フォルダにも `nonDocPaths` (ADR-0003 決定 6) にも
 属さない文書があれば違反。
 
-**2. 正典の一致**: kind → 置き場所の決めは ADR-0009。Igeta の文書体系ガイド (`templates/docs/ai/handbook/how-to/
-01-document-taxonomy.md`) はその転記で、`src/core/Role.ts` の `ROLE_OF_KIND` はガイドの転記。`TaxonomyGuideSync.test.ts`
-がガイドの表を読み、`ROLE_OF_KIND` と 1 行でも食い違えば落ちる。利用 repo にはガイドを写さない (ADR-0009)
+**2. 正典の一致**: kind → 置き場所の正本は要件定義書 02 §7 (Igeta 自身の repo)。Igeta の文書体系ガイド
+(`templates/docs/ai/handbook/how-to/01-document-taxonomy.md`) と `src/core/Role.ts` の `ROLE_OF_KIND` はその転記で、
+`TaxonomyGuideSync.test.ts` が 3 つを突き合わせ、1 行でも食い違えば落ちる。利用 repo にはガイドを写さない (ADR-0009)
 
 **3. 利用 repo の追随**: 旧い構成の repo は、Igeta の版を上げてから ADR-0003 の手順で移す。v3 の構成の repo は、
 版上げ・移行・書き直しを 1 本の PR にする (版を上げた瞬間に新しい構成と判定されるため。ADR-0003 決定 1)。
@@ -61,7 +61,8 @@ CI 設定と各 repo の制約文書は書き換えない (ガイドを指す参
 **4. 雛形と `init`/`scaffold`**: `templates/docs/` を `docs/` と同じ木に再編し、新しい repo には最初から 3 フォルダの
 構成を生成する。旧い構成の雛形は削除する。`person/` の雛形は人の型 (結論 → 図 → 決まりの表 → 決めてほしいこと) に
 作り直し、混ざった節と依存の向きは ADR-0010 のとおり直す。`data-management` の雛形を新しく作る。入口の 3 行
-(`AUDIENCE_ENTRANCE` と docs/README.md) を新しい構成に替える
+(`AUDIENCE_ENTRANCE` と docs/README.md) を新しい構成に替える。`scaffold` は Igeta の手引き 3 本を生成しない
+(`implementation-order` はプロジェクトの文書として生成する)。person・client の雛形の指示の HTML コメントは外す
 
 **5. AI が読む範囲**: `context-files` の範囲は ADR-0004 決定 3 の 5 のとおり
 (`person/` の要件・全体共通・自分のまとまり + `ai/specs/` の全体共通・自分のまとまり + 隣の約束)

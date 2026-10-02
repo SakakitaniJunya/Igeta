@@ -38,7 +38,7 @@ graph LR
   class adr-0007-fingerprint-link-normalization adr
   adr-0008-human-approval-scope["ADR-0008 人の承認が要る変更を、差分のパスで見分ける (proposed)"]
   class adr-0008-human-approval-scope adr
-  adr-0009-kind-placement["ADR-0009 kind 47 種の置き場所と、増えたときの分け方 (proposed)"]
+  adr-0009-kind-placement["ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける (proposed)"]
   class adr-0009-kind-placement adr
   adr-0010-value-ownership["ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く (proposed)"]
   class adr-0010-value-ownership adr
@@ -104,7 +104,7 @@ graph LR
   provenance-and-agreement ==> coverage-and-learning
   requirements ==> docs-model-strategy
   audience-directories ==> docs-model-strategy
-  adr-0009-kind-placement ==> folder-placement
+  audience-directories ==> folder-placement
   audience-layers ==> provenance-and-agreement
   audience-layers ==> reader-granularity
   adr-0001-document-role-directories -.- adr-0009-kind-placement
@@ -120,6 +120,7 @@ graph LR
   adr-0006-provenance-migration-handling -.- adr-0007-fingerprint-link-normalization
   adr-0008-human-approval-scope -.- adr-0002-role-boundary-invariants
   adr-0009-kind-placement -.- adr-0010-value-ownership
+  adr-0009-kind-placement -.- audience-directories
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
   audience-layers -.- provenance-and-agreement
@@ -149,7 +150,7 @@ graph LR
 - **adr-0006-provenance-migration-handling** _(proposed)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md)
 - **adr-0007-fingerprint-link-normalization** _(proposed)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](adr/0007-fingerprint-link-normalization.md)
 - **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認が要る変更を、差分のパスで見分ける](adr/0008-human-approval-scope.md)
-- **adr-0009-kind-placement** _(proposed)_ — [ADR-0009 kind 47 種の置き場所と、増えたときの分け方](adr/0009-kind-placement.md)
+- **adr-0009-kind-placement** _(proposed)_ — [ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける](adr/0009-kind-placement.md)
 - **adr-0010-value-ownership** _(proposed)_ — [ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く](adr/0010-value-ownership.md)
 
 ### design
