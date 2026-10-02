@@ -35,7 +35,7 @@ relates_to: [adr-0009-kind-placement, test-doc-graph]
 | I3 | 人の文書 3 本は雛形から作る (節の構成は雛形のまま)。記入例の行は置かず、要件に最初の業務要件の行 (番号 001) を 1 行だけ、状態 `未決` で置く (決定台帳の一覧に 1 件出る)。地図の入口は要件と決定台帳を指す。雛形の `depends_on`・`relates_to` のうち、置いていない文書を指すものは外す。実装順序の文書は置かない (上流の文書がまだ無い。設計を始めるときに雛形から作る) |
 | I4 | 新しい構成では、決定台帳 (kind: decision-log) は DEC・OPEN の行が 0 件でも違反にしない (旧い構成の検査は変えない) |
 | I5 | `--owner` は必須。形は `@user`・`@org/team`・メールアドレス。無い・形が違えば、何も書かずに終わる |
-| I6 | docs/ の下に README.md 以外の文書 (`.md`) が 1 本でもある repo では、何も書かずに `docs-migrate` を案内して終わる (I7 より先に見る) |
+| I6 | docs/ の下に README.md 以外の文書 (`.md`) が 1 本でもある repo では、何も書かずに、移行の案内を出して終わる (I7 より先に見る)。案内の文は、0.5.0 では「移行コマンド `igeta docs-migrate` は次の版で入る」、移行コマンドが入る版からは「`igeta docs-migrate` を実行する」 |
 | I7 | 既にあるファイルは上書きしない。`AGENTS.md` と `.github/CODEOWNERS` は I8 のとおり足りない分だけ足し、`package.json` は足りない項目だけ足す。ほかのファイルが 1 つでも重なれば、何も書かずに終わる |
 | I8 | 承認の割り当てのファイル (`AGENTS.md` と CODEOWNERS) は、`init` と `docs-migrate` が同じ作り手 (`ApprovalFilesModule`) で置く。`AGENTS.md`: 無ければ雛形から作る。あって `docs/person`・`docs/ai` に触れていなければ、入口の節を末尾に足す。`.github/CODEOWNERS`: 無ければ下の内容で作る。あれば、ADR-0008 決定 1 のパスのうち持ち主が付かないものの行だけを**先頭に**足す (後ろの行が勝つので、既にある割り当てを変えない)。足した後も持ち主が付かないパスが残るなら、何も書かずに終わる。repo 直下か `docs/` に CODEOWNERS があるときも、何も書かずに終わる (`.github/` に作ると、GitHub はそちらだけを読み、既にあるファイルが読まれなくなる) |
 | I9 | `AGENTS.md` の雛形の節は 4 つで、見出しは「読む順」「人の承認」「手引きの場所」「検査」。読む順: `docs/person/` が上流、`docs/ai/` が持ち場、`docs/client/` は提出物。人の承認: 変更を取り込む前に、`git fetch origin` の後で `igeta approval-scope --base origin/<宛先のブランチ>` で確かめ、`human` か検査不能なら AI は取り込まずに人へ渡す。`person/` の新しい決まりは状態 `仮` で起案する。手引きの場所: `node_modules/igeta/templates/docs/ai/handbook/how-to/` の `01-document-taxonomy.md`・`03-human-review.md`・`04-provenance-workflow.md` を、リンクではなくコードスパンで書く |
@@ -84,7 +84,7 @@ CLAUDE.md <持ち主>
 |---|---|---|---|
 | TST-301 | 持ち主が無い | `init` (`--owner` なし) / `--owner lead` / `--owner @` / `--owner "@a b"` | 何も書かずに終わる (引数の誤り) |
 | TST-302 | 重なる | `.igeta-version` か `.markdownlint.yaml` か `docs/README.md` が既にある | `CONFLICT` を出し、1 ファイルも書かない |
-| TST-303 | 旧い docs がある | `docs/design/basic/01-function-list.md` がある repo | 書かずに `docs-migrate` を案内する |
+| TST-303 | 旧い docs がある | `docs/design/basic/01-function-list.md` がある repo | 書かずに、移行の案内 (I6 の文) を出す |
 | TST-304 | 持ち主が付かない | `.github/CODEOWNERS` の最後の行が持ち主の無い `/docs/person/` / repo 直下に CODEOWNERS がある / `docs/` に CODEOWNERS がある | どれも何も書かずに終わる |
 | TST-305 | 手引きがずれる | 手引きの表の 1 行の置き場所を書き換える / 1 行を消す | `TaxonomyGuideSync.test.ts` が落ちる |
 | TST-306 | 入口がずれる | `templates/docs/README.md` の入口の 1 字を変える | テストが落ちる |
