@@ -489,11 +489,26 @@ async function runCommand(
 }
 
 describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・ADR の引用・索引の書き方)', () => {
-  it('[TST-101] person は person だけ・ai は person と ai・client は 3 つとも、4 種の参照で指してよい。コードフェンスと生成区間の中のリンクは数えない', async () => {
+  it('[TST-101] person は person だけ・ai は person と ai・client は 3 つとも、4 種の参照で指してよい。コードフェンス・生成区間・インラインコードの中のリンクと脚注の定義は数えない', async () => {
     const root = makeRoot();
     const { person, ai, client } = ROLE_DOCS;
     const aiLink = `[ai の手引き](${linkFrom(person.src, ai.dst)})`;
-    const hidden = ['```markdown', aiLink, '```', '', '<!-- AUTOGEN:note:start -->', aiLink, '<!-- AUTOGEN:note:end -->'];
+    // 数えないもの: コードフェンス・生成区間・インラインコードの中のリンクと、脚注の定義 (`[^名前]:`。参照の形の定義ではない)
+    const hidden = [
+      '```markdown',
+      aiLink,
+      '```',
+      '',
+      '<!-- AUTOGEN:note:start -->',
+      aiLink,
+      '<!-- AUTOGEN:note:end -->',
+      '',
+      `コードの例: \`${aiLink}\``,
+      '',
+      '文の最後に脚注を付ける。[^1]',
+      '',
+      `[^1]: ${linkFrom(person.src, ai.dst)}`,
+    ];
     write(root, person.src.path, refDoc(person.src, [person.dst], ALL_HOWS, hidden));
     write(root, ai.src.path, refDoc(ai.src, [person.dst, ai.dst], ALL_HOWS));
     write(root, client.src.path, refDoc(client.src, [person.dst, ai.dst, client.dst], ALL_HOWS));
