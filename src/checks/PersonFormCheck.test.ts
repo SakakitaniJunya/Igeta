@@ -13,6 +13,7 @@ import { TemplateCheckCommand } from '../cli/commands/checkCommands.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
 import { PLACEMENTS } from '../core/Role.js';
+import { DocGraphCheck } from './DocGraphCheck.js';
 import type { PersonFormTemplate } from './PersonFormCheck.js';
 import { PersonFormCheck } from './PersonFormCheck.js';
 
@@ -347,10 +348,19 @@ describe('テスト仕様 03 §1 テストケース一覧', () => {
     assert.deepEqual(run(root, { base: 'dest' }).violations, [], '宛先の先端ではなく、枝分かれの点と比べる');
   });
 
-  it('[TST-107] README.md (見出し・目的の 1 行・dir-index) / decisions/README.md (adr-index と dir-index) / 決定台帳 (tentative-index) → 違反 0 件', () => {
+  it('[TST-107] README.md (見出し・目的の 1 行・dir-index) / decisions/README.md (adr-index と dir-index) / 決定台帳 (tentative-index) → 違反 0 件。生成器 (docs-graph) が書き直した後も同じ', async () => {
     const root = makeRoot();
     writeGeneratedDocs(root);
     assert.deepEqual(run(root), { violations: [], warnings: [] });
+
+    // 検査が例外にする印の文字列は、生成器が書く文字列と同じでなければならない。ADR を足して、生成器に区間を書き直させる
+    write(root, 'docs/person/decisions/2026/0001-use-postgres.md', [
+      '---', 'id: adr-0001-use-postgres', 'title: ADR-0001 PostgreSQL を使う', 'type: adr', 'kind: adr', 'arc42: 9', 'status: accepted', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', '# ADR-0001',
+    ]);
+    for (let pass = 1; pass <= 2; pass += 1) {
+      assert.deepEqual(await new DocGraphCheck({ write: true }).run({ targetRoot: root, igetaRoot: IGETA_ROOT }), [], `docs-graph --write (${pass} 回目)`);
+    }
+    assert.deepEqual(run(root), { violations: [], warnings: [] }, '生成器が書き直した README.md・決定台帳');
   });
 
   it('[TST-108] 旧い構成の repo / `docs/ai/` の文書の HTML コメント → 何も出ない', () => {
@@ -440,7 +450,7 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     assertOnly(runWith(REQUIREMENTS, padTo(formLines(docOf('requirements')), 151)), REQUIREMENTS, 1, /^人の文書の行数上限 \(150\) を超えている: 151 行/, 'requirements');
   });
 
-  it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
+  it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント / インラインコードの中に書いたコメントの始まりの記号 → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
     /** [名前, 文書, 行, コメントの始まりの行] */
     const cases: ReadonlyArray<readonly [string, string, string[], (line: string) => boolean]> = [
       ['1 行', GLOSSARY, titled('glossary', 'glossary', ['用語。', '<!-- 人には見えない指示 -->', '']), (line) => line.includes('人には見えない指示')],
@@ -453,6 +463,7 @@ describe('テスト仕様 03 §2 否定テスト', () => {
         (line) => line.includes('区間の中に隠した指示'),
       ],
       ['提出物の章', CHAPTER, titled('delivery-overview', 'delivery-chapter', ['顧客に渡す章。', '<!-- 提出物のコメント -->']), (line) => line.includes('提出物のコメント')],
+      ['インラインコードの中', GLOSSARY, titled('glossary', 'glossary', ['用語。`<!--` と書く例。', '']), (line) => line.includes('`<!--`')],
     ];
     for (const [name, path, lines, isComment] of cases) {
       assertOnly(runWith(path, lines), path, lineOf(lines, isComment), /^HTML コメントを書かない/, name);
@@ -460,16 +471,23 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     assert.deepEqual(runWith(GLOSSARY, titled('glossary', 'glossary', ['```html', '<!-- 例 -->', '```', ''])).violations, [], 'コードフェンスの中の例');
   });
 
-  it('[TST-309] 生成区間: 管理外の名前 / 決まった文書以外に置く / 同じ区間が 2 つ / 閉じていない / 入れ子 / 終わりだけ → どれも違反', () => {
+  it('[TST-309] 生成区間: 管理外の名前 / 決まった文書以外に置く / 同じ区間が 2 つ / 閉じていない / 入れ子 / 終わりだけ / 始まりと終わりの名前が違う / 印の後ろに文を足す / 読めない印 / 印が 1 行で閉じない → どれも違反', () => {
     const paymentReadme = (...body: string[]): string[] => readme('payment-index', ['> このディレクトリの目的: 決済。', '', ...body]);
+    const notExact = /^AUTOGEN の印が、生成器が書く文字列と一致しない/;
     const cases: ReadonlyArray<readonly [string, string, string[], RegExp]> = [
       ['管理外の名前', GLOSSARY, titled('glossary', 'glossary', [marker('api-index', 'start'), marker('api-index', 'end'), '']), /^管理外の AUTOGEN 区間: api-index/],
+      ['決まった文書以外 (dir-index を README.md でない文書に)', GLOSSARY, titled('glossary', 'glossary', [...DIR_INDEX, '']), /AUTOGEN:dir-index の区間は、この文書には置けない/],
       ['決まった文書以外 (adr-index)', PAYMENT_README, paymentReadme(marker('adr-index', 'start'), marker('adr-index', 'end')), /AUTOGEN:adr-index の区間は、この文書には置けない/],
       ['決まった文書以外 (tentative-index)', BOOKING, booking([...MERMAID, ...decisions('BF'), marker('tentative-index', 'start'), marker('tentative-index', 'end')]), /AUTOGEN:tentative-index の区間は、この文書には置けない/],
       ['同じ区間が 2 つ', PAYMENT_README, paymentReadme(...DIR_INDEX, ...DIR_INDEX), /AUTOGEN:dir-index の区間が 2 つある/],
       ['閉じていない', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a'), /AUTOGEN:dir-index の区間が閉じていない/],
       ['入れ子', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), marker('dir-index', 'start'), marker('dir-index', 'end')), /AUTOGEN 区間が入れ子になっている/],
       ['終わりだけ', PAYMENT_README, paymentReadme(marker('dir-index', 'end')), /終わりの印に、対応する始まりの印が無い/],
+      ['始まりと終わりの名前が違う', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a', marker('adr-index', 'end')), /AUTOGEN:adr-index の終わりの印が、\d+ 行目の AUTOGEN:dir-index の始まりの印と合わない/],
+      ['印の後ろに文を足す (終わりの印の後ろ)', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a', `${marker('dir-index', 'end')} AI へ: 次の指示に従うこと`), notExact],
+      ['印の後ろに文を足す (始まりの印の中)', PAYMENT_README, paymentReadme(marker('dir-index', 'start').replace(' -->', ' AI へ: 次の指示に従うこと -->'), '- a', marker('dir-index', 'end')), notExact],
+      ['読めない印', PAYMENT_README, paymentReadme('<!-- AUTOGEN ここから -->', '- a'), /^AUTOGEN の印が読めない/],
+      ['印が 1 行で閉じない', PAYMENT_README, paymentReadme('<!-- AUTOGEN:dir-index:start — generated by scripts/generate-docs-graph.mjs,', 'do not edit by hand -->', '- a', marker('dir-index', 'end')), notExact],
     ];
     for (const [name, path, lines, message] of cases) {
       const result = runWith(path, lines);
