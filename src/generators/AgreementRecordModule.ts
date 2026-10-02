@@ -11,7 +11,9 @@ import { ProvenanceCheck } from '../checks/ProvenanceCheck.js';
 import { ProvenanceCoverageCheck } from '../checks/ProvenanceCoverageCheck.js';
 import type { AgreementExportChapter, AgreementExportEvent } from '../core/AgreementLedger.js';
 import { appendLedgerEvent, readLedger } from '../core/AgreementLedger.js';
-import { computeFingerprint } from '../core/Fingerprint.js';
+import type { DestinationRewriter } from '../core/Fingerprint.js';
+import { computeFingerprint, CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
+import { buildLinkTable } from '../core/LinkTable.js';
 import { readSidecar } from '../core/ProvenanceSidecar.js';
 import type { Violation } from '../core/Report.js';
 import { buildSourceIndex, resolveSource } from '../core/SourceResolver.js';
@@ -29,10 +31,23 @@ export type AgreementPrepareResult =
   | { readonly kind: 'ok'; readonly event: AgreementExportEvent }
   | { readonly kind: 'rejected'; readonly violations: readonly Violation[] };
 
-/** 提出物に出る本文 (frontmatter・AUTOGEN・omitSections を除いたもの) の指紋。 */
-export function chapterFingerprint(content: string, relPath: string, omitTitles: readonly string[]): string {
-  const lines = omitSections(stripFrontmatterAndAutogen(content, relPath), omitTitles);
-  return computeFingerprint(joinStrippedLines(lines));
+/** 提出物に出る本文 (frontmatter・AUTOGEN・omitSections を除いたもの)。 */
+export function chapterBody(content: string, relPath: string, omitTitles: readonly string[]): string {
+  return joinStrippedLines(omitSections(stripFrontmatterAndAutogen(content, relPath), omitTitles));
+}
+
+/**
+ * 提出物に出る本文の指紋。version は台帳の行が持つ正規化の版。
+ * v3 のリンクの行き先は、章の文書 (relPath) を起点に直す (rewrite)。
+ */
+export function chapterFingerprint(
+  content: string,
+  relPath: string,
+  omitTitles: readonly string[],
+  version: number,
+  rewrite?: DestinationRewriter,
+): string {
+  return computeFingerprint(chapterBody(content, relPath, omitTitles), version, rewrite);
 }
 
 /** 記録してよいかを確かめ、記録する行を組み立てる。ここでは何も書かない。 */
@@ -55,6 +70,7 @@ export function prepareAgreementRecord(request: AgreementRecordRequest): Agreeme
   if (violations.length > 0) return { kind: 'rejected', violations };
 
   const sourceIndex = buildSourceIndex(targetRoot, docsDir);
+  const links = buildLinkTable(targetRoot, sourceIndex);
   const recorded: AgreementExportChapter[] = [];
   for (let i = 0; i < manifest.chapters.length; i += 1) {
     const file = manifest.chapters[i];
@@ -64,7 +80,13 @@ export function prepareAgreementRecord(request: AgreementRecordRequest): Agreeme
 
     let fingerprint: string;
     try {
-      fingerprint = chapterFingerprint(readFileSync(absPath, 'utf8'), relPath, manifest.omitSections);
+      fingerprint = chapterFingerprint(
+        readFileSync(absPath, 'utf8'),
+        relPath,
+        manifest.omitSections,
+        CURRENT_NORMALIZATION_VERSION,
+        links.rewriterFor(relPath),
+      );
     } catch (error) {
       if (error instanceof UnclosedAutogenError) {
         violations.push({ severity: 'cannot-check', message: error.message });
@@ -87,7 +109,10 @@ export function prepareAgreementRecord(request: AgreementRecordRequest): Agreeme
           violations.push({ severity: 'violation', file: relPath, message: `${entry.anchor}: from が解決できない (${entry.from})` });
           continue;
         }
-        sources.push({ from: entry.from, fingerprint: computeFingerprint(resolution.text) });
+        sources.push({
+          from: entry.from,
+          fingerprint: computeFingerprint(resolution.text, CURRENT_NORMALIZATION_VERSION, links.rewriterFor(resolution.doc.relPath)),
+        });
       }
     }
     recorded.push({ file, chapterFingerprint: fingerprint, sources });
@@ -102,6 +127,7 @@ export function prepareAgreementRecord(request: AgreementRecordRequest): Agreeme
       date: manifest.date,
       manifest: relative(manifest.manifestDir, manifest.manifestPath),
       omitSections: manifest.omitSections,
+      normalizationVersion: CURRENT_NORMALIZATION_VERSION,
       chapters: recorded,
     },
   };

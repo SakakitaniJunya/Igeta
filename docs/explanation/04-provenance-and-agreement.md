@@ -83,15 +83,16 @@ relates_to: [coverage-and-learning, agreement-ledger]
 | pending | `acceptedBy` が無い | 違反 |
 | self-approved | `acceptedBy` = `capturedBy` | 違反 (作る主体と裁く主体を分ける) |
 | `open-stated-as-final` | `from` の正本が未決なのに、章が確定を主張している (`from` ありのときだけ。§8 手順 3、判定は §9) | 違反 |
-| needs-recompute | エントリの正規化版が今の版と違う (§6) | 警告のみ (既定)。`--strict-normalization` で違反に上げる |
-| stale | `from` の現在の指紋が保存値と違う | 違反 |
+| needs-recompute | エントリの正規化版が今の版と違い、保存した版で計算した指紋は一致する。または保存した版の実装が無く確かめられない (§6) | 警告のみ (既定)。`--strict-normalization` で違反に上げる |
+| stale | `from` の現在の指紋 (保存した版で計算) が保存値と違う | 違反 |
 | `orphan-content` | `from: null` エントリの `blockFingerprint` が今のテキストと違う | 違反 (由来なし宣言の再確認) |
 | ok | 上記以外 | 合格 |
 
 **判定順 (実装で追加。設計に優先順位の明文が無かったため)**: 上の表の行の順に判定し、最初に当たった状態を
-採る。`orphan` を最初に切るのは、章に無い節は指紋比較自体が成立しないため。`needs-recompute` を
-`stale`/`orphan-content` より先に切るのは、古いアルゴリズムの指紋を今のアルゴリズムと比較すると
-差が「内容が変わった」と誤認されるため。
+採る。`orphan` を最初に切るのは、章に無い節は指紋比較自体が成立しないため。`stale`/`orphan-content` は
+保存した版 (`normalizationVersion`) で計算して比べるので、`needs-recompute` より先に判定する (版が古いだけで
+`stale` にはならず、保存した版で一致して版が古いだけなら `needs-recompute`)。保存した版の実装が無いときは
+確かめられないので `needs-recompute`。
 
 ## 6. 指紋の正規化
 
@@ -102,13 +103,16 @@ relates_to: [coverage-and-learning, agreement-ledger]
 3. 連続する空白 (全角スペース含む) を単一の半角スペースに畳む。**コードフェンスの中は対象外**
 4. 表の区切り線 (`|---|---|` 相当) はセル幅の整形にすぎないので固定文字列に正規化し、セル内容前後の空白は trim する。**コードフェンスの中は対象外**
 5. 全角・半角の文字そのもの (かな漢字英数記号) は変換しない (意味が変わる可能性があるため。3 の空白だけを正規化する)
+6. (v3) コードフェンスとインラインコードの外の Markdown リンク `[文字](行き先)` の行き先が相対パスなら、指す文書の frontmatter `id` に置き換える (`[文字](id:<id>#<アンカー>)`)。外部 URL・アンカーだけはそのまま。`id` の無い文書と docs/ の外の実在ファイルは repo 相対パス、存在しないパスはそのまま。文書を動かしてもリンク先が同じ文書なら指紋は変わらない ([ADR-0007](../adr/0007-fingerprint-link-normalization.md))
 
 **実装で追加 (3・4)**: コードフェンスの中は字下げ・空白がそのまま意味を持つ内容 (コード例) なので、3・4 の
 畳み込み・整形を適用しない (適用すると字下げの違う別内容が同じ指紋になってしまう)。フェンスの中も改行コード統一・行末空白除去 (1・2) は適用する。この修正で
 `normalizationVersion` を 2 に上げた。
 
-正規化ルールを変えたら `normalizationVersion` を上げる。既存エントリは一斉に `stale` へは落とさず、
-`needs-recompute` (既定は警告のみ) にして段階的に `provenance-capture` を再実行させる。
+正規化ルールを変えたら `normalizationVersion` を上げる (今は 3)。版ごとの実装は残し、保存した指紋は**保存した版で**
+計算し直して比べる。既存エントリは一斉に `stale` へは落とさず、保存した版で一致すれば `needs-recompute` (既定は警告のみ)
+にする。`igeta fingerprint-rebase` は、保存した版で今の本文と一致したものだけを、同じ本文から今の版で計算し直して
+載せ替える (承認は保つ。載せ替えたエントリには `rebasedFrom`・`rebasedAt`・`rebasedBy` が付く)。
 
 ## 7. CLI 一覧 (フラットな名前、由来の分)
 

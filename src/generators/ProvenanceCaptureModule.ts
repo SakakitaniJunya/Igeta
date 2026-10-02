@@ -9,6 +9,7 @@ import { relative } from 'node:path';
 import { normalizeActor } from '../core/ActorName.js';
 import { extractDeliveryBlocks } from '../core/DeliveryBlocks.js';
 import { computeFingerprint, CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
+import { buildLinkTable } from '../core/LinkTable.js';
 import type { ProvenanceEntry, ProvenanceSidecar } from '../core/ProvenanceSidecar.js';
 import { readSidecar, writeSidecar } from '../core/ProvenanceSidecar.js';
 import type { SourceIndex } from '../core/SourceResolver.js';
@@ -23,7 +24,10 @@ export interface CaptureRequest {
   readonly anchor: string;
   readonly source: CaptureSource;
   readonly by: string;
-  /** --from のとき使う。--no-source なら未使用 (docs が無くても capture できる) */
+  /**
+   * --from の正本を引くのに使う。--no-source でも、章の塊の指紋 (v3) がリンクの行き先を文書 id で数えるので、
+   * docs があれば渡す (docs が無ければ null。リンク先が実在するかだけで数える)。
+   */
   readonly sourceIndex: SourceIndex | null;
   readonly now?: Date;
 }
@@ -56,13 +60,14 @@ export function capture(request: CaptureRequest): CaptureResult {
 
   const capturedAt = (request.now ?? new Date()).toISOString().slice(0, 10);
   const capturedBy = normalizeActor(request.by);
+  const links = buildLinkTable(request.targetRoot, request.sourceIndex);
   let entry: ProvenanceEntry;
   if (request.source.kind === 'no-source') {
     entry = {
       anchor: request.anchor,
       from: null,
       reason: request.source.reason,
-      blockFingerprint: computeFingerprint(block.text),
+      blockFingerprint: computeFingerprint(block.text, CURRENT_NORMALIZATION_VERSION, links.rewriterFor(chapterRelPath)),
       capturedBy,
       capturedAt,
       normalizationVersion: CURRENT_NORMALIZATION_VERSION,
@@ -78,7 +83,7 @@ export function capture(request: CaptureRequest): CaptureResult {
     entry = {
       anchor: request.anchor,
       from: request.source.id,
-      fingerprint: computeFingerprint(resolution.text),
+      fingerprint: computeFingerprint(resolution.text, CURRENT_NORMALIZATION_VERSION, links.rewriterFor(resolution.doc.relPath)),
       capturedBy,
       capturedAt,
       normalizationVersion: CURRENT_NORMALIZATION_VERSION,

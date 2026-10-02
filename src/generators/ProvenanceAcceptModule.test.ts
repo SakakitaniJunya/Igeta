@@ -6,13 +6,18 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { accept } from './ProvenanceAcceptModule.js';
 import { capture } from './ProvenanceCaptureModule.js';
+import { computeFingerprint } from '../core/Fingerprint.js';
+import { buildLinkTable } from '../core/LinkTable.js';
 import { readSidecar } from '../core/ProvenanceSidecar.js';
 import { buildSourceIndex } from '../core/SourceResolver.js';
+import { rebaseFingerprints } from './FingerprintRebaseModule.js';
+import { ANCHOR_ROW, CHAPTER, ROW_101, cleanupWorkspaces, makeLegacyRepo, readEntries } from './rebaseFixture.test-support.js';
 
 const workspaces: string[] = [];
 after(() => {
   for (const dir of workspaces) rmSync(dir, { recursive: true, force: true });
 });
+after(cleanupWorkspaces);
 
 function makeRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'igeta-accept-'));
@@ -56,6 +61,7 @@ describe('accept', () => {
   it('別の主体なら受け入れ、指紋を今の値に更新する', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -76,6 +82,7 @@ describe('accept', () => {
   it('拒否: capturedBy と同じ主体は self-approved で Violation、sidecar は書き換わらない', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -94,6 +101,7 @@ describe('accept', () => {
   it('拒否: 前後の空白・大文字小文字だけ違う同一主体も self-approved になる', () => {
     const { root, chapterPath, chapterRelPath } = setup(); // capturedBy: 'agent:writer'
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -116,6 +124,7 @@ describe('accept', () => {
       sourceIndex: buildSourceIndex(root, join(root, 'docs')),
     });
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'all' },
@@ -130,6 +139,7 @@ describe('accept', () => {
     const root = makeRoot();
     const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines);
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath: 'docs/delivery/02-reservation.md',
       target: { kind: 'all' },
@@ -143,6 +153,7 @@ describe('accept', () => {
   it('検査不能: 指定した anchor の由来が無い', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '存在しない節' },
@@ -157,6 +168,7 @@ describe('accept', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     writeFileSync(chapterPath, chapterLines.join('\n').replace('## 1. 予約の受付', '## 1. 予約の受付 (改題)') + '\n');
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -166,5 +178,36 @@ describe('accept', () => {
     assert.equal(result.violations.length, 1);
     assert.equal(result.violations[0]?.severity, 'cannot-check');
     assert.match(result.violations[0]?.message ?? '', /orphan/);
+  });
+});
+
+describe('accept: 載せ替えた後のエントリ', () => {
+  it('指紋を今の本文から計算し直す (v3) ので、載せ替えの記録 (rebasedFrom / rebasedAt / rebasedBy) は引き継がず、承認は新しい承認者のものになる', () => {
+    const repo = makeLegacyRepo();
+    rebaseFingerprints({ targetRoot: repo.root, docsDir: repo.docsDir, dir: repo.docsDir, now: new Date('2026-10-02T00:00:00Z') });
+    const rebased = readEntries(repo.chapterPath)[0];
+    assert.ok(rebased !== undefined && rebased.from !== null);
+    assert.equal(rebased.rebasedBy, 'igeta');
+
+    const sourceIndex = buildSourceIndex(repo.root, repo.docsDir);
+    const result = accept({
+      targetRoot: repo.root,
+      chapterAbsPath: repo.chapterPath,
+      chapterRelPath: CHAPTER,
+      target: { kind: 'anchor', anchor: ANCHOR_ROW },
+      by: 'second-reviewer@example.com',
+      sourceIndex,
+      now: new Date('2026-10-05T00:00:00Z'),
+    });
+    assert.deepEqual(result.violations, []);
+    const entry = readEntries(repo.chapterPath)[0];
+    assert.ok(entry !== undefined && entry.from !== null);
+    assert.equal(entry.acceptedBy, 'second-reviewer@example.com');
+    assert.equal(entry.acceptedAt, '2026-10-05');
+    assert.equal(entry.normalizationVersion, 3);
+    assert.equal(entry.fingerprint, computeFingerprint(ROW_101, 3, buildLinkTable(repo.root, sourceIndex).rewriterFor('docs/requirements/reservation.md')));
+    assert.equal('rebasedFrom' in entry, false);
+    assert.equal('rebasedAt' in entry, false);
+    assert.equal('rebasedBy' in entry, false);
   });
 });
