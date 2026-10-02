@@ -402,12 +402,15 @@ function countLines(lines: readonly string[]): number {
   return lines[lines.length - 1] === '' ? lines.length - 1 : lines.length;
 }
 
-/** Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例と、画像のリンクは数えない */
+/**
+ * Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例と、画像のリンクは数えない。
+ * フェンスの前の字下げは、空白 3 つまで (タブで字下げした行は、描画ではコードブロックで、フェンスではない)
+ */
 function countMermaidDiagrams(lines: readonly string[], bodyStart: number): number {
   let count = 0;
   let open: { readonly marker: string; readonly length: number } | null = null;
   for (let i = bodyStart; i < lines.length; i += 1) {
-    const fence = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(lines[i] ?? '');
+    const fence = /^[ ]{0,3}(`{3,}|~{3,})(.*)$/.exec(lines[i] ?? '');
     if (fence === null) continue;
     const run = fence[1] ?? '';
     const info = (fence[2] ?? '').trim();

@@ -435,10 +435,12 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     }
   });
 
-  it('[TST-306] 図が要る kind に、画像のリンクだけ / 別のコードフェンスの中の mermaid だけ → 違反', () => {
+  it('[TST-306] 図が要る kind に、画像のリンクだけ / 別のコードフェンスの中の mermaid だけ / タブで字下げした mermaid のフェンスだけ → 違反', () => {
     const cases: ReadonlyArray<readonly [string, readonly string[]]> = [
       ['画像のリンクだけ', ['![流れ](./flow.png)', '']],
       ['別のコードフェンスの中の mermaid だけ', ['````markdown', '```mermaid', 'flowchart LR', '```', '````', '']],
+      // タブの字下げは、描画ではコードブロック (フェンスではない)
+      ['タブで字下げした mermaid のフェンスだけ', ['\t```mermaid', '\tflowchart LR', '\t  A[予約] --> B[確定]', '\t```', '']],
     ];
     for (const [name, picture] of cases) {
       assertOnly(runWith(BOOKING, booking([...picture, ...decisions('BF')])), BOOKING, 1, /^図が 1 枚も無い \(kind: business-flow/, name);
@@ -447,7 +449,7 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     assertOnly(runWith(map, titled('map', 'map', ['![地図](./map.png)', ''])), map, 1, /^図が 1 枚も無い \(kind: map/, '図だけの kind (地図)');
   });
 
-  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 → 違反。template-check の全体で、行数の違反は 1 件だけ', () => {
+  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 / ○ でない kind (地図) が雛形の line_limit を 1 行超える → 違反。template-check の全体で、行数の違反は 1 件だけ', () => {
     const long = padTo(booking([...MERMAID, ...decisions('BF')]), 101);
     const longRequirements = padTo(formLines(docOf('requirements')), 151);
     assertOnly(runWith(BOOKING, long), BOOKING, 1, /^人の文書の行数上限 \(100\) を超えている: 101 行/, '○ の kind');
@@ -460,6 +462,16 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     write(root, `docs/${REQUIREMENTS}`, longRequirements);
     const lineViolations = new DocTemplateCheck().run({ targetRoot: root, igetaRoot: IGETA_ROOT }).filter((violation) => violation.message.includes('行数上限'));
     assert.deepEqual(lineViolations.map((violation) => posix(violation.file)).sort(), [`docs/${BOOKING}`, `docs/${REQUIREMENTS}`].sort());
+
+    // ○ でない kind (地図) が雛形の line_limit (150) を 1 行超える: 新しい構成でも、雛形の検査が 1 件出す (型の検査は出さない)
+    const map = 'person/design/shared/00-map.md';
+    const mapRoot = makeRoot();
+    writeValidTree(mapRoot);
+    write(mapRoot, `docs/${map}`, padTo(titled('map', 'map', MERMAID), 151));
+    assert.deepEqual(run(mapRoot).violations, [], '型の検査は、○ でない kind の行数を見ない');
+    const mapLine = new DocTemplateCheck().run({ targetRoot: mapRoot, igetaRoot: IGETA_ROOT }).filter((violation) => violation.message.includes('行数上限'));
+    assert.deepEqual(mapLine.map((violation) => posix(violation.file)), [`docs/${map}`]);
+    assert.match(mapLine[0]?.message ?? '', /行数上限 \(150\) を超えている: 151 行/);
   });
 
   it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント / インラインコードの中に書いたコメントの始まりの記号 → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
@@ -587,8 +599,13 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line.startsWith('| BF-104 | 使い直した')), /^BF-104 は 廃 の ID \(\d+ 行目\) なのに、同じ文書の別の行で使われている/, '廃の ID の使い直し');
   });
 
-  it('[TST-313] 無い ref・`-` で始まる ref・git の repo でない・docs が repo の外 / 起点の文書に frontmatter の id が無い / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
+  it('[TST-313] 無い ref・`-` で始まる ref・HEAD と共通の祖先が無い ref・git の repo でない・docs が repo の外 / 起点の文書に frontmatter の id が無い / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
     const repo = makeRepo();
+    // HEAD と共通の祖先が無い ref (浅い clone・孤立した枝): 枝分かれの点を決められない。黙って HEAD 自身と比べて通さない
+    const orphanRepo = makeRepo();
+    git(orphanRepo, 'checkout', '-q', '--orphan', 'orphan');
+    commit(orphanRepo, '孤立した枝');
+    git(orphanRepo, 'checkout', '-q', 'dest');
     // 起点の文書に frontmatter の id が無い (廃の行を照らせない)
     const idless = 'person/design/shared/11-notes.md';
     const withIdless = makeRepo((root) => write(root, `docs/${idless}`, ['---', 'title: id の無い文書', 'kind: glossary', '---', '', '# 用語']));
@@ -604,6 +621,7 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
       ['無い ref', run(repo, { base: 'no-such-ref' }), /^--base no-such-ref と比べられない/],
       // `--octopus` は、断らないと git が option として読み、HEAD 自身を起点にして黙って通る (廃の行を消しても見つからない)
       ['`-` で始まる ref', run(repo, { base: '--octopus' }), /^--base --octopus と比べられない: .*git の ref として使えない値/],
+      ['HEAD と共通の祖先が無い ref', run(orphanRepo, { base: 'orphan' }), /^--base orphan と比べられない: git merge-base orphan HEAD/],
       ['git の repo でない', run(notRepo, { base: 'dest' }), /^--base dest と比べられない/],
       ['docs が repo の外', run(repo, { base: 'dest', docsDir: join(elsewhere, 'docs') }), /リポジトリの中の docs だけ/],
       ['起点の文書に frontmatter の id が無い', run(withIdless, { base: 'dest' }), /^dest との枝分かれの点 \(\w{7}\) の文書に frontmatter の id が無く/],
