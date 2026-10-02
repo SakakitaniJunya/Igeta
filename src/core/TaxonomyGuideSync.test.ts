@@ -1,14 +1,15 @@
 // node --test dist/core/TaxonomyGuideSync.test.js
-// 置き場所の正本 (要件定義書 02 §7 の表) と、コード側の表 (Role.ts の ROLE_OF_KIND) の突き合わせ
-// (ADR-0005 決定 2、ADR-0009)。表を直したのにコードを直し忘れた (逆も) と、ここで落ちる。
+// 置き場所の正本 (要件定義書 02 §7 の表) と、コード側の表 (Role.ts の ROLE_OF_KIND)、文書体系の手引きの「kind の置き場所」の
+// 表の突き合わせ (ADR-0005 決定 2、ADR-0009、テスト仕様 06 の I12)。表を直したのに転記を直し忘れた (逆も) と、ここで落ちる。
 //
-// 突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 図が要る kind / 置き場所のフォルダと
+// §7 とコードで突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 図が要る kind / 置き場所のフォルダと
 // ファイル名 / 「15 本の対象外」/ 1 フォルダの上限 / 区分ごとの kind の数。
-// 文書体系ガイド (templates/docs/ai/handbook/how-to/01-document-taxonomy.md) は、§7 の転記の節を持つが、ここではまだ突き合わせない (未整備)。
+// 文書体系の手引き (templates/docs/ai/handbook/how-to/01-document-taxonomy.md) の「kind の置き場所」の節は、§7 の転記なので、
+// 表の行 (kind の表と「決まり」の表) が 1 行ずつ同じことを見る。
 //
-// 表の読み方は diffAgainstRoleTable に閉じ、表を書き換えた文書 (kind の削除・確定させる人の入れ替え・フォルダの
-// 取り違えなど) を渡して「食い違いを見つけること」も確かめる。1 行に kind が複数 (`a / b (図) / c`) 書かれた行は、
-// 型の検査の区分とフォルダも、同じ順に並んだものとして読む。
+// 表の読み方は diffAgainstRoleTable・diffGuideAgainstRequirements に閉じ、表を書き換えた文書 (kind の削除・確定させる人の
+// 入れ替え・フォルダの取り違えなど) を渡して「食い違いを見つけること」も確かめる。1 行に kind が複数 (`a / b (図) / c`) 書かれた
+// 行は、型の検査の区分とフォルダも、同じ順に並んだものとして読む。
 import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { describe, it } from 'node:test';
@@ -24,6 +25,9 @@ import type { FormCheck } from './Role.js';
 
 /** 置き場所の正本の文書の id。場所ではなく id で探す (Igeta 自身の docs/ を移しても、このテストは動く。REQ-302) */
 const REQUIREMENTS_ID = 'audience-directories';
+
+/** 文書体系の手引き (利用 repo には写さず、AGENTS.md と docs/README.md から版に固定したものを指す) */
+const GUIDE_PATH = join(IGETA_ROOT, 'templates', 'docs', 'ai', 'handbook', 'how-to', '01-document-taxonomy.md');
 
 /** 表のパスの記法のうち、コード側と書き方が違うもの */
 const TABLE_TOKENS: ReadonlyArray<readonly [string, string]> = [['<提出物名>', '<deliverable>']];
@@ -261,6 +265,30 @@ function diffAgainstRoleTable(markdown: string): string[] {
   return diffs;
 }
 
+const tableLinesOf = (lines: readonly string[]): string[] => lines.filter((line) => line.trim().startsWith('|')).map((line) => line.trim());
+
+/** 手引きの「kind の置き場所」の節の表の行 (見出しの次から、次の `## ` の手前まで)。節が無ければ null */
+function guideTableLines(guide: string): string[] | null {
+  const lines = guide.split(/\r?\n/);
+  const start = lines.findIndex((line) => /^##\s+\d+\.\s+kind の置き場所/.test(line));
+  if (start === -1) return null;
+  const next = lines.findIndex((line, index) => index > start && /^##\s/.test(line));
+  return tableLinesOf(lines.slice(start + 1, next === -1 ? undefined : next));
+}
+
+/** 要件定義書 02 §7 と、手引きの「kind の置き場所」の節の、表の行の食い違いを、メッセージの一覧で返す。食い違いが無ければ空 */
+function diffGuideAgainstRequirements(guide: string, requirementsText: string): string[] {
+  const actual = guideTableLines(guide);
+  if (actual === null) return ['手引きに「kind の置き場所」の節が無い'];
+  const expected = tableLinesOf(section7Lines(requirementsText) ?? []);
+  const diffs = [
+    ...expected.filter((row) => !actual.includes(row)).map((row) => `手引きに無い、または書き換わっている行 (§7 の行): ${row}`),
+    ...actual.filter((row) => !expected.includes(row)).map((row) => `手引きにだけある、または書き換わっている行: ${row}`),
+  ];
+  if (diffs.length === 0 && expected.join('\n') !== actual.join('\n')) diffs.push('表の行の順が違う');
+  return diffs;
+}
+
 function readRequirements(): string {
   const docsDir = join(IGETA_ROOT, 'docs');
   const found = listDocFiles(docsDir).filter((rel) => {
@@ -272,6 +300,7 @@ function readRequirements(): string {
 }
 
 const requirements = readRequirements();
+const guide = readFileSync(GUIDE_PATH, 'utf8');
 
 /** 要件定義書の §7 の中の文字列を 1 か所だけ書き換える。書き換え元が無ければテストの前提が崩れているので落とす */
 function mutate(from: string, to: string): string {
@@ -282,8 +311,9 @@ function mutate(from: string, to: string): string {
 }
 
 describe('TaxonomyGuideSync: 要件定義書 02 §7 と ROLE_OF_KIND', () => {
-  it('kind の集合・確定させる人・型の検査の区分・図・置き場所・15 本の対象外・kind の数が、全部一致する', () => {
+  it('[TST-108] §7・手引き・ROLE_OF_KIND の 3 つで、47 kind の置き場所と型の検査の区分が全部同じ (§7 とコードは項目ごと、手引きは表の行が 1 行ずつ同じ)', () => {
     assert.deepEqual(diffAgainstRoleTable(requirements), []);
+    assert.deepEqual(diffGuideAgainstRequirements(guide, requirements), []);
   });
 
   it('表の kind の集合は ARC42_BY_KIND と一致する (REQ-102)', () => {
@@ -361,6 +391,24 @@ describe('TaxonomyGuideSync: 表を書き換えると、食い違いを見つけ
     assert.ok(found(mutate('`client/proposals/<year>/`', ''), '15 本の対象外のフォルダが違う'));
     assert.ok(found(mutate('15 本の対象外', '16 本の対象外'), '1 フォルダの上限が違う'));
     assert.ok(found(mutate('計 47 kind (person 18・ai 27・client 2)', '計 47 kind (person 17・ai 28・client 2)'), 'kind の数が違う'));
+  });
+
+  it('[TST-305] 手引きがずれる: 手引きの表の 1 行の置き場所を書き換える / 1 行を消すと、§7 との突き合わせが食い違いを見つける', () => {
+    /** 手引きの「kind の置き場所」の節の中の文字列を 1 か所だけ書き換える */
+    const mutateGuide = (from: string, to: string): string => {
+      const section = guide.search(/^##\s+\d+\.\s+kind の置き場所/m);
+      const at = section === -1 ? -1 : guide.indexOf(from, section);
+      assert.notEqual(at, -1, `手引きの「kind の置き場所」の節に見つからない: ${from}`);
+      return `${guide.slice(0, at)}${to}${guide.slice(at + from.length)}`;
+    };
+    const diffsOf = (mutated: string): string[] => diffGuideAgainstRequirements(mutated, requirements);
+
+    const rewritten = diffsOf(mutateGuide('`ai/specs/tasks/NN-slug.md`', '`ai/specs/jobs/NN-slug.md`'));
+    assert.ok(rewritten.some((diff) => diff.includes('ai/specs/jobs/NN-slug.md')), rewritten.join('\n'));
+    assert.ok(rewritten.some((diff) => diff.includes('ai/specs/tasks/NN-slug.md')), rewritten.join('\n'));
+
+    const removed = diffsOf(mutateGuide('| client | delivery-chapter / proposal | `client/delivery/<提出物名>/` / `client/proposals/<year>/NN-slug.md` | — |\n', ''));
+    assert.ok(removed.some((diff) => diff.includes('delivery-chapter / proposal')), removed.join('\n'));
   });
 
   it('節や表が消えたとき', () => {
