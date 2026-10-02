@@ -10,6 +10,7 @@ import { MAX_DOCS_PER_FOLDER } from './FolderSizeCheck.js';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { classifyLines } from '../core/LineClassifier.js';
 import { IGETA_ROOT } from '../core/Paths.js';
+import type { Role } from '../core/Role.js';
 import { matchPlacement, placementOf, ROLE_OF_KIND, roleOfPath } from '../core/Role.js';
 
 const TEMPLATES_DIR = join(IGETA_ROOT, 'templates', 'docs');
@@ -47,12 +48,6 @@ function listTemplates(): readonly Template[] {
 
 const templates = listTemplates();
 
-/** frontmatter の context の値 (無ければ undefined) */
-function contextOf(lines: readonly string[]): string | undefined {
-  const meta = parseFrontmatter(lines);
-  return meta === null ? undefined : scalar(meta.data, 'context');
-}
-
 describe('雛形の木: 要件定義書 02 §7 の置き場所と一致する', () => {
   it('雛形を持つ kind は 45 (47 kind から、雛形なしの 2 kind を除く) で、kind ごとに 1 枚', () => {
     const kinds = templates.map((template) => template.kind);
@@ -69,14 +64,6 @@ describe('雛形の木: 要件定義書 02 §7 の置き場所と一致する', 
       if (PINNED_GUIDE_KINDS.has(kind)) continue;
       const concrete = relPath.replace('__year__', '2026');
       assert.ok(matchPlacement(kind, concrete).ok, `${relPath}: kind ${kind} の置き場所ではない (${placement.patterns.join(' / ')})`);
-    }
-  });
-
-  it('まとまりのフォルダ (__context__) の下の雛形は、frontmatter に context を持つ (フォルダ名と同じ名前に替えて使う。ADR-0004 決定 1)', () => {
-    const underContext = templates.filter((template) => template.relPath.split('/').includes('__context__'));
-    assert.ok(underContext.length >= 12, `まとまりのフォルダの下の雛形が少ない (${underContext.length})`);
-    for (const template of underContext) {
-      assert.equal(contextOf(template.lines), '<context>', `${template.relPath}: frontmatter に context: <context> が無い`);
     }
   });
 
@@ -109,45 +96,49 @@ describe('雛形の木: 要件定義書 02 §7 の置き場所と一致する', 
   });
 });
 
-/** ai/ の文書の見出しに置かない語 (ADR-0002 条件 11・ADR-0010 決定 4。RoleBoundaryCheck と同じ) */
-const UNDECIDED_HEADING_RE = /未決|未確定|保留|要確認|宿題|(?<![A-Za-z])(?:tbd|todo)s?(?![A-Za-z])/i;
+/** 確定させる人ごとに、指してよい相手 (ADR-0002 条件 3: 依存は上流へ。person は person だけ、ai は person と ai、client は全部) */
+const MAY_POINT_TO: Readonly<Record<Role, readonly Role[]>> = {
+  person: ['person'],
+  ai: ['person', 'ai'],
+  client: ['person', 'ai', 'client'],
+};
 
-describe('ai の雛形: 人の決めに従う (ADR-0002 条件 3・4・11、ADR-0010 決定 3・4)', () => {
-  const aiTemplates = templates.filter((template) => placementOf(template.kind)?.role === 'ai' && !PINNED_GUIDE_KINDS.has(template.kind));
-
-  it('ai の雛形は 22 本 (Igeta の手引き 3 本を除く)', () => {
-    assert.equal(aiTemplates.length, 22);
-  });
-
-  it('見出しに「未決」「未確定」などの語の節が無い (人の決めが要るものは person の「決めてほしいこと」へ)', () => {
-    for (const template of aiTemplates) {
+describe('雛形の参照: 依存は上流へ (ADR-0002 条件 3・4)', () => {
+  it('depends_on・relates_to (雛形の id は kind 名) と本文の相対リンクは、確定させる人ごとに指してよい相手だけを指す', () => {
+    const wrong: string[] = [];
+    for (const template of templates) {
+      const role = roleOfPath(template.relPath);
+      if (role === null) continue;
+      for (const id of [...template.dependsOn, ...template.relatesTo]) {
+        const target = ROLE_OF_KIND.get(id)?.role;
+        if (target !== undefined && !MAY_POINT_TO[role].includes(target)) wrong.push(`${template.relPath}: ${role} が ${target} の kind (${id}) を指している`);
+      }
       const kinds = classifyLines(template.lines);
       template.lines.forEach((line, index) => {
-        const heading = kinds[index] === 'body' ? /^\s{0,3}#{1,6}\s+(.*?)\s*$/.exec(line)?.[1] : undefined;
-        assert.ok(heading === undefined || !UNDECIDED_HEADING_RE.test(heading), `${template.relPath}:${index + 1} 未決の節がある: ${heading}`);
+        if (kinds[index] !== 'body') return;
+        for (const link of line.matchAll(/\]\(([^)\s#]+)[^)]*\)/g)) {
+          const href = link[1] ?? '';
+          if (/^[a-z][a-z0-9+.-]*:/i.test(href)) continue;
+          const target = roleOfPath(posix.normalize(posix.join(posix.dirname(template.relPath), href)));
+          if (target !== null && !MAY_POINT_TO[role].includes(target)) wrong.push(`${template.relPath}:${index + 1} ${role} が ${target} へリンクしている: ${href}`);
+        }
       });
     }
-  });
-
-  it('depends_on・relates_to は person か ai の kind だけを指す (ai は client を指さない)', () => {
-    for (const template of aiTemplates) {
-      for (const id of [...template.dependsOn, ...template.relatesTo]) {
-        const role = ROLE_OF_KIND.get(id)?.role;
-        assert.ok(role === undefined || role === 'person' || role === 'ai', `${template.relPath}: ${role} の kind (${id}) を指している`);
-      }
-    }
+    assert.deepEqual(wrong, []);
   });
 
   it('ai/specs/ の雛形は、depends_on を辿ると person の kind に届く (まとまりの地図の id は person)', () => {
+    const aiSpecs = templates.filter((template) => template.relPath.startsWith('ai/specs/'));
+    assert.ok(aiSpecs.length > 0, 'ai/specs/ の雛形が見つからない');
     const dependsOnOf = new Map(templates.map((template) => [template.kind, template.dependsOn] as const));
     const reachesPerson = (kind: string, seen: ReadonlySet<string> = new Set()): boolean => {
       if (ROLE_OF_KIND.get(kind)?.role === 'person') return true;
       if (seen.has(kind)) return false;
       return (dependsOnOf.get(kind) ?? []).some((id) => id.startsWith('<') || reachesPerson(id, new Set([...seen, kind])));
     };
-    for (const template of aiTemplates.filter((candidate) => candidate.relPath.startsWith('ai/specs/'))) {
-      assert.ok(reachesPerson(template.kind), `${template.relPath}: depends_on を辿っても person に届かない`);
-    }
+    assert.deepEqual(
+      aiSpecs.filter((template) => !reachesPerson(template.kind)).map((template) => template.relPath),
+      [],
+    );
   });
 });
-

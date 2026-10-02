@@ -56,20 +56,16 @@ const BEFORE_MOVE: ReadonlyArray<readonly [string, string]> = [
   ['runbooks/__scenario__.md', 'runbook'],
 ];
 
-describe('legacyKindOfPath: 移す前の全部の雛形のパスが、同じ kind に解決される', () => {
-  it('一覧は 44 本で、kind は重複しない', () => {
+describe('legacyKindOfPath: 旧い構成のパスの読み方 (雛形を移す前と同じ)', () => {
+  it('移す前の全部の雛形のパス (44 本。kind は重複しない) が、同じ kind に解決される', () => {
     assert.equal(BEFORE_MOVE.length, 44);
     assert.equal(new Set(BEFORE_MOVE.map(([, kind]) => kind)).size, 44);
+    assert.deepEqual(
+      BEFORE_MOVE.filter(([path, kind]) => legacyKindOfPath(path) !== kind).map(([path, kind]) => `${path}: ${legacyKindOfPath(path) ?? 'null'} (移す前は ${kind})`),
+      [],
+    );
   });
 
-  for (const [path, kind] of BEFORE_MOVE) {
-    it(`${path} → ${kind}`, () => {
-      assert.equal(legacyKindOfPath(path), kind);
-    });
-  }
-});
-
-describe('legacyKindOfPath: 旧い構成のパスの読み方 (雛形を移す前と同じ)', () => {
   it('固定名の文書は、連番が雛形と違っても同じ kind (連番は読む順であって種類ではない)', () => {
     assert.equal(legacyKindOfPath('design/basic/99-function-list.md'), 'function-list');
     assert.equal(legacyKindOfPath('design/basic/function-list.md'), 'function-list');

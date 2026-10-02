@@ -4,6 +4,7 @@
 //   決めてほしいこと → 関連 (上流は文書、下流の欄は「(生成索引が出す)」)。
 //   HTML コメント (指示) を書かない。生成器が管理する区間 (AUTOGEN の dir-index・adr-index・tentative-index) だけが例外。
 // 型の検査が ○ の kind (src/core/Role.ts の formCheck が full) は、状態・決めてほしいこと・行数・図まで見る。
+// テストは規則ごとに 1 本。全部の雛形を回し、規則に外れた雛形を全部出す。
 import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -13,13 +14,12 @@ import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import type { FrontmatterData } from '../core/Frontmatter.js';
 import { classifyLines } from '../core/LineClassifier.js';
 import { IGETA_ROOT } from '../core/Paths.js';
-import { placementOf, ROLE_OF_KIND } from '../core/Role.js';
+import { placementOf } from '../core/Role.js';
 
 const TEMPLATES_DIR = join(IGETA_ROOT, 'templates', 'docs');
 const STATES: ReadonlySet<string> = new Set(['決定', '仮', '未決', '廃']);
 const GENERATED_REGIONS: ReadonlySet<string> = new Set(['dir-index', 'adr-index', 'tentative-index']);
 const QUESTION_HEADER = ['問い', '対象 ID', '選択肢', '決まらないと止まること'];
-const DOWNSTREAM = '(生成索引が出す)';
 
 interface Doc {
   readonly relPath: string;
@@ -43,6 +43,10 @@ function listDocs(role: 'person' | 'client'): readonly Doc[] {
 
 const personDocs = listDocs('person');
 const clientDocs = listDocs('client');
+/** kind を持つ person の雛形 (索引の README.md を除く) */
+const personKindDocs = personDocs.filter((doc) => doc.kind !== undefined);
+const formOf = (doc: Doc): string | undefined => (doc.kind === undefined ? undefined : placementOf(doc.kind)?.formCheck);
+const fullDocs = personKindDocs.filter((doc) => formOf(doc) === 'full');
 
 const splitCells = (line: string): string[] =>
   line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
@@ -92,139 +96,133 @@ const prefixesOf = (doc: Doc): readonly string[] => {
   return list.length > 0 ? list : single === undefined ? [] : [single];
 };
 
-describe('person・client の雛形: 指示の HTML コメントを書かない (ADR-0002 条件 10)', () => {
-  for (const doc of [...personDocs, ...clientDocs]) {
-    it(doc.relPath, () => {
-      const kinds = classifyLines(doc.lines);
-      doc.lines.forEach((line, index) => {
-        assert.notEqual(kinds[index], 'html-comment', `${doc.relPath}:${index + 1} HTML コメントがある: ${line.trim()}`);
-        const marker = /<!--\s*AUTOGEN:([a-z-]+):(?:start|end)/.exec(line)?.[1];
-        if (marker !== undefined) {
-          assert.ok(GENERATED_REGIONS.has(marker), `${doc.relPath}:${index + 1} 生成器が管理する区間ではない: ${marker}`);
-        }
-        // frontmatter の行末コメント (# …) も、描画では見えない書き込み口になる。指示は文書体系ガイドに置く
-        if (index > 0 && index < doc.bodyStart - 1) {
-          assert.ok(!/(^|\s)#(\s|$)/.test(line), `${doc.relPath}:${index + 1} frontmatter にコメントがある: ${line.trim()}`);
-        }
-      });
-    });
-  }
-});
+const isQuestionTable = (table: Table): boolean => table.header.join('|') === QUESTION_HEADER.join('|');
+const firstDiagramLine = (doc: Doc): number => doc.lines.findIndex((line, index) => index >= doc.bodyStart && /^```mermaid\s*$/.test(line)) + 1;
 
-describe('person の雛形: 結論は 3 行まで、ID を書かない / 下流の欄は「(生成索引が出す)」で ai・client を指さない', () => {
-  for (const doc of personDocs.filter((candidate) => candidate.kind !== undefined)) {
-    it(doc.relPath, () => {
-      const start = doc.lines.findIndex((line, index) => index >= doc.bodyStart && /^>\s*\*\*TL;DR\*\*/.test(line));
-      assert.notEqual(start, -1, `${doc.relPath}: TL;DR が無い`);
-      let end = start;
-      while ((doc.lines[end + 1] ?? '').startsWith('>')) end += 1;
-      assert.ok(end - start + 1 <= 3, `${doc.relPath}: TL;DR が ${end - start + 1} 行ある (3 行まで)`);
-      assert.ok(!/\b[A-Z][A-Z0-9]*-\d{3}\b/.test(doc.lines.slice(start, end + 1).join('\n')), `${doc.relPath}: TL;DR に ID がある`);
+/** 雛形ごとに規則を当て、外れた点を「パス: 内容」で全部並べる。空なら通る */
+function problems(docs: readonly Doc[], rule: (doc: Doc) => readonly string[]): readonly string[] {
+  return docs.flatMap((doc) => rule(doc).map((problem) => `${doc.relPath}: ${problem}`));
+}
 
-      const text = doc.lines.slice(doc.bodyStart).join('\n');
-      assert.match(text, /下流[^\n]*\(生成索引が出す\)/, `${doc.relPath}: 関連の下流が ${DOWNSTREAM} ではない`);
-
-      // person は ai・client を指さない: depends_on・relates_to (雛形の id は kind 名) と、本文のリンク
-      const referenced = [...stringList(doc.data, 'depends_on'), ...stringList(doc.data, 'relates_to')];
-      for (const id of referenced) {
-        const role = ROLE_OF_KIND.get(id)?.role;
-        assert.ok(role === undefined || role === 'person', `${doc.relPath}: ${role} の kind (${id}) を指している`);
-      }
-      for (const match of text.matchAll(/\]\(([^)]+)\)/g)) {
-        assert.ok(!/(^|\/)(ai|client)(\/|$)/.test(match[1] ?? ''), `${doc.relPath}: ai・client へのリンク: ${match[1]}`);
-      }
-    });
-  }
-});
-
-describe('person の雛形のうち、型の検査が ○ の kind: 状態・決めてほしいこと・行数・図', () => {
-  const fullDocs = personDocs.filter((doc) => doc.kind !== undefined && placementOf(doc.kind)?.formCheck === 'full');
-
-  it('○ の kind は 12 (要件・機能一覧・解決戦略・非機能・権限・データの扱い・現行構成・リスク・運用・移行・業務フロー・画面)', () => {
-    assert.deepEqual(fullDocs.map((doc) => doc.kind).sort(), [
-      'as-is-overview',
-      'business-flow',
-      'data-management',
-      'function-list',
-      'migration-plan',
-      'nonfunctional',
-      'operations',
-      'permission-matrix',
-      'requirements',
-      'risks-tech-debt',
-      'screen-spec',
-      'solution-strategy',
-    ]);
+describe('person・client の雛形: 人の型 (ADR-0002 条件 5〜7・10)', () => {
+  it('指示の HTML コメントと frontmatter の行末コメントを書かない。生成器が管理する区間 (AUTOGEN) だけが例外', () => {
+    assert.deepEqual(
+      problems([...personDocs, ...clientDocs], (doc) => {
+        const kinds = classifyLines(doc.lines);
+        return doc.lines.flatMap((line, index) => {
+          const found: string[] = [];
+          if (kinds[index] === 'html-comment') found.push(`${index + 1} 行目に HTML コメントがある: ${line.trim()}`);
+          const marker = /<!--\s*AUTOGEN:([a-z-]+):(?:start|end)/.exec(line)?.[1];
+          if (marker !== undefined && !GENERATED_REGIONS.has(marker)) found.push(`${index + 1} 行目は生成器が管理する区間ではない: ${marker}`);
+          // frontmatter の行末コメント (# …) も、描画では見えない書き込み口になる。指示は文書体系ガイドに置く
+          if (index > 0 && index < doc.bodyStart - 1 && /(^|\s)#(\s|$)/.test(line)) found.push(`${index + 1} 行目の frontmatter にコメントがある: ${line.trim()}`);
+          return found;
+        });
+      }),
+      [],
+    );
   });
 
-  for (const doc of fullDocs) {
-    const kind = doc.kind ?? '';
-    describe(`${doc.relPath} (${kind})`, () => {
-      it('決まりの表が 1 つ以上あり、行頭が自分の ID の行は、最後の列が 状態 で、値が 決定・仮・未決・廃', () => {
+  it('結論 (TL;DR) は 3 行まで、ID を書かない', () => {
+    assert.deepEqual(
+      problems(personKindDocs, (doc) => {
+        const start = doc.lines.findIndex((line, index) => index >= doc.bodyStart && /^>\s*\*\*TL;DR\*\*/.test(line));
+        if (start === -1) return ['TL;DR が無い'];
+        let end = start;
+        while ((doc.lines[end + 1] ?? '').startsWith('>')) end += 1;
+        return [
+          ...(end - start + 1 > 3 ? [`TL;DR が ${end - start + 1} 行ある (3 行まで)`] : []),
+          ...(/\b[A-Z][A-Z0-9]*-\d{3}\b/.test(doc.lines.slice(start, end + 1).join('\n')) ? ['TL;DR に ID がある'] : []),
+        ];
+      }),
+      [],
+    );
+  });
+
+  it('関連の下流の欄は「(生成索引が出す)」', () => {
+    assert.deepEqual(
+      problems(personKindDocs, (doc) => (/下流[^\n]*\(生成索引が出す\)/.test(doc.lines.slice(doc.bodyStart).join('\n')) ? [] : ['関連の下流が (生成索引が出す) ではない'])),
+      [],
+    );
+  });
+
+  it('図が要る kind (地図・まとまりの地図・業務フロー・画面・解決戦略・現行構成) は、図 (Mermaid) が最初の表より前にある', () => {
+    const diagramDocs = personKindDocs.filter((doc) => doc.kind !== undefined && placementOf(doc.kind)?.needsDiagram === true);
+    assert.ok(diagramDocs.length > 0, '図が要る kind の雛形が見つからない');
+    assert.deepEqual(
+      problems(diagramDocs, (doc) => {
+        const diagram = firstDiagramLine(doc);
+        const firstTable = tablesOf(doc)[0];
+        if (diagram === 0) return ['図が無い'];
+        return firstTable !== undefined && diagram > firstTable.line ? [`図 (${diagram} 行目) が最初の表 (${firstTable.line} 行目) より後ろにある`] : [];
+      }),
+      [],
+    );
+  });
+
+  it('型の検査が ○ でない kind (地図・まとまりの地図・機能ブリーフ・用語集) が「決めてほしいこと」を置くなら、任意の節で、表の列が同じ', () => {
+    const optionalDocs = personKindDocs.filter((doc) => formOf(doc) !== 'full' && h2sOf(doc).some((h2) => h2.text.startsWith('決めてほしいこと')));
+    assert.ok(optionalDocs.length > 0, '「決めてほしいこと」を置く雛形が見つからない');
+    assert.deepEqual(
+      problems(optionalDocs, (doc) => [
+        ...(h2sOf(doc).some((h2) => h2.text === '決めてほしいこと (任意)') ? [] : ['見出しが「決めてほしいこと (任意)」ではない']),
+        ...(tablesOf(doc).filter(isQuestionTable).length === 1 ? [] : ['決めてほしいことの表が 1 つではない']),
+        ...(h2sOf(doc).at(-1)?.text === '関連' ? [] : ['関連が最後の節ではない']),
+      ]),
+      [],
+    );
+  });
+});
+
+describe('person の雛形のうち、型の検査が ○ の kind: 状態・決めてほしいこと・行数', () => {
+  it('決まりの表が 1 つ以上あり、行頭が自分の ID の行は、最後の列が 状態 で、値が 決定・仮・未決・廃', () => {
+    assert.ok(fullDocs.length > 0, '型の検査が ○ の雛形が見つからない');
+    assert.deepEqual(
+      problems(fullDocs, (doc) => {
         const prefixes = prefixesOf(doc);
-        assert.ok(prefixes.length > 0, 'id_prefix が無い');
+        if (prefixes.length === 0) return ['id_prefix が無い'];
         const idRow = (row: readonly string[]): boolean => prefixes.some((prefix) => new RegExp(`^${prefix}-\\d{3}$`).test(row[0] ?? ''));
         const decisionTables = tablesOf(doc).filter((table) => table.rows.some(idRow));
-        assert.ok(decisionTables.length > 0, '行頭が自分の ID の表が無い');
-        for (const table of decisionTables) {
-          assert.equal(table.header[table.header.length - 1], '状態', `${table.line} 行目の表の最後の列が 状態 ではない`);
-          for (const row of table.rows.filter(idRow)) {
+        if (decisionTables.length === 0) return ['行頭が自分の ID の表が無い'];
+        return decisionTables.flatMap((table) => [
+          ...(table.header[table.header.length - 1] === '状態' ? [] : [`${table.line} 行目の表の最後の列が 状態 ではない`]),
+          ...table.rows.filter(idRow).flatMap((row) => {
             const state = row[row.length - 1] ?? '';
-            assert.ok(STATES.has(state), `${row[0]} の状態が 決定・仮・未決・廃 ではない: ${state}`);
-          }
-        }
-      });
+            return STATES.has(state) ? [] : [`${row[0]} の状態が 決定・仮・未決・廃 ではない: ${state}`];
+          }),
+        ]);
+      }),
+      [],
+    );
+  });
 
-      it('決めてほしいこと (| 問い | 対象 ID | 選択肢 | 決まらないと止まること |) があり、関連が最後の節', () => {
+  it('決めてほしいこと (| 問い | 対象 ID | 選択肢 | 決まらないと止まること |) の表が 1 つあり、その節の次が関連で、関連が最後の節', () => {
+    assert.deepEqual(
+      problems(fullDocs, (doc) => {
         const h2s = h2sOf(doc);
-        assert.equal(h2s[h2s.length - 1]?.text, '関連');
-        assert.equal(h2s[h2s.length - 2]?.text, '決めてほしいこと');
-        const questions = tablesOf(doc).filter((table) => table.header.join('|') === QUESTION_HEADER.join('|'));
-        assert.equal(questions.length, 1, '決めてほしいことの表が 1 つ');
-        assert.ok(questions[0] !== undefined && questions[0].line > (h2s[h2s.length - 2]?.line ?? 0));
-      });
+        const questions = tablesOf(doc).filter(isQuestionTable);
+        return [
+          ...(h2s.at(-1)?.text === '関連' ? [] : ['関連が最後の節ではない']),
+          ...(h2s.at(-2)?.text === '決めてほしいこと' ? [] : ['関連の前の節が「決めてほしいこと」ではない']),
+          ...(questions.length === 1 && (questions[0]?.line ?? 0) > (h2s.at(-2)?.line ?? 0) ? [] : ['決めてほしいことの表が、その節の中に 1 つだけある形ではない']),
+        ];
+      }),
+      [],
+    );
+  });
 
-      it(`line_limit は ${kind === 'requirements' ? 150 : 100} で、雛形がその行数に収まる`, () => {
-        const limit = kind === 'requirements' ? 150 : 100;
-        assert.equal(scalar(doc.data, 'line_limit'), String(limit));
+  it('line_limit は 100 (requirements は 150) で、雛形がその行数に収まる', () => {
+    assert.deepEqual(
+      problems(fullDocs, (doc) => {
+        const limit = doc.kind === 'requirements' ? 150 : 100;
         const kinds = classifyLines(doc.lines);
-        const total = doc.lines.length - (doc.lines[doc.lines.length - 1] === '' ? 1 : 0) - kinds.filter((k) => k === 'autogen').length;
-        assert.ok(total <= limit, `${total} 行 (上限 ${limit})`);
-      });
-
-      if (placementOf(kind)?.needsDiagram === true) {
-        it('図 (Mermaid) が 1 枚以上あり、最初の決まりの表より前にある', () => {
-          const diagram = doc.lines.findIndex((line, index) => index >= doc.bodyStart && /^```mermaid\s*$/.test(line));
-          assert.notEqual(diagram, -1, '図が無い');
-          const firstTable = tablesOf(doc)[0];
-          assert.ok(firstTable === undefined || diagram + 1 < firstTable.line, `図 (${diagram + 1} 行目) が最初の表 (${firstTable?.line} 行目) より後ろにある`);
-        });
-      }
-    });
-  }
+        const total = doc.lines.length - (doc.lines[doc.lines.length - 1] === '' ? 1 : 0) - kinds.filter((kind) => kind === 'autogen').length;
+        return [
+          ...(scalar(doc.data, 'line_limit') === String(limit) ? [] : [`line_limit が ${limit} ではない`]),
+          ...(total <= limit ? [] : [`${total} 行 (上限 ${limit})`]),
+        ];
+      }),
+      [],
+    );
+  });
 });
-
-describe('person の雛形のうち、図だけを検査する kind (地図・まとまりの地図) は図があり、最初の表より前にある', () => {
-  for (const doc of personDocs.filter((candidate) => candidate.kind !== undefined && placementOf(candidate.kind)?.formCheck === 'diagram')) {
-    it(`${doc.relPath} (${doc.kind})`, () => {
-      const diagram = doc.lines.findIndex((line, index) => index >= doc.bodyStart && /^```mermaid\s*$/.test(line));
-      assert.notEqual(diagram, -1, '図が無い');
-      const firstTable = tablesOf(doc)[0];
-      assert.ok(firstTable === undefined || diagram + 1 < firstTable.line);
-    });
-  }
-});
-
-describe('person の雛形のうち、型の検査が ○ でない kind: 「決めてほしいこと」を置くなら、表の列が同じ', () => {
-  for (const doc of personDocs.filter((candidate) => candidate.kind !== undefined && placementOf(candidate.kind)?.formCheck !== 'full')) {
-    const heading = h2sOf(doc).find((h2) => h2.text.startsWith('決めてほしいこと'));
-    if (heading === undefined) continue;
-    it(`${doc.relPath} (${doc.kind})`, () => {
-      assert.equal(heading.text, '決めてほしいこと (任意)');
-      const questions = tablesOf(doc).filter((table) => table.header.join('|') === QUESTION_HEADER.join('|'));
-      assert.equal(questions.length, 1, '決めてほしいことの表が 1 つ');
-      assert.equal(h2sOf(doc).at(-1)?.text, '関連');
-    });
-  }
-});
-

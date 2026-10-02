@@ -1,5 +1,5 @@
 // node --test dist/checks/TemplateSectionAudit.test.js
-// 雛形の節の監査 (docs/explanation/12-template-section-audit.md。ADR-0010 の受入条件) が、ai の雛形の全部の節を
+// 雛形の節の監査 (docs/explanation/12-template-section-audit.md。ADR-0010 の受入条件) の表 A が、ai の雛形の全部の節を
 // 1 回ずつ載せていて、答えが全部「変わらない」(「変わる」は 0 件) であること。
 // 監査の文書は、場所ではなく id で探す (Igeta 自身の docs/ を移しても、このテストは動く。REQ-302)。
 import { globSync, readFileSync } from 'node:fs';
@@ -64,7 +64,6 @@ function tableRowsOf(markdown: string, sectionNumber: number): readonly (readonl
 const sections = templateSections();
 const audit = readAudit();
 const tableA = tableRowsOf(audit, 2);
-const tableB = tableRowsOf(audit, 3);
 
 describe('雛形の節の監査: 表 A は ai の雛形の全部の節を 1 回ずつ載せている', () => {
   it('ai の雛形は 25 本 (Igeta の手引き 3 本を含む)', () => {
@@ -76,7 +75,11 @@ describe('雛形の節の監査: 表 A は ai の雛形の全部の節を 1 回�
     assert.ok(tableA.some((row) => row[0] === '全 kind' && row[1] === '関連'));
   });
 
-  it('kind ごとに、雛形の節 (関連を除く) と表 A の節が一致する (足りない・余る・重複するものが無い)', () => {
+  it('kind ごとに、雛形の節 (関連を除く) と表 A の節が一致し (足りない・余る・重複するものが無い)、答えは全部「変わらない」 (「変わる」は 0 件)', () => {
+    assert.deepEqual(
+      tableA.filter((row) => row[2] !== '変わらない').map((row) => `${row[0]} / ${row[1]}: ${row[2]}`),
+      [],
+    );
     const audited = new Map<string, string[]>();
     for (const [kind, section] of tableA.filter((row) => row[0] !== '全 kind').map((row) => [row[0] ?? '', row[1] ?? ''] as const)) {
       audited.set(kind, [...(audited.get(kind) ?? []), ...section.split(' ; ').map((name) => name.trim())]);
@@ -85,17 +88,5 @@ describe('雛形の節の監査: 表 A は ai の雛形の全部の節を 1 回�
     for (const [kind, expected] of sections) {
       assert.deepEqual([...(audited.get(kind) ?? [])].sort(), [...expected].sort(), `${kind}: 節が一致しない`);
     }
-  });
-
-  it('答えは全部「変わらない」で、「変わる」は 0 件', () => {
-    assert.equal(tableA.filter((row) => row[2] === '変わる').length, 0);
-    for (const row of tableA) assert.equal(row[2], '変わらない', `${row[0]} / ${row[1]}`);
-  });
-
-  it('TL;DR の節の数 (関連を除く) と、表 B の件数が、実際と一致する', () => {
-    const total = [...sections.values()].reduce((sum, names) => sum + names.length, 0);
-    assert.ok(audit.includes(`ai の雛形 ${sections.size} 本の全 ${total} 節`), `TL;DR の節の数が違う (実際は ${total})`);
-    assert.ok(audit.includes(`表 B・${tableB.length} 件`), `TL;DR の表 B の件数が違う (実際は ${tableB.length})`);
-    assert.ok(audit.includes(`表 B — 変わるので person へ移した値 (${tableB.length} 件)`));
   });
 });

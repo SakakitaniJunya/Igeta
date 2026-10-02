@@ -13,7 +13,7 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 
 # 雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表
 
-> **TL;DR**: ai の雛形 25 本の全 124 節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B・26 件)
+> **TL;DR**: ai の雛形の全部の節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B)
 > - 答えが「変わる」なら、その値は人の承認が要るので person の行に置き、ai の節は ID を引く (ADR-0010)
 > - 表 A は `TemplateSectionAudit.test.ts` が雛形の節と突き合わせる。雛形に節を足したら、この表に行を足す
 
@@ -105,7 +105,7 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 | human-review | 読む順 (5〜10 分) ; 機能ブリーフと未決の関門 ; 要件を直すときの手順 ; レビューシートの出し方 ; 整合レポート (`igeta analyze`) ; 段階導入・移行の実測 ; 検査の限界 (機械が見ていないもの) | 変わらない | Igeta の版に固定した手引き (利用 repo の AI は書き換えない) |
 | provenance-workflow | 手順 ; 由来を付け終えたら | 変わらない | Igeta の版に固定した手引き (利用 repo の AI は書き換えない) |
 
-## 3. 表 B — 変わるので person へ移した値 (26 件)
+## 3. 表 B — 変わるので person へ移した値
 
 ADR-0010 決定 1 の表に、節ごとに当てて見つけた値 (送信失敗の見せ方・認可の条件・障害時の縮退・合格の数値・決済情報の保存・通知先と閾値・法的表記) を足した。ID は移した先の行の接頭辞と番号の帯 (`x` は任意の数字)。
 
@@ -142,6 +142,6 @@ ADR-0010 決定 1 の表に、節ごとに当てて見つけた値 (送信失敗
 
 | 手段 | 見るもの | 落ちる条件 |
 |---|---|---|
-| `TemplateSectionAudit.test.ts` | 表 A と ai の雛形 25 本の節 | 雛形の節が表 A に無い・表 A にあって雛形に無い・「変わらない」以外の答えがある・「変わる」が 1 件でもある |
-| `TemplatesTree.test.ts` | ai の雛形の見出し | 「未決」「未確定」などの語の節がある (ADR-0002 条件 11) |
+| `TemplateSectionAudit.test.ts` | 表 A と ai の雛形の節 | 雛形の節が表 A に無い・表 A にあって雛形に無い・「変わらない」以外の答えがある・「変わる」が 1 件でもある |
+| `TemplatesInstantiation.test.ts` | 雛形の全部を置いた repo の見出し (本物の `RoleBoundaryCheck`) | ai の雛形に「未決」「未確定」などの語の節がある (ADR-0002 条件 11) |
 | `TemplatesTree.test.ts` | ai/specs/ の雛形の `depends_on` | 辿っても `person/` に届かない (ADR-0002 条件 4) |

@@ -87,13 +87,5 @@ describe('雛形の全部を実際の置き場所に置いたとき、新しい�
     assert.deepEqual(new RoleBoundaryCheck().run(ctx), [], '置き場所・まとまりの境界');
     assert.deepEqual(new FolderSizeCheck().run(ctx), [], '1 フォルダの本数');
   });
-
-  it('まとまりのフォルダの下の雛形から context を外すと、まとまりの食い違いで落ちる (このテストが context の書き忘れを見つける)', () => {
-    const root = instantiate();
-    const flow = join(root, 'docs', 'person', 'design', 'reservation', 'flows', '01-booking.md');
-    writeFileSync(flow, readFileSync(flow, 'utf8').replace(/^context:.*\n/m, ''));
-    const violations = new RoleBoundaryCheck().run({ targetRoot: root, igetaRoot: IGETA_ROOT });
-    assert.ok(violations.some((violation) => violation.message.includes('フォルダ名のまとまり (reservation)')));
-  });
 });
 
