@@ -586,3 +586,35 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     assert.ok(stderr.some((line) => /CANNOT-CHECK .*--base no-such-ref と比べられない/.test(line)), stderr.join('\n'));
   });
 });
+
+describe('テスト仕様 03 §2 否定テスト (表の形)', () => {
+  it('[TST-314] 決まりの表の途中に、行頭が縦棒でない行 (文章の行・縦棒を省いた行) を挟み、その後ろに状態が不正な行を置く / 見出しと区切りの行頭の縦棒を省いた表に、状態が不正な行を置く → どれも違反 (その行)', () => {
+    const header = ['| ID | 決まり | 状態 |', '|---|---|---|'];
+    const bare = ['ID | 決まり | 状態', '---|---|---'];
+    const bad = '| BF-130 | 隠した決まり | 確定 |';
+    const badBare = 'BF-130 | 隠した決まり | 確定';
+    const invalidState = /^BF-130 の状態が不正: 「確定」/;
+    /** [名前, 表の行, 違反になる行 (その行の文字列, 文言)] */
+    const cases: ReadonlyArray<readonly [string, readonly string[], ReadonlyArray<readonly [string, RegExp]>]> = [
+      [
+        '文章の行を挟む',
+        [...header, '| BF-101 | a | 決定 |', 'ここは文章の行', bad],
+        [['ここは文章の行', /^決まりの表の行の最初のセルが ID の形ではない: 「ここは文章の行」/], [bad, invalidState]],
+      ],
+      ['縦棒を省いた行を挟む', [...header, '| BF-101 | a | 決定 |', 'BF-125 | c | 決定', bad], [[bad, invalidState]]],
+      ['状態が不正な行の行頭の縦棒を省く', [...header, '| BF-101 | a | 決定 |', badBare], [[badBare, invalidState]]],
+      ['見出しと区切りと行の縦棒を省いた表', [...bare, 'BF-101 | a | 決定', badBare], [[badBare, invalidState]]],
+      ['見出しと区切りの行頭の縦棒だけを省いた表', [...bare, '| BF-101 | a | 決定 |', bad], [[bad, invalidState]]],
+    ];
+    for (const [name, tableLines, expected] of cases) {
+      const lines = booking([...MERMAID, ...tableLines, '']);
+      const result = runWith(BOOKING, lines);
+      assert.deepEqual(
+        result.violations.map((violation) => [posix(violation.file), violation.line]),
+        expected.map(([text]) => [`docs/${BOOKING}`, lineOf(lines, (line) => line === text)]),
+        `${name}: ${describeAll(result)}`,
+      );
+      expected.forEach(([, message], index) => assert.match(result.violations[index]?.message ?? '', message, name));
+    }
+  });
+});
