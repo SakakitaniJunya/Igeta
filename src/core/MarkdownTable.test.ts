@@ -53,11 +53,12 @@ describe('表 (テスト仕様 03 §0)', () => {
       '<!--', ...TABLE, '-->',
       '<!-- AUTOGEN:dir-index:start — generated -->', ...TABLE, '<!-- AUTOGEN:dir-index:end -->',
       ...TABLE.map((line) => `> ${line}`),
+      `> ${TABLE[0]}`, ...TABLE.slice(1), // 見出しの行だけが引用 (区切りの行からは引用でない)
       ...TABLE,
     ];
     const tables = tablesOf(lines, 4);
     assert.equal(tables.length, 1);
-    assert.equal(tables[0]?.headerLine, 27);
+    assert.equal(tables[0]?.headerLine, 31);
 
     assert.deepEqual(splitTableRow('| BF-101 | 予約は成立させない |  決定 |'), ['BF-101', '予約は成立させない', '決定']);
     assert.deepEqual(splitTableRow('| a | | c |'), ['a', '', 'c']);
