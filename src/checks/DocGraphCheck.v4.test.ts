@@ -612,6 +612,34 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     assert.ok(violations.some((line) => line.includes('[direction]')) && violations.some((line) => line.includes('[reach]')), violations.join('\n'));
   });
 
+  it('[TST-111] 決定台帳だけがある木で docs-graph を 3 回回しても終了コード 0 で、2 回目と 3 回目の生成物は変わらず、decisions/README.md は adr-index の区間を持つ。ADR を足すと、印を手で足さなくても区間の表に載る', async () => {
+    const root = makeRoot();
+    write(root, 'docs/person/decisions/01-decisions.md', DECISION_LOG);
+    /** docs/ の下の Markdown の全部。dependencies.md の生成日の行は毎日変わるので落とす */
+    const generated = (): Record<string, string> =>
+      Object.fromEntries(
+        globSync('docs/**/*.md', { cwd: root })
+          .map((path) => path.split('\\').join('/'))
+          .sort()
+          .map((path) => [path, read(root, path).replace(/^> 自動生成: .*$/m, '> 自動生成: <date>')] as const),
+      );
+    const snapshots: Array<Record<string, string>> = [];
+    for (let time = 1; time <= 3; time += 1) {
+      const written = await runCommand(new DocsGraphCommand(), root);
+      assert.equal(written.code, ExitCode.Ok, `${time} 回目: ${written.stderr.join('\n')}`);
+      snapshots.push(generated());
+    }
+    assert.deepEqual(snapshots[2], snapshots[1], '3 回目が、2 回目の生成物を変えた');
+    const readme = read(root, 'docs/person/decisions/README.md');
+    assert.ok(readme.includes('<!-- AUTOGEN:adr-index:start') && readme.includes('<!-- AUTOGEN:adr-index:end -->'), 'adr-index の区間が無い');
+
+    // ADR を 1 本足す。README.md の印は、手で足さない
+    write(root, 'docs/person/decisions/2026/0001-use-postgres.md', adr('0001', 'use-postgres', 'proposed'));
+    const added = await runCommand(new DocsGraphCommand(), root);
+    assert.equal(added.code, ExitCode.Ok, added.stderr.join('\n'));
+    assert.match(read(root, 'docs/person/decisions/README.md'), /\| \[0001\]\(2026\/0001-use-postgres\.md\) \| adr-0001-use-postgres の題名 \| proposed \|/);
+  });
+
   it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても、値のある項目の次の行の字下げした配列でも、修飾 ID を斜体・太字・インラインコードで囲んでも同じ', async () => {
     const { person, ai } = ROLE_DOCS;
     const dependsOnLine = `depends_on: [${ai.dst.id}]`;
