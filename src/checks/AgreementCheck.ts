@@ -10,7 +10,6 @@
 //
 // 指紋は基準の行 (export) が持つ正規化の版で計算して比べる (版の違いだけで再合意を出さない)。
 // 一致 = 保存値と同じ、または直近の fingerprint-rebase がその保存値に対応づけた値と同じ (ADR-0007)。
-// 由来の from は、基準より後の source-move の対応を通して今の from に直してから解決する (ADR-0006 決定 7)。
 
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -19,12 +18,10 @@ import {
   exportNormalizationVersion,
   findBaseline,
   findLedgerDirs,
-  followRedirect,
   matchesRecorded,
   readLedger,
   rebaseKey,
   rebaseTable,
-  sourceRedirects,
 } from '../core/AgreementLedger.js';
 import type { Check, CheckContext } from '../core/Check.js';
 import { computeFingerprint, isImplementedNormalizationVersion } from '../core/Fingerprint.js';
@@ -143,8 +140,7 @@ export class AgreementCheck implements Check {
         },
       ];
     }
-    // 基準より後に追記された、中身を変えない操作の記録。基準より前の行は、基準の行の値に効かない
-    const redirects = sourceRedirects(ledger.events, found.index);
+    // 基準より後に追記された fingerprint-rebase の対応表。基準より前の行は、基準の行の値に効かない
     const rebased = rebaseTable(ledger.events, found.index);
 
     const unverifiableRebaseMessage = `${relDir}: fingerprint-rebase の対応表の正規化の版が確かめられない (この Igeta より新しい版で記録された台帳か)`;
@@ -186,14 +182,12 @@ export class AgreementCheck implements Check {
       }
 
       for (const source of chapter.sources) {
-        const from = followRedirect(redirects, source.from);
-        const fromLabel = from === source.from ? source.from : `${source.from} → ${from}`;
-        const resolution = sourceIndex === null ? { kind: 'missing' as const } : resolveSource(sourceIndex, from);
+        const resolution = sourceIndex === null ? { kind: 'missing' as const } : resolveSource(sourceIndex, source.from);
         if (resolution.kind === 'missing') {
           violations.push({
             severity: 'violation',
             file: relPath,
-            message: `再合意が要る: 承認した版 ${approvedVersion} の由来が指す正本が無くなった (${fromLabel})`,
+            message: `再合意が要る: 承認した版 ${approvedVersion} の由来が指す正本が無くなった (${source.from})`,
           });
           continue;
         }
@@ -209,7 +203,7 @@ export class AgreementCheck implements Check {
           continue;
         }
         if (matched) continue;
-        const where = `${fromLabel} (${resolution.doc.relPath}:${resolution.line})`;
+        const where = `${source.from} (${resolution.doc.relPath}:${resolution.line})`;
         if (matchesRule(rules, resolution.doc, sectionHeadingAt(resolution.doc, resolution.line))) {
           violations.push({
             severity: 'violation',

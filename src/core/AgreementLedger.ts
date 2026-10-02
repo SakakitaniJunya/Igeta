@@ -5,9 +5,10 @@
 // 置き場所は「提出物のディレクトリ」(章・sidecar と同じディレクトリ) 直下。事前に manifest から
 // 一意に決められない (manifest 自身は 1 段浅いことが多い設計) ため、呼び出し側が決めて渡す。
 //
-// 行の種類は 4 つ。export (提出)・approve (承認) のほかに、中身を変えない操作の記録として
-// fingerprint-rebase (指紋の正規化の版の載せ替えの対応表)・source-move (由来の from の付け替え) を追記する。
-// どちらも過去の行は書き換えない。承認の記録ではないので、承認があるとみなす根拠にはならない。
+// 行の種類は 3 つ。export (提出)・approve (承認) のほかに、中身を変えない操作の記録として
+// fingerprint-rebase (指紋の正規化の版の載せ替えの対応表) を追記する。過去の行は書き換えない。
+// 承認の記録ではないので、承認があるとみなす根拠にはならない。行の移動の付け替えの行は、この版は持たない
+// (読むと未知の event として検査不能にする。ADR-0006 決定 7)。
 
 import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -74,18 +75,7 @@ export interface AgreementFingerprintRebaseEvent {
   readonly entries: readonly FingerprintRebaseEntry[];
 }
 
-export interface AgreementSourceMoveEvent {
-  readonly event: 'source-move';
-  readonly date: string;
-  /** 機械の操作であることを示す ('igeta')。承認の記録ではない */
-  readonly movedBy: string;
-  /** 元の `from` (`<doc-id>/PREFIX-nnn` または `<doc-id>#<見出し>`) */
-  readonly from: string;
-  /** 新しい `from` */
-  readonly to: string;
-}
-
-export type AgreementEvent = AgreementExportEvent | AgreementApproveEvent | AgreementFingerprintRebaseEvent | AgreementSourceMoveEvent;
+export type AgreementEvent = AgreementExportEvent | AgreementApproveEvent | AgreementFingerprintRebaseEvent;
 
 export function ledgerPathFor(submissionDir: string): string {
   return join(submissionDir, LEDGER_FILENAME);
@@ -215,14 +205,6 @@ function validateRebaseEvent(record: Record<string, unknown>, path: string, line
   return { event: 'fingerprint-rebase', date: record['date'], rebasedBy: record['rebasedBy'], fromVersion, toVersion, entries };
 }
 
-function validateMoveEvent(record: Record<string, unknown>, path: string, lineNo: number): AgreementSourceMoveEvent | string {
-  if (!isNonEmptyString(record['date'])) return `${path}:${lineNo} source-move に date が無い`;
-  if (!isNonEmptyString(record['movedBy'])) return `${path}:${lineNo} source-move に movedBy が無い`;
-  if (!isNonEmptyString(record['from']) || !isNonEmptyString(record['to'])) return `${path}:${lineNo} source-move は from/to が必須`;
-  if (record['from'] === record['to']) return `${path}:${lineNo} source-move の from と to が同じ`;
-  return { event: 'source-move', date: record['date'], movedBy: record['movedBy'], from: record['from'], to: record['to'] };
-}
-
 /** ledger が無いのは正当な状態 (absent)。壊れた行が 1 つでもあれば invalid (黙って読み飛ばさない)。 */
 export function readLedger(submissionDir: string): ReadLedgerResult {
   const path = ledgerPathFor(submissionDir);
@@ -247,11 +229,10 @@ export function readLedger(submissionDir: string): ReadLedgerResult {
     if (record['event'] === 'export') result = validateExportEvent(record, path, lineNo, submissionDir);
     else if (record['event'] === 'approve') result = validateApproveEvent(record, path, lineNo);
     else if (record['event'] === 'fingerprint-rebase') result = validateRebaseEvent(record, path, lineNo, submissionDir);
-    else if (record['event'] === 'source-move') result = validateMoveEvent(record, path, lineNo);
     else {
       return {
         kind: 'invalid',
-        violation: { severity: 'cannot-check', message: `${path}:${lineNo} event が export/approve/fingerprint-rebase/source-move のどれでもない` },
+        violation: { severity: 'cannot-check', message: `${path}:${lineNo} event が export/approve/fingerprint-rebase のどれでもない` },
       };
     }
     if (typeof result === 'string') return { kind: 'invalid', violation: { severity: 'cannot-check', message: result } };
@@ -303,32 +284,6 @@ export function findBaseline(events: readonly AgreementEvent[]): Baseline {
   }
   if (found === undefined) return { kind: 'export-missing', versions: [...approved] };
   return { kind: 'ok', event: found.event, index: found.index };
-}
-
-/** source-move の 1 本 (元の from → 新しい from)。 */
-export interface SourceMoveStep {
-  readonly from: string;
-  readonly to: string;
-}
-
-/**
- * afterIndex より後の source-move を、記録の順に並べたもの。followRedirect に渡して、由来の from の今の居場所を求める。
- * 基準の行より前の付け替えは、基準の行の値に効かない。
- */
-export function sourceRedirects(events: readonly AgreementEvent[], afterIndex: number): readonly SourceMoveStep[] {
-  return events.slice(afterIndex + 1).flatMap((event) => (event.event === 'source-move' ? [{ from: event.from, to: event.to }] : []));
-}
-
-/**
- * 由来の from (提出したときの居場所) を、付け替えを記録の順に当てて、今の居場所にする。
- * 付け替えは「そのとき X にいる行を Y へ」なので、id ごとに居場所を追う (居場所が X のときだけ Y へ動く)。
- * 後から別の行が X へ移ってきても (A → B のあとの C → A)、先に B へ動いた行には効かない。
- * 行の入れ替え (A → T、B → A、T → B) は、2 行とも相手のいた場所へ届く。付け替えが無ければそのまま。
- */
-export function followRedirect(moves: readonly SourceMoveStep[], from: string): string {
-  let location = from;
-  for (const move of moves) if (move.from === location) location = move.to;
-  return location;
 }
 
 /** fingerprint-rebase の対応表の 1 行を引くキー (章ファイル + 対象 + 保存値)。 */
