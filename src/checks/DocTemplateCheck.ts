@@ -290,7 +290,7 @@ function checkEars(lines: readonly string[], bodyStart: number, add: AddViolatio
 // null = arc42 の章を持たない文書 (arc42 の外側)。arc42 を書いていたら違反にする。
 // 章 2 (Constraints) は専用文書を持たない: requirements の制約節と ADR が担う。
 // ---------------------------------------------------------------------------
-const ARC42_BY_KIND = new Map<string, number | null>([
+export const ARC42_BY_KIND = new Map<string, number | null>([
   ['requirements', 1],
   ['feature-brief', 1],
   ['function-list', 1],
