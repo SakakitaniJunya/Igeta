@@ -1,14 +1,11 @@
 // node --test dist/core/Audience.test.js
-// kind → 読み手対応の正本 (AUDIENCE_KINDS, REQ-102) と、入口 3 行 (AUDIENCE_ENTRANCE, REQ-103)
-// がテンプレへ転記されていることの検査。
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+// kind → 読み手対応の正本 (AUDIENCE_KINDS, REQ-102) の検査。入口の 3 行 (AUDIENCE_ENTRANCE) の一致は、
+// InitCommand.test.ts の [TST-107]・[TST-306] が見る。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AUDIENCE_ENTRANCE, AUDIENCE_KINDS, AUDIENCE_LABEL, audienceOfKind } from './Audience.js';
+import { AUDIENCE_KINDS, AUDIENCE_LABEL, audienceOfKind } from './Audience.js';
 import type { Audience } from './Audience.js';
-import { IGETA_ROOT } from './Paths.js';
 
 describe('audienceOfKind (kind → 読み手の機械判定)', () => {
   it('正本 (AI が読む設計の正典) の kind は ai', () => {
@@ -84,25 +81,5 @@ describe('audienceOfKind (kind → 読み手の機械判定)', () => {
       labels.map((audience) => AUDIENCE_LABEL[audience]),
       ['顧客', '開発者', 'AI', '共通'],
     );
-  });
-});
-
-describe('AUDIENCE_ENTRANCE (読み手別の入口 3 行, REQ-103)', () => {
-  it('3 行で、各行が実在する kind とコマンドを指す', () => {
-    assert.equal(AUDIENCE_ENTRANCE.length, 3);
-    const [customer, developer, ai] = AUDIENCE_ENTRANCE;
-    assert.match(customer ?? '', /delivery-chapter.*igeta export/);
-    assert.match(developer ?? '', /00-map\.md.*context-map.*igeta review-sheet/);
-    assert.match(ai ?? '', /context-contract.*igeta context-files/);
-  });
-
-  it('templates/docs/README.md に転記されている (AUTOGEN 区間の外)', () => {
-    const readme = readFileSync(join(IGETA_ROOT, 'templates', 'docs', 'README.md'), 'utf8');
-    const autogenStart = readme.indexOf('AUTOGEN:dir-index:start');
-    for (const line of AUDIENCE_ENTRANCE) {
-      const at = readme.indexOf(line);
-      assert.ok(at !== -1, `templates/docs/README.md に無い: ${line}`);
-      assert.ok(at < autogenStart || autogenStart === -1, `AUTOGEN 区間内にある: ${line}`);
-    }
   });
 });

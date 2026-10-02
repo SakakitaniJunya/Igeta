@@ -17,9 +17,9 @@ owners: [eng]
   この節は AUTOGEN:dir-index 区間の外なので、索引の再生成では消えない。
 -->
 
-- **顧客** (非エンジニア): 提出物の章 (`kind: delivery-chapter` / `delivery/`) を `igeta export` で束ねた PDF だけを読む
-- **開発者**: 全体の地図 (`00-map.md`) → まとまりの地図 (`kind: context-map` / `contexts/maps/`) → `igeta review-sheet` で今回の変更のレビューシートを読む
-- **AI**: 自分のまとまりの正本と隣のまとまりの約束 (`kind: context-contract` / `contexts/contracts/`) だけを読む。対象の一覧は `igeta context-files` で得る
+- **人が決める** — `person/`: 全体の地図 (`person/design/shared/00-map.md`) から読む。決めを待つ行は決定台帳 (`person/decisions/01-decisions.md`)、変わった行は `igeta review-sheet --diff` で読む
+- **AI が使う** — `ai/`: 入口は repo 直下の `AGENTS.md`。読む範囲は `igeta context-files <まとまり>` で得る
+- **顧客に渡す** — `client/`: 提出物の章を `igeta export` で束ねた PDF を渡す
 
 ## 索引
 

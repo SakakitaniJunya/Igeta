@@ -77,13 +77,13 @@ export function audienceOfKind(kind: string | undefined): Audience {
 }
 
 /**
- * 読み手別の入口 3 行 (docs/README.md に置く案内。AUTOGEN 索引区間の外、REQ-103)。
- * 消費 repo の docs/README.md は 2 経路で生まれる (templates/docs/README.md のコピーと
- * `igeta init` が置く stub)。どちらにもこの文言を使う —— テンプレ側は転記なので、
- * 直すときはここを直してテンプレを写し直す。
+ * 入口の 3 行 (docs/README.md に置く案内。AUTOGEN 索引区間の外)。正本はここ 1 か所 (テスト仕様 06 の I11)。
+ * 消費 repo の docs/README.md は 2 経路で生まれる (templates/docs/README.md のコピーと `igeta init` が置く README)。
+ * `init` はこの定数から作り、テンプレ側は転記 —— 直すときはここを直してテンプレを写し直す
+ * (InitCommand.test.ts の [TST-107] が、3 つの一致を見る)。
  */
 export const AUDIENCE_ENTRANCE: readonly string[] = [
-  '- **顧客** (非エンジニア): 提出物の章 (`kind: delivery-chapter` / `delivery/`) を `igeta export` で束ねた PDF だけを読む',
-  '- **開発者**: 全体の地図 (`00-map.md`) → まとまりの地図 (`kind: context-map` / `contexts/maps/`) → `igeta review-sheet` で今回の変更のレビューシートを読む',
-  '- **AI**: 自分のまとまりの正本と隣のまとまりの約束 (`kind: context-contract` / `contexts/contracts/`) だけを読む。対象の一覧は `igeta context-files` で得る',
+  '- **人が決める** — `person/`: 全体の地図 (`person/design/shared/00-map.md`) から読む。決めを待つ行は決定台帳 (`person/decisions/01-decisions.md`)、変わった行は `igeta review-sheet --diff` で読む',
+  '- **AI が使う** — `ai/`: 入口は repo 直下の `AGENTS.md`。読む範囲は `igeta context-files <まとまり>` で得る',
+  '- **顧客に渡す** — `client/`: 提出物の章を `igeta export` で束ねた PDF を渡す',
 ];
