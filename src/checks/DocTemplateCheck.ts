@@ -4,6 +4,7 @@
 // kind は frontmatter が優先。無ければ置き場所から決まる。両方あって食い違う場合は違反 (置き場所と宣言のどちらかが
 // 間違っている)。新しい構成 (docs/person・ai・client の下) の置き場所は、置き場所の型 (core/Role.ts) から引く。
 // 旧い構成の置き場所は、雛形の配置ではなく固定の表 (core/LegacyTemplatePaths.ts) から引く。
+// 旧い構成の文書の必須節と行数上限も、雛形を新しい構成の木へ移す前の固定の表 (core/LegacyTemplateRules.ts) で検査する。
 //
 // 検証内容: ① frontmatter の kind がテンプレ登録済み ② テンプレの必須 H2 節が全部ある
 // ③ 「関連」節に上流・下流が 1 件以上 (表・箇条書きのどちらでもよい) ④ ID 接頭辞の形式 (PREFIX-nnn)
@@ -22,6 +23,7 @@ import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
 import type { LineKind } from '../core/LineClassifier.js';
 import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
+import { LEGACY_TEMPLATE_RULES } from '../core/LegacyTemplateRules.js';
 import { legacyKindOfPath } from '../core/LegacyTemplatePaths.js';
 import { kindOfPath, roleOfPath } from '../core/Role.js';
 
@@ -233,6 +235,17 @@ function loadTemplates(dir: string): { registry: Map<string, TemplateEntry>; err
 function kindFromPath(docRelPath: string): string | null {
   const posixPath = docRelPath.split(sep).join('/');
   return roleOfPath(posixPath) !== null ? kindOfPath(posixPath) : legacyKindOfPath(posixPath);
+}
+
+/**
+ * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。旧い構成の文書は、必須節と行数上限だけを、雛形を新しい構成の
+ * 木へ移す前の値 (core/LegacyTemplateRules.ts) にする。旧い構成の repo は、移すまでの間も既存の検査が通る (REQ-106)。
+ * ID の接頭辞・形式は雛形のまま。
+ */
+function templateFor(template: TemplateEntry, docRelPath: string): TemplateEntry {
+  if (roleOfPath(docRelPath.split(sep).join('/')) !== null) return template;
+  const legacy = LEGACY_TEMPLATE_RULES.get(template.kind);
+  return legacy === undefined ? template : { ...template, required: legacy.required, lineLimit: legacy.lineLimit };
 }
 
 // EARS (Easy Approach to Requirements Syntax): 機能要件は
@@ -858,7 +871,8 @@ export class DocTemplateCheck implements Check {
         unmanaged.push(relPath);
         continue;
       }
-      const pathKind = kindFromPath(relative(docsDir, file));
+      const docRelPath = relative(docsDir, file);
+      const pathKind = kindFromPath(docRelPath);
       const declared = scalar(meta.data, 'kind') ?? null;
       if (declared !== null && pathKind !== null && declared !== pathKind) {
         violations.push({
@@ -874,8 +888,8 @@ export class DocTemplateCheck implements Check {
         unmanaged.push(relPath);
         continue;
       }
-      const template = registry.get(kind);
-      if (template === undefined) {
+      const registered = registry.get(kind);
+      if (registered === undefined) {
         violations.push({
           severity: 'violation',
           message: `未登録の kind: ${kind} (templates/docs にテンプレを作るか kind を直す)`,
@@ -885,6 +899,7 @@ export class DocTemplateCheck implements Check {
         continue;
       }
       checkedCount += 1;
+      const template = templateFor(registered, docRelPath);
       const kinds = classifyLines(lines);
       violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind, kinds));
       resolved.push({ relPath, file, lines, meta, kind, template, kinds });
