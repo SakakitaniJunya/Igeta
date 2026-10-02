@@ -100,6 +100,37 @@ describe('DocTemplateCheck: 新しい構成のパスからの kind の解決', (
   });
 });
 
+describe('DocTemplateCheck: まとまりではない固定のフォルダ (ai/specs/tasks/・ai/specs/shared/) の contract.md', () => {
+  it('tasks の文書は contract.md という名前でも tasks。置き場所の型から引く kind と食い違わない', () => {
+    const result = analyze({
+      'ai/specs/tasks/contract.md': withKind('tasks-contract-note', 'tasks'),
+      'ai/specs/tasks/01-first.md': noKind('first-task'),
+    });
+    assert.equal(mentions(violationsOf(result, 'ai/specs/tasks/contract.md'), '食い違う'), false);
+    assert.deepEqual(result.unmanaged, []);
+    assert.equal(result.checkedCount, 2);
+  });
+
+  it('shared の contract.md は約束ではないので、kind を決められない (まとまりの contract.md は context-contract)', () => {
+    const result = analyze({
+      'ai/specs/shared/contract.md': noKind('shared-contract'),
+      'ai/specs/billing/contract.md': noKind('billing-contract'),
+    });
+    assert.deepEqual(
+      result.unmanaged.map((path) => path.split('\\').join('/')),
+      ['docs/ai/specs/shared/contract.md'],
+    );
+    assert.equal(result.checkedCount, 1);
+    assert.ok(mentions(violationsOf(result, 'ai/specs/shared/contract.md'), 'kind を決められない'));
+    assert.equal(mentions(violationsOf(result, 'ai/specs/billing/contract.md'), 'kind を決められない'), false);
+  });
+
+  it('frontmatter が context-contract でも、tasks のフォルダの contract.md は置き場所と食い違う', () => {
+    const result = analyze({ 'ai/specs/tasks/contract.md': withKind('wrong', 'context-contract') });
+    assert.ok(mentions(violationsOf(result, 'ai/specs/tasks/contract.md'), 'kind と置き場所が食い違う: frontmatter=context-contract / 配置=tasks'));
+  });
+});
+
 describe('DocTemplateCheck: 旧い構成のパスからの kind の解決 (変えない)', () => {
   it('テンプレと同じ位置の文書は、これまでどおり位置から kind が引ける', () => {
     const result = analyze({

@@ -176,6 +176,8 @@ describe('matchPlacement', () => {
     // person: まとまりの下位フォルダ
     ['business-flow', 'person/design/reservation/flows/01-booking.md', true, 'reservation'],
     ['business-flow', 'person/design/shared/flows/01-common.md', true, 'shared'],
+    // person/design/ の下には固定の tasks フォルダが無いので、tasks というまとまりも置ける
+    ['business-flow', 'person/design/tasks/flows/01-booking.md', true, 'tasks'],
     ['business-flow', 'person/design/reservation/screens/01-booking.md', false, null],
     ['business-flow', 'person/design/flows/01-booking.md', false, null],
     ['business-flow', 'person/design/reservation/flows/sub/01-booking.md', false, null],
@@ -196,9 +198,13 @@ describe('matchPlacement', () => {
     ['crosscutting', 'ai/specs/shared/01-crosscutting.md', true, 'shared'],
     ['crosscutting', 'ai/specs/billing/01-crosscutting.md', false, null],
     ['context-contract', 'ai/specs/billing/contract.md', true, 'billing'],
-    ['context-contract', 'ai/specs/shared/contract.md', true, 'shared'],
+    // 全体共通 (shared) はどのまとまりからも引けるので、約束を持たない。tasks は、まとまりではなく固定のフォルダ
+    ['context-contract', 'ai/specs/shared/contract.md', false, null],
+    ['context-contract', 'ai/specs/tasks/contract.md', false, null],
     ['context-contract', 'ai/specs/billing/api/contract.md', false, null],
     ['api-spec', 'ai/specs/billing/api/01-charge.md', true, 'billing'],
+    ['api-spec', 'ai/specs/shared/api/01-charge.md', true, 'shared'],
+    ['api-spec', 'ai/specs/tasks/api/01-charge.md', false, null],
     ['api-spec', 'ai/specs/billing/tables/01-charge.md', false, null],
     ['table-spec', 'ai/specs/billing/tables/01-charge.md', true, 'billing'],
     ['domain-model', 'ai/specs/billing/domain/01-charge.md', true, 'billing'],
@@ -209,6 +215,7 @@ describe('matchPlacement', () => {
     ['test-spec', 'ai/specs/billing/tests/01-charge.md', true, 'billing'],
     // ai: 実装タスクと手引き (15 本を超えたら、まとまりの下位フォルダへ全部移す)
     ['tasks', 'ai/specs/tasks/01-first.md', true, null],
+    ['tasks', 'ai/specs/tasks/contract.md', true, null],
     ['tasks', 'ai/specs/tasks/shared/01-first.md', true, 'shared'],
     ['tasks', 'ai/specs/tasks/billing/01-first.md', true, 'billing'],
     ['tasks', 'ai/specs/tasks/billing/deep/01-first.md', false, null],
@@ -286,11 +293,71 @@ describe('kindOfPath (パスの型から kind を引く)', () => {
     assert.equal(kindOfPath('ai/specs/shared/05-infra-design.md'), null);
   });
 
+  it('ai/specs/tasks/ の文書は、名前が contract.md でも tasks。ai/specs/shared/ の contract.md は約束ではないので決まらない', () => {
+    assert.equal(kindOfPath('ai/specs/tasks/contract.md'), 'tasks');
+    assert.equal(kindOfPath('ai/specs/tasks/api/01-charge.md'), 'tasks');
+    assert.equal(kindOfPath('ai/specs/tasks/shared/01-first.md'), 'tasks');
+    assert.equal(kindOfPath('ai/specs/shared/contract.md'), null);
+    assert.equal(kindOfPath('ai/specs/shared/api/01-charge.md'), 'api-spec');
+    assert.equal(kindOfPath('ai/specs/billing/contract.md'), 'context-contract');
+  });
+
   it('どの型にも当たらないパスは null', () => {
     assert.equal(kindOfPath('person/unknown/01-x.md'), null);
     assert.equal(kindOfPath('person/design/billing/flows/sub/01-x.md'), null);
     assert.equal(kindOfPath('design/basic/01-function-list.md'), null);
     assert.equal(kindOfPath('00-map.md'), null);
+  });
+});
+
+describe('まとまりの名前 <c> に当たらない名前', () => {
+  /** パターンの <c> を name に、他のワイルドカードを適当な値に埋めたパス */
+  const fill = (pattern: string, name: string): string =>
+    pattern.replace('<c>', name).replace('<year>', '2026').replace('<deliverable>', 'deliverable-1').replaceAll('NN', '01').replaceAll('*', 'x');
+
+  /** ai/specs/<c>/ の下に置く kind (context-contract と、api-spec・table-spec など 8 種) */
+  const perContext = [...ROLE_OF_KIND.values()].filter((placement) => placement.patterns.some((pattern) => pattern.startsWith('ai/specs/<c>/')));
+
+  it('ai/specs/<c>/ の下に置く kind は 9 種 (前提)', () => {
+    assert.deepEqual(
+      perContext.map((placement) => placement.kind).sort(),
+      ['api-spec', 'context-contract', 'domain-model', 'job', 'module-spec', 'sequence-spec', 'state-machine', 'table-spec', 'test-spec'],
+    );
+  });
+
+  it('同じ階層に固定のフォルダとして置く tasks (ai/specs/tasks/) は、どの kind の <c> にも当たらない', () => {
+    for (const placement of perContext) {
+      for (const pattern of placement.patterns) {
+        assert.deepEqual(matchPlacement(placement.kind, fill(pattern, 'tasks')), { ok: false, context: null }, `${placement.kind}: ${fill(pattern, 'tasks')}`);
+      }
+    }
+  });
+
+  it('shared は、context-contract 以外の <c> に当たる (全体共通のまとまり)。context-contract の <c> は shared も除く', () => {
+    for (const placement of perContext) {
+      for (const pattern of placement.patterns) {
+        const expected = placement.kind === 'context-contract' ? { ok: false, context: null } : { ok: true, context: 'shared' };
+        assert.deepEqual(matchPlacement(placement.kind, fill(pattern, 'shared')), expected, `${placement.kind}: ${fill(pattern, 'shared')}`);
+      }
+    }
+  });
+
+  it('それ以外の名前は、どの kind の <c> にも当たる (tasks と shared の名前の前後・似た名前を含む)', () => {
+    for (const name of ['billing', 'task', 'tasks-2', 'my-tasks', 'shared-2', 'sharedx']) {
+      for (const placement of perContext) {
+        for (const pattern of placement.patterns) {
+          assert.deepEqual(matchPlacement(placement.kind, fill(pattern, name)), { ok: true, context: name }, `${placement.kind}: ${fill(pattern, name)}`);
+        }
+      }
+    }
+  });
+
+  it('固定のフォルダが無い階層 (person/design/・ai/specs/tasks/・ai/handbook/*/) の <c> には、除く名前が無い', () => {
+    assert.deepEqual(matchPlacement('context-map', 'person/design/tasks/00-map.md'), { ok: true, context: 'tasks' });
+    assert.deepEqual(matchPlacement('feature-brief', 'person/design/tasks/features/01-x.md'), { ok: true, context: 'tasks' });
+    assert.deepEqual(matchPlacement('tasks', 'ai/specs/tasks/tasks/01-x.md'), { ok: true, context: 'tasks' });
+    assert.deepEqual(matchPlacement('guide', 'ai/handbook/how-to/tasks/01-x.md'), { ok: true, context: 'tasks' });
+    assert.deepEqual(matchPlacement('function-list', 'person/design/tasks/02-function-list.md'), { ok: true, context: 'tasks' });
   });
 });
 

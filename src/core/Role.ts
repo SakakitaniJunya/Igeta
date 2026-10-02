@@ -6,7 +6,9 @@
 //
 // パターンは docs/ からの相対パスの glob (区切りは `/`)。使える記法は次の 5 つだけ。
 //   `*`              1 階層の中の任意の文字 (`/` を含まない)
-//   `<c>`            まとまり (context) の名前 1 階層。当たった名前が context (`shared` を含む)
+//   `<c>`            まとまり (context) の名前 1 階層。当たった名前が context (`shared` を含む)。ただし、同じ階層に
+//                    固定のフォルダとして置く名前 (`ai/specs/` の下の `tasks`) は、まとまりの名前ではないので除く。
+//                    context-contract の `<c>` は `shared` も除く (KINDS_WITHOUT_SHARED_CONTEXT)
 //   `<year>`         西暦 4 桁の 1 階層 (日付のある記録)
 //   `<deliverable>`  提出物の名前 1 階層
 //   `NN`             2 桁の連番
@@ -148,7 +150,6 @@ interface CompiledPattern {
 }
 
 const WILDCARD_REGEX: ReadonlyMap<string, string> = new Map([
-  ['<c>', '(?<context>[^/]+)'],
   ['<year>', '\\d{4}'],
   ['<deliverable>', '[^/]+'],
   ['*', '[^/]*'],
@@ -157,11 +158,19 @@ const WILDCARD_REGEX: ReadonlyMap<string, string> = new Map([
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function compilePattern(source: string): CompiledPattern {
+const NO_NAMES: ReadonlySet<string> = new Set();
+
+/** `<c>` の正規表現。当たった名前は context。excluded の名前 (階層の全体が一致するもの) には当たらない */
+function contextSource(excluded: ReadonlySet<string>): string {
+  const names = [...excluded].map(escapeRegExp);
+  return `(?<context>${names.length === 0 ? '' : `(?!(?:${names.join('|')})(?:/|$))`}[^/]+)`;
+}
+
+function compilePattern(source: string, excluded: ReadonlySet<string> = NO_NAMES): CompiledPattern {
   let body = '';
   let literalLength = 0;
   for (const token of source.split(/(<c>|<year>|<deliverable>|NN|\*)/)) {
-    const wildcard = WILDCARD_REGEX.get(token);
+    const wildcard = token === '<c>' ? contextSource(excluded) : WILDCARD_REGEX.get(token);
     if (wildcard !== undefined) {
       body += wildcard;
     } else {
@@ -176,8 +185,54 @@ function compilePattern(source: string): CompiledPattern {
   };
 }
 
+const isLiteralSegment = (segment: string): boolean => !/<c>|<year>|<deliverable>|NN|\*/.test(segment);
+
+/**
+ * 固定のフォルダの名前。ワイルドカードを含まない親の下にある、ワイルドカードを含まない階層 (ファイル名を除く)。
+ * キーは親のフォルダ。`ai/specs` の下は shared と tasks (`ai/specs/shared/`・`ai/specs/tasks/`)。
+ */
+function fixedFolders(placements: readonly Placement[]): ReadonlyMap<string, ReadonlySet<string>> {
+  const folders = new Map<string, Set<string>>();
+  for (const placement of placements) {
+    for (const pattern of placement.patterns) {
+      const segments = pattern.split('/').slice(0, -1);
+      for (let i = 0; i < segments.length; i += 1) {
+        const name = segments[i] ?? '';
+        if (!segments.slice(0, i + 1).every(isLiteralSegment)) break;
+        const parent = segments.slice(0, i).join('/');
+        folders.set(parent, (folders.get(parent) ?? new Set<string>()).add(name));
+      }
+    }
+  }
+  return folders;
+}
+
+const FIXED_FOLDERS = fixedFolders(PLACEMENTS);
+
+/**
+ * `<c>` に shared を含めない kind。全体共通 (shared) はどのまとまりからも引けるので、まとまりの間の約束
+ * (contract) を持たない (ADR-0004 決定 3 の 3・4)。他の kind の `<c>` は shared を含む。
+ */
+const KINDS_WITHOUT_SHARED_CONTEXT: ReadonlySet<string> = new Set(['context-contract']);
+
+/**
+ * パターンの `<c>` が当たらない名前。同じ階層に固定のフォルダとして置く名前は、まとまりの名前ではない
+ * (`ai/specs/tasks/` は実装タスクのフォルダで、tasks というまとまりではない)。shared は固定のフォルダでも
+ * まとまり (全体共通) として使えるので除かない。ただし、KINDS_WITHOUT_SHARED_CONTEXT の kind では除く。
+ */
+function compilePlacementPatterns(placement: Placement): readonly CompiledPattern[] {
+  return placement.patterns.map((pattern) => {
+    const segments = pattern.split('/');
+    const at = segments.indexOf('<c>');
+    const excluded = new Set<string>(at === -1 ? [] : (FIXED_FOLDERS.get(segments.slice(0, at).join('/')) ?? []));
+    excluded.delete(SHARED_CONTEXT);
+    if (KINDS_WITHOUT_SHARED_CONTEXT.has(placement.kind)) excluded.add(SHARED_CONTEXT);
+    return compilePattern(pattern, excluded);
+  });
+}
+
 const COMPILED_BY_KIND: ReadonlyMap<string, readonly CompiledPattern[]> = new Map(
-  PLACEMENTS.map((placement) => [placement.kind, placement.patterns.map(compilePattern)] as const),
+  PLACEMENTS.map((placement) => [placement.kind, compilePlacementPatterns(placement)] as const),
 );
 
 /** docs/ からの相対パスの第 1 階層が person・ai・client のどれか。それ以外 (docs/ 直下の文書を含む) は null */
@@ -256,7 +311,7 @@ export const FOLDER_SIZE_EXEMPT_DIRS: readonly string[] = [
   'client/delivery/<deliverable>',
 ];
 
-const EXEMPT_DIR_PATTERNS: readonly CompiledPattern[] = FOLDER_SIZE_EXEMPT_DIRS.map(compilePattern);
+const EXEMPT_DIR_PATTERNS: readonly CompiledPattern[] = FOLDER_SIZE_EXEMPT_DIRS.map((dir) => compilePattern(dir));
 
 /** docs/ からの相対パスのフォルダが、本数の上限の対象外か */
 export function isFolderSizeExempt(docsRelDir: string): boolean {

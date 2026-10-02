@@ -168,6 +168,32 @@ describe('RoleBoundaryCheck: 新しい構成 (v4)', () => {
       ]);
     });
 
+    it('ai/specs/tasks/ の tasks の文書は contract.md という名前でも通り、context-contract は tasks と shared のフォルダには置けない', () => {
+      // tasks と shared は、まとまりではなく固定のフォルダ。tasks の文書の名前が contract.md でも、約束 (context-contract) ではない
+      write(root, 'docs/ai/specs/tasks/contract.md', doc('tasks'));
+      write(root, 'docs/ai/specs/tasks/shared/contract.md', doc('tasks'));
+      assert.deepEqual(run(root).violations, []);
+
+      // 約束を tasks や shared に置いたら落ちる。まとまり (reservation) の約束は、基準の構成にあって落ちない
+      write(root, 'docs/ai/specs/tasks/contract.md', doc('context-contract', 'tasks'));
+      write(root, 'docs/ai/specs/shared/contract.md', doc('context-contract'));
+      const result = run(root);
+      assert.deepEqual(result.files, ['docs/ai/specs/shared/contract.md', 'docs/ai/specs/tasks/contract.md']);
+      assert.match(
+        messageOf(result, 'docs/ai/specs/tasks/contract.md'),
+        /kind: context-contract の置き場所ではない \(置けるのは docs\/ai\/specs\/<c>\/contract\.md\)/,
+      );
+    });
+
+    it('ai/specs/ の shared の固定の文書は、まとまりの約束にはならず、まとまりの下位フォルダの文書は shared でも通る', () => {
+      write(root, 'docs/ai/specs/shared/03-messages.md', doc('messages'));
+      write(root, 'docs/ai/specs/shared/api/01-common.md', doc('api-spec'));
+      assert.deepEqual(run(root).violations, []);
+      // shared の約束という置き方はできない。shared の下のフォルダの api-spec が、約束に取り違えられることも無い
+      write(root, 'docs/ai/specs/shared/contract.md', doc('messages'));
+      assert.deepEqual(run(root).violations, []);
+    });
+
     it('置き場所の型の外 (まとまりの下位フォルダの名前違い・深すぎる・年でないフォルダ) は落ちる', () => {
       write(root, 'docs/person/design/reservation/workflows/01-x.md', doc('business-flow', 'reservation'));
       write(root, 'docs/person/design/reservation/flows/sub/01-x.md', doc('business-flow', 'reservation'));
