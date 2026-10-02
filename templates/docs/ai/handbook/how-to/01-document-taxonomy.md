@@ -58,7 +58,7 @@ docs/
 
 ## 2. kind の置き場所 (正本は Igeta の要件定義書 02 §7)
 
-REQ-102 の正本は Igeta の要件定義書 02 §7。この節はその転記で、`src/core/Role.ts` の表と `TaxonomyGuideSync.test.ts` が突き合わせる。`<c>` はまとまりの名前 (`shared` を含む)。
+REQ-102 の正本は Igeta の要件定義書 02 §7。この節はその転記 (正本と `src/core/Role.ts` の表は `TaxonomyGuideSync.test.ts` が突き合わせる。この節との突き合わせは未整備)。`<c>` はまとまりの名前 (`shared` を含む)。
 型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査し、(図) の kind は図も要る。図 = 図だけを検査。— = 検査しない。
 
 | 確定させる人 | kind | 置き場所 | 型の検査 |
