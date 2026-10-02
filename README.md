@@ -185,27 +185,34 @@ flowchart LR
 終了コードは `ai` = 0・`human` = 1・検査できない = 2。手元では `--base origin/<宛先>`、CI では `--ci` を付ける。
 
 ```yaml
-# .github/workflows/docs.yml の例 (pull_request で動かす)
-steps:
-  - uses: actions/checkout@v4
-    with:
-      fetch-depth: 0            # 宛先との枝分かれの点を読むため
-  - uses: actions/setup-node@v4
-    with:
-      node-version: '22'
-  - run: npm ci
-  - run: npm run docs:check
-  - name: 文書の型を検査する (宛先で 廃 だった行を消していないかも見る)
-    env:
-      BASE_REF: ${{ github.base_ref }}
-    run: npx igeta template-check --require-kind --require-human-review --base "origin/$BASE_REF"
-  - name: 人の承認が要る変更かを表示する
-    run: |
-      set +e
-      npx igeta approval-scope --ci
-      code=$?
-      if [ "$code" = "2" ]; then exit 1; fi   # 検査できないときだけ落とす
-      exit 0
+# .github/workflows/docs.yml の例。package-lock.json を commit しておく (npm install の後にできる)
+name: docs
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # 宛先との枝分かれの点を読むため
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run docs:check
+      - name: 文書の型を検査する (宛先で 廃 だった行を消していないかも見る)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: npx igeta template-check --require-kind --require-human-review --base "origin/$BASE_REF"
+      - name: 人の承認が要る変更かを表示する
+        run: |
+          set +e
+          npx igeta approval-scope --ci
+          code=$?
+          if [ "$code" = "2" ]; then exit 1; fi   # 検査できないときだけ落とす
+          exit 0
 ```
 
 **承認の強制は GitHub の設定で行う。** Igeta のコマンドや npm scripts は門にならない (変更の作者が、門のコードや設定を書き換えて自分を通せる)。
@@ -222,6 +229,7 @@ steps:
 - 保護を置けない契約の repo (`doctor` が違反を出し続ける)
 - AI が人と同じ GitHub アカウントで PR を作る運用 (作者は自分の PR を承認できない。AI 用のアカウントを分ける)
 - 持ち主が実在し、書き込み権限を持つか。ファイルを移したときに、GitHub がどちらのパスで持ち主を決めるか
+- 大文字と小文字だけが違うパス (`docs/Person/a.md`・`Agents.md` など)。見分けは大文字と小文字を区別せずに `human` と言うが、GitHub の CODEOWNERS は区別するので、持ち主が付かない
 - 上の表に無い、AI への指示や実行に効くファイル (`.mcp.json`・`.devcontainer/` など。使う repo が `humanPaths` に足す)
 - 人の決定を `ai/` に書いてしまう誤り (機械では見分けられない。評価する AI と人が見る)
 
