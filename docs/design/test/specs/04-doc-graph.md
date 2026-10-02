@@ -37,8 +37,8 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 | G1 | 向き: `person` が指してよいのは `person` だけ。`ai` は `person`・`ai`。`client` は 3 つとも。破れば違反 (参照元の行) |
 | G2 | G1 の参照は次の 4 種 ((b)〜(d) は本文の行だけを見る): (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く) (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する |
 | G3 | 届く: `ai/specs/**` の文書 (README.md を除く) は、`depends_on` を 1 回以上たどると `person/` の文書に届く。解決できない id と `external:` はたどらない。届かなければ違反 |
-| G4 | ADR の引用: status が `accepted`・`amended` の ADR (id が `adr-NNNN-…`) の番号を、`person/requirements/**` か `person/design/**` の決まりの行 (状態が `廃` の行を除く) のどれかが `ADR-NNNN` の形 (大文字。直前が英数字でなく、直後が数字でない) で持つ。無ければ違反 (ADR の 1 行目) |
-| G5 | ADR の索引は `docs/person/decisions/README.md` の `adr-index` 区間に出す。ADR があるのに README.md が無ければ違反 |
+| G4 | ADR の引用: status が `accepted`・`amended` の ADR (id が `adr-NNNN-…`) の番号を、`person/requirements/**` か `person/design/**` の決まりの行 (状態が `廃` の行を除く) のどれかが `ADR-NNNN` の形 (大文字。直前が英数字でなく、直後が数字でない) で持つ。無ければ違反 (ADR の 1 行目)。列の数が見出しと合わない行も、決まりの行として数える (列のずれは 03 の P3 が違反にする。G6 も同じ) |
+| G5 | ADR の索引は `docs/person/decisions/README.md` の `adr-index` 区間に出す。ADR があるのに README.md が無ければ違反。`docs-graph` が `decisions/README.md` を新しく作るときは、ADR が 1 本も無くても `adr-index` の区間を置く (何回回しても同じ結果になる) |
 | G6 | 仮・未決の一覧: 決定台帳の `tentative-index` 区間に、`person/` の決まりの行で状態が `仮`・`未決` のものを並べる。列は `対象 ID` (修飾 ID)・`状態`・`場所` (`[パス:行](台帳からの相対パス#L行)`)・`決まり` (2 番目のセル)。順は、docs/ からのパスの文字コード順、同じ文書の中は行の順。`ai/`・`client/` からは集めない。0 件なら `_該当なし_`。決定台帳の手書きの表 (DEC・OPEN) と「仮置き」の検査は変えない (OPEN の表は、まだどの文書の行にもなっていない論点に使う) |
 | G7 | 索引の行に読み手の表示と凡例を出さない (フォルダが示す)。`docs/person/`・`docs/ai/`・`docs/client/` の README.md を作るときの目的の行は、決まった文 (下の表)。docs/README.md の入口の 3 行は生成区間の外にあり、`docs-graph` は書き換えない |
 | G8 | G1・G3・G4 は検査 (`docs-check`) のときだけ違反にする。索引を書くとき (`docs-graph`) は警告に留め、索引を書く (違反があっても索引は再生成できる) |
@@ -73,6 +73,7 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 | TST-108 | 結合 | 置き場所 | `nonDocPaths: ["docs/demos/**"]` と `docs/demos/a.gif` | `docs-check` | 違反 0 件 | G9 |
 | TST-109 | 結合 | 境界 | A の文書が B の `contract.md` を参照 / A の地図が B の地図を参照 / `shared` の機能一覧が A の文書を参照 / ADR と手引きが A・B を参照 / `context: A` と書いた要件の文書が A の文書を参照 | `context-boundary-check` | 違反 0 件。「未割り当て」の警告が出ない | B1〜B5 |
 | TST-110 | 結合 | 読む範囲 | まとまり A・B と全体共通を持つ docs | `context-files A` (`--with-shared` の有無) / `context-size A` | どちらも B6 の範囲だけをパスの順で返す (B の文書・ADR・手引き・提出物・README.md を含まない)。`context-size` は同じ範囲の合計 | B6 |
+| TST-111 | 結合 | 索引 | 新しい構成で、`person/decisions/` に決定台帳だけがあり、ADR も README.md も無い | `docs-graph` を 3 回続けて回し、続けて ADR を 1 本足して 1 回回す | 3 回とも終了コード 0。2 回目と 3 回目で生成物が変わらず、`decisions/README.md` は `adr-index` の区間を持つ。ADR を足した後は、印を手で足さなくても区間の表に載る | G5 |
 
 ## 2. 否定テスト (必須)
 
