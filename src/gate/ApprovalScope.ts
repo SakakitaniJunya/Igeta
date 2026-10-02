@@ -6,29 +6,18 @@
 // 検査不能 (violation: cannot-check) を返す。
 //
 // 判定の表 (ADR-0008 決定 1):
-//   docs/person/**・docs/client/**                          → human (README.md は下の例外)
+//   docs/person/**・docs/client/**                          → human
 //   .github/CODEOWNERS・.github/workflows/**・.igeta.json・AGENTS.md → human (門を決めるファイル)
-//   package.json の scripts か igeta の依存が変わった / ロックファイルの igeta の行が変わった → human
 //   .igeta.json の humanPaths に当たるパス                  → human
 //   上のどれも無い                                          → ai
-// 各フォルダの README.md は、生成索引の区間だけが変わり再生成と一致するときに限り判定から除く
-// (ReadmeIndexException.ts)。除けないときは置かれたフォルダの判定に従う。
+// ファイルの中身は見ない (package.json・ロックファイル・README の生成区間も、パスだけで決める)。
 
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadIgetaConfig } from '../core/IgetaConfig.js';
 import type { Violation } from '../core/Report.js';
-import type { Change } from './GitRepo.js';
 import { GitError, GitRepo } from './GitRepo.js';
-import {
-  BINARY_LOCKFILES,
-  TEXT_LOCKFILES,
-  lockfileIgetaChanged,
-  packageJsonGateChanges,
-} from './ManifestChange.js';
-import type { PackageJsonChange } from './ManifestChange.js';
 import { matchesGlob } from './PathGlob.js';
-import { evaluateReadmeExceptions } from './ReadmeIndexException.js';
 import { ROLE_FOLDERS } from './RoleFolders.js';
 
 export type ApprovalVerdict = 'human' | 'ai';
@@ -56,8 +45,6 @@ export interface ScopeJudgement {
   readonly verdict: ApprovalVerdict;
   /** 人の承認が要る理由になったパス。`human` のとき 1 件以上、`ai` のとき空 */
   readonly reasons: readonly ScopeReason[];
-  /** README の例外で判定から除いたパス */
-  readonly excluded: readonly ScopeReason[];
   readonly changedCount: number;
   readonly base: ResolvedBase;
 }
@@ -83,15 +70,6 @@ const FIXED_RULES: ReadonlyArray<{ readonly glob: string; readonly rule: string 
   { glob: '.igeta.json', rule: GATE_FILE },
   { glob: 'AGENTS.md', rule: GATE_FILE },
 ];
-
-const PACKAGE_JSON_RULE: Readonly<Record<PackageJsonChange, string>> = {
-  scripts: 'package.json の scripts が変わった',
-  'igeta-dependency': 'package.json の igeta の依存が変わった',
-  unreadable: 'package.json の前後を比べられない (JSON が壊れている)',
-};
-
-const LOCKFILE_RULE = 'ロックファイルの igeta の行が変わった';
-const BINARY_LOCKFILE_RULE = 'バイナリのロックファイルは igeta の行が変わったか見分けられない';
 
 const cannotCheck = (message: string): { readonly violation: Violation } => ({
   violation: { severity: 'cannot-check', message },
@@ -136,22 +114,6 @@ export function pathRule(path: string, humanPaths: readonly string[]): string | 
   return null;
 }
 
-/** package.json とロックファイルは、前後の中身を比べて決める。 */
-function manifestRule(repo: GitRepo, root: string, base: string, change: Change): string | null {
-  const isPackageJson = change.path === 'package.json';
-  const isTextLockfile = TEXT_LOCKFILES.includes(change.path);
-  if (BINARY_LOCKFILES.includes(change.path)) return BINARY_LOCKFILE_RULE;
-  if (!isPackageJson && !isTextLockfile) return null;
-
-  const before = change.status === 'A' ? null : repo.showAt(base, change.path);
-  const after = change.status === 'D' ? null : readFileSync(join(root, change.path), 'utf8');
-  if (isPackageJson) {
-    const changes = packageJsonGateChanges(before, after);
-    return changes.length === 0 ? null : changes.map((c) => PACKAGE_JSON_RULE[c]).join('・');
-  }
-  return lockfileIgetaChanged(before, after) ? LOCKFILE_RULE : null;
-}
-
 const byPath = (a: ScopeReason, b: ScopeReason): number => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
 export async function judgeApprovalScope(options: ApprovalScopeOptions): Promise<ScopeResult> {
@@ -189,43 +151,16 @@ async function judge(options: ApprovalScopeOptions): Promise<ScopeResult> {
 
   const changes = repo.changes(base.commit);
   const reasons: ScopeReason[] = [];
-  const readmes: Array<{ readonly change: Change; readonly rule: string }> = [];
   for (const change of changes) {
-    const rule = pathRule(change.path, humanPaths) ?? manifestRule(repo, root, base.commit, change);
-    if (rule === null) continue;
-    // 例外を使えるのは、docs/ の下の README.md の「変更」だけ (新規・削除は区間だけの変更ではない)
-    if (change.status === 'M' && matchesGlob(change.path, 'docs/**/README.md')) readmes.push({ change, rule });
-    else reasons.push({ path: change.path, rule });
-  }
-
-  const excluded: ScopeReason[] = [];
-  if (readmes.length > 0) {
-    const outcomes = await evaluateReadmeExceptions(
-      root,
-      options.igetaRoot,
-      readmes.map(({ change }) => ({
-        path: change.path,
-        before: repo.showAt(base.commit, change.path),
-        after: readFileSync(join(root, change.path), 'utf8'),
-      })),
-    );
-    for (const { change, rule } of readmes) {
-      const outcome = outcomes.get(change.path);
-      if (outcome?.excluded === true) {
-        excluded.push({ path: change.path, rule: '生成索引の区間だけの変更で、再生成と一致した' });
-      } else {
-        reasons.push({ path: change.path, rule: `${rule}。README の例外は使えない: ${outcome?.why ?? '判定できなかった'}` });
-      }
-    }
+    const rule = pathRule(change.path, humanPaths);
+    if (rule !== null) reasons.push({ path: change.path, rule });
   }
 
   reasons.sort(byPath);
-  excluded.sort(byPath);
   return {
     judgement: {
       verdict: reasons.length > 0 ? 'human' : 'ai',
       reasons,
-      excluded,
       changedCount: changes.length,
       base,
     },
@@ -237,7 +172,7 @@ const displayPath = (path: string): string => (/[\u0000-\u001f\u007f]/.test(path
 
 /**
  * 出力。1 行目は `human` か `ai`、続けて理由になったパスの一覧 (`- <パス> (<理由>)`)。
- * 空行のあとに、起点・件数・除いた README・手元の確認用である旨の注記を付ける。
+ * 空行のあとに、起点・件数・手元の確認用である旨の注記を付ける。
  */
 export function formatJudgement(judgement: ScopeJudgement): readonly string[] {
   const { base } = judgement;
@@ -246,10 +181,6 @@ export function formatJudgement(judgement: ScopeJudgement): readonly string[] {
   lines.push('');
   lines.push(`起点: ${base.ref} との merge-base ${base.commit.slice(0, 12)}${base.mode === 'ci' ? ' (--ci)' : ''}`);
   lines.push(`変更 ${judgement.changedCount} 件のうち、人の承認が要るもの ${judgement.reasons.length} 件`);
-  if (judgement.excluded.length > 0) {
-    lines.push('判定から除いた README (生成索引の区間だけの変更で、再生成と一致した):');
-    for (const reason of judgement.excluded) lines.push(`- ${displayPath(reason.path)}`);
-  }
   if (base.mode === 'local') {
     lines.push('手元の確認用 (--base)。CI の判定は --ci が保護ブランチとの merge-base で行う');
   }

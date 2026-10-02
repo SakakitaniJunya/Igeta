@@ -6,7 +6,6 @@ import { devNull, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { DocGraphCheck } from '../checks/DocGraphCheck.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import { judgeApprovalScope } from './ApprovalScope.js';
 import type { BaseSpec, ScopeJudgement, ScopeReason, ScopeResult } from './ApprovalScope.js';
@@ -108,8 +107,6 @@ export const PACKAGE_JSON = JSON.stringify(
   2,
 );
 
-export const packageJsonWith = (overrides: Record<string, unknown>): string => JSON.stringify({ ...JSON.parse(PACKAGE_JSON), ...overrides }, null, 2);
-
 export const PACKAGE_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3', integrity = 'sha512-igeta'): string =>
   [
     '{',
@@ -133,46 +130,6 @@ export const PACKAGE_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3', in
     `      "resolved": "https://registry.npmjs.org/typescript/-/typescript-${typescript}.tgz",`,
     '      "dev": true',
     '    }',
-    '  }',
-    '}',
-    '',
-  ].join('\n');
-
-export const YARN_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3'): string =>
-  [
-    '# yarn lockfile v1',
-    '',
-    '"igeta@github:SakakitaniJunya/Igeta#v0.4.0":',
-    '  version "0.4.0"',
-    `  resolved "https://codeload.github.com/SakakitaniJunya/Igeta/tar.gz/${igetaSha}"`,
-    '',
-    'typescript@^5.9.3:',
-    `  version "${typescript}"`,
-    '',
-  ].join('\n');
-
-export const PNPM_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3'): string =>
-  [
-    "lockfileVersion: '9.0'",
-    '',
-    'importers:',
-    '  .:',
-    '    devDependencies:',
-    '      igeta:',
-    '        specifier: github:SakakitaniJunya/Igeta#v0.4.0',
-    `        version: https://codeload.github.com/SakakitaniJunya/Igeta/tar.gz/${igetaSha}`,
-    '      typescript:',
-    '        specifier: ^5.9.3',
-    `        version: ${typescript}`,
-    '',
-  ].join('\n');
-
-export const BUN_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3'): string =>
-  [
-    '{',
-    '  "packages": {',
-    `    "igeta": ["igeta@github:SakakitaniJunya/Igeta#${igetaSha}", {}, "x"],`,
-    `    "typescript": ["typescript@${typescript}", "", {}, "sha512-ts"],`,
     '  }',
     '}',
     '',
@@ -227,15 +184,6 @@ export function withOrigin(): { readonly repo: TestRepo; readonly origin: string
   repo.git('remote', 'add', 'origin', origin);
   repo.git('push', '-q', 'origin', 'main');
   return { repo, origin };
-}
-
-export const doc = (id: string, title: string, kind = 'requirements', arc42 = 1): string =>
-  ['---', `id: ${id}`, `title: ${title}`, 'type: design', `kind: ${kind}`, `arc42: ${arc42}`, 'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', `# ${title}`, '', `> **TL;DR**: ${title}`, ''].join('\n');
-
-/** 作業ツリーの docs/ から索引 (README・dependencies.md) を再生成する。 */
-export async function generate(repo: TestRepo): Promise<void> {
-  const violations = await new DocGraphCheck({ write: true }).run({ targetRoot: repo.root, igetaRoot: IGETA_ROOT });
-  assert.deepEqual(violations, []);
 }
 
 export const judge = (repo: TestRepo, base: BaseSpec = local()): Promise<ScopeResult> =>

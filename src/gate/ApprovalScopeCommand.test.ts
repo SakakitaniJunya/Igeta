@@ -12,7 +12,7 @@ import { IGETA_ROOT } from '../core/Paths.js';
 import { judgeApprovalScope } from './ApprovalScope.js';
 import { ApprovalScopeCommand } from './ApprovalScopeCommand.js';
 import type { BaseSpec } from './ApprovalScope.js';
-import { BASE, TestRepo, append, cannotCheckMessage, doc, generate, gitIn, judge, judged, local, packageJsonWith, pathsOf, tempDir, withOrigin } from './ApprovalScopeFixture.js';
+import { BASE, TestRepo, append, cannotCheckMessage, gitIn, judge, judged, local, pathsOf, tempDir, withOrigin } from './ApprovalScopeFixture.js';
 
 describe('起点: --ci は CI の保護ブランチとの merge-base、得られなければ検査不能', () => {
   const ci = (branch = 'main'): BaseSpec => ({ mode: 'ci', branch });
@@ -164,14 +164,14 @@ describe('igeta approval-scope コマンド: 出力と終了コード', () => {
   it('human: 1 行目は human・続けて理由のパス・終了コード 1 (Violation)', async () => {
     const repo = await featureRepo((r) => {
       append(r, 'docs/person/requirements/01-requirements.md');
-      r.write('package.json', packageJsonWith({ scripts: { build: 'x' } }));
+      append(r, 'AGENTS.md');
       append(r, 'src/index.ts');
     });
     const result = await run(['--base', 'main'], repo.root);
     assert.equal(result.code, ExitCode.Violation);
     assert.equal(result.stdout[0], 'human');
-    assert.equal(result.stdout[1], '- docs/person/requirements/01-requirements.md (docs/person/ の文書)');
-    assert.equal(result.stdout[2], '- package.json (package.json の scripts が変わった)');
+    assert.equal(result.stdout[1], '- AGENTS.md (門を決めるファイル)');
+    assert.equal(result.stdout[2], '- docs/person/requirements/01-requirements.md (docs/person/ の文書)');
     assert.equal(result.stdout[3], '');
     assert.match(result.stdout[5] ?? '', /^変更 3 件のうち、人の承認が要るもの 2 件$/);
     assert.deepEqual(result.stderr, []);
@@ -190,21 +190,6 @@ describe('igeta approval-scope コマンド: 出力と終了コード', () => {
     assert.equal(inCi.stdout[0], 'ai');
     assert.ok(!inCi.stdout.some((line) => line.includes('手元の確認用')));
     assert.match(inCi.stdout.join('\n'), /起点: origin\/main との merge-base [0-9a-f]{12} \(--ci\)\n/);
-  });
-
-  it('除いた README は「判定から除いた README」として出す', async () => {
-    const repo = TestRepo.create({ 'docs/person/requirements/01-requirements.md': doc('requirements', '要件') });
-    await generate(repo);
-    repo.commit('生成');
-    repo.write('docs/person/requirements/02-second.md', doc('second', '2 本目'));
-    repo.commit('古い索引');
-    repo.branch();
-    await generate(repo);
-    repo.commit('再生成');
-    const result = await run(['--base', 'main'], repo.root);
-    assert.equal(result.code, ExitCode.Ok);
-    assert.equal(result.stdout[0], 'ai');
-    assert.match(result.stdout.join('\n'), /判定から除いた README \(生成索引の区間だけの変更で、再生成と一致した\):\n- docs\/person\/requirements\/README\.md/);
   });
 
   it('検査不能: 標準出力は空・標準エラーに CANNOT-CHECK・終了コード 2', async () => {
