@@ -52,7 +52,7 @@ relates_to: []
 | REQ-201 | 置き場所の判定に使う入力は frontmatter の `kind` と `context` だけ。`audience` などの新しいフィールドを足さない | [要件定義書](./01-requirements.md) REQ-201 | 検査・索引・全利用 repo の frontmatter |
 | REQ-202 | 新しい kind を足さない。区別は置き場所で担う | 同 REQ-403 | kind の登録 (テンプレ・検査) |
 | REQ-203 | ディレクトリ名は ASCII 小文字。日本語の表示名 (人 / AI / 顧客) は表示にだけ使う | URL・glob にそのまま使える形にする | 正本・テンプレ・入口の文言 |
-| REQ-204 | 本書と改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) | 本書・templates/docs/** |
+| REQ-204 | 本書と改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) | 本書・templates/docs/** |
 | REQ-205 | 検査の強さは、構成の実在と Igeta の版だけで決め、利用 repo の設定では変えられない | CEO 指摘「直したらルールとして設定して」 | CI の既定の経路 |
 
 ## 4. 前提

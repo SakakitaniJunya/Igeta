@@ -8,7 +8,7 @@ import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
  * 網羅 (REQ→FN→タスク) ・未決 (OPEN) ・曖昧語・ローカル採番の重複を、人が 45 ファイルを読まずに
  * 穴を見るための 1 枚にする。書き込みは一切しない。
  *
- * Spec: templates/docs/guides/03-human-review.md §5
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md §5
  */
 
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage', '.git']);

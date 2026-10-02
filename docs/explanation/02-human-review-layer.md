@@ -23,8 +23,8 @@ relates_to: []
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [文書体系](../../templates/docs/guides/01-document-taxonomy.md) | — |
-| 下流 | `templates/docs/00-map.md` / `templates/docs/01-decisions.md` / [人間レビュー層の読み方](../../templates/docs/guides/03-human-review.md) | — |
+| 上流 (depends_on) | [文書体系](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) | — |
+| 下流 | `templates/docs/person/design/shared/00-map.md` / `templates/docs/person/decisions/01-decisions.md` / [人間レビュー層の読み方](../../templates/docs/ai/handbook/how-to/03-human-review.md) | — |
 
 ## 1. 背景 (実例 4 件。ある SaaS 案件の設計で実際に起きた)
 

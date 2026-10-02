@@ -23,7 +23,7 @@ relates_to: [coverage-and-learning, agreement-ledger]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [読み手別の入口](./03-audience-layers.md) | — |
-| 下流 | [網羅・学習](./05-coverage-and-learning.md) / [合意台帳](./08-agreement-ledger.md) / `templates/docs/delivery/__chapter__.md` | — |
+| 下流 | [網羅・学習](./05-coverage-and-learning.md) / [合意台帳](./08-agreement-ledger.md) / `templates/docs/client/delivery/__deliverable__/__chapter__.md` | — |
 
 ## 1. 由来 (provenance) の形 — 本文の外のどちらにするか
 
@@ -34,7 +34,7 @@ relates_to: [coverage-and-learning, agreement-ledger]
 
 ## 2. kind と置き場所
 
-`client-chapter` は新設せず、既存 `delivery-chapter` (`templates/docs/delivery/__chapter__.md`、PR #11) に統一する。
+`client-chapter` は新設せず、既存 `delivery-chapter` (`templates/docs/client/delivery/__deliverable__/__chapter__.md`、PR #11) に統一する。
 由来・台帳も提出物と同じ場所に置く: 実案件は `docs/delivery/<提出物名>/` (例: `docs/delivery/design-document/`) の
 ように deliverable.json より 1 段深いことが多い。kind 解決 (ディレクトリ完全一致 + ファイル名ワイルドカード) は
 `docs/delivery/` 直下の 1 段しか登録されておらず、この 1 段深い置き場所は**パスから kind を決められない**。
