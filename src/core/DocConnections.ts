@@ -7,8 +7,7 @@
 //   G4 ADR の引用: accepted・amended の ADR の番号を、person/requirements・person/design の決まりの行が引く
 //   G6 仮・未決: person/ の決まりの行で、状態が 仮・未決 のもの (決定台帳の一覧が使う)
 
-import { collectStateRows, PENDING_STATES, STATE_ABOLISHED } from './DecisionRows.js';
-import type { StateRow } from './DecisionRows.js';
+import { collectDecisionRows, STATE_ABOLISHED } from './DecisionRows.js';
 import { parseFrontmatter, scalar } from './Frontmatter.js';
 import type { FrontmatterReference } from './DocReferences.js';
 import { resolveRepoPath, scanBodyReferences, scanFrontmatterReferences } from './DocReferences.js';
@@ -164,11 +163,12 @@ export function checkReachability(docs: readonly ConnectionDoc[], resolve: Resol
 // ---------------------------------------------------------------------------
 // 決まりの行 (G4・G6)
 // ---------------------------------------------------------------------------
+// 決まりの行の読み方 (表・ID の形・決まりの表・決まりの行) は、core/MarkdownTable.ts と core/DecisionRows.ts の 1 か所ずつ
+// (テスト仕様 03 の §0)。ここでは読み方を持たず、`collectDecisionRows(findTables(…))` をそのまま使う。列の数が見出しと
+// 合わない行も、決まりの行として数える (列のずれは 03 の P3 が違反にする。04 の G4・G6)。
 
-/** 決まりの行 (決まりの表のデータの行で、最初のセルが ID の形のもの)。表の外の行は含めない */
-function decisionRowsOf(doc: ConnectionDoc): readonly StateRow[] {
-  return collectStateRows(findTables(doc.lines, doc.kinds, doc.bodyStart)).filter((row) => row.id !== null);
-}
+/** 決定台帳の一覧に載せる状態 (人の決めを待つもの)。決まりの行の状態は 決定・仮・未決・廃 */
+const PENDING_STATES: readonly string[] = ['仮', '未決'];
 
 /** `ADR-0003` の形 (大文字。直前が英数字でなく、直後が数字でない)。`ADR-0003・0006` の `0006` と、小文字の `adr-0003` は引かない */
 const ADR_CITATION_RE = /(?<![A-Za-z0-9])ADR-(\d{4})(?!\d)/g;
@@ -194,7 +194,7 @@ export function checkAdrCitations(docs: readonly ConnectionDoc[], adrs: readonly
   for (const doc of docs) {
     const isDecisionArea = doc.docsRel.startsWith('person/requirements/') || doc.docsRel.startsWith('person/design/');
     if (!isDecisionArea || isGeneratedIndex(doc.docsRel)) continue;
-    for (const row of decisionRowsOf(doc)) {
+    for (const row of collectDecisionRows(findTables(doc.lines, doc.kinds, doc.bodyStart))) {
       if (row.state === STATE_ABOLISHED) continue;
       for (const matched of row.cells.join(' ').matchAll(ADR_CITATION_RE)) cited.add(matched[1] ?? '');
     }
@@ -236,8 +236,8 @@ export function collectPendingRows(docs: readonly ConnectionDoc[]): readonly Pen
   for (const doc of docs) {
     if (roleOfPath(doc.docsRel) !== 'person' || isGeneratedIndex(doc.docsRel)) continue;
     const docId = doc.id ?? (doc.docsRel.split('/').pop() ?? doc.docsRel).replace(/\.md$/, '');
-    for (const row of decisionRowsOf(doc)) {
-      if (row.id === null || !PENDING_STATES.includes(row.state)) continue;
+    for (const row of collectDecisionRows(findTables(doc.lines, doc.kinds, doc.bodyStart))) {
+      if (!PENDING_STATES.includes(row.state)) continue;
       rows.push({ docsRel: doc.docsRel, path: doc.path, line: row.line, qualifiedId: `${docId}/${row.id}`, state: row.state, text: row.cells[1] ?? '' });
     }
   }

@@ -542,13 +542,20 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     assert.deepEqual(result.violations, [], result.detail);
   });
 
-  it('[TST-103] accepted の ADR は要件の決まりの行が ADR-0003 と引いていれば通り、proposed・superseded の ADR は引かれていなくてよい', async () => {
+  it('[TST-103] accepted の ADR は要件の決まりの行が ADR-0003 と引いていれば通り (列の数が見出しと合わない行も決まりの行)、proposed・superseded の ADR は引かれていなくてよい', async () => {
     const root = makeRoot();
     writeBase(root);
     writeRequirements(root, ['0003']);
+    // 列の数が見出しと合わない行も、決まりの行として数える (列のずれは 03 の P3 が違反にする)。ADR-0006 は、この行からだけ引く
+    write(
+      root,
+      'docs/person/requirements/02-extra-column.md',
+      doc('requirements-extra', 'requirements', { arc42: 1, body: [...decisionTable([['REQ-101', '別の決まり', '決定']]), '| REQ-102 | ADR-0006 の決定を反映する | 決定 | 余分な列 |'] }),
+    );
     write(root, 'docs/person/decisions/2026/0003-cache.md', adr('0003', 'cache', 'accepted'));
     write(root, 'docs/person/decisions/2026/0004-search.md', adr('0004', 'search', 'proposed'));
     write(root, 'docs/person/decisions/2026/0005-old.md', adr('0005', 'old', 'superseded'));
+    write(root, 'docs/person/decisions/2026/0006-queue.md', adr('0006', 'queue', 'accepted'));
     const result = await checkedAfterConverge(root);
     assert.deepEqual(result.violations, [], result.detail);
   });
