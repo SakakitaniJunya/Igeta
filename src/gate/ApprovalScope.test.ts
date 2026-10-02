@@ -191,4 +191,14 @@ describe('approval-scope: 否定テスト', () => {
     // 枝分かれの点から HEAD までには旧いパス (ai) しか出ないが、merge した結果の差分には移した先 (person) が出る
     assertHuman(await scope(['--ci'], repo.root, CI), ['docs/person/design/shared/x.md']);
   });
+
+  it('[TST-316] 宛先の humanPaths がフォルダ名だけ (src/core) でも、配下の src/core/a.ts を変えると human (理由に glob)', async () => {
+    const repo = TestRepo.create({ ...BASE_FILES, '.igeta.json': JSON.stringify({ humanPaths: ['src/core'] }) });
+    repo.branch();
+    repo.touch('src/core/a.ts');
+    repo.commit();
+    const run = await scope(['--base', 'main'], repo.root);
+    assertHuman(run, ['src/core/a.ts']);
+    assert.equal(reasons(run)[0]?.rule, 'humanPaths: src/core');
+  });
 });

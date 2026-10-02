@@ -54,8 +54,8 @@ export interface IgetaConfig {
   readonly reagreementRules: readonly ReagreementRule[];
   /**
    * 人の承認が要る追加のパス (glob、repo のルートからの相対)。足すことだけができ、外す設定は無い
-   * (ADR-0008 決定 1)。既定は空。glob の書き方は src/gate/PathGlob.ts (大文字小文字は区別せず、
-   * ディレクトリ名だけを書いても配下に当たる)。
+   * (ADR-0008 決定 1)。既定は空。glob の書き方と当たり方は src/gate/PathGlob.ts (テスト仕様 01 の R4・R5): 大文字小文字は
+   * 区別せず、フォルダ名だけを書いても (`src/core`)、その配下に当たる。
    */
   readonly humanPaths: readonly string[];
   /**
