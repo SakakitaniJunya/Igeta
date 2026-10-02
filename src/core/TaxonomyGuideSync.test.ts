@@ -2,8 +2,8 @@
 // 置き場所の正本 (要件定義書 02 §7 の表) と、コード側の表 (Role.ts の ROLE_OF_KIND) の突き合わせ
 // (ADR-0005 決定 2、ADR-0009)。表を直したのにコードを直し忘れた (逆も) と、ここで落ちる。
 //
-// 突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 図が要る kind / 置き場所のフォルダ /
-// 「15 本の対象外」/ 1 フォルダの上限 / 区分ごとの kind の数。
+// 突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 図が要る kind / 置き場所のフォルダと
+// ファイル名 / 「15 本の対象外」/ 1 フォルダの上限 / 区分ごとの kind の数。
 // 文書体系ガイド (templates/docs/guides/01-document-taxonomy.md) は、新しい表をまだ持たないので対象に含めない。
 //
 // 表の読み方は diffAgainstRoleTable に閉じ、表を書き換えた文書 (kind の削除・確定させる人の入れ替え・フォルダの
@@ -133,6 +133,30 @@ function codeDirs(kind: string, rowDirs: ReadonlySet<string>): Set<string> {
   return dirs;
 }
 
+/**
+ * 置き場所の欄のファイル名。連番つきの任意の名前 (`NN-slug.md`・`NNNN-slug.md`・`NN-*.md`) と、フォルダだけの指定
+ * (末尾が `/`) は「任意の .md」(`*.md`)、`NN-<kind>.md` は行の kind ごとの名前、それ以外 (`00-map.md`・`contract.md`・
+ * `NN-glossary.md` など) はそのまま。相対の補足 (`how-to/02-implementation-order.md`) のファイル名も読む。
+ * フォルダを含まないコードスパン (置かない kind の欄の `AGENTS.md`) は、置き場所ではないので読まない。
+ */
+function tableNames(placeCell: string, kinds: readonly string[]): Set<string> {
+  const names = new Set<string>();
+  for (const span of placeCell.matchAll(/`([^`]*\/[^`]*)`/g)) {
+    for (const expanded of expandBraces(span[1] ?? '')) {
+      const name = expanded.endsWith('/') ? '*.md' : posix.basename(expanded);
+      if (/^(?:NN|NNNN)-(?:slug|\*)\.md$/.test(name)) names.add('*.md');
+      else if (name === 'NN-<kind>.md') kinds.forEach((kind) => names.add(`NN-${kind}.md`));
+      else names.add(name);
+    }
+  }
+  return names;
+}
+
+/** コード側のパターンのファイル名 (分けた先も同じ名前なので、そのまま) */
+function codeNames(kinds: readonly string[]): Set<string> {
+  return new Set(kinds.flatMap((kind) => (ROLE_OF_KIND.get(kind)?.patterns ?? []).map((pattern) => posix.basename(pattern))));
+}
+
 const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => a.size === b.size && [...a].every((item) => b.has(item));
 const show = (items: Iterable<string>): string => `{${[...items].sort().join(', ')}}`;
 
@@ -204,6 +228,12 @@ function diffAgainstRoleTable(markdown: string): string[] {
         if (!sameSet(expected, actual)) diffs.push(`${kind}: 置き場所のフォルダが違う (表 ${show(expected)} / コード ${show(actual)})`);
       });
     }
+
+    // 置き場所のファイル名 (固定の名前は、その名前でしか置けない kind の目印になる)
+    const kindNames = row.kinds.map((entry) => entry.kind);
+    const names = tableNames(row.placeCell, kindNames);
+    const codeSide = codeNames(kindNames);
+    if (!sameSet(names, codeSide)) diffs.push(`${label}: 置き場所のファイル名が違う (表 ${show(names)} / コード ${show(codeSide)})`);
   }
 
   // 区分ごとの kind の数 (「計 47 kind (person 18・ai 27・client 2)」)
@@ -315,6 +345,16 @@ describe('TaxonomyGuideSync: 表を書き換えると、食い違いを見つけ
     assert.ok(found(mutate('`ai/specs/<c>/contract.md`', '`ai/specs/contracts/<c>.md`'), 'context-contract: 置き場所のフォルダが違う'));
     assert.ok(found(mutate('`person/decisions/01-decisions.md`', '`person/decisions/ledger/01-decisions.md`'), 'decision-log: 置き場所のフォルダが違う'));
     assert.ok(found(mutate('`ai/specs/shared/NN-*.md` (固定番号)', '`ai/specs/common/NN-*.md` (固定番号)'), '置き場所のフォルダが違う'));
+  });
+
+  it('置き場所のファイル名の取り違え (固定の名前・kind を含む名前・任意の名前の追加)', () => {
+    assert.ok(found(mutate('`person/design/shared/00-map.md`', '`person/design/shared/01-map.md`'), '置き場所のファイル名が違う'));
+    assert.ok(found(mutate('`ai/specs/<c>/contract.md`', '`ai/specs/<c>/interface.md`'), 'context-contract: 置き場所のファイル名が違う'));
+    assert.ok(found(mutate('`person/design/shared/NN-glossary.md`', '`person/design/shared/NN-terms.md`'), 'glossary: 置き場所のファイル名が違う'));
+    assert.ok(found(mutate('`person/design/<c>/NN-<kind>.md`', '`person/design/<c>/NN-slug.md`'), '置き場所のファイル名が違う'));
+    assert.ok(found(mutate('`person/decisions/01-decisions.md`', '`person/decisions/01-ledger.md`'), 'adr / decision-log: 置き場所のファイル名が違う'));
+    assert.ok(found(mutate('`how-to/02-implementation-order.md`', '`how-to/03-implementation-order.md`'), '置き場所のファイル名が違う'));
+    assert.ok(found(mutate('`person/requirements/01-requirements.md`', '`person/requirements/00-requirements.md`'), 'requirements: 置き場所のファイル名が違う'));
   });
 
   it('15 本の対象外・1 フォルダの上限・kind の数', () => {
