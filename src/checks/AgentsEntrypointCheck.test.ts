@@ -179,6 +179,13 @@ describe('AgentsEntrypointCheck: 構成の検出', () => {
     assert.deepEqual(run(root), []);
   });
 
+  it('docs/common/ だけがある repo (person・ai・client が無い) も、新しい構成ではないので何も出さない', () => {
+    const root = mkdtempSync(join(tmpdir(), 'igeta-agents-'));
+    workspaces.push(root);
+    write(root, 'docs/common/01-glossary.md', '---\nkind: glossary\n---\n# 用語集\n');
+    assert.deepEqual(run(root), []);
+  });
+
   it('docs/ が無ければ検査不能', () => {
     const root = mkdtempSync(join(tmpdir(), 'igeta-agents-'));
     workspaces.push(root);

@@ -227,9 +227,10 @@ export function kindOfPath(docsRelPath: string): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * v4 = person・ai・client のどれかがある (新しい構成)。v3 = それが無く docs/common/ がある。
- * それ以外 (docs/ が無い場合を含む) は legacy (旧い構成)。docs/common/ と person・ai・client が併存する
- * v3 の repo は v4 になる —— 版を上げた瞬間に新しい構成と判定され、docs/common/ は違反として出る (ADR-0003)。
+ * v4 = person・ai・client のどれかがある (新しい構成。ADR-0002 の条件がすべて即違反になる)。
+ * v3 = それが無く docs/common/ がある。それ以外 (docs/ が無い場合を含む) は legacy (旧い構成)。
+ * docs/common/ と person・ai・client が併存する v3 の repo は v4 になる —— 版を上げた瞬間に新しい構成と判定され、
+ * docs/common/ は違反として出る (ADR-0003)。v3 と legacy は、どちらも新しい構成の検査の対象外 (ADR-0005 決定 1)。
  */
 export type Layout = 'v4' | 'legacy' | 'v3';
 

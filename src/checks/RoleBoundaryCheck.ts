@@ -8,9 +8,10 @@
 //   - docs/ 直下に、person・ai・client のどれにも属さない文書がある
 //   - docs/common/ が残っている (v3 の構成)
 //   - ai/ の文書の見出しに、未決を表す語を含む節がある (未決は person の「決めてほしいこと」に集める)
-// 旧い構成の repo では違反を出さず、「移行してください」という警告を 1 件だけ出す。Igeta の版が
-// LEGACY_LAYOUT_VIOLATION_FROM_MAJOR 以上になったら、同じ指摘を違反にする (検査の強さは構成の実在と Igeta
-// の版だけで決まり、利用 repo の設定では変えられない。ADR-0005)。
+// 旧い構成 (person・ai・client が 1 つも無い) の repo では違反を出さず、「移行してください」という警告を 1 件だけ
+// 出す。Igeta の版が LEGACY_LAYOUT_VIOLATION_FROM_MAJOR 以上になったら、同じ指摘を違反にする (検査の強さは構成の
+// 実在と Igeta の版だけで決まり、利用 repo の設定では変えられない。ADR-0005)。旧い構成に docs/common/ だけがある
+// repo は、docs/common/ の残存 (違反 1 件) に加えて、旧い構成としての扱いを受ける (ADR-0005 決定 1 の表の 2 行とも当たる)。
 //
 // docs/ 直下の生成索引 (README.md・dependencies.md) と各フォルダの README.md は対象外。
 // `.igeta.json` の nonDocPaths (ADR-0003 決定 6) は読まない: IgetaConfig が持たないため、docs/ 直下の
@@ -57,16 +58,19 @@ export class RoleBoundaryCheck implements Check {
     if (!isDirectory(docsDir)) {
       return [{ severity: 'cannot-check', message: `docs が無い: ${relative(ctx.targetRoot, docsDir)}` }];
     }
-    if (detectLayout(docsDir) === 'legacy') return this.#legacy(ctx);
+    const layout = detectLayout(docsDir);
+    const common: Violation[] = isDirectory(join(docsDir, 'common'))
+      ? [
+          {
+            severity: 'violation',
+            message: 'docs/common/ が残っている (v3 の構成)。文書を person・ai・client のどれかへ移す',
+            file: relative(ctx.targetRoot, join(docsDir, 'common')),
+          },
+        ]
+      : [];
+    if (layout !== 'v4') return [...common, ...this.#legacy(ctx)];
 
-    const violations: Violation[] = [];
-    if (isDirectory(join(docsDir, 'common'))) {
-      violations.push({
-        severity: 'violation',
-        message: 'docs/common/ が残っている (v3 の構成)。文書を person・ai・client のどれかへ移す',
-        file: relative(ctx.targetRoot, join(docsDir, 'common')),
-      });
-    }
+    const violations: Violation[] = [...common];
     for (const rel of listDocFiles(docsDir)) {
       if (isGeneratedIndex(rel)) continue;
       const abs = join(docsDir, rel);

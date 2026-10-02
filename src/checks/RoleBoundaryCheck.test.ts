@@ -110,6 +110,13 @@ function run(root: string, igetaRoot: string = IGETA_ROOT): RunResult {
   };
 }
 
+/** 版だけを持つ Igeta の package.json の置き場所 */
+function igetaRootWithVersion(version: string): string {
+  const igetaRoot = makeRoot();
+  write(igetaRoot, 'package.json', JSON.stringify({ name: 'igeta', version }));
+  return igetaRoot;
+}
+
 const messageOf = (result: RunResult, file: string): string =>
   result.violations.find((violation) => (violation.file ?? '').split('\\').join('/') === file)?.message ?? '';
 
@@ -279,12 +286,23 @@ describe('RoleBoundaryCheck: 新しい構成 (v4)', () => {
       assert.match(result.violations[0]?.message ?? '', /docs\/common\/ が残っている/);
     });
 
-    it('docs/common/ だけが残っている (person・ai・client が無い) repo も違反になる', () => {
+    it('docs/common/ だけが残っている (person・ai・client が無い) repo は、docs/common/ の違反 1 件と、旧い構成としての警告だけ', () => {
       const v3 = makeRoot();
       write(v3, 'docs/common/01-a.md', doc('glossary'));
       write(v3, 'docs/product/01-requirements.md', doc('requirements'));
-      const result = run(v3);
-      assert.deepEqual(result.files, ['docs/common', 'docs/product/01-requirements.md']);
+      write(v3, 'docs/notes.md', '# メモ\n');
+      const result = run(v3, igetaRootWithVersion('0.4.0'));
+      assert.deepEqual(result.files, ['docs/common']);
+      assert.deepEqual(result.warnings, [LEGACY_LAYOUT_MESSAGE]);
+    });
+
+    it('docs/common/ だけが残っている repo は、旧い構成を違反にする版では、違反が 2 件 (docs/common/ と旧い構成)', () => {
+      const v3 = makeRoot();
+      write(v3, 'docs/common/01-a.md', doc('glossary'));
+      const result = run(v3, igetaRootWithVersion(`${LEGACY_LAYOUT_VIOLATION_FROM_MAJOR}.0.0`));
+      assert.equal(result.violations.length, 2);
+      assert.deepEqual(result.files, ['docs/common', '']);
+      assert.ok(result.violations[1]?.message.startsWith(LEGACY_LAYOUT_MESSAGE));
       assert.deepEqual(result.warnings, []);
     });
 
@@ -391,13 +409,6 @@ describe('RoleBoundaryCheck: 旧い構成 (legacy)', () => {
     write(root, 'docs/adr/0001-x.md', doc('adr'));
     write(root, 'docs/notes.md', '# メモ\n');
     write(root, 'docs/design/detail/01-open.md', doc('crosscutting', null, ['## 未決事項']));
-  }
-
-  /** 版だけを持つ Igeta の package.json の置き場所 */
-  function igetaRootWithVersion(version: string): string {
-    const igetaRoot = makeRoot();
-    write(igetaRoot, 'package.json', JSON.stringify({ name: 'igeta', version }));
-    return igetaRoot;
   }
 
   it('違反は 1 件も出さず、移行を促す警告を 1 件だけ出す', () => {

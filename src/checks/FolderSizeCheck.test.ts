@@ -154,12 +154,19 @@ describe('FolderSizeCheck: 新しい構成 (v4)', () => {
   });
 });
 
-describe('FolderSizeCheck: 旧い構成 (legacy)', () => {
+describe('FolderSizeCheck: 旧い構成 (legacy) と docs/common/ だけの構成 (v3)', () => {
   it('旧い構成の repo は、何本あっても何も出さない', () => {
     const root = makeRoot();
     fill(root, 'design/basic', 33);
     fill(root, 'adr', 35);
     fill(root, '', 20);
+    assert.deepEqual(run(root), []);
+  });
+
+  it('docs/common/ だけがある repo (person・ai・client が無い) も、新しい構成ではないので何も出さない', () => {
+    const root = makeRoot();
+    fill(root, 'common', 30);
+    fill(root, 'design/basic', 33);
     assert.deepEqual(run(root), []);
   });
 });

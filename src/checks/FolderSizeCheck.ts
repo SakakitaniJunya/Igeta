@@ -26,7 +26,7 @@ export class FolderSizeCheck implements Check {
     if (!isDirectory(docsDir)) {
       return [{ severity: 'cannot-check', message: `docs が無い: ${relative(ctx.targetRoot, docsDir)}` }];
     }
-    if (detectLayout(docsDir) === 'legacy') return [];
+    if (detectLayout(docsDir) !== 'v4') return [];
 
     const counts = new Map<string, number>();
     for (const rel of listDocFiles(docsDir)) {

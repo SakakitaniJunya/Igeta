@@ -53,7 +53,7 @@ export class AgentsEntrypointCheck implements Check {
     if (!isDirectory(docsDir)) {
       return [{ severity: 'cannot-check', message: `docs が無い: ${relative(ctx.targetRoot, docsDir)}` }];
     }
-    if (detectLayout(docsDir) === 'legacy') return [];
+    if (detectLayout(docsDir) !== 'v4') return [];
     return [...this.#checkAgents(ctx.targetRoot), ...this.#checkCodeowners(ctx.targetRoot)];
   }
 
