@@ -95,8 +95,8 @@ function writeV4Tree(root: string): void {
   v4Doc(root, 'person/design/payment/flows/01-refund.md', 'payment-refund', 'business-flow', ['context: payment']);
   v4Doc(root, 'ai/specs/shared/01-crosscutting.md', 'crosscutting', 'crosscutting');
   v4Doc(root, 'ai/specs/reservation/contract.md', 'reservation-contract', 'context-contract', ['context: reservation']);
-  // A の文書は B の約束を参照する。B の約束は、A の読む範囲に入る
-  v4Doc(root, 'ai/specs/reservation/api/01-reserve.md', 'reservation-api', 'api-spec', ['context: reservation', 'depends_on: [payment-contract]']);
+  // A の文書は B の約束を参照する。B の約束は、A の読む範囲に入る。まとまりはフォルダ名から導く (B1) ので、frontmatter に context を書かない
+  v4Doc(root, 'ai/specs/reservation/api/01-reserve.md', 'reservation-api', 'api-spec', ['depends_on: [payment-contract]']);
   v4Doc(root, 'ai/specs/payment/contract.md', 'payment-contract', 'context-contract', ['context: payment']);
   v4Doc(root, 'ai/specs/payment/api/01-pay.md', 'payment-api', 'api-spec', ['context: payment']);
   // 読む範囲の外

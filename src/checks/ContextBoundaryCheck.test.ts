@@ -296,8 +296,8 @@ describe('ContextBoundaryCheck: 新しい構成 (docs/person・ai・client)', ()
   });
 
   it('[TST-109] A の文書が B の約束を・A の地図が B の地図を・shared の機能一覧が A の文書を参照し、ADR・手引きは境界の外で、context: A の要件は A の文書を参照できる (違反も未割り当ての警告も無い)', () => {
-    // A の文書 → B の約束 (と、shared の文書)
-    v4Doc(root, 'ai/specs/reservation/api/01-reserve.md', 'reservation-api', 'api-spec', ['context: reservation', 'depends_on: [payment-contract, crosscutting]']);
+    // A の文書 → B の約束 (と、shared の文書)。まとまりはフォルダ名から導く (B1) ので、この文書は frontmatter に context を書かない
+    v4Doc(root, 'ai/specs/reservation/api/01-reserve.md', 'reservation-api', 'api-spec', ['depends_on: [payment-contract, crosscutting]']);
     // A の地図 → B の地図
     v4Doc(root, 'person/design/reservation/00-map.md', 'reservation-map', 'context-map', ['context: reservation'], ['[決済の地図](../payment/00-map.md)']);
     // shared の機能一覧 → A の文書 (本文のリンクと修飾 ID)

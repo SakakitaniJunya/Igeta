@@ -663,15 +663,17 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     }
   });
 
-  it('[TST-305] accepted の ADR が、どこからも・ai の文書からだけ・廃の行からだけ・関連の表や地の文からだけ・ADR-0003・0006 の 0006・小文字の adr-0003 でしか引かれていなければ違反', async () => {
+  it('[TST-305] accepted の ADR が、どこからも・ai の文書からだけ・廃の行からだけ・関連の表や地の文からだけ・ADR-0003・0006 の 0006・小文字の adr-0003 でしか引かれていなければ違反 (amended の ADR も同じ)', async () => {
     const adrFile = (number: string, slug: string): string => `docs/person/decisions/2026/${number}-${slug}.md`;
     const aiRows = decisionTable([['AI-001', 'ADR-0003 に従う', '決定']]);
     const cases: ReadonlyArray<{
       readonly name: string;
       readonly adrNumber: string;
       readonly requirements: readonly string[];
+      readonly status?: string;
       readonly extra?: () => (root: string) => void;
     }> = [
+      { name: 'amended の ADR がどこからも引かれない', adrNumber: '0003', status: 'amended', requirements: decisionTable([['REQ-001', '別の決まり', '決定']]) },
       { name: 'どこからも引かれない', adrNumber: '0003', requirements: decisionTable([['REQ-001', '別の決まり', '決定']]) },
       {
         name: 'ai の文書からだけ',
@@ -698,11 +700,11 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
       { name: 'ADR-0003・0006 の 0006', adrNumber: '0006', requirements: decisionTable([['REQ-001', 'ADR-0003・0006 を反映する', '決定']]) },
       { name: '小文字の adr-0003', adrNumber: '0003', requirements: decisionTable([['REQ-001', 'adr-0003 を反映する', '決定']]) },
     ];
-    for (const { name, adrNumber, requirements, extra } of cases) {
+    for (const { name, adrNumber, requirements, status = 'accepted', extra } of cases) {
       const root = makeRoot();
       writeBase(root);
       write(root, 'docs/person/requirements/01-requirements.md', doc('requirements', 'requirements', { arc42: 1, body: requirements }));
-      write(root, adrFile(adrNumber, 'cache'), adr(adrNumber, 'cache', 'accepted'));
+      write(root, adrFile(adrNumber, 'cache'), adr(adrNumber, 'cache', status));
       extra?.()(root);
       const found = tagged(await checkedAfterConverge(root), 'adr');
       assert.equal(found.length, 1, `${name}: ${found.map((violation) => violation.message).join(' / ')}`);
