@@ -78,7 +78,7 @@ const OUTSIDE_DOCS_LABELS = [
   '.igeta-version',
   '.claude/ (配下全体)',
   'AGENTS.md (どの階層)',
-  'CLAUDE.md',
+  'CLAUDE.md (どの階層)',
 ];
 
 describe('AgentsEntrypointCheck: AGENTS.md', () => {

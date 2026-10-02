@@ -111,7 +111,7 @@ const I1_FILES: readonly string[] = [
 /** 利用 repo の docs/ には置かない kind (手引き 3 本と、設計を始めるときに作る実装順序) */
 const KINDS_NOT_PLACED: readonly string[] = ['document-taxonomy', 'human-review', 'provenance-workflow', 'implementation-order'];
 
-/** ADR-0008 決定 1 の代表のパス (テスト仕様 01 の TST-103 の 11 本と、person・client の文書) */
+/** ADR-0008 決定 1 の代表のパス (テスト仕様 01 の TST-103 の 11 本と、person・client の文書、下位の CLAUDE.md) */
 const DECISION_1_PATHS: readonly string[] = [
   'docs/person/requirements/01-requirements.md',
   'docs/person/design/shared/00-map.md',
@@ -128,6 +128,7 @@ const DECISION_1_PATHS: readonly string[] = [
   'AGENTS.md',
   'docs/ai/AGENTS.md',
   'CLAUDE.md',
+  'apps/web/CLAUDE.md',
   '.claude/settings.json',
 ];
 
@@ -204,7 +205,7 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     assert.match(region[0] ?? '', /未決/);
   });
 
-  it('[TST-103] CODEOWNERS: init の直後に AgentsEntrypointCheck を当てると、決定 1 の代表のパスの全部に @lead が付く (下位の docs/ai/AGENTS.md を含む)', async () => {
+  it('[TST-103] CODEOWNERS: init の直後に AgentsEntrypointCheck を当てると、決定 1 の代表のパスの全部に @lead が付く (下位の docs/ai/AGENTS.md・apps/web/CLAUDE.md を含む)', async () => {
     const root = makeRoot();
     assert.equal((await runInit(root, ['--owner', OWNER])).code, ExitCode.Ok);
     assert.deepEqual(new AgentsEntrypointCheck().run({ targetRoot: root, igetaRoot: IGETA_ROOT }), []);
@@ -214,10 +215,10 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
       assert.notEqual(pathRule(path, []), null, `${path} は決定 1 のパスではない (見分けの正本 pathRule が human にしない)`);
       assert.deepEqual(lastMatchingEntry(entries, path)?.owners, [OWNER], `${path} の持ち主`);
     }
-    // 検査が持ち主を確かめる代表のパスの全部にも @lead が付き、下位の AGENTS.md を含む。どれも決定 1 のパス (見分けの正本と食い違わない)。
-    // docs/person・client の代表は、置き場所の表の場所
+    // 検査が持ち主を確かめる代表のパスの全部にも @lead が付き、下位の AGENTS.md・CLAUDE.md を含む。どれも決定 1 のパス
+    // (見分けの正本と食い違わない)。docs/person・client の代表は、置き場所の表の場所
     const representatives = CODEOWNERS_TARGETS.flatMap((target) => target.paths);
-    assert.ok(representatives.includes('docs/ai/AGENTS.md'), '下位の AGENTS.md が代表のパスに無い');
+    for (const lower of ['docs/ai/AGENTS.md', 'apps/web/CLAUDE.md']) assert.ok(representatives.includes(lower), `下位のパスが代表のパスに無い: ${lower}`);
     for (const path of representatives) {
       assert.deepEqual(lastMatchingEntry(entries, path)?.owners, [OWNER], `代表の ${path} の持ち主`);
       assert.notEqual(pathRule(path, []), null, `代表の ${path} が、見分けの正本で human にならない`);

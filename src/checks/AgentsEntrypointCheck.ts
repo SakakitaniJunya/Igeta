@@ -57,7 +57,8 @@ const wholeFolder = (dir: string): string =>
  * CODEOWNERS に置く行の順。フォルダは、配下の文書の代表のパスで見る: `docs/person/` は置き場所の表 (core/Role.ts) の、
  * 要件・全体共通・まとまり・決定を 1 つずつ、`docs/client/` は提出物・提案書。一部のフォルダだけを守る書き方
  * (`docs/person/design/` だけを守る行など) は、代表のパスのどれかに当たらず落ちる。`.github/` は、直下の CODEOWNERS と、
- * 下のフォルダ (workflows・actions)。AGENTS.md はどの階層にも当たる名前なので、下位の docs/ai/AGENTS.md も見る。
+ * 下のフォルダ (workflows・actions)。AGENTS.md・CLAUDE.md はどの階層にも当たる名前なので、下位の docs/ai/AGENTS.md・
+ * apps/web/CLAUDE.md も見る (ADR-0008 決定 1・承認の見分け)。
  */
 export const CODEOWNERS_TARGETS: readonly CodeownersTarget[] = [
   {
@@ -89,7 +90,7 @@ export const CODEOWNERS_TARGETS: readonly CodeownersTarget[] = [
   { label: '.igeta-version', pattern: '/.igeta-version', paths: ['.igeta-version'] },
   { label: '.claude/ (配下全体)', pattern: '/.claude/', paths: ['.claude/settings.json'], hint: wholeFolder('.claude') },
   { label: 'AGENTS.md (どの階層)', pattern: 'AGENTS.md', paths: ['AGENTS.md', 'docs/ai/AGENTS.md'] },
-  { label: 'CLAUDE.md', pattern: 'CLAUDE.md', paths: ['CLAUDE.md'] },
+  { label: 'CLAUDE.md (どの階層)', pattern: 'CLAUDE.md', paths: ['CLAUDE.md', 'apps/web/CLAUDE.md'] },
 ];
 
 /**
