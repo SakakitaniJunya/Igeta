@@ -262,6 +262,46 @@ describe('computeFingerprint v3: リンクの行き先を文書 id で数える'
     assert.equal(normalizeForFingerprint('[x](<../req/a.md>)', 3, rewrite), '[x](<id:doc-a>)');
   });
 
+  it('フェンスの判定は元の行で行う (v2 と同じ): 字下げが 4 文字以上・全角空白が続く後の ``` は元の本文ではフェンスでないので、その後のリンクも直す', () => {
+    const root = makeRoot();
+    writeDoc(root, 'docs/req/a.md', 'doc-a');
+    const rewrite = rewriterIn(root, 'docs/design/x.md');
+    const link = '[x](../req/a.md)';
+    // v2 は字下げを 1 文字に詰める。詰めた後の行はフェンスに見えるが、元の行は字下げのコードブロックの一部でフェンスではない
+    assert.equal(normalizeForFingerprint(['    ```', link].join('\n'), 3, rewrite), [' ```', '[x](id:doc-a)'].join('\n'), '半角 4 文字');
+    assert.equal(normalizeForFingerprint(['　　　　```', link].join('\n'), 3, rewrite), [' ```', '[x](id:doc-a)'].join('\n'), '全角空白 4 文字');
+    assert.equal(normalizeForFingerprint(['  　　```', link].join('\n'), 3, rewrite), [' ```', '[x](id:doc-a)'].join('\n'), '半角と全角の混在で 4 文字');
+    assert.equal(normalizeForFingerprint(['    ~~~', link].join('\n'), 3, rewrite), [' ~~~', '[x](id:doc-a)'].join('\n'), '~~~ も同じ');
+  });
+
+  it('フェンスの判定は元の行で行う: 字下げのコードブロックの中の ``` が対になっていなくても、後のリンクを直す。対になっていれば、間のリンクも元の判定に従って直す', () => {
+    const root = makeRoot();
+    writeDoc(root, 'docs/req/a.md', 'doc-a');
+    const rewrite = rewriterIn(root, 'docs/design/x.md');
+    // 開きだけ (4 文字の字下げ) → 元の本文ではどこもフェンスの外
+    const opened = ['1. 手順', '    ```sh', '    [a](../req/a.md)', '2. 次', '[b](../req/a.md)'].join('\n');
+    assert.equal(normalizeForFingerprint(opened, 3, rewrite), ['1. 手順', ' ```sh', ' [a](id:doc-a)', '2. 次', '[b](id:doc-a)'].join('\n'));
+    // 字下げの対 (リスト内のフェンス) も、v2 と同じくフェンスとは見ない: 間のリンクも直す。後ろのリンクは必ず直る
+    const paired = ['1. 手順', '    ```md', '    [a](../req/a.md)', '    ```', '2. 次', '[b](../req/a.md)'].join('\n');
+    assert.equal(normalizeForFingerprint(paired, 3, rewrite), ['1. 手順', ' ```md', ' [a](id:doc-a)', ' ```', '2. 次', '[b](id:doc-a)'].join('\n'));
+  });
+
+  it('元の行がフェンス (字下げ 0〜3 文字) なら、その中のリンクは直さず、閉じた後は直す。~~~ も同じ', () => {
+    const root = makeRoot();
+    writeDoc(root, 'docs/req/a.md', 'doc-a');
+    const rewrite = rewriterIn(root, 'docs/design/x.md');
+    for (const marker of ['```', '   ```', '~~~', '   ~~~']) {
+      const text = [marker, '[a](../req/a.md)', marker, '[b](../req/a.md)'].join('\n');
+      assert.equal(normalizeForFingerprint(text, 3, rewrite), [marker, '[a](../req/a.md)', marker, '[b](id:doc-a)'].join('\n'), JSON.stringify(marker));
+    }
+  });
+
+  it('v2 は 1 行を 1 行へ写す (v3 が元の行とフェンスの判定を位置で対応させる前提)。改行は CRLF・CR・LF のどれでも同じ', () => {
+    for (const text of ['', 'a', 'a\n', '\n\n', 'a\r\nb\rc\nd', '    ```\n[a](b)\n    ```', '　　　　```\r\n本文  \r\n```', '| a |  b |\n|---|---|\n', '```\n\n```\n']) {
+      assert.equal(normalizeForFingerprint(text, 2).split('\n').length, text.split(/\r\n|\r|\n/).length, JSON.stringify(text));
+    }
+  });
+
   it('行き先を直さない関数を渡すと、どんな本文でも v2 と同じ (リンクの探索が行を壊さない)', () => {
     const tricky = [
       '[', ']', '[a](', '[a]()', '[a](b', '[](x.md)', '![](x.md)', '[a](b)(c)', '[[a](b)](c)', '[a](b "t" )', '[a](<b c>)', '[a]( b )',

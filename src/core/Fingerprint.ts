@@ -18,7 +18,8 @@
 // v3 = v2 の後に 1 手順
 // 6. コードフェンスの外の Markdown リンク `[文字](行き先)` の行き先を、呼び出し側が渡す関数で直す
 //    (core/LinkTable.ts。指す文書の frontmatter `id` に置き換える)。文書を動かすとリンクの相対パスは
-//    変わるが、リンク先が同じ文書なら指紋は変わらない。インラインコードの中はリンクではないので対象外
+//    変わるが、リンク先が同じ文書なら指紋は変わらない。インラインコードの中はリンクではないので対象外。
+//    フェンスの判定は v2 と同じく元の行で行う (詰めた後の行ではない)
 //
 // 正規化ルールを変えたら CURRENT_NORMALIZATION_VERSION を上げ、古い版の実装は IMPLEMENTED_VERSIONS に残す。
 // sidecar の各エントリはこの版を保存しており、保存した版の実装があれば `provenance-check` はその版で計算して
@@ -116,13 +117,19 @@ function rewriteLineLinks(line: string, rewrite: DestinationRewriter): string {
   return result + line.slice(cursor);
 }
 
-/** v3 の正規化。v2 の出力に、コードフェンスの外のリンクの行き先を直す手順を足す (フェンスの判定は v2 と同じ規則)。 */
+/**
+ * v3 の正規化。v2 の出力に、コードフェンスの外のリンクの行き先を直す手順を足す。
+ * フェンスの判定は v2 と同じく**元の行**で行う。v2 は字下げの空白を 1 文字に詰めるので、詰めた後の行で判定すると、
+ * 元の本文ではフェンスでない行 (字下げが 4 文字以上・全角空白が続く後の ```) までフェンスに見えて、それより後のリンクを直せない。
+ * v2 は 1 行を 1 行へ写す (行数が変わらない) ので、行の位置で元の行と対応させる。
+ */
 function normalizeV3(text: string, rewrite: DestinationRewriter): string {
+  const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   let inFence = false;
   return normalizeV2(text)
     .split('\n')
-    .map((line) => {
-      if (FENCE_TOGGLE_RE.test(line)) {
+    .map((line, i) => {
+      if (FENCE_TOGGLE_RE.test(rawLines[i] ?? '')) {
         inFence = !inFence;
         return line;
       }
