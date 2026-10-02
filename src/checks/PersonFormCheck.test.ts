@@ -1,27 +1,20 @@
 // node --test dist/checks/PersonFormCheck.test.js
-// 人の文書 (docs/person/・docs/client/) の、型・量・書き込み口・廃の行の検査。
-// 一時ディレクトリに 3 区分・複数のまとまりの構成を作り、正しい構成が通ること、違反がそれぞれ検出されること
-// (隣の正しい文書は落ちないこと)、旧い構成では何も出ないことを確かめる。廃の行は、本物の git repo で起点と比べる。
+// テスト仕様 03 (docs/design/test/specs/03-person-form.md) の表の行ごとに 1 本。名前の先頭が行の ID。
+// 1 つの行に複数の場合があるときは、配列を回す 1 本にする。一時ディレクトリに 3 区分・複数のまとまりの docs を作り、
+// 廃の行は本物の git repo で、宛先のブランチと HEAD の枝分かれの点と比べる。
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { after, beforeEach, describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { TemplateCheckCommand } from '../cli/commands/checkCommands.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
-import { DocTemplateCheck } from './DocTemplateCheck.js';
+import { PLACEMENTS } from '../core/Role.js';
 import type { PersonFormTemplate } from './PersonFormCheck.js';
-import {
-  CONTEXT_CHAR_LIMIT,
-  PERSON_LINE_LIMIT,
-  PersonFormCheck,
-  REQUIREMENTS_LINE_LIMIT,
-  SHARED_CHAR_LIMIT,
-  SIZE_LIMIT_VIOLATION_FROM_MAJOR,
-} from './PersonFormCheck.js';
+import { PersonFormCheck } from './PersonFormCheck.js';
 
 const workspaces: string[] = [];
 
@@ -35,75 +28,24 @@ function makeRoot(): string {
   return root;
 }
 
-function write(root: string, relPath: string, content: string | readonly string[]): void {
+function write(root: string, relPath: string, content: readonly string[]): void {
   const target = join(root, relPath);
   mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, typeof content === 'string' ? content : `${content.join('\n')}\n`);
+  writeFileSync(target, `${content.join('\n')}\n`);
 }
 
-/** 版だけを持つ Igeta の package.json の置き場所 (合計字数の警告・違反の切替は、この版で決まる) */
+/** 版だけを持つ Igeta の package.json の置き場所 (合計字数の警告と違反の切替は、この版で決まる) */
 function igetaRootWithVersion(version: string): string {
   const igetaRoot = makeRoot();
-  write(igetaRoot, 'package.json', JSON.stringify({ name: 'igeta', version }));
+  writeFileSync(join(igetaRoot, 'package.json'), JSON.stringify({ name: 'igeta', version }));
   return igetaRoot;
 }
-
-/** 警告の段階 (メジャー版 0) の Igeta */
-const WARNING_STAGE_IGETA = igetaRootWithVersion('0.4.0');
-
-/** 雛形の id_prefix。○ の kind は 1 つ以上要る */
-const TEMPLATES: ReadonlyMap<string, PersonFormTemplate> = new Map([
-  ['requirements', { idPrefixes: ['REQ'] }],
-  ['function-list', { idPrefixes: ['FN'] }],
-  ['solution-strategy', { idPrefixes: ['SS'] }],
-  ['nonfunctional', { idPrefixes: ['NFR'] }],
-  ['permission-matrix', { idPrefixes: ['PRM'] }],
-  ['data-management', { idPrefixes: ['DM'] }],
-  ['as-is-overview', { idPrefixes: ['ARC'] }],
-  ['risks-tech-debt', { idPrefixes: ['RSK'] }],
-  ['operations', { idPrefixes: ['OPS'] }],
-  ['migration-plan', { idPrefixes: ['MIG'] }],
-  ['business-flow', { idPrefixes: ['BF'] }],
-  ['screen-spec', { idPrefixes: ['SCR'] }],
-  ['decision-log', { idPrefixes: ['DEC', 'OPEN'] }],
-]);
 
 // ---------------------------------------------------------------------------
 // 文書の部品
 // ---------------------------------------------------------------------------
 
-/** frontmatter 11 行 (extra が無いとき) の見出しつきの文書。本文の行は lines */
-function titled(id: string, kind: string, lines: readonly string[], extra: readonly string[] = []): string[] {
-  return [
-    '---',
-    `id: ${id}`,
-    `title: ${id} の題名`,
-    'type: design',
-    `kind: ${kind}`,
-    ...extra,
-    'status: active',
-    'owners: [product]',
-    '---',
-    '',
-    `# ${id}`,
-    '',
-    ...lines,
-  ];
-}
-
-const MERMAID: readonly string[] = ['```mermaid', 'flowchart LR', '  A[予約] --> B[確定]', '```', ''];
-
-/** 決まりの表。行は [番号, 決まり, 状態] */
-function decisions(prefix: string, rows: ReadonlyArray<readonly [number, string, string]>): string[] {
-  return [
-    '| ID | 決まり | 状態 |',
-    '|---|---|---|',
-    ...rows.map(([n, text, state]) => `| ${prefix}-${String(n).padStart(3, '0')} | ${text} | ${state} |`),
-    '',
-  ];
-}
-
-/** 4 つの状態を 1 行ずつ持つ。BF-104 が廃 */
+/** 4 つの状態を 1 行ずつ。番号は 101〜104 で、104 が 廃 */
 const ROWS: ReadonlyArray<readonly [number, string, string]> = [
   [101, '確定のときに同じ時間帯が埋まっていたら、予約は成立させない', '決定'],
   [102, '仮押さえは 15 分で解除する', '仮'],
@@ -111,556 +53,440 @@ const ROWS: ReadonlyArray<readonly [number, string, string]> = [
   [104, '(作り方のため ai/ へ移した)', '廃'],
 ];
 
-const readmeHeader = (id: string): string[] => [
-  '---',
-  `id: ${id}`,
-  `title: ${id} — 索引`,
-  'type: index',
-  'status: active',
-  'owners: [eng]',
-  '---',
-  '',
-  `# ${id}`,
-  '',
-];
+const row = (id: string, text: string, state: string): string => `| ${id} | ${text} | ${state} |`;
+/** 決まりの表 (見出しの最後の列が 状態) */
+const table = (...rows: readonly string[]): string[] => ['| ID | 決まり | 状態 |', '|---|---|---|', ...rows, ''];
+const rowsOf = (prefix: string): string[] => ROWS.map(([n, text, state]) => row(`${prefix}-${n}`, text, state));
+const decisions = (prefix: string): string[] => table(...rowsOf(prefix));
+
+const MERMAID: readonly string[] = ['```mermaid', 'flowchart LR', '  A[予約] --> B[確定]', '```', ''];
+
+/** frontmatter (kind が無い文書も作れる) と題名の次から、本文の行 */
+function titled(id: string, kind: string | null, body: readonly string[], extra: readonly string[] = []): string[] {
+  return [
+    '---',
+    `id: ${id}`,
+    `title: ${id} の題名`,
+    'type: design',
+    ...(kind === null ? [] : [`kind: ${kind}`]),
+    ...extra,
+    'status: active',
+    'owners: [product]',
+    '---',
+    '',
+    `# ${id}`,
+    '',
+    ...body,
+  ];
+}
 
 const marker = (name: string, edge: 'start' | 'end'): string =>
   edge === 'start'
     ? `<!-- AUTOGEN:${name}:start — generated by scripts/generate-docs-graph.mjs, do not edit by hand -->`
     : `<!-- AUTOGEN:${name}:end -->`;
 
+const readme = (id: string, body: readonly string[]): string[] => [
+  '---', `id: ${id}`, `title: ${id} — 索引`, 'type: index', 'status: active', 'owners: [eng]', '---', '', `# ${id}`, '', ...body,
+];
+
 const DIR_INDEX: readonly string[] = [marker('dir-index', 'start'), '- [01-x.md](01-x.md)', marker('dir-index', 'end')];
 
-const BOOKING = 'docs/person/design/reservation/flows/01-booking.md';
-const REFUND = 'docs/person/design/payment/flows/01-refund.md';
-const GLOSSARY = 'docs/person/design/shared/10-glossary.md';
-const NONFUNCTIONAL = 'docs/person/design/shared/03-nonfunctional.md';
-const REQUIREMENTS = 'docs/person/requirements/01-requirements.md';
+/** 型の検査が ○ の kind (要件定義書 02 §7) 12 種の文書。business-flow は 2 つのまとまりに 1 つずつ */
+interface FormDoc {
+  readonly id: string;
+  readonly kind: string;
+  readonly prefix: string;
+  readonly path: string;
+  readonly context?: string;
+  readonly diagram?: true;
+}
 
-const booking = (lines: readonly string[]): string[] => titled('reservation-booking', 'business-flow', lines, ['context: reservation']);
-const refund = (lines: readonly string[]): string[] => titled('payment-refund', 'business-flow', lines, ['context: payment']);
-const glossary = (lines: readonly string[]): string[] => titled('glossary', 'glossary', lines);
-const nonfunctional = (lines: readonly string[]): string[] => titled('nonfunctional', 'nonfunctional', lines);
+const FORM_DOCS: readonly FormDoc[] = [
+  { id: 'requirements', kind: 'requirements', prefix: 'REQ', path: 'person/requirements/01-requirements.md' },
+  { id: 'function-list', kind: 'function-list', prefix: 'FN', path: 'person/design/shared/01-function-list.md' },
+  { id: 'solution-strategy', kind: 'solution-strategy', prefix: 'SS', path: 'person/design/shared/02-solution-strategy.md', diagram: true },
+  { id: 'nonfunctional', kind: 'nonfunctional', prefix: 'NFR', path: 'person/design/shared/03-nonfunctional.md' },
+  { id: 'permission-matrix', kind: 'permission-matrix', prefix: 'PRM', path: 'person/design/shared/04-permission-matrix.md' },
+  { id: 'data-management', kind: 'data-management', prefix: 'DM', path: 'person/design/shared/05-data-management.md' },
+  { id: 'as-is-overview', kind: 'as-is-overview', prefix: 'ARC', path: 'person/design/shared/06-as-is-overview.md', diagram: true },
+  { id: 'risks-tech-debt', kind: 'risks-tech-debt', prefix: 'RSK', path: 'person/design/shared/07-risks-tech-debt.md' },
+  { id: 'operations', kind: 'operations', prefix: 'OPS', path: 'person/design/shared/08-operations.md' },
+  { id: 'migration-plan', kind: 'migration-plan', prefix: 'MIG', path: 'person/design/shared/09-migration-plan.md' },
+  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-booking.md', context: 'reservation', diagram: true },
+  { id: 'payment-refund', kind: 'business-flow', prefix: 'BF', path: 'person/design/payment/flows/01-refund.md', context: 'payment', diagram: true },
+  { id: 'reservation-top', kind: 'screen-spec', prefix: 'SCR', path: 'person/design/reservation/screens/01-top.md', context: 'reservation', diagram: true },
+];
 
-/** 3 区分・まとまり 2 つ (reservation・payment)・全体共通・生成索引を持つ、正しい構成 */
-function writeValidTree(root: string): void {
-  write(root, REQUIREMENTS, titled('requirements', 'requirements', [...decisions('REQ', ROWS), ...decisions('REQ', [[201, '機能の要件', '決定']])]));
+/** DocTemplateCheck が雛形から渡す ID の接頭辞 */
+const TEMPLATES: ReadonlyMap<string, PersonFormTemplate> = new Map(FORM_DOCS.map((doc) => [doc.kind, { idPrefixes: [doc.prefix] }]));
+
+const docOf = (id: string): FormDoc => FORM_DOCS.find((doc) => doc.id === id) ?? assert.fail(`FORM_DOCS に無い: ${id}`);
+const BOOKING = docOf('reservation-booking').path;
+const REFUND = docOf('payment-refund').path;
+const TOP = docOf('reservation-top').path;
+const REQUIREMENTS = docOf('requirements').path;
+const GLOSSARY = 'person/design/shared/10-glossary.md';
+const PAYMENT_README = 'person/design/payment/README.md';
+const LEDGER = 'person/decisions/01-decisions.md';
+const CHAPTER = 'client/delivery/spec-v1/01-overview.md';
+
+function formLines(doc: FormDoc, body: readonly string[] = [...(doc.diagram === true ? MERMAID : []), ...decisions(doc.prefix)]): string[] {
+  return titled(doc.id, doc.kind, body, doc.context === undefined ? [] : [`context: ${doc.context}`]);
+}
+const booking = (body: readonly string[]): string[] => formLines(docOf('reservation-booking'), body);
+
+/** 型の検査が ○ の kind の文書 (自分の接頭辞の決まりの行・図が要る kind は図) */
+function writeFormDocs(root: string): void {
+  for (const doc of FORM_DOCS) write(root, `docs/${doc.path}`, formLines(doc));
+}
+
+/** 型の検査が 図 (地図・まとまりの地図) と — (用語集・機能ブリーフ・ADR・決定台帳) の kind の文書と、ai・client の文書 */
+function writeOtherDocs(root: string): void {
   write(root, 'docs/person/design/shared/00-map.md', titled('map', 'map', MERMAID));
-  write(root, 'docs/person/design/shared/01-function-list.md', titled('function-list', 'function-list', decisions('FN', ROWS)));
-  write(root, NONFUNCTIONAL, nonfunctional(decisions('NFR', ROWS)));
-  write(root, GLOSSARY, glossary(['| 用語 | 意味 |', '|---|---|', '| 予約 | 席を押さえること |', '']));
   write(root, 'docs/person/design/reservation/00-map.md', titled('reservation-map', 'context-map', MERMAID, ['context: reservation']));
-  write(root, BOOKING, booking([...MERMAID, ...decisions('BF', ROWS)]));
-  write(root, 'docs/person/design/reservation/screens/01-top.md', titled('reservation-top', 'screen-spec', [...MERMAID, ...decisions('SCR', ROWS)], ['context: reservation']));
   write(root, 'docs/person/design/payment/00-map.md', titled('payment-map', 'context-map', MERMAID, ['context: payment']));
-  write(root, REFUND, refund([...MERMAID, ...decisions('BF', ROWS)]));
+  write(root, `docs/${GLOSSARY}`, titled('glossary', 'glossary', ['| 用語 | 意味 |', '|---|---|', '| 予約 | 席を押さえること |', '']));
   write(root, 'docs/person/design/payment/features/01-refund.md', titled('payment-refund-brief', 'feature-brief', ['返金の機能ブリーフ。'], ['context: payment']));
   write(root, 'docs/person/decisions/2026/0001-use-postgres.md', titled('adr-0001-use-postgres', 'adr', ['## Decision', '', 'PostgreSQL を使う。']));
-  write(root, 'docs/person/decisions/01-decisions.md', [
-    ...titled('decisions', 'decision-log', ['## 仮・未決の一覧', '']),
-    marker('tentative-index', 'start'),
-    '_該当なし_',
-    marker('tentative-index', 'end'),
-  ]);
-  write(root, 'docs/person/README.md', [...readmeHeader('person-index'), '> このディレクトリの目的: 人が確定させる文書。', '', '## 索引', '', ...DIR_INDEX]);
-  write(root, 'docs/person/decisions/README.md', [
-    ...readmeHeader('decisions-index'),
-    '> このディレクトリの目的: 決定の記録。',
-    '',
-    marker('adr-index', 'start'),
-    '| # | タイトル |',
-    marker('adr-index', 'end'),
-    '',
-    ...DIR_INDEX,
-  ]);
+  write(root, `docs/${LEDGER}`, titled('decisions', 'decision-log', ['| ID | 日付 | 決定 |', '|---|---|---|', '| DEC-001 | 2026-10-01 | 採用 |', '']));
   write(root, 'docs/ai/specs/reservation/api/01-reserve.md', [
-    ...titled('reservation-api', 'api-spec', ['<!-- ai/ の文書のコメントは書いてよい -->', '', '| API-001 | 予約する |', '']),
+    ...titled('reservation-api', 'api-spec', ['<!-- ai/ の文書のコメントは書いてよい -->', '', '| API-001 | 予約する | 仮 |', ''], ['context: reservation']),
     '<!-- AUTOGEN:api-index:start — generated from packages/api-contract -->',
     '| API-001 |',
     '<!-- AUTOGEN:api-index:end -->',
   ]);
   write(root, 'docs/ai/handbook/how-to/01-setup.md', titled('setup', 'guide', ['手順。']));
-  write(root, 'docs/client/delivery/spec-v1/01-overview.md', titled('delivery-overview', 'delivery-chapter', ['顧客に渡す章。']));
+  write(root, `docs/${CHAPTER}`, titled('delivery-overview', 'delivery-chapter', ['顧客に渡す章。']));
   write(root, 'docs/client/proposals/2026/01-proposal.md', titled('proposal-1', 'proposal', ['提案。']));
 }
 
-// ---------------------------------------------------------------------------
-// 実行
-// ---------------------------------------------------------------------------
-
-interface RunResult {
-  readonly violations: readonly Violation[];
-  readonly warnings: readonly string[];
-  /** 違反の file を / 区切りで並べたもの */
-  readonly files: readonly string[];
+/** 生成区間を持つ文書。README.md (見出し・目的の 1 行・dir-index)・decisions/README.md (adr-index と dir-index)・決定台帳 (tentative-index) */
+function writeGeneratedDocs(root: string): void {
+  write(root, 'docs/person/README.md', readme('person-index', ['> このディレクトリの目的: 人が確定させる文書。', '', '## 索引', '', ...DIR_INDEX]));
+  write(root, 'docs/person/design/reservation/README.md', readme('reservation-index', ['> このディレクトリの目的: 予約のまとまり。', '', ...DIR_INDEX]));
+  write(root, 'docs/client/README.md', readme('client-index', ['> このディレクトリの目的: 顧客と合意する文書。', '', ...DIR_INDEX]));
+  write(root, 'docs/person/decisions/README.md', readme('decisions-index', [
+    '> このディレクトリの目的: 決定の記録。', '', marker('adr-index', 'start'), '| # | タイトル |', marker('adr-index', 'end'), '', ...DIR_INDEX,
+  ]));
+  write(root, `docs/${LEDGER}`, [
+    ...titled('decisions', 'decision-log', ['## 仮・未決の一覧', '']),
+    marker('tentative-index', 'start'), '_該当なし_', marker('tentative-index', 'end'),
+  ]);
 }
 
-const posix = (path: string | undefined): string => (path ?? '').split('\\').join('/');
-
-/** 文書の行の配列から、条件に合う最初の行の、1 始まりの行番号 */
-function lineOf(lines: readonly string[], predicate: (line: string) => boolean, from = 0): number {
-  const index = lines.findIndex((line, i) => i >= from && predicate(line));
-  assert.ok(index >= 0, '行が見つからない');
-  return index + 1;
+function writeValidTree(root: string): void {
+  writeFormDocs(root);
+  writeOtherDocs(root);
+  writeGeneratedDocs(root);
 }
+
+// ---------------------------------------------------------------------------
+// 実行と照合
+// ---------------------------------------------------------------------------
 
 interface RunOptions {
   readonly igetaRoot?: string;
   readonly base?: string;
+  readonly docsDir?: string;
   readonly templates?: ReadonlyMap<string, PersonFormTemplate>;
 }
 
-function run(root: string, options: RunOptions = {}): RunResult {
-  const check = new PersonFormCheck({ templates: options.templates ?? TEMPLATES, base: options.base });
-  const violations = check.run({ targetRoot: root, igetaRoot: options.igetaRoot ?? WARNING_STAGE_IGETA });
-  return { violations, warnings: check.warnings, files: violations.map((violation) => posix(violation.file)) };
+interface RunResult {
+  readonly violations: readonly Violation[];
+  readonly warnings: readonly string[];
 }
 
-const messageOf = (result: RunResult, file: string): string =>
-  result.violations.find((violation) => posix(violation.file) === file)?.message ?? '';
+/** 警告の段階 (メジャー版 0) の Igeta */
+const WARNING_STAGE_IGETA = igetaRootWithVersion('0.9.9');
 
-describe('PersonFormCheck: 正しい構成と、検査の対象', () => {
-  it('3 区分・複数のまとまり・生成索引つきの正しい構成は、違反も警告も出ない', () => {
+function run(root: string, options: RunOptions = {}): RunResult {
+  const check = new PersonFormCheck({ docsDir: options.docsDir, templates: options.templates ?? TEMPLATES, base: options.base });
+  const violations = check.run({ targetRoot: root, igetaRoot: options.igetaRoot ?? WARNING_STAGE_IGETA });
+  return { violations, warnings: check.warnings };
+}
+
+/** 正しい構成のうち、1 つの文書を差し替えて検査する */
+function runWith(path: string, lines: readonly string[], options: RunOptions = {}): RunResult {
+  const root = makeRoot();
+  writeValidTree(root);
+  write(root, `docs/${path}`, lines);
+  return run(root, options);
+}
+
+const posix = (path: string | undefined): string => (path ?? '').split('\\').join('/');
+const describeAll = (result: RunResult): string => result.violations.map((violation) => `${violation.file}:${violation.line} ${violation.message}`).join('\n');
+
+/** 文書の行の配列から、条件に合う最初の行の、1 始まりの行番号 */
+function lineOf(lines: readonly string[], predicate: (line: string) => boolean): number {
+  const index = lines.findIndex(predicate);
+  assert.ok(index >= 0, '行が見つからない');
+  return index + 1;
+}
+
+/** 違反がちょうど 1 件で、その file・line・文言が期待どおり */
+function assertOnly(result: RunResult, file: string, line: number, message: RegExp, label: string): void {
+  assert.equal(result.violations.length, 1, `${label}: ${describeAll(result)}`);
+  const [violation] = result.violations;
+  assert.equal(violation?.severity, 'violation', label);
+  assert.equal(posix(violation?.file), `docs/${file}`, label);
+  assert.equal(violation?.line, line, label);
+  assert.match(violation?.message ?? '', message, label);
+}
+
+/** 行数がちょうど n になるまで、補足の行を足す */
+const padTo = (lines: readonly string[], n: number): string[] => [...lines, ...Array.from({ length: n - lines.length }, (_, i) => `補足 ${i + 1}`)];
+
+/** 本文の字が chars 字になる行 (1 行 100 字、最後の行は端数)。ch は 1 字 (サロゲートペアの字でも 1 字) */
+const fill = (ch: string, chars: number): string[] =>
+  Array.from({ length: Math.ceil(chars / 100) }, (_, i) => ch.repeat(Math.min(100, chars - i * 100)));
+
+// ---------------------------------------------------------------------------
+// 1. テストケース一覧
+// ---------------------------------------------------------------------------
+
+describe('テスト仕様 03 §1 テストケース一覧', () => {
+  it('[TST-101] ○ の kind の文書 (自分の接頭辞の決まりの行・図が要る kind は図) は違反 0 件。○ の kind 12 種の全部で確かめる', () => {
+    const fullKinds = PLACEMENTS.filter((placement) => placement.formCheck === 'full').map((placement) => placement.kind).sort();
+    assert.deepEqual([...new Set(FORM_DOCS.map((doc) => doc.kind))].sort(), fullKinds, 'fixture が ○ の kind の全部を持つ');
+    const root = makeRoot();
+    writeFormDocs(root);
+    assert.deepEqual(run(root), { violations: [], warnings: [] });
+  });
+
+  it('[TST-102] 図だけの kind (地図・まとまりの地図) に図があり表が無い / 用語集・機能ブリーフ・ADR・決定台帳に決まりの表が無い → 違反 0 件', () => {
+    const root = makeRoot();
+    writeOtherDocs(root);
+    assert.deepEqual(run(root), { violations: [], warnings: [] });
+  });
+
+  it('[TST-103] kind が無く置き場所で決まる文書は型の検査を受ける。kind と置き場所が別の kind を指す文書は型の違反を出さない', () => {
+    const flow = 'person/design/reservation/flows/02-extra.md';
+    const body = ['表も図も無い。'];
+    // kind が無い: 置き場所の型から business-flow と決まり、決まりの行 (BF) と図が求められる
+    const checked = runWith(flow, titled('extra', null, body, ['context: reservation'])).violations;
+    assert.deepEqual(checked.map((violation) => posix(violation.file)), Array<string>(2).fill(`docs/${flow}`));
+    assert.ok(checked.some((violation) => /^決まりの行が 1 つも無い .*BF-nnn/.test(violation.message)));
+    assert.ok(checked.some((violation) => /^図が 1 枚も無い \(kind: business-flow/.test(violation.message)));
+    // kind が screen-spec: 置き場所の型 (business-flow) と別の kind を指すので、型の検査をしない (置き場所の検査が違反にする)
+    assert.deepEqual(runWith(flow, titled('extra', 'screen-spec', body, ['context: reservation'])).violations, []);
+  });
+
+  it('[TST-104] ○ の kind がちょうど 100 行 / requirements がちょうど 150 行 → 違反 0 件', () => {
     const root = makeRoot();
     writeValidTree(root);
-    const result = run(root);
-    assert.deepEqual(result.violations, []);
-    assert.deepEqual(result.warnings, []);
+    write(root, `docs/${BOOKING}`, padTo(booking([...MERMAID, ...decisions('BF')]), 100));
+    write(root, `docs/${REQUIREMENTS}`, padTo(formLines(docOf('requirements')), 150));
+    assert.deepEqual(run(root).violations, []);
   });
 
-  it('docs/ が無ければ検査不能', () => {
-    const result = run(makeRoot());
-    assert.equal(result.violations.length, 1);
-    assert.equal(result.violations[0]?.severity, 'cannot-check');
-  });
-
-  it('旧い構成 (person・ai・client が 1 つも無い) の repo では、何を書いても何も出ない。比べる起点を渡しても同じ', () => {
-    const root = makeRoot();
-    write(root, 'docs/design/basic/flows/01-booking.md', titled('booking', 'business-flow', ['<!-- コメント -->', '表も図も無い。']));
-    write(root, 'docs/design/basic/README.md', [...readmeHeader('basic-index'), '文章。', '文章。', '文章。']);
-    const result = run(root, { base: 'no-such-ref' });
-    assert.deepEqual(result.violations, []);
-    assert.deepEqual(result.warnings, []);
-  });
-
-  it('person・ai・client のうち 1 つでもあれば新しい構成として検査する (client だけでも HTML コメントが落ちる)', () => {
-    const root = makeRoot();
-    write(root, 'docs/client/proposals/2026/01-proposal.md', titled('proposal-1', 'proposal', ['<!-- 隠し -->']));
-    assert.deepEqual(run(root).files, ['docs/client/proposals/2026/01-proposal.md']);
-  });
-});
-
-describe('PersonFormCheck: 型 (条件 5・6・7)', () => {
-  let root: string;
-  beforeEach(() => {
-    root = makeRoot();
-    writeValidTree(root);
-  });
-
-  describe('決まりの表と状態', () => {
-    it('○ の kind に、決まりの表が 1 つも無ければ、その文書だけが落ちる (ほかのまとまりの正しい文書は落ちない)', () => {
-      write(root, REFUND, refund([...MERMAID, '返金の流れを文章で書いた。', '| 手順 | 内容 |', '|---|---|', '| 1 | 申請 |', '']));
-      write(root, NONFUNCTIONAL, nonfunctional(['表の無い文書。']));
-      const result = run(root);
-      assert.deepEqual(result.files, [REFUND, NONFUNCTIONAL]);
-      assert.match(messageOf(result, REFUND), /決まりの表が 1 つも無い \(行頭が BF-nnn の行を持つ表が 1 つ以上要る。最後の列は「状態」\)/);
-      assert.match(messageOf(result, NONFUNCTIONAL), /行頭が NFR-nnn の行/);
-    });
-
-    it('最後の列が「状態」でない決まりの表は、表ごとに 1 件落ちる。ID の行ごとには数えない', () => {
-      const lines = booking([...MERMAID, '| ID | 状態 | 決まり |', '|---|---|---|', '| BF-101 | 決定 | 予約は成立させない |', '| BF-102 | 仮 | 15 分で解除する |', '']);
-      write(root, BOOKING, lines);
-      const result = run(root);
-      assert.deepEqual(result.files, [BOOKING]);
-      assert.match(result.violations[0]?.message ?? '', /決まりの表の最後の列が「状態」ではない \(見出し: ID \| 状態 \| 決まり\)/);
-      assert.equal(result.violations[0]?.line, lineOf(lines, (line) => line.startsWith('| ID | 状態 |')));
-    });
-
-    it('状態の値は 決定・仮・未決・廃 だけ。ほかの値・空は ID の行ごとに落ちる', () => {
-      write(root, BOOKING, booking([...MERMAID, ...decisions('BF', [[101, 'a', '決定'], [102, 'b', '確定'], [103, 'c', ''], [104, 'd', '仮置き'], [105, 'e', '廃']])]));
-      const result = run(root);
-      assert.deepEqual(result.files, [BOOKING, BOOKING, BOOKING]);
-      assert.deepEqual(
-        result.violations.map((violation) => violation.message.replace(/ \(.*$/, '')),
-        ['BF-102 の状態が不正: 「確定」', 'BF-103 の状態が不正: 「」', 'BF-104 の状態が不正: 「仮置き」'],
-      );
-      assert.match(result.violations[0]?.message ?? '', /\(決定・仮・未決・廃のどれか\)/);
-    });
-
-    it('列数が見出しと違う ID の行は、最後の列が「状態」にならないので落ちる', () => {
-      write(root, BOOKING, booking([...MERMAID, '| ID | 決まり | 状態 |', '|---|---|---|', '| BF-101 | 決まり |', '| BF-102 | 決まり | 決定 | 余り |', '']));
-      const result = run(root);
-      assert.deepEqual(
-        result.violations.map((violation) => violation.message.replace(/ \(最後の列.*$/, '')),
-        ['BF-101 の行の列数 (2) が見出しの列数 (3) と違う', 'BF-102 の行の列数 (4) が見出しの列数 (3) と違う'],
-      );
-    });
-
-    it('自分の kind でない ID の行 (対応 REQ・FN の表など) は、状態を持たなくても落ちない', () => {
-      write(root, BOOKING, booking([...MERMAID, ...decisions('BF', ROWS), '| 対応 | 内容 |', '|---|---|', '| REQ-101 | 要件 |', '| FN-001 | 機能 |', '']));
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('requirements は REQ の行を持つ表が 1 つ以上あればよい。REQ の行を持たない表 (関連など) が混ざっても落ちない', () => {
-      write(root, 'docs/person/requirements/02-billing.md', titled('requirements-billing', 'requirements', [...decisions('REQ', ROWS), '| 区分 | 文書 |', '|---|---|', '| 上流 | [要件](./01-requirements.md) |', '']));
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('コードフェンスの中の表は、決まりの表に数えない', () => {
-      write(root, NONFUNCTIONAL, nonfunctional(['```markdown', ...decisions('NFR', ROWS), '```', '']));
-      assert.match(run(root).violations[0]?.message ?? '', /決まりの表が 1 つも無い/);
-    });
-
-    it('置き場所と kind の宣言が食い違う文書・雛形の無い kind は、型の検査から外す (ほかの検査が違反にする)', () => {
-      write(root, 'docs/person/design/reservation/flows/02-wrong.md', titled('wrong', 'api-spec', ['表も図も無い。'], ['context: reservation']));
-      write(root, 'docs/person/design/shared/04-data-management.md', titled('data-management', 'data-management', ['表の無い文書。']));
-      const result = run(root, { templates: new Map([...TEMPLATES].filter(([kind]) => kind !== 'data-management')) });
-      assert.deepEqual(result.violations, []);
-    });
-
-    it('○ の kind の雛形に id_prefix が無ければ、決まりの行を見分けられないので検査不能 (kind ごとに 1 件)', () => {
-      write(root, 'docs/person/design/shared/04-data-management.md', titled('data-management', 'data-management', ['表。']));
-      write(root, 'docs/person/design/shared/05-data-management.md', titled('data-management-2', 'data-management', ['表。']));
-      const result = run(root, { templates: new Map([...TEMPLATES, ['data-management', { idPrefixes: [] }]]) });
-      assert.equal(result.violations.length, 1);
-      assert.equal(result.violations[0]?.severity, 'cannot-check');
-      assert.match(result.violations[0]?.message ?? '', /kind: data-management の雛形に id_prefix が無く/);
-    });
-
-    it('接頭辞が複数ある kind は、どの接頭辞の行も決まりの行として見る', () => {
-      write(root, NONFUNCTIONAL, nonfunctional(['| ID | 決まり | 状態 |', '|---|---|---|', '| NFR-001 | a | 決定 |', '| NF2-001 | b | 確定 |', '']));
-      const result = run(root, { templates: new Map([...TEMPLATES, ['nonfunctional', { idPrefixes: ['NFR', 'NF2'] }]]) });
-      assert.deepEqual(result.violations.map((violation) => violation.message.replace(/ \(.*$/, '')), ['NF2-001 の状態が不正: 「確定」']);
-    });
-  });
-
-  describe('図', () => {
-    const NEEDS_DIAGRAM: ReadonlyArray<readonly [string, string, string, readonly string[]]> = [
-      ['docs/person/design/shared/00-map.md', 'map', 'map', []],
-      ['docs/person/design/reservation/00-map.md', 'reservation-map', 'context-map', ['context: reservation']],
-      [BOOKING, 'reservation-booking', 'business-flow', ['context: reservation']],
-      ['docs/person/design/reservation/screens/01-top.md', 'reservation-top', 'screen-spec', ['context: reservation']],
+  it('[TST-105] 合計字数: 上限ちょうどは何も出ない。1 字超は版 0 で警告、版 1 で違反。frontmatter・コードフェンス・README.md の字は数えず、全角も半角も 1 字', () => {
+    const doc = (id: string, kind: string, context: string | null, body: readonly string[], fm: readonly string[] = []): string[] => [
+      '---', `id: ${id}`, `kind: ${kind}`, ...(context === null ? [] : [`context: ${context}`]), ...fm, '---', ...body,
     ];
-
-    it('図が要る kind (map・context-map・business-flow・screen-spec) は、図が無ければ 1 件ずつ落ち、図のある隣は落ちない', () => {
-      for (const [path, id, kind, extra] of NEEDS_DIAGRAM) {
-        const rows = kind === 'business-flow' ? decisions('BF', ROWS) : kind === 'screen-spec' ? decisions('SCR', ROWS) : [];
-        write(root, path, titled(id, kind, ['図の無い文書。', '', ...rows], extra));
-      }
-      const result = run(root);
-      assert.deepEqual(result.files, NEEDS_DIAGRAM.map(([path]) => path).sort());
-      assert.ok(result.violations.every((violation) => /^図が 1 枚も無い \(kind: [a-z-]+ は Mermaid の図/.test(violation.message)));
-    });
-
-    it('solution-strategy と as-is-overview も図が要る。図の有無は、決まりの表と別に数える', () => {
-      write(root, 'docs/person/design/shared/02-solution-strategy.md', titled('solution-strategy', 'solution-strategy', decisions('SS', ROWS)));
-      write(root, 'docs/person/design/shared/06-as-is-overview.md', titled('as-is-overview', 'as-is-overview', [...MERMAID, ...decisions('ARC', ROWS)]));
-      const result = run(root);
-      assert.deepEqual(result.files, ['docs/person/design/shared/02-solution-strategy.md']);
-      assert.match(result.violations[0]?.message ?? '', /kind: solution-strategy は Mermaid の図/);
-    });
-
-    it('図が要らない kind (function-list・用語集・機能ブリーフ) は、図が無くても落ちない', () => {
-      // 正しい構成の function-list・glossary・feature-brief に図が無い。通ること自体が、その確認
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('mermaid 以外のコードフェンスと、ほかのコードフェンスの中に書いた mermaid の例は、図に数えない', () => {
-      write(root, 'docs/person/design/shared/00-map.md', titled('map', 'map', ['```text', 'flowchart LR', '```', '', '````markdown', '```mermaid', 'flowchart LR', '```', '````', '']));
-      assert.match(run(root).violations[0]?.message ?? '', /図が 1 枚も無い/);
-    });
-
-    it('~~~ のコードフェンスと、情報文字列の前に空白がある mermaid は図に数える', () => {
-      write(root, 'docs/person/design/shared/00-map.md', titled('map', 'map', ['~~~mermaid', 'flowchart LR', '~~~', '']));
-      write(root, 'docs/person/design/reservation/00-map.md', titled('reservation-map', 'context-map', ['``` mermaid', 'flowchart LR', '```', ''], ['context: reservation']));
-      assert.deepEqual(run(root).violations, []);
-    });
-  });
-
-  describe('行数', () => {
-    /** 全体で lineCount 行 (frontmatter・見出しを含む) になる、決まりの表つきの文書。余りの行は補足の文 */
-    function sized(lineCount: number, build: (lines: readonly string[]) => string[], base: readonly string[]): string {
-      const lines = build(base);
-      return `${[...lines, ...Array.from({ length: lineCount - lines.length }, (_, i) => `補足 ${i + 1}`)].join('\n')}\n`;
+    // 要件の文書の本文の字数 (frontmatter を除く)。全体共通の残りを、上限ちょうどになるように用意する
+    const requirements = formLines(docOf('requirements'));
+    const requirementsChars = requirements.slice(requirements.lastIndexOf('---') + 1).reduce((sum, line) => sum + [...line].length, 0);
+    /** まとまり 3 つと全体共通が、どれも上限ちょうど。reservation は半角と全角、payment はサロゲートペアの字。extra は 1 字だけ足す */
+    function writeAtLimits(root: string, extra: { reservation?: string; global?: string } = {}): void {
+      write(root, 'docs/person/design/reservation/features/01-a.md', doc('a', 'feature-brief', 'reservation', fill('a', 7_500)));
+      write(root, 'docs/person/design/reservation/features/02-b.md', doc('b', 'feature-brief', 'reservation', [...fill('あ', 7_500), ...(extra.reservation === undefined ? [] : [extra.reservation])]));
+      write(root, 'docs/person/design/payment/features/01-c.md', doc('c', 'feature-brief', 'payment', fill('𠮷', 15_000)));
+      write(root, 'docs/person/design/billing/features/01-d.md', doc('d', 'feature-brief', 'billing', fill('あ', 100)));
+      write(root, `docs/${REQUIREMENTS}`, requirements);
+      write(root, 'docs/person/design/shared/10-glossary.md', doc('g', 'glossary', null, [...fill('あ', 30_000 - requirementsChars), ...(extra.global === undefined ? [] : [extra.global])]));
     }
 
-    it(`○ の kind は ${PERSON_LINE_LIMIT} 行まで。超えた文書だけが落ち、まとまりの違う同じ kind の文書は落ちない`, () => {
-      write(root, NONFUNCTIONAL, sized(PERSON_LINE_LIMIT, nonfunctional, decisions('NFR', ROWS)));
-      assert.deepEqual(run(root).violations, [], `${PERSON_LINE_LIMIT} 行は通る`);
-      write(root, NONFUNCTIONAL, sized(PERSON_LINE_LIMIT + 1, nonfunctional, decisions('NFR', ROWS)));
-      const result = run(root);
-      assert.deepEqual(result.files, [NONFUNCTIONAL]);
-      assert.match(result.violations[0]?.message ?? '', new RegExp(`^人の文書の行数上限 \\(${PERSON_LINE_LIMIT}\\) を超えている: ${PERSON_LINE_LIMIT + 1} 行`));
-    });
+    for (const version of ['0.9.9', '1.0.0']) {
+      const igetaRoot = igetaRootWithVersion(version);
+      const root = makeRoot();
+      writeAtLimits(root);
+      assert.deepEqual(run(root, { igetaRoot }), { violations: [], warnings: [] }, `${version}: 上限ちょうど`);
 
-    it(`requirements は ${REQUIREMENTS_LINE_LIMIT} 行まで。業務フロー・画面は ${PERSON_LINE_LIMIT} 行`, () => {
-      const requirements = (lines: readonly string[]): string[] => titled('requirements', 'requirements', lines);
-      write(root, REQUIREMENTS, sized(REQUIREMENTS_LINE_LIMIT, requirements, decisions('REQ', ROWS)));
-      write(root, BOOKING, sized(PERSON_LINE_LIMIT + 5, booking, [...MERMAID, ...decisions('BF', ROWS)]));
-      assert.deepEqual(run(root).files, [BOOKING]);
-      write(root, REQUIREMENTS, sized(REQUIREMENTS_LINE_LIMIT + 1, requirements, decisions('REQ', ROWS)));
-      const result = run(root);
-      assert.deepEqual(result.files, [BOOKING, REQUIREMENTS]);
-      assert.match(messageOf(result, REQUIREMENTS), /行数上限 \(150\) を超えている: 151 行/);
-    });
+      // frontmatter・コードフェンス・README.md に字を足しても、合計は変わらない
+      write(root, 'docs/person/design/reservation/features/02-b.md', doc('b', 'feature-brief', 'reservation', [...fill('あ', 7_500), '```text', ...fill('あ', 5_000), '```'], [`memo: ${'あ'.repeat(5_000)}`]));
+      write(root, 'docs/person/design/reservation/README.md', readme('reservation-index', ['あ'.repeat(3_000)]));
+      assert.deepEqual(run(root, { igetaRoot }), { violations: [], warnings: [] }, `${version}: 数えない字を足した`);
 
-    it('行数に上限が無い kind (用語集・機能ブリーフ) と、ai・client の文書は、長くても落ちない (雛形の line_limit は DocTemplateCheck が見る)', () => {
-      const long = Array.from({ length: 300 }, (_, i) => `行 ${i}`);
-      write(root, GLOSSARY, glossary(long));
-      write(root, 'docs/person/design/payment/features/01-refund.md', titled('payment-refund-brief', 'feature-brief', long, ['context: payment']));
-      write(root, 'docs/ai/handbook/how-to/01-setup.md', titled('setup', 'guide', long));
-      write(root, 'docs/client/proposals/2026/01-proposal.md', titled('proposal-1', 'proposal', long));
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('ファイル末尾の改行 1 つは行に数えない。末尾の空行は 1 行に数える', () => {
-      write(root, NONFUNCTIONAL, sized(PERSON_LINE_LIMIT, nonfunctional, decisions('NFR', ROWS)));
-      assert.deepEqual(run(root).violations, [], '100 行と末尾の改行');
-      write(root, NONFUNCTIONAL, `${sized(PERSON_LINE_LIMIT, nonfunctional, decisions('NFR', ROWS))}\n`);
-      assert.match(run(root).violations[0]?.message ?? '', /: 101 行/, '末尾に空行がもう 1 つある');
-    });
+      for (const [subject, extra, total, file] of [
+        ['まとまり reservation', { reservation: 'あ' }, '15,001', 'docs/person/design/reservation'],
+        ['全体共通', { global: 'a' }, '30,001', 'docs/person/design/shared'],
+      ] as const) {
+        writeAtLimits(root, extra);
+        const result = run(root, { igetaRoot });
+        const text = new RegExp(`^${subject} .*${total} 字で、上限`);
+        if (version === '0.9.9') {
+          assert.deepEqual(result.violations, [], `${version} ${subject}`);
+          assert.equal(result.warnings.length, 1, `${version} ${subject}`);
+          assert.match(result.warnings[0] ?? '', text);
+        } else {
+          assert.deepEqual(result.warnings, [], `${version} ${subject}`);
+          assert.equal(result.violations.length, 1, `${version} ${subject}`);
+          assert.equal(result.violations[0]?.severity, 'violation');
+          assert.equal(posix(result.violations[0]?.file), file);
+          assert.match(result.violations[0]?.message ?? '', text);
+        }
+      }
+    }
   });
-});
 
-describe('PersonFormCheck: 書き込み口 (条件 10)', () => {
-  let root: string;
-  beforeEach(() => {
-    root = makeRoot();
+  it('[TST-106] 廃の行: 起点で 廃 の行がいまも廃 / この変更で 決定 を 廃 に変えた / 枝を切った後で宛先が別の行を 廃 にした (古い枝ではその行が 決定 のまま) → `--base <宛先>` で違反 0 件', () => {
+    const root = makeRepo();
+    git(root, 'checkout', '-q', '-b', 'feature');
+    assert.deepEqual(run(root, { base: 'dest' }).violations, [], '起点で 廃 の行が、いまも 廃');
+
+    // この変更で、決定 を 廃 に変える
+    write(root, `docs/${BOOKING}`, formLines(docOf('reservation-booking')).map((line) => (line.startsWith('| BF-101 ') ? line.replace('| 決定 |', '| 廃 |') : line)));
+    commit(root, '決定の行を廃にした');
+    assert.deepEqual(run(root, { base: 'dest' }).violations, [], 'この変更で 決定 を 廃 にした');
+
+    // 枝を切った後で、宛先が別の行 (payment-refund の BF-101) を 廃 にする。この枝では、その行は 決定 のまま
+    git(root, 'checkout', '-q', 'dest');
+    write(root, `docs/${REFUND}`, formLines(docOf('payment-refund')).map((line) => (line.startsWith('| BF-101 ') ? line.replace('| 決定 |', '| 廃 |') : line)));
+    commit(root, '宛先で別の行を廃にした');
+    git(root, 'checkout', '-q', 'feature');
+    assert.deepEqual(run(root, { base: 'dest' }).violations, [], '宛先の先端ではなく、枝分かれの点と比べる');
+  });
+
+  it('[TST-107] README.md (見出し・目的の 1 行・dir-index) / decisions/README.md (adr-index と dir-index) / 決定台帳 (tentative-index) → 違反 0 件', () => {
+    const root = makeRoot();
+    writeGeneratedDocs(root);
+    assert.deepEqual(run(root), { violations: [], warnings: [] });
+  });
+
+  it('[TST-108] 旧い構成の repo / `docs/ai/` の文書の HTML コメント → 何も出ない', () => {
+    const legacy = makeRoot();
+    write(legacy, 'docs/design/basic/flows/01-booking.md', titled('booking', 'business-flow', ['<!-- コメント -->', '表も図も無い。']));
+    write(legacy, 'docs/design/basic/README.md', readme('basic-index', ['文章。', '文章。', '文章。']));
+    assert.deepEqual(run(legacy, { base: 'no-such-ref' }), { violations: [], warnings: [] });
+
+    const root = makeRoot();
     writeValidTree(root);
-  });
-
-  describe('HTML コメント', () => {
-    it('person/・client/ の文書の HTML コメントは、コメントごとに 1 件落ちる (複数行のコメントは始まりの行の 1 件)', () => {
-      const lines = glossary(['用語。', '<!-- 人には見えない指示 -->', '', '<!--', '複数行の', 'コメント', '-->', '']);
-      write(root, GLOSSARY, lines);
-      write(root, 'docs/client/proposals/2026/01-proposal.md', titled('proposal-1', 'proposal', ['提案。<!-- 行の途中 -->']));
-      const result = run(root);
-      assert.deepEqual(result.files, ['docs/client/proposals/2026/01-proposal.md', GLOSSARY, GLOSSARY]);
-      assert.deepEqual(
-        result.violations.filter((violation) => posix(violation.file) === GLOSSARY).map((violation) => violation.line),
-        [lineOf(lines, (line) => line === '<!-- 人には見えない指示 -->'), lineOf(lines, (line) => line === '<!--')],
-      );
-      assert.match(result.violations[0]?.message ?? '', /^HTML コメントを書かない/);
-    });
-
-    it('コードフェンスの中のコメントの例は書いてよい。ai/ の文書のコメントは検査しない', () => {
-      write(root, GLOSSARY, glossary(['```html', '<!-- 例 -->', '```', '']));
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('frontmatter の中のコメントも落ちる', () => {
-      write(root, GLOSSARY, ['---', 'id: glossary', 'kind: glossary', '<!-- 隠し -->', '---', '', '# 用語集', '']);
-      const result = run(root);
-      assert.equal(result.violations.length, 1);
-      assert.equal(result.violations[0]?.line, 4);
-    });
-
-    it('閉じていない HTML コメントは、始まりの行で 1 件になる (あとの行を巻き込まない)', () => {
-      write(root, GLOSSARY, glossary(['<!-- 閉じ忘れ', 'あとの行', '']));
-      assert.equal(run(root).violations.length, 1);
-    });
-  });
-
-  describe('AUTOGEN 区間', () => {
-    it('生成器が管理する 3 種は、生成器が書く場所 (README.md・decisions/README.md・決定台帳) に置いて通る', () => {
-      // 正しい構成が、3 種 × その場所で通っている。ai/ の AUTOGEN:api-index も検査しない
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('3 種以外の名前の区間は、管理外の区間として落ちる (person/・client/ のどこでも)', () => {
-      write(root, GLOSSARY, glossary([marker('api-index', 'start'), '手で書いた中身', marker('api-index', 'end'), '']));
-      write(root, 'docs/client/README.md', [...readmeHeader('client-index'), marker('prisma-erd', 'start'), marker('prisma-erd', 'end')]);
-      const result = run(root);
-      assert.deepEqual(result.files, ['docs/client/README.md', GLOSSARY]);
-      assert.match(messageOf(result, GLOSSARY), /管理外の AUTOGEN 区間: api-index \(生成器が管理するのは dir-index・adr-index・tentative-index の 3 種だけ\)/);
-    });
-
-    it('3 種の名前でも、生成器が書かない場所に置いた区間は落ちる (普通の文書の dir-index・業務フローの tentative-index・decisions/ 以外の README の adr-index)', () => {
-      write(root, GLOSSARY, glossary([marker('dir-index', 'start'), '手で書いた中身', marker('dir-index', 'end'), '']));
-      write(root, BOOKING, booking([...MERMAID, ...decisions('BF', ROWS), marker('tentative-index', 'start'), marker('tentative-index', 'end'), '']));
-      write(root, 'docs/person/design/payment/README.md', [...readmeHeader('payment-index'), marker('adr-index', 'start'), marker('adr-index', 'end')]);
-      const result = run(root);
-      assert.deepEqual(result.files, ['docs/person/design/payment/README.md', BOOKING, GLOSSARY]);
-      assert.match(messageOf(result, GLOSSARY), /AUTOGEN:dir-index の区間は、この文書には置けない \(置けるのは 各フォルダの README\.md だけ\)/);
-      assert.match(messageOf(result, BOOKING), /AUTOGEN:tentative-index .*決定台帳 \(kind: decision-log\) だけ/);
-      assert.match(messageOf(result, 'docs/person/design/payment/README.md'), /AUTOGEN:adr-index .*docs\/person\/decisions\/README\.md だけ/);
-    });
-
-    it('閉じていない区間・始まりの無い終わり・名前の違う終わり・入れ子・同じ名前の 2 つ目・読めない印は、それぞれ落ちる', () => {
-      write(root, 'docs/person/README.md', [...readmeHeader('person-index'), marker('dir-index', 'start'), '- a']);
-      write(root, 'docs/person/design/README.md', [...readmeHeader('design-index'), marker('dir-index', 'end')]);
-      write(root, 'docs/person/design/shared/README.md', [...readmeHeader('shared-index'), marker('dir-index', 'start'), marker('adr-index', 'end')]);
-      write(root, 'docs/person/design/reservation/README.md', [...readmeHeader('reservation-index'), marker('dir-index', 'start'), marker('dir-index', 'start'), marker('dir-index', 'end')]);
-      write(root, 'docs/person/design/payment/README.md', [...readmeHeader('payment-index'), marker('dir-index', 'start'), marker('dir-index', 'end'), marker('dir-index', 'start'), marker('dir-index', 'end')]);
-      write(root, 'docs/person/design/payment/flows/README.md', [...readmeHeader('flows-index'), '<!-- AUTOGEN ここ -->']);
-      const result = run(root);
-      assert.match(messageOf(result, 'docs/person/README.md'), /AUTOGEN:dir-index の区間が閉じていない/);
-      assert.match(messageOf(result, 'docs/person/design/README.md'), /AUTOGEN:dir-index の終わりの印に、対応する始まりの印が無い/);
-      assert.match(messageOf(result, 'docs/person/design/shared/README.md'), /AUTOGEN:adr-index の終わりの印が、.*AUTOGEN:dir-index の始まりの印と合わない/);
-      assert.match(messageOf(result, 'docs/person/design/reservation/README.md'), /AUTOGEN 区間が入れ子になっている/);
-      assert.match(messageOf(result, 'docs/person/design/payment/README.md'), /AUTOGEN:dir-index の区間が 2 つある/);
-      assert.match(messageOf(result, 'docs/person/design/payment/flows/README.md'), /AUTOGEN の印が読めない/);
-    });
-
-    it('閉じていない区間は、そのあとの文書の内容を検査から隠さない (HTML コメントは別に落ちる)', () => {
-      write(root, GLOSSARY, glossary([marker('dir-index', 'start'), '<!-- 区間の中に隠したコメント -->', '']));
-      const messages = run(root).violations.filter((violation) => posix(violation.file) === GLOSSARY).map((violation) => violation.message);
-      assert.equal(messages.length, 3, messages.join('\n'));
-      assert.ok(messages.some((message) => /区間が閉じていない/.test(message)));
-      assert.ok(messages.some((message) => /この文書には置けない/.test(message)));
-      assert.ok(messages.some((message) => /HTML コメントを書かない/.test(message)));
-    });
-
-    it('コードフェンスの中の AUTOGEN の例は、区間ではない', () => {
-      write(root, GLOSSARY, glossary(['```html', marker('api-index', 'start'), '```', '']));
-      assert.deepEqual(run(root).violations, []);
-    });
-  });
-
-  describe('README.md の区間の外', () => {
-    it('frontmatter・見出し・1 行の目的だけなら通る。区間の中身は何を書いても見ない', () => {
-      write(root, 'docs/person/design/README.md', [...readmeHeader('design-index'), '## 索引', '', '> このディレクトリの目的: 設計。', '', ...DIR_INDEX]);
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('目的が 2 行以上・表・箇条書きを区間の外に書くと落ちる (人の決まりを README に書く道を塞ぐ)', () => {
-      write(root, 'docs/person/design/README.md', [...readmeHeader('design-index'), '> このディレクトリの目的: 設計。', '', '補足の文章。', '']);
-      write(root, 'docs/person/design/reservation/README.md', [...readmeHeader('r-index'), '> 目的', '', '| ID | 決まり | 状態 |', '|---|---|---|', '| BF-101 | 隠した決まり | 決定 |']);
-      write(root, 'docs/client/README.md', [...readmeHeader('client-index'), '- 項目', '- 項目']);
-      const result = run(root);
-      assert.deepEqual(result.files, ['docs/client/README.md', 'docs/person/design/README.md', 'docs/person/design/reservation/README.md']);
-      assert.match(messageOf(result, 'docs/person/design/README.md'), /README\.md の区間 \(AUTOGEN\) の外には、frontmatter・見出し・1 行の目的だけを書く \(文章が 2 行ある\)/);
-      assert.match(messageOf(result, 'docs/person/design/reservation/README.md'), /文章が 4 行ある/);
-    });
-
-    it('README.md でない文書は、区間の外に何を書いてもよい (この規則は README.md だけ)', () => {
-      write(root, GLOSSARY, glossary(['長い文章。', '', '二つ目。', '三つ目。', '']));
-      assert.deepEqual(run(root).violations, []);
-    });
-  });
-});
-
-describe('PersonFormCheck: 量 (条件 8)', () => {
-  /** frontmatter の次の行から、本文がちょうど chars 字になる文書 (1 行 100 字。--- と frontmatter の字は数えない) */
-  function sizedDoc(id: string, kind: string, context: string | null, chars: number, extra: readonly string[] = []): string[] {
-    const body: string[] = [];
-    for (let left = chars; left > 0; left -= 100) body.push('あ'.repeat(Math.min(100, left)));
-    return ['---', `id: ${id}`, `kind: ${kind}`, ...(context === null ? [] : [`context: ${context}`]), ...extra, '---', ...body];
-  }
-
-  let root: string;
-  beforeEach(() => {
-    root = makeRoot();
-    // 用語集・機能ブリーフは型の検査が無く、行数の上限も無い。字数だけを数える
-    write(root, 'docs/ai/handbook/how-to/01-setup.md', titled('setup', 'guide', ['手順。']));
-  });
-
-  it(`まとまり 1 つの本文が ${CONTEXT_CHAR_LIMIT} 字なら通り、1 字超えたまとまりだけが警告になる。違反ではない (複数のまとまり)`, () => {
-    write(root, 'docs/person/design/reservation/features/01-a.md', sizedDoc('a', 'feature-brief', 'reservation', CONTEXT_CHAR_LIMIT));
-    write(root, 'docs/person/design/payment/features/01-b.md', sizedDoc('b', 'feature-brief', 'payment', CONTEXT_CHAR_LIMIT + 1));
-    write(root, 'docs/person/design/billing/features/01-c.md', sizedDoc('c', 'feature-brief', 'billing', 100));
-    const result = run(root);
-    assert.deepEqual(result.violations, []);
-    assert.deepEqual(result.warnings, [
-      'まとまり payment (person/design/payment/) の本文が 15,001 字で、上限 15,000 字を超えている (人が全部読める量に収める)。Igeta 1.0.0 以降は違反になる',
-    ]);
-  });
-
-  it('まとまりの合計は、まとまりの中の文書 (業務フロー・画面・機能ブリーフ・まとまりの地図) を足した字数。まとまりごとに数える', () => {
-    for (const [name, chars] of [['01-a', 4_000], ['02-b', 4_000], ['03-c', 4_000], ['04-d', 3_001]] as const) {
-      write(root, `docs/person/design/payment/features/${name}.md`, sizedDoc(name, 'feature-brief', 'payment', chars));
-    }
-    write(root, 'docs/person/design/reservation/features/01-a.md', sizedDoc('r', 'feature-brief', 'reservation', 14_000));
-    const result = run(root);
-    assert.equal(result.warnings.length, 1);
-    assert.match(result.warnings[0] ?? '', /^まとまり payment .* 15,001 字/);
-  });
-
-  it('全体共通 (person/requirements/ と person/design/shared/) の本文は別枠で、上限 30,000 字。まとまりの字数と混ざらない', () => {
-    write(root, 'docs/person/requirements/09-a.md', sizedDoc('req-a', 'glossary', null, 15_000));
-    write(root, 'docs/person/design/shared/09-b.md', sizedDoc('shared-b', 'glossary', null, SHARED_CHAR_LIMIT - 15_000));
-    write(root, 'docs/person/design/reservation/features/01-a.md', sizedDoc('r', 'feature-brief', 'reservation', 14_000));
-    assert.deepEqual(run(root).warnings, [], '全体共通が 30,000 字ちょうど、まとまりが 14,000 字');
-    write(root, 'docs/person/design/shared/09-c.md', sizedDoc('shared-c', 'glossary', null, 1));
-    const result = run(root);
-    assert.deepEqual(result.warnings, [
-      '全体共通 (person/requirements/ と person/design/shared/) の本文が 30,001 字で、上限 30,000 字を超えている (人が全部読める量に収める)。Igeta 1.0.0 以降は違反になる',
-    ]);
-  });
-
-  it('frontmatter・コードフェンス (Mermaid を含む)・README.md・decisions/・ai/・client/ の字数は数えない', () => {
-    write(
-      root,
-      'docs/person/design/reservation/features/01-a.md',
-      sizedDoc('a', 'feature-brief', 'reservation', CONTEXT_CHAR_LIMIT, ['memo: ' + 'あ'.repeat(5_000)]).concat(['```mermaid', 'あ'.repeat(5_000), '```', '~~~text', 'あ'.repeat(5_000), '~~~']),
-    );
-    write(root, 'docs/person/design/reservation/README.md', [...readmeHeader('r-index'), 'あ'.repeat(3_000)]);
-    write(root, 'docs/ai/specs/reservation/api/01-big.md', sizedDoc('big-ai', 'api-spec', 'reservation', 40_000));
-    write(root, 'docs/client/proposals/2026/01-big.md', sizedDoc('big-client', 'proposal', null, 40_000));
-    write(root, 'docs/person/decisions/2026/0090-big.md', sizedDoc('adr-0090-big', 'adr', null, 40_000));
-    assert.deepEqual(run(root).warnings, []);
-    // 1 字足すと警告になる。数えない字が混ざっていないことの確認
-    write(
-      root,
-      'docs/person/design/reservation/features/01-a.md',
-      sizedDoc('a', 'feature-brief', 'reservation', CONTEXT_CHAR_LIMIT + 1, ['memo: ' + 'あ'.repeat(5_000)]),
-    );
-    assert.equal(run(root).warnings.length, 1);
-  });
-
-  it('全角も半角も 1 字で、サロゲートペアの字 (𠮷。UTF-16 で 2 単位) も 1 字。改行は数えない', () => {
-    const lines = ['a'.repeat(100), 'あ'.repeat(100), '𠮷'.repeat(100)];
-    const body: string[] = [];
-    for (let i = 0; i < CONTEXT_CHAR_LIMIT / 100; i += 1) body.push(lines[i % 3] ?? '');
-    write(root, 'docs/person/design/reservation/features/01-a.md', ['---', 'id: a', 'kind: feature-brief', 'context: reservation', '---', ...body]);
-    assert.deepEqual(run(root).warnings, [], 'ちょうど 15,000 字 (UTF-16 の長さでは 約 20,000)');
-    write(root, 'docs/person/design/reservation/features/01-a.md', ['---', 'id: a', 'kind: feature-brief', 'context: reservation', '---', ...body, 'a']);
-    assert.equal(run(root).warnings.length, 1);
-  });
-
-  describe('Igeta の版による切替 (警告 → 違反。ADR-0005)', () => {
-    beforeEach(() => {
-      write(root, 'docs/person/design/payment/features/01-b.md', sizedDoc('b', 'feature-brief', 'payment', CONTEXT_CHAR_LIMIT + 1));
-    });
-
-    it(`版が ${SIZE_LIMIT_VIOLATION_FROM_MAJOR}.0.0 未満なら警告、以上なら違反 (警告は出ない)`, () => {
-      for (const version of ['0.4.0', `${SIZE_LIMIT_VIOLATION_FROM_MAJOR - 1}.99.99`]) {
-        const result = run(root, { igetaRoot: igetaRootWithVersion(version) });
-        assert.deepEqual(result.violations, [], version);
-        assert.equal(result.warnings.length, 1, version);
-      }
-      for (const version of [`${SIZE_LIMIT_VIOLATION_FROM_MAJOR}.0.0`, `${SIZE_LIMIT_VIOLATION_FROM_MAJOR + 2}.1.0`]) {
-        const result = run(root, { igetaRoot: igetaRootWithVersion(version) });
-        assert.deepEqual(result.warnings, [], version);
-        assert.equal(result.violations.length, 1, version);
-        assert.equal(result.violations[0]?.severity, 'violation');
-        assert.equal(posix(result.violations[0]?.file), 'docs/person/design/payment');
-        assert.match(result.violations[0]?.message ?? '', /^まとまり payment .*15,001 字で、上限 15,000 字を超えている/);
-      }
-    });
-
-    it('Igeta の版を読めないときは、上限を超えているときだけ、警告にも違反にも倒さず検査不能にする', () => {
-      const result = run(root, { igetaRoot: makeRoot() });
-      assert.equal(result.violations.length, 1);
-      assert.equal(result.violations[0]?.severity, 'cannot-check');
-      assert.match(result.violations[0]?.message ?? '', /Igeta の版を読めない/);
-      // 上限を超えていなければ、版は要らないので、読めなくても何も出ない
-      rmSync(join(root, 'docs/person/design/payment'), { recursive: true });
-      assert.deepEqual(run(root, { igetaRoot: makeRoot() }).violations, []);
-    });
-  });
-
-  it('字数の警告は、検査のたびに出し直す (同じ検査を 2 回走らせても重ならない)', () => {
-    write(root, 'docs/person/design/payment/features/01-b.md', sizedDoc('b', 'feature-brief', 'payment', CONTEXT_CHAR_LIMIT + 1));
-    const check = new PersonFormCheck({ templates: TEMPLATES });
-    check.run({ targetRoot: root, igetaRoot: WARNING_STAGE_IGETA });
-    check.run({ targetRoot: root, igetaRoot: WARNING_STAGE_IGETA });
-    assert.equal(check.warnings.length, 1);
+    write(root, 'docs/ai/handbook/how-to/02-comments.md', titled('comments', 'guide', ['<!-- 1 行 -->', '<!--', '複数行', '-->']));
+    assert.deepEqual(run(root), { violations: [], warnings: [] });
   });
 });
 
 // ---------------------------------------------------------------------------
-// 廃の行 (条件 9)
+// 2. 否定テスト
+// ---------------------------------------------------------------------------
+
+describe('テスト仕様 03 §2 否定テスト', () => {
+  it('[TST-301] ○ の kind に、自分の接頭辞の決まりの行が 1 つも無い (表が無い / 別の接頭辞の行だけ) → 違反', () => {
+    const cases: ReadonlyArray<readonly [string, readonly string[]]> = [
+      ['表が無い', [...MERMAID, '予約の流れを文章だけで書いた。']],
+      ['別の接頭辞 (REQ) の決まりの行だけ', [...MERMAID, ...decisions('REQ')]],
+    ];
+    for (const [name, body] of cases) {
+      assertOnly(runWith(BOOKING, booking(body)), BOOKING, 1, /^決まりの行が 1 つも無い .*BF-nnn/, name);
+    }
+  });
+
+  it('[TST-302] 自分の接頭辞の ID の行を持つ表の最後の列が `状態` でない (列が無い / 最後ではない) → 違反 (見出しの行)', () => {
+    const cases: ReadonlyArray<readonly [string, string, readonly string[]]> = [
+      ['状態の列が無い', '| ID | 決まり | 強さ |', ['| BF-101 | 予約は成立させない | 強い |', '| BF-102 | 15 分で解除する | 弱い |']],
+      ['状態の列が最後ではない', '| ID | 状態 | 決まり |', ['| BF-101 | 決定 | 予約は成立させない |', '| BF-102 | 仮 | 15 分で解除する |']],
+    ];
+    for (const [name, header, rows] of cases) {
+      const lines = booking([...MERMAID, header, '|---|---|---|', ...rows, '']);
+      assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line === header), /^BF-nnn の行が、決まりの表ではない表にある/, name);
+    }
+  });
+
+  it('[TST-303] 決まりの表の 1 行だけ、最初のセルを `**BF-130**`・`bf-130`・`ＢＦ-130`・`BF-1130`・`BF-130 (案)` にする → どれも違反 (その行)', () => {
+    for (const cell of ['**BF-130**', 'bf-130', 'ＢＦ-130', 'BF-1130', 'BF-130 (案)']) {
+      const lines = booking([...MERMAID, ...table(...rowsOf('BF'), row(cell, '隠した決まり', '決定'))]);
+      const result = runWith(BOOKING, lines);
+      assertOnly(result, BOOKING, lineOf(lines, (line) => line.startsWith(`| ${cell} |`)), /^決まりの表の行の最初のセルが ID の形ではない/, cell);
+      assert.ok(result.violations[0]?.message.includes(`「${cell}」`), cell);
+    }
+  });
+
+  it('[TST-304] 最後のセルが `確定`・空・`決定 (仮)` → 違反 (その行)。自分の接頭辞の行でも、別の接頭辞の行でも、○ でない kind (用語集) の決まりの表でも同じ', () => {
+    const targets: ReadonlyArray<{ name: string; path: string; id: string; build: (hidden: string) => string[] }> = [
+      { name: '自分の接頭辞', path: BOOKING, id: 'BF-130', build: (hidden) => booking([...MERMAID, ...table(...rowsOf('BF'), hidden)]) },
+      { name: '別の接頭辞', path: BOOKING, id: 'REQ-130', build: (hidden) => booking([...MERMAID, ...table(...rowsOf('BF'), hidden)]) },
+      { name: '用語集の決まりの表', path: GLOSSARY, id: 'GL-130', build: (hidden) => titled('glossary', 'glossary', table(hidden)) },
+    ];
+    for (const { name, path, id, build } of targets) {
+      for (const state of ['確定', '', '決定 (仮)']) {
+        const hidden = row(id, '隠した決まり', state);
+        const lines = build(hidden);
+        assertOnly(runWith(path, lines), path, lineOf(lines, (line) => line === hidden), new RegExp(`^${id} の状態が不正`), `${name} / 「${state}」`);
+      }
+    }
+  });
+
+  it('[TST-305] 決まりの行の列の数が見出しと違う (少ない / 多い) → 違反 (その行)', () => {
+    for (const bad of ['| BF-130 | 決まり |', '| BF-130 | 決まり | 決定 | 余り |']) {
+      const lines = booking([...MERMAID, ...table(...rowsOf('BF'), bad)]);
+      assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line === bad), /^BF-130 の行の列数/, bad);
+    }
+  });
+
+  it('[TST-306] 図が要る kind に、画像のリンクだけ / 別のコードフェンスの中の mermaid だけ → 違反', () => {
+    const cases: ReadonlyArray<readonly [string, readonly string[]]> = [
+      ['画像のリンクだけ', ['![流れ](./flow.png)', '']],
+      ['別のコードフェンスの中の mermaid だけ', ['````markdown', '```mermaid', 'flowchart LR', '```', '````', '']],
+    ];
+    for (const [name, picture] of cases) {
+      assertOnly(runWith(BOOKING, booking([...picture, ...decisions('BF')])), BOOKING, 1, /^図が 1 枚も無い \(kind: business-flow/, name);
+    }
+    const map = 'person/design/shared/00-map.md';
+    assertOnly(runWith(map, titled('map', 'map', ['![地図](./map.png)', ''])), map, 1, /^図が 1 枚も無い \(kind: map/, '図だけの kind (地図)');
+  });
+
+  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 → 違反', () => {
+    assertOnly(runWith(BOOKING, padTo(booking([...MERMAID, ...decisions('BF')]), 101)), BOOKING, 1, /^人の文書の行数上限 \(100\) を超えている: 101 行/, '○ の kind');
+    assertOnly(runWith(REQUIREMENTS, padTo(formLines(docOf('requirements')), 151)), REQUIREMENTS, 1, /^人の文書の行数上限 \(150\) を超えている: 151 行/, 'requirements');
+  });
+
+  it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
+    /** [名前, 文書, 行, コメントの始まりの行] */
+    const cases: ReadonlyArray<readonly [string, string, string[], (line: string) => boolean]> = [
+      ['1 行', GLOSSARY, titled('glossary', 'glossary', ['用語。', '<!-- 人には見えない指示 -->', '']), (line) => line.includes('人には見えない指示')],
+      ['行の途中', GLOSSARY, titled('glossary', 'glossary', ['用語。<!-- 行の途中 -->', '']), (line) => line.includes('行の途中')],
+      ['複数行', GLOSSARY, titled('glossary', 'glossary', ['用語。', '<!--', '複数行の', 'コメント', '-->', '']), (line) => line === '<!--'],
+      [
+        '生成区間の中',
+        LEDGER,
+        [...titled('decisions', 'decision-log', ['## 仮・未決の一覧', '']), marker('tentative-index', 'start'), '<!-- 区間の中に隠した指示 -->', marker('tentative-index', 'end')],
+        (line) => line.includes('区間の中に隠した指示'),
+      ],
+      ['提出物の章', CHAPTER, titled('delivery-overview', 'delivery-chapter', ['顧客に渡す章。', '<!-- 提出物のコメント -->']), (line) => line.includes('提出物のコメント')],
+    ];
+    for (const [name, path, lines, isComment] of cases) {
+      assertOnly(runWith(path, lines), path, lineOf(lines, isComment), /^HTML コメントを書かない/, name);
+    }
+    assert.deepEqual(runWith(GLOSSARY, titled('glossary', 'glossary', ['```html', '<!-- 例 -->', '```', ''])).violations, [], 'コードフェンスの中の例');
+  });
+
+  it('[TST-309] 生成区間: 管理外の名前 / 決まった文書以外に置く / 同じ区間が 2 つ / 閉じていない / 入れ子 / 終わりだけ → どれも違反', () => {
+    const paymentReadme = (...body: string[]): string[] => readme('payment-index', ['> このディレクトリの目的: 決済。', '', ...body]);
+    const cases: ReadonlyArray<readonly [string, string, string[], RegExp]> = [
+      ['管理外の名前', GLOSSARY, titled('glossary', 'glossary', [marker('api-index', 'start'), marker('api-index', 'end'), '']), /^管理外の AUTOGEN 区間: api-index/],
+      ['決まった文書以外 (adr-index)', PAYMENT_README, paymentReadme(marker('adr-index', 'start'), marker('adr-index', 'end')), /AUTOGEN:adr-index の区間は、この文書には置けない/],
+      ['決まった文書以外 (tentative-index)', BOOKING, booking([...MERMAID, ...decisions('BF'), marker('tentative-index', 'start'), marker('tentative-index', 'end')]), /AUTOGEN:tentative-index の区間は、この文書には置けない/],
+      ['同じ区間が 2 つ', PAYMENT_README, paymentReadme(...DIR_INDEX, ...DIR_INDEX), /AUTOGEN:dir-index の区間が 2 つある/],
+      ['閉じていない', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a'), /AUTOGEN:dir-index の区間が閉じていない/],
+      ['入れ子', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), marker('dir-index', 'start'), marker('dir-index', 'end')), /AUTOGEN 区間が入れ子になっている/],
+      ['終わりだけ', PAYMENT_README, paymentReadme(marker('dir-index', 'end')), /終わりの印に、対応する始まりの印が無い/],
+    ];
+    for (const [name, path, lines, message] of cases) {
+      const result = runWith(path, lines);
+      assert.ok(result.violations.length >= 1, `${name}: 違反が出ない`);
+      assert.ok(result.violations.every((violation) => posix(violation.file) === `docs/${path}`), `${name}: ${describeAll(result)}`);
+      assert.ok(result.violations.some((violation) => message.test(violation.message)), `${name}: ${describeAll(result)}`);
+    }
+  });
+
+  it('[TST-310] README.md の区間の外に文章が 2 行以上 → 違反', () => {
+    const lines = readme('payment-index', ['> このディレクトリの目的: 決済。', '', '補足の文章。', '', ...DIR_INDEX]);
+    assertOnly(runWith(PAYMENT_README, lines), PAYMENT_README, lineOf(lines, (line) => line === '補足の文章。'), /文章が 2 行ある/, '目的の 1 行と補足');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 廃の行と検査不能 (git の repo が要る)
 // ---------------------------------------------------------------------------
 
 /** テスト用の git 操作。利用者の git の設定 (署名・既定のブランチ名) に左右されないようにする */
@@ -672,221 +498,91 @@ function git(root: string, ...args: string[]): string {
   ).trim();
 }
 
-/** root を git の repo にし、いまの内容を 1 コミットにして、その SHA を返す */
-function commitAll(root: string, message: string): string {
+function commit(root: string, message: string): void {
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', message);
-  return git(root, 'rev-parse', 'HEAD');
 }
 
-describe('PersonFormCheck: 廃の行 (条件 9)', () => {
-  describe('起点が無いとき: 同じ文書の中で、廃の ID が別の行に使われていないこと', () => {
-    let root: string;
-    beforeEach(() => {
-      root = makeRoot();
-      writeValidTree(root);
-    });
+/** 正しい構成を 1 コミットにした git repo。ブランチ名は dest (変更を入れる先) */
+function makeRepo(): string {
+  const root = makeRoot();
+  git(root, 'init', '-q');
+  writeValidTree(root);
+  commit(root, '宛先: 廃の行を持つ正しい構成');
+  git(root, 'branch', '-M', 'dest');
+  return root;
+}
 
-    it('廃の行が 1 つあり、ほかの行と ID が重ならない構成 (正しい構成) は通る。別の文書で同じ ID を使うのは、局所の番号なので通る', () => {
-      // 正しい構成は BF-104 を、reservation-booking と payment-refund の 2 文書が、どちらも廃として持つ
-      assert.deepEqual(run(root).violations, []);
-    });
-
-    it('廃の ID を、同じ文書の別の行で、別の状態・内容で使い直すと、使い直した行だけが落ちる', () => {
-      const lines = booking([...MERMAID, ...decisions('BF', [...ROWS, [104, '別の決まり', '決定']])]);
-      write(root, BOOKING, lines);
-      const result = run(root);
-      assert.deepEqual(result.files, [BOOKING]);
-      assert.match(result.violations[0]?.message ?? '', /^BF-104 は 廃 の ID \(\d+ 行目\) なのに、同じ文書の別の行で使われている/);
-      assert.equal(result.violations[0]?.line, lineOf(lines, (line) => line.startsWith('| BF-104 | 別の決まり')));
-    });
-
-    it('廃の行が、使い直した行より後ろにあっても同じ (順序によらない)。廃の行同士の重複も落ちる', () => {
-      write(root, BOOKING, booking([...MERMAID, ...decisions('BF', [[104, '別の決まり', '決定'], [104, '(作り方のため ai/ へ移した)', '廃']])]));
-      write(root, REFUND, refund([...MERMAID, ...decisions('BF', [[104, '移した', '廃'], [104, '別に移した', '廃']])]));
-      const result = run(root);
-      assert.deepEqual(result.files, [REFUND, BOOKING]);
-    });
-
-    it('廃でない ID の重複は、この規則の対象外 (廃の行を持たない ID)', () => {
-      write(root, BOOKING, booking([...MERMAID, ...decisions('BF', [[101, 'a', '決定'], [101, 'b', '仮']])]));
-      assert.deepEqual(run(root).violations, []);
-    });
+describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', () => {
+  it('[TST-311] 起点で 廃 の行を消す / 状態を `決定` に戻す / 文書ごと消す / 文書の id を変える / 行を別の文書へ移す → どれも違反', () => {
+    const root = makeRepo();
+    const bookingLines = formLines(docOf('reservation-booking'));
+    const withoutRow104 = bookingLines.filter((line) => !line.startsWith('| BF-104 '));
+    const removed = /^廃の行を消している: reservation-booking\/BF-104 は dest との枝分かれの点 \(\w{7}\) で 廃 だった/;
+    const cases: ReadonlyArray<readonly [string, () => void, RegExp]> = [
+      ['行を消す', () => write(root, `docs/${BOOKING}`, withoutRow104), removed],
+      ['状態を戻す', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('| 廃 |', '| 決定 |'))), /^廃の行を戻している: reservation-booking\/BF-104 .*いまは「決定」/],
+      ['文書ごと消す', () => rmSync(join(root, 'docs', BOOKING)), removed],
+      ['文書の id を変える', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('id: reservation-booking', 'id: reservation-booking-v2'))), removed],
+      [
+        '行を別の文書へ移す',
+        () => {
+          write(root, `docs/${BOOKING}`, withoutRow104);
+          write(root, `docs/${TOP}`, formLines(docOf('reservation-top'), [...MERMAID, ...table(...rowsOf('SCR'), row('BF-104', '移した行', '廃'))]));
+        },
+        removed,
+      ],
+    ];
+    for (const [name, mutate, message] of cases) {
+      git(root, 'checkout', '-q', '--', '.');
+      git(root, 'clean', '-qfd');
+      mutate();
+      const result = run(root, { base: 'dest' });
+      assert.equal(result.violations.length, 1, `${name}: ${describeAll(result)}`);
+      assert.equal(result.violations[0]?.severity, 'violation', name);
+      assert.equal(posix(result.violations[0]?.file), `docs/${BOOKING}`, name);
+      assert.match(result.violations[0]?.message ?? '', message, name);
+    }
   });
 
-  describe('起点があるとき: 起点で 廃 だった ID の行が、いまも同じ ID で 廃 のままあること (本物の git repo)', () => {
-    let root: string;
-    let base: string;
-    beforeEach(() => {
-      root = makeRoot();
-      git(root, 'init', '-q');
-      writeValidTree(root);
-      base = commitAll(root, '起点: 廃の行を持つ正しい構成');
-    });
-
-    const reload = (path: string, edit: (text: string) => string): void => {
-      const target = join(root, path);
-      writeFileSync(target, edit(readFileSync(target, 'utf8')));
-    };
-
-    it('何も変えなければ、複数のまとまり・複数の文書の廃の行があっても通る', () => {
-      assert.deepEqual(run(root, { base }).violations, []);
-    });
-
-    it('廃の行を消すと、消した文書だけが落ちる。同じ局所の番号 (BF-104) を持つ、別のまとまりの文書は落ちない', () => {
-      const before = booking([...MERMAID, ...decisions('BF', ROWS)]);
-      reload(BOOKING, (text) => text.replace(/^\| BF-104 .*\n/m, ''));
-      const result = run(root, { base });
-      assert.equal(result.violations.length, 1);
-      assert.equal(posix(result.violations[0]?.file), BOOKING);
-      assert.match(result.violations[0]?.message ?? '', new RegExp(`^廃の行を消している: reservation-booking/BF-104 は ${base} で 廃 だったが、いまは行が無い`));
-      // 行は、起点でその行があった場所
-      assert.equal(result.violations[0]?.line, lineOf(before, (line) => line.startsWith('| BF-104 ')));
-    });
-
-    it('廃の状態を戻すと、戻した行が落ちる。内容を書き換えて番号を使い直したとき (状態は決定) も同じ', () => {
-      reload(BOOKING, (text) => text.replace('| BF-104 | (作り方のため ai/ へ移した) | 廃 |', '| BF-104 | (作り方のため ai/ へ移した) | 決定 |'));
-      reload(REFUND, (text) => text.replace('| BF-104 | (作り方のため ai/ へ移した) | 廃 |', '| BF-104 | 返金は 7 日以内 | 仮 |'));
-      const result = run(root, { base });
-      assert.deepEqual(result.files, [REFUND, BOOKING]);
-      assert.match(messageOf(result, BOOKING), /^廃の行を戻している: reservation-booking\/BF-104 は .* で 廃 だったが、いまは「決定」/);
-      assert.match(messageOf(result, REFUND), /^廃の行を戻している: payment-refund\/BF-104 .*いまは「仮」/);
-    });
-
-    it('廃のまま内容だけ変える・廃の行を増やす・番号を足すのは通る (廃の行を消さず、状態を戻さず、番号を使い直さない)', () => {
-      reload(BOOKING, (text) => text.replace('(作り方のため ai/ へ移した)', '(作り方のため sequence-spec へ移した)'));
-      reload(REFUND, (text) => `${text}${decisions('BF', [[105, '新しく廃にした', '廃'], [106, '新しい決まり', '決定']]).join('\n')}`);
-      assert.deepEqual(run(root, { base }).violations, []);
-    });
-
-    it('文書を移動しても (frontmatter の id が同じなら) 廃の行は残っている。移動先でまとまりの文書が変わっても同じ', () => {
-      mkdirSync(join(root, 'docs/person/design/reservation/flows/archive'), { recursive: true });
-      renameSync(join(root, BOOKING), join(root, 'docs/person/design/reservation/flows/archive/01-booking.md'));
-      assert.deepEqual(run(root, { base }).violations, []);
-    });
-
-    it('文書ごと消す・frontmatter の id を変える・person/ の外へ出すと、その文書の廃の行を消したことになる', () => {
-      rmSync(join(root, REFUND));
-      reload(BOOKING, (text) => text.replace('id: reservation-booking', 'id: reservation-booking-renamed'));
-      renameSync(join(root, REQUIREMENTS), join(root, 'docs/ai/handbook/how-to/02-requirements.md'));
-      const result = run(root, { base });
-      assert.deepEqual(result.files, [REFUND, BOOKING, REQUIREMENTS]);
-      assert.match(messageOf(result, REFUND), /^廃の行を消している: payment-refund\/BF-104/);
-      assert.match(messageOf(result, BOOKING), /^廃の行を消している: reservation-booking\/BF-104/);
-      assert.match(messageOf(result, REQUIREMENTS), /^廃の行を消している: requirements\/REQ-104/);
-    });
-
-    it('起点より後に 廃 にした ID の使い直しは、起点には廃が無いので、同じ文書の中の検査だけが見つける', () => {
-      reload(BOOKING, (text) => text.replace('| BF-103 | 利用者の希望により日付を選び直せるか | 未決 |', '| BF-103 | 移した | 廃 |\n| BF-103 | 別の決まり | 決定 |'));
-      const result = run(root, { base });
-      assert.equal(result.violations.length, 1);
-      assert.match(result.violations[0]?.message ?? '', /^BF-103 は 廃 の ID/);
-    });
-
-    it('同じ行を、同じ文書の中の検査と起点との比較が二重に指さない', () => {
-      reload(BOOKING, (text) => text.replace('| BF-104 | (作り方のため ai/ へ移した) | 廃 |', '| BF-104 | (作り方のため ai/ へ移した) | 廃 |\n| BF-104 | 使い直し | 決定 |'));
-      const result = run(root, { base });
-      assert.equal(result.violations.length, 1);
-      assert.match(result.violations[0]?.message ?? '', /^BF-104 は 廃 の ID/);
-    });
-
-    it('起点は、ブランチ・タグ・HEAD~1 のような ref でも、merge-base のコミットでもよい', () => {
-      git(root, 'tag', 'v-base');
-      reload(BOOKING, (text) => text.replace(/^\| BF-104 .*\n/m, ''));
-      commitAll(root, '廃の行を消した');
-      for (const ref of ['v-base', 'HEAD~1', base, git(root, 'merge-base', 'HEAD', 'v-base')]) {
-        const result = run(root, { base: ref });
-        assert.equal(result.violations.length, 1, ref);
-        assert.match(result.violations[0]?.message ?? '', /^廃の行を消している/, ref);
-      }
-      assert.deepEqual(run(root, { base: 'HEAD' }).violations, [], '起点が現在のコミットなら、消した後の状態が起点');
-    });
-
-    it('起点に person/ が無い (旧い構成・ai だけ) なら、廃の行は無いので何も落ちない', () => {
-      const other = makeRoot();
-      git(other, 'init', '-q');
-      write(other, 'docs/ai/handbook/how-to/01-setup.md', titled('setup', 'guide', ['手順。']));
-      const first = commitAll(other, 'ai だけ');
-      writeValidTree(other);
-      assert.deepEqual(run(other, { base: first }).violations, []);
-    });
-
-    it('起点を読めなければ検査不能 (存在しない ref・git の repo でない・- で始まる値)。比べたことにして通さない', () => {
-      for (const ref of ['no-such-ref', '-rf']) {
-        const result = run(root, { base: ref });
-        assert.equal(result.violations.length, 1, ref);
-        assert.equal(result.violations[0]?.severity, 'cannot-check', ref);
-        assert.match(result.violations[0]?.message ?? '', new RegExp(`^--base ${ref} と比べられない`), ref);
-      }
-      const notGit = makeRoot();
-      writeValidTree(notGit);
-      const result = run(notGit, { base: 'HEAD' });
-      assert.equal(result.violations[0]?.severity, 'cannot-check');
-    });
-
-    it('起点があっても、型・書き込み口の違反は同じ検査で一緒に出る', () => {
-      write(root, GLOSSARY, glossary(['<!-- コメント -->', '']));
-      reload(BOOKING, (text) => text.replace(/^\| BF-104 .*\n/m, ''));
-      const result = run(root, { base });
-      assert.deepEqual(result.files, [BOOKING, GLOSSARY]);
-    });
+  it('[TST-312] 起点を渡さずに、同じ文書で 廃 の ID を別の行に使う → 違反', () => {
+    const lines = booking([...MERMAID, ...table(...rowsOf('BF'), row('BF-104', '使い直した番号', '決定'))]);
+    assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line.startsWith('| BF-104 | 使い直した')), /^BF-104 は 廃 の ID \(\d+ 行目\) なのに、同じ文書の別の行で使われている/, '廃の ID の使い直し');
   });
-});
 
-// ---------------------------------------------------------------------------
-// template-check との結線
-// ---------------------------------------------------------------------------
+  it('[TST-313] 無い ref・git の repo でない・docs が repo の外 / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
+    const repo = makeRepo();
+    const notRepo = makeRoot();
+    writeValidTree(notRepo);
+    const elsewhere = makeRoot();
+    writeValidTree(elsewhere);
+    const overLimit = makeRoot();
+    writeValidTree(overLimit);
+    write(overLimit, 'docs/person/design/payment/features/02-long.md', ['---', 'id: long', 'kind: feature-brief', 'context: payment', '---', ...fill('あ', 15_100)]);
 
-describe('template-check の中で動く', () => {
-  async function runCommand(root: string, args: readonly string[]): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
-    const stdout: string[] = [];
+    const cases: ReadonlyArray<readonly [string, RunResult, RegExp]> = [
+      ['無い ref', run(repo, { base: 'no-such-ref' }), /^--base no-such-ref と比べられない/],
+      ['git の repo でない', run(notRepo, { base: 'dest' }), /^--base dest と比べられない/],
+      ['docs が repo の外', run(repo, { base: 'dest', docsDir: join(elsewhere, 'docs') }), /リポジトリの中の docs だけ/],
+      ['雛形に接頭辞が無い', run(repo, { templates: new Map([...TEMPLATES, ['business-flow', { idPrefixes: [] }]]) }), /kind: business-flow の雛形に id_prefix が無く/],
+      ['Igeta の版を読めない', run(overLimit, { igetaRoot: makeRoot() }), /Igeta の版を読めない/],
+    ];
+    for (const [name, result, message] of cases) {
+      assert.equal(result.violations.length, 1, `${name}: ${describeAll(result)}`);
+      assert.equal(result.violations[0]?.severity, 'cannot-check', name);
+      assert.match(result.violations[0]?.message ?? '', message, name);
+      assert.deepEqual(result.warnings, [], `${name}: 警告に倒さない`);
+    }
+
+    // template-check では、検査不能は終了コード 2
     const stderr: string[] = [];
-    const code = await new TemplateCheckCommand().run(['--root', root, ...args], {
-      cwd: root,
+    const code = await new TemplateCheckCommand().run(['--root', repo, '--base', 'no-such-ref'], {
+      cwd: repo,
       igetaRoot: IGETA_ROOT,
-      stdout: (line) => stdout.push(line),
+      stdout: () => undefined,
       stderr: (line) => stderr.push(line),
     });
-    return { code, stdout, stderr };
-  }
-
-  it('新しい構成の repo では、雛形の検査に加えて、人の文書の検査の違反が出る。旧い構成では出ない', () => {
-    const v4 = makeRoot();
-    write(v4, 'docs/person/design/shared/10-glossary.md', glossary(['<!-- 隠し -->', '']));
-    const found = new DocTemplateCheck().analyze({ targetRoot: v4, igetaRoot: IGETA_ROOT }).violations;
-    assert.ok(found.some((violation) => /HTML コメントを書かない/.test(violation.message)));
-
-    const legacy = makeRoot();
-    write(legacy, 'docs/architecture/02-glossary.md', glossary(['<!-- 隠し -->', '']));
-    const legacyFound = new DocTemplateCheck().analyze({ targetRoot: legacy, igetaRoot: IGETA_ROOT }).violations;
-    assert.ok(!legacyFound.some((violation) => /HTML コメントを書かない/.test(violation.message)));
-  });
-
-  it('まとまりの合計字数の警告は、WARN の行で出る (終了コードは変えない)', async () => {
-    const root = makeRoot();
-    write(root, 'docs/person/design/payment/features/01-b.md', ['---', 'id: b', 'kind: feature-brief', 'context: payment', '---', ...Array.from({ length: 151 }, () => 'あ'.repeat(100))]);
-    const check = new DocTemplateCheck();
-    check.run({ targetRoot: root, igetaRoot: IGETA_ROOT });
-    assert.equal(check.warnings.length, 1);
-    assert.match(check.warnings[0] ?? '', /^まとまり payment .*15,100 字で、上限 15,000 字を超えている/);
-    // 同じ検査をもう一度走らせても、警告は重ならない。字数の足りない repo では空に戻る
-    check.run({ targetRoot: root, igetaRoot: IGETA_ROOT });
-    assert.equal(check.warnings.length, 1);
-    const { stderr } = await runCommand(root, []);
-    assert.ok(stderr.some((line) => line.startsWith('WARN まとまり payment ')), stderr.join('\n'));
-  });
-
-  it('--base <ref> は、廃の行を比べる起点として渡る。読めない起点は終了コード 2 (検査不能)', async () => {
-    const root = makeRoot();
-    git(root, 'init', '-q');
-    write(root, 'docs/person/design/reservation/flows/01-booking.md', booking([...MERMAID, ...decisions('BF', ROWS)]));
-    const base = commitAll(root, '起点');
-    write(root, BOOKING, booking([...MERMAID, ...decisions('BF', ROWS.filter(([n]) => n !== 104))]));
-
-    const found = await runCommand(root, ['--base', base]);
-    assert.ok(found.stderr.some((line) => /VIOLATION .*廃の行を消している: reservation-booking\/BF-104/.test(line)), found.stderr.join('\n'));
-    const unreadable = await runCommand(root, ['--base', 'no-such-ref']);
-    assert.equal(unreadable.code, 2);
-    assert.ok(unreadable.stderr.some((line) => /CANNOT-CHECK .*--base no-such-ref と比べられない/.test(line)), unreadable.stderr.join('\n'));
+    assert.equal(code, 2);
+    assert.ok(stderr.some((line) => /CANNOT-CHECK .*--base no-such-ref と比べられない/.test(line)), stderr.join('\n'));
   });
 });

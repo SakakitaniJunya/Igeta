@@ -1,59 +1,57 @@
 // 人の文書 (docs/person/・docs/client/) の、型・量・人の目に見えない書き込み口の検査。
-// Spec: docs/adr/0002-role-boundary-invariants.md の条件 5〜10、docs/explanation/09-reader-granularity.md §3〜§7、
-// 要件定義書 02 §7 (型の検査の区分)。`template-check` の中で動く (DocTemplateCheck が雛形の情報を渡す)。
+// Spec: docs/design/test/specs/03-person-form.md の規則 P1〜P10 (ADR-0002 条件 5〜10)。`template-check` の中で動く
+// (DocTemplateCheck が雛形の ID の接頭辞を渡す)。「決まりの表・決まりの行・ID の形」の定義は core/DecisionRows.ts。
 //
-// 新しい構成 (docs/person・ai・client のどれかがある) の repo だけで動く。旧い構成の repo では何も出さない。
-//
-// 型 (person/ の文書。型の検査の区分は core/Role.ts の formCheck)
-//   - ○ の kind: 決まりの表 (行頭が自分の kind の ID の行を持つ表) が 1 つ以上ある。その行は、最後の列が「状態」で、
-//     値が 決定・仮・未決・廃 のどれか (条件 5)
-//   - 図が要る kind (map・context-map・business-flow・screen-spec・solution-strategy・as-is-overview): Mermaid の図が
-//     1 枚以上 (条件 6)
-//   - 行数: ○ の kind は 100 行 (requirements は 150 行) (条件 7)。他の kind の上限は雛形の line_limit で、
-//     DocTemplateCheck が見る
-// 書き込み口 (person/・client/ の文書。条件 10)
-//   - HTML コメントを書かない。AUTOGEN 区間は、生成器が管理する dir-index・adr-index・tentative-index の 3 種だけで、
-//     生成器が書く場所 (README.md・decisions/README.md・決定台帳) にだけ置ける。区間は閉じて、入れ子にしない
-//   - README.md は、区間の外に frontmatter・見出し・1 行の目的だけを書く
-// 量 (条件 8)
-//   - まとまりの本文の合計 CONTEXT_CHAR_LIMIT 字、全体共通 (要件 + design/shared/) の合計 SHARED_CHAR_LIMIT 字を超えたら警告。
-//     Igeta の版が SIZE_LIMIT_VIOLATION_FROM_MAJOR 以上になったら、同じ指摘を違反にする (検査の強さは構成の実在と
-//     Igeta の版だけで決まり、利用 repo の設定では変えられない。ADR-0005。RoleBoundaryCheck の旧い構成の切替と同じ作り)
-// 廃の行 (条件 9)
-//   - 比べる起点 (base: git の ref。CI では merge-base) があれば、起点で 廃 だった ID の行が、いまも同じ ID で 廃 のまま
-//     あることを確かめる (消した・状態を戻した・番号を使い直したら違反)。文書は、移動しても変わらない frontmatter の id で
-//     照らす。起点が無くても、同じ文書の中で 廃 の ID が別の行に使われていないことは見る
+// P1 新しい構成 (docs/person・ai・client のどれかがある) の repo だけで動く。旧い構成の repo では何も出さない
+// P2 文書の kind は frontmatter の kind。無ければ置き場所の型から決める。両者が別の kind を指す文書と、kind を決められない
+//    文書は、型の検査 (P3〜P6) をしない (置き場所の検査が違反にする)
+// P3 決まりの表のデータの行は全部が決まりの行 (最初のセルが ID の形だけ)。列の数は見出しと同じで、最後のセルは
+//    決定・仮・未決・廃。person/ のどの kind の文書にも当てる
+// P4 ○ の kind (core/Role.ts の formCheck): 自分の接頭辞の決まりの行が 1 つ以上ある。その接頭辞の ID を最初のセルに持つ
+//    行が、決まりの表でない表にあれば違反
+// P5 図が要る kind: ```mermaid のコードフェンスが 1 つ以上ある
+// P6 ○ の kind は 100 行 (requirements は 150 行)。他の kind の上限は、雛形の line_limit を DocTemplateCheck が見る
+// P7 まとまり (person/design/<c>/) の本文の合計 15,000 字、全体共通 (要件 + design/shared/) の合計 30,000 字を超えたら警告。
+//    Igeta の版が SIZE_LIMIT_VIOLATION_FROM_MAJOR 以上なら違反 (検査の強さは構成の実在と Igeta の版だけで決まり、利用 repo の
+//    設定では変えられない。ADR-0005。RoleBoundaryCheck の旧い構成の切替と同じ作り)。版を読めなければ検査不能
+// P8 廃の行: (a) 同じ文書の中で、廃の ID を別の行に使えば違反。(b) base (宛先のブランチ) があれば、宛先と HEAD の枝分かれの点
+//    を起点に、起点の person/ の文書で 廃 だった行が、いまも同じ文書 (frontmatter の id で照らす) に 廃 のままなければ違反。
+//    起点を読めなければ検査不能
+// P9 書き込み口 (README.md を含む person/・client/ の全部の文書): HTML コメントは違反。生成区間は dir-index・adr-index・
+//    tentative-index の 3 種だけで、決まった文書に 1 つずつ、閉じていて、入れ子にしない。README.md は区間の外に
+//    frontmatter・見出し・目的の 1 行だけ
 
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import { SHARED_CONTEXT } from '../core/Context.js';
-import type { StateRow } from '../core/DecisionRows.js';
-import { collectStateRows, DECISION_STATES, STATE_ABOLISHED, STATE_COLUMN, isStateTable } from '../core/DecisionRows.js';
+import type { DecisionRow } from '../core/DecisionRows.js';
+import { collectDecisionRows, DECISION_STATES, idOf, isDecisionTable, STATE_ABOLISHED, STATE_COLUMN } from '../core/DecisionRows.js';
 import { isDirectory, listDocFiles } from '../core/DocFiles.js';
 import type { Frontmatter } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar } from '../core/Frontmatter.js';
-import { GitError, listFilesAtRef, readFileAtRef, resolveCommit } from '../core/GitRef.js';
+import { GitError, listFilesAtRef, mergeBase, readFileAtRef } from '../core/GitRef.js';
 import type { LineKind } from '../core/LineClassifier.js';
 import { classifyLines } from '../core/LineClassifier.js';
+import type { MarkdownTable } from '../core/MarkdownTable.js';
 import { findTables } from '../core/MarkdownTable.js';
 import type { Violation } from '../core/Report.js';
 import { detectLayout, isGeneratedIndex, kindOfPath, placementOf, roleOfPath } from '../core/Role.js';
 import type { SemVer } from '../core/Version.js';
 import { readIgetaVersion } from '../core/Version.js';
 
-/** ○ の kind の 1 本の行数 (ADR-0002 条件 7)。requirements だけ 150 行 */
+/** ○ の kind の 1 本の行数 (P6)。requirements だけ 150 行 */
 export const PERSON_LINE_LIMIT = 100;
 export const REQUIREMENTS_LINE_LIMIT = 150;
 
-/** まとまり 1 つの本文の合計字数と、全体共通 (要件 + design/shared/) の本文の合計字数 (ADR-0002 条件 8) */
+/** まとまり 1 つの本文の合計字数と、全体共通 (要件 + design/shared/) の本文の合計字数 (P7) */
 export const CONTEXT_CHAR_LIMIT = 15_000;
 export const SHARED_CHAR_LIMIT = 30_000;
 
-/** 合計字数の上限を、警告から違反に上げる Igeta のメジャー版 (ADR-0002 条件 8・ADR-0005 決定 1) */
+/** 合計字数の上限を、警告から違反に上げる Igeta のメジャー版 (P7・ADR-0005 決定 1) */
 export const SIZE_LIMIT_VIOLATION_FROM_MAJOR = 1;
 
-/** 生成器が管理する AUTOGEN 区間の名前 (ADR-0002 条件 10) */
+/** 生成器が管理する AUTOGEN 区間の名前 (P9) */
 const AUTOGEN_NAMES: readonly string[] = ['dir-index', 'adr-index', 'tentative-index'];
 
 /** 全体共通の本文を数える場所 (要件 + design/shared/)。まとまりの名前と取り違えない記号 */
@@ -69,7 +67,7 @@ export interface PersonFormOptions {
   readonly docsDir?: string;
   /** kind → 雛形の情報。DocTemplateCheck が読み込んだ雛形 */
   readonly templates: ReadonlyMap<string, PersonFormTemplate>;
-  /** 廃の行を比べる起点 (git の ref)。CI では merge-base を渡す。無ければ、同じ文書の中だけを見る */
+  /** 宛先のブランチ (変更を入れる先)。HEAD との枝分かれの点を、廃の行を比べる起点にする。無ければ同じ文書の中だけを見る */
   readonly base?: string;
 }
 
@@ -88,6 +86,8 @@ interface PersonDoc {
   /** 置き場所の型と frontmatter から決めた kind。決められない・食い違うときは null */
   readonly kind: string | null;
 }
+
+type Add = (line: number, message: string) => void;
 
 export class PersonFormCheck implements Check {
   readonly name = 'person-form-check';
@@ -150,30 +150,30 @@ export class PersonFormCheck implements Check {
     return docs;
   }
 
-  /** 型の検査 (person/ の文書。kind を決められたもの)。条件 5・6・7 */
+  /** 型の検査 (person/ の文書。kind を決められたもの)。P3〜P6 */
   #checkForm(doc: PersonDoc, reportedKinds: Set<string>): readonly Violation[] {
     const kind = doc.kind ?? '';
-    const placement = placementOf(kind);
-    if (placement === undefined || placement.role !== 'person') return [];
     const violations: Violation[] = [];
-    const add = (line: number, message: string): void => {
+    const add: Add = (line, message) => {
       violations.push({ severity: 'violation', message, file: doc.file, line });
     };
+    const tables = findTables(doc.lines, doc.kinds, doc.bodyStart);
+    checkDecisionRows(tables, add);
 
+    const placement = placementOf(kind);
+    if (placement === undefined || placement.role !== 'person') return violations;
     if (placement.formCheck === 'full') {
       const template = this.#options.templates.get(kind);
       // 雛形が無い kind は、DocTemplateCheck が未登録の kind として違反にする。ここでは重ねない
       if (template !== undefined) {
-        if (template.idPrefixes.length === 0) {
-          if (!reportedKinds.has(kind)) {
-            reportedKinds.add(kind);
-            violations.push({
-              severity: 'cannot-check',
-              message: `kind: ${kind} の雛形に id_prefix が無く、決まりの行を見分けられない (決まりの表の検査ができない。雛形に ID の接頭辞を足す)`,
-            });
-          }
-        } else {
-          checkDecisionTables(doc, template.idPrefixes, add);
+        if (template.idPrefixes.length > 0) {
+          checkOwnRows(tables, template.idPrefixes, add);
+        } else if (!reportedKinds.has(kind)) {
+          reportedKinds.add(kind);
+          violations.push({
+            severity: 'cannot-check',
+            message: `kind: ${kind} の雛形に id_prefix が無く、決まりの行を見分けられない (決まりの表の検査ができない。雛形に ID の接頭辞を足す)`,
+          });
         }
       }
       const limit = kind === 'requirements' ? REQUIREMENTS_LINE_LIMIT : PERSON_LINE_LIMIT;
@@ -188,7 +188,7 @@ export class PersonFormCheck implements Check {
     return violations;
   }
 
-  /** まとまりごと・全体共通の本文の合計字数 (条件 8)。上限を超えたら警告。Igeta の版が切替の版以上なら違反 */
+  /** まとまりごと・全体共通の本文の合計字数 (P7)。上限を超えたら警告。Igeta の版が切替の版以上なら違反 */
   #checkSize(ctx: CheckContext, docs: readonly PersonDoc[]): readonly Violation[] {
     const totals = new Map<string, number>();
     for (const doc of docs) {
@@ -226,7 +226,7 @@ export class PersonFormCheck implements Check {
     return violations;
   }
 
-  /** 廃の行 (条件 9)。同じ文書の中と、比べる起点があれば起点との比較 */
+  /** 廃の行 (P8)。同じ文書の中と、宛先のブランチ (base) があれば、枝分かれの点との比較 */
   #checkAbolished(ctx: CheckContext, docsDir: string, docs: readonly PersonDoc[]): readonly Violation[] {
     const violations: Violation[] = [];
     // 同じ行を、同じ文書の中の検査と起点との比較が二重に指さない
@@ -237,15 +237,12 @@ export class PersonFormCheck implements Check {
       violations.push({ severity: 'violation', message, file, line });
     };
 
-    const headRows = new Map<string, Array<{ readonly doc: PersonDoc; readonly row: StateRow }>>();
+    const headRows = new Map<string, Array<{ readonly doc: PersonDoc; readonly row: DecisionRow }>>();
     for (const doc of docs) {
       if (doc.role !== 'person' || doc.isReadme) continue;
-      const rows = stateRowsOf(doc.lines, doc.kinds, doc.bodyStart);
-      const byId = new Map<string, StateRow[]>();
-      for (const row of rows) {
-        if (row.id === null) continue;
-        byId.set(row.id, [...(byId.get(row.id) ?? []), row]);
-      }
+      const rows = decisionRowsOf(doc.lines, doc.kinds, doc.bodyStart);
+      const byId = new Map<string, DecisionRow[]>();
+      for (const row of rows) byId.set(row.id, [...(byId.get(row.id) ?? []), row]);
       for (const [id, sameId] of byId) {
         // 廃 の行が元の行。同じ ID の、ほかの行は、番号の使い直し
         const original = sameId.find((row) => row.state === STATE_ABOLISHED);
@@ -280,17 +277,18 @@ export class PersonFormCheck implements Check {
       ];
     }
     try {
-      resolveCommit(root, base);
+      const start = mergeBase(root, base, 'HEAD');
+      const where = `${base} との枝分かれの点 (${start.slice(0, 7)})`;
       const prefix = docsRel === '' ? '' : `${docsRel}/`;
-      for (const path of listFilesAtRef(root, base, `${prefix}person`)) {
+      for (const path of listFilesAtRef(root, start, `${prefix}person`)) {
         const rel = path.slice(prefix.length);
         if (!path.endsWith('.md') || isGeneratedIndex(rel)) continue;
-        const lines = readFileAtRef(root, base, path).split(/\r?\n/);
+        const lines = readFileAtRef(root, start, path).split(/\r?\n/);
         const meta = parseFrontmatter(lines);
         const docId = meta === null ? undefined : nonEmpty(scalar(meta.data, 'id'));
         if (meta === null || docId === undefined) continue;
-        for (const old of stateRowsOf(lines, classifyLines(lines), meta.bodyStart)) {
-          if (old.id === null || old.state !== STATE_ABOLISHED) continue;
+        for (const old of decisionRowsOf(lines, classifyLines(lines), meta.bodyStart)) {
+          if (old.state !== STATE_ABOLISHED) continue;
           const now = (headRows.get(docId) ?? []).filter(({ row }) => row.id === old.id);
           const label = `${docId}/${old.id}`;
           if (now.length === 0) {
@@ -298,7 +296,7 @@ export class PersonFormCheck implements Check {
               `base:${path}:${old.line}`,
               path,
               old.line,
-              `廃の行を消している: ${label} は ${base} で 廃 だったが、いまは行が無い (廃の行は消さず、状態を戻さず、番号を使い直さない)`,
+              `廃の行を消している: ${label} は ${where} で 廃 だったが、いまは行が無い (廃の行は消さず、状態を戻さず、番号を使い直さない)`,
             );
             continue;
           }
@@ -308,7 +306,7 @@ export class PersonFormCheck implements Check {
               `head:${doc.file}:${row.line}`,
               doc.file,
               row.line,
-              `廃の行を戻している: ${label} は ${base} で 廃 だったが、いまは「${row.state}」 (状態を戻さず、番号を使い直さない)`,
+              `廃の行を戻している: ${label} は ${where} で 廃 だったが、いまは「${row.state}」 (状態を戻さず、番号を使い直さない)`,
             );
           }
         }
@@ -323,7 +321,7 @@ export class PersonFormCheck implements Check {
 
 const nonEmpty = (value: string | undefined): string | undefined => (value === undefined || value === '' ? undefined : value);
 
-/** 置き場所の型と frontmatter の kind から、kind を決める。食い違い・決められないときは null (他の検査が違反にする) */
+/** P2: 置き場所の型と frontmatter の kind から、kind を決める。食い違い・決められないときは null (他の検査が違反にする) */
 function resolveKind(rel: string, meta: Frontmatter | null): string | null {
   const declared = meta === null ? undefined : nonEmpty(scalar(meta.data, 'kind'));
   const byPath = kindOfPath(rel);
@@ -331,48 +329,60 @@ function resolveKind(rel: string, meta: Frontmatter | null): string | null {
   return byPath !== null && byPath !== declared ? null : declared;
 }
 
-const stateRowsOf = (lines: readonly string[], kinds: readonly LineKind[], bodyStart: number): readonly StateRow[] =>
-  collectStateRows(findTables(lines, kinds, bodyStart));
+/** 決まりの行のうち、列の数が見出しと同じ行 (最後のセルが状態の列と分かる行) */
+const decisionRowsOf = (lines: readonly string[], kinds: readonly LineKind[], bodyStart: number): readonly DecisionRow[] =>
+  collectDecisionRows(findTables(lines, kinds, bodyStart)).filter((row) => row.aligned);
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const thousands = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
 // ---------------------------------------------------------------------------
-// 型 (条件 5・6・7)
+// 型 (P3〜P6)
 // ---------------------------------------------------------------------------
 
-/** 決まりの表 (行頭が自分の kind の ID の行を持つ表) の検査。条件 5 */
-function checkDecisionTables(doc: PersonDoc, prefixes: readonly string[], add: (line: number, message: string) => void): void {
-  const ownId = new RegExp(`^(${prefixes.map(escapeRegExp).join('|')}-\\d{3})(?!\\d)`);
-  const labels = prefixes.map((prefix) => `${prefix}-nnn`).join('・');
-  const tables = findTables(doc.lines, doc.kinds, doc.bodyStart).filter((table) =>
-    table.rows.some((row) => ownId.test(row.cells[0] ?? '')),
-  );
-  if (tables.length === 0) {
-    add(1, `決まりの表が 1 つも無い (行頭が ${labels} の行を持つ表が 1 つ以上要る。最後の列は「${STATE_COLUMN}」)`);
-    return;
-  }
+/** P3: 決まりの表のデータの行は、全部が決まりの行。最初のセルが ID の形だけ・列の数が見出しと同じ・最後のセルが状態の値 */
+function checkDecisionRows(tables: readonly MarkdownTable[], add: Add): void {
   for (const table of tables) {
-    if (!isStateTable(table)) {
+    if (!isDecisionTable(table)) continue;
+    for (const row of table.rows) {
+      const first = row.cells[0] ?? '';
+      const id = idOf(first);
+      if (id === null) {
+        add(row.line, `決まりの表の行の最初のセルが ID の形ではない: 「${first}」 (英大文字で始まる接頭辞 + - + 数字 3 桁だけ。例: BF-113)`);
+      } else if (row.cells.length !== table.headers.length) {
+        add(row.line, `${id} の行の列数 (${row.cells.length}) が見出しの列数 (${table.headers.length}) と違う (最後の列が「${STATE_COLUMN}」になっていない)`);
+      } else if (!DECISION_STATES.includes(row.cells[row.cells.length - 1] ?? '')) {
+        add(row.line, `${id} の状態が不正: 「${row.cells[row.cells.length - 1] ?? ''}」 (${DECISION_STATES.join('・')}のどれか)`);
+      }
+    }
+  }
+}
+
+/**
+ * P4: ○ の kind は、自分の接頭辞の決まりの行が 1 つ以上ある。その接頭辞の ID を最初のセルに持つ行が、決まりの表でない
+ * 表にあれば違反 (見出しの行)。そういう表があるときは、決まりの行が無いことを重ねて報告しない。
+ */
+function checkOwnRows(tables: readonly MarkdownTable[], prefixes: readonly string[], add: Add): void {
+  const own = new RegExp(`^(?:${prefixes.map(escapeRegExp).join('|')})-\\d{3}$`);
+  const labels = prefixes.map((prefix) => `${prefix}-nnn`).join('・');
+  let ownRows = 0;
+  let strayTables = 0;
+  for (const table of tables) {
+    const count = table.rows.filter((row) => own.test(row.cells[0] ?? '')).length;
+    if (count === 0) continue;
+    if (isDecisionTable(table)) {
+      ownRows += count;
+    } else {
+      strayTables += 1;
       add(
         table.headerLine,
-        `決まりの表の最後の列が「${STATE_COLUMN}」ではない (見出し: ${table.headers.join(' | ')})。行頭が ${labels} の行は、最後の列に 状態 (${DECISION_STATES.join('・')}) を持つ`,
+        `${labels} の行が、決まりの表ではない表にある (最後の列を「${STATE_COLUMN}」にする。見出し: ${table.headers.join(' | ')})`,
       );
-      continue;
     }
-    for (const row of table.rows) {
-      const id = ownId.exec(row.cells[0] ?? '')?.[1];
-      if (id === undefined) continue;
-      if (row.cells.length !== table.headers.length) {
-        add(row.line, `${id} の行の列数 (${row.cells.length}) が見出しの列数 (${table.headers.length}) と違う (最後の列が「${STATE_COLUMN}」になっていない)`);
-        continue;
-      }
-      const state = row.cells[row.cells.length - 1] ?? '';
-      if (!DECISION_STATES.includes(state)) {
-        add(row.line, `${id} の状態が不正: 「${state}」 (${DECISION_STATES.join('・')}のどれか)`);
-      }
-    }
+  }
+  if (ownRows === 0 && strayTables === 0) {
+    add(1, `決まりの行が 1 つも無い (最後の列が「${STATE_COLUMN}」の表に、最初のセルが ${labels} の行が 1 つ以上要る)`);
   }
 }
 
@@ -384,7 +394,7 @@ function countLines(lines: readonly string[], kinds: readonly LineKind[]): numbe
   return total;
 }
 
-/** Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例は数えない */
+/** Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例と、画像のリンクは数えない */
 function countMermaidDiagrams(lines: readonly string[], bodyStart: number): number {
   let count = 0;
   let open: { readonly marker: string; readonly length: number } | null = null;
@@ -404,7 +414,7 @@ function countMermaidDiagrams(lines: readonly string[], bodyStart: number): numb
 }
 
 // ---------------------------------------------------------------------------
-// 書き込み口 (条件 10)
+// 書き込み口 (P9)
 // ---------------------------------------------------------------------------
 
 const AUTOGEN_COMMENT_RE = /<!--\s*AUTOGEN/;
@@ -414,7 +424,7 @@ const HEADING_RE = /^\s{0,3}#{1,6}(\s|$)/;
 /** person/・client/ の文書の、HTML コメント・AUTOGEN 区間・README.md の区間の外の文章 */
 function checkWritePaths(doc: PersonDoc): readonly Violation[] {
   const violations: Violation[] = [];
-  const add = (line: number, message: string): void => {
+  const add: Add = (line, message) => {
     violations.push({ severity: 'violation', message, file: doc.file, line });
   };
   const inside = new Array<boolean>(doc.lines.length).fill(false);
@@ -472,10 +482,10 @@ function checkWritePaths(doc: PersonDoc): readonly Violation[] {
         at = close + 3;
         continue;
       }
-      const open = line.indexOf('<!--', at);
-      if (open === -1) break;
-      const close = line.indexOf('-->', open + 4);
-      const isMarker = /^<!--\s*AUTOGEN/.test(line.slice(open)) && close !== -1;
+      const start = line.indexOf('<!--', at);
+      if (start === -1) break;
+      const close = line.indexOf('-->', start + 4);
+      const isMarker = /^<!--\s*AUTOGEN/.test(line.slice(start)) && close !== -1;
       if (!isMarker) {
         add(i + 1, 'HTML コメントを書かない (person/・client/ の文書では、人の目に見えない書き込み口になる)');
       }
@@ -502,13 +512,7 @@ function checkWritePaths(doc: PersonDoc): readonly Violation[] {
 }
 
 /** 区間の名前と、置き場所の検査 (始まりの印で 1 回) */
-function checkRegionName(
-  doc: PersonDoc,
-  name: string,
-  line: number,
-  seen: Set<string>,
-  add: (line: number, message: string) => void,
-): void {
+function checkRegionName(doc: PersonDoc, name: string, line: number, seen: Set<string>, add: Add): void {
   if (!AUTOGEN_NAMES.includes(name)) {
     add(line, `管理外の AUTOGEN 区間: ${name} (生成器が管理するのは ${AUTOGEN_NAMES.join('・')} の 3 種だけ)`);
     return;
@@ -534,7 +538,7 @@ function regionPlacementProblem(doc: PersonDoc, name: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// 量 (条件 8)
+// 量 (P7)
 // ---------------------------------------------------------------------------
 
 /** 本文の字数を数える場所。全体共通 (要件 + design/shared/) は GLOBAL_GROUP、まとまりはその名前。数えない場所は null */

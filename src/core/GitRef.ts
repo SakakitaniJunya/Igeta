@@ -1,8 +1,8 @@
-// git の ref (比べる起点) から、文書の内容を読む。
+// 宛先のブランチと HEAD の枝分かれの点 (merge-base) を求め、その時点の文書の内容を読む。
 //
-// PersonFormCheck (廃の行を起点と比べる) と review-sheet (変わった行を並べる) が使う。git を呼ぶ処理は、ここに
-// 1 か所だけ持つ。ref は、利用者が渡すブランチ名・コミット・merge-base のどれでもよい。読めないときは GitError を投げ、
-// 呼び出し側が検査不能として扱う (読めないのに「比べて問題なし」にしない)。
+// PersonFormCheck が、廃の行 (テスト仕様 03 の P8) を枝分かれの点と比べるのに使う。git を呼ぶ処理は、ここに 1 か所だけ
+// 持つ。ref は、ブランチ名・タグ・コミットのどれでもよい。読めないときは GitError を投げ、呼び出し側が検査不能として
+// 扱う (読めないのに「比べて問題なし」にしない)。
 
 import { execFileSync } from 'node:child_process';
 
@@ -26,13 +26,10 @@ function assertSafeRef(ref: string): void {
   if (ref === '' || ref.startsWith('-')) throw new GitError(`git の ref として使えない値: "${ref}"`);
 }
 
-/** ref をコミットの SHA に解決する。解決できなければ GitError (git の repo でない・ref が無い・浅い clone で履歴が無い) */
-export function resolveCommit(root: string, ref: string): string {
-  assertSafeRef(ref);
-  return git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).trim();
-}
-
-/** 2 つの ref の merge-base (共通の祖先) のコミット。無ければ GitError */
+/**
+ * 2 つの ref の merge-base (共通の祖先) のコミットの SHA。ref が無い・git の repo でない・共通の祖先が無い (浅い clone で
+ * 履歴が足りない) ときは GitError
+ */
 export function mergeBase(root: string, left: string, right: string): string {
   assertSafeRef(left);
   assertSafeRef(right);

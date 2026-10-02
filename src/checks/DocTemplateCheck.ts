@@ -52,8 +52,8 @@ export interface DocTemplateOptions {
    */
   readonly decisionAttributionPatterns?: readonly RegExp[];
   /**
-   * 新しい構成 (v4) の人の文書の検査 (PersonFormCheck) が、廃の行を比べる起点 (git の ref。CI では merge-base)。
-   * 無ければ、同じ文書の中だけを見る。
+   * 新しい構成 (v4) の人の文書の検査 (PersonFormCheck) が、廃の行を比べる起点の宛先のブランチ (変更を入れる先)。
+   * HEAD との枝分かれの点を起点にする。無ければ、同じ文書の中だけを見る。
    */
   readonly base?: string;
 }
