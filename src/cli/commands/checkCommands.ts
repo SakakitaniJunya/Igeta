@@ -1,5 +1,6 @@
 import type { Check } from '../../core/Check.js';
 import { DocGraphCheck } from '../../checks/DocGraphCheck.js';
+import { DocsCheck } from '../../checks/DocsCheck.js';
 import { DocTemplateCheck } from '../../checks/DocTemplateCheck.js';
 import { DomainDiagramDriftCheck } from '../../checks/DomainDiagramDriftCheck.js';
 import { SecretScanCheck } from '../../checks/SecretScanCheck.js';
@@ -18,11 +19,11 @@ export class DocsGraphCommand extends CheckCommand {
 
 export class DocsCheckCommand extends CheckCommand {
   readonly name = 'docs-check';
-  readonly summary = '索引と参照の整合性を検査する (書き出さない)';
+  readonly summary = '索引と参照の整合性、新しい構成 (person・ai・client) の置き場所・本数・AI の入口を検査する (書き出さない)';
   override readonly usage = ['  --root <dir>   対象リポジトリ (既定: カレントディレクトリ)'];
 
   protected createCheck(): Check {
-    return new DocGraphCheck();
+    return new DocsCheck();
   }
 }
 
