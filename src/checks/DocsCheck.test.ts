@@ -53,7 +53,11 @@ async function makeV4Root(): Promise<string> {
   write(root, 'docs/ai/handbook/how-to/01-setup.md', doc('guide', [], 'setup'));
   write(root, 'docs/ai/handbook/explanation/01-why.md', doc('explanation', [], 'why'));
   write(root, 'AGENTS.md', '# AGENTS.md\n\n決まりは docs/person/、作り方は docs/ai/ を読む。\n');
-  write(root, '.github/CODEOWNERS', 'docs/person/ @owners\ndocs/client/ @owners\n');
+  write(
+    root,
+    '.github/CODEOWNERS',
+    ['docs/person/ @owners', 'docs/client/ @owners', '/.github/ @owners', '/.igeta.json @owners', '/AGENTS.md @owners', '/package.json @owners', ''].join('\n'),
+  );
   await writeIndexes(root);
   return root;
 }
