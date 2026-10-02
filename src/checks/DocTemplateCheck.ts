@@ -4,6 +4,7 @@
 // kind は frontmatter が優先。無ければ **テンプレの配置と同じ docs 上の位置**から決まる
 // (templates/docs/design/basic/tables/__context__.md → docs/design/basic/tables/*.md)。
 // 両方あって食い違う場合は違反 (置き場所と宣言のどちらかが間違っている)。
+// 新しい構成 (docs/person・ai・client の下) の位置は、テンプレの配置ではなく置き場所の型 (core/Role.ts) から決まる。
 //
 // 検証内容: ① frontmatter の kind がテンプレ登録済み ② テンプレの必須 H2 節が全部ある
 // ③ 「関連」節に上流・下流が 1 件以上 (表・箇条書きのどちらでもよい) ④ ID 接頭辞の形式 (PREFIX-nnn)
@@ -13,7 +14,7 @@
 // 利用者リポジトリは templates/ を持たず、Igeta のテンプレで検査される。
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import { readContext, SHARED_CONTEXT } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
@@ -22,6 +23,7 @@ import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
 import type { LineKind } from '../core/LineClassifier.js';
 import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
+import { kindOfPath, roleOfPath } from '../core/Role.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage']);
@@ -251,8 +253,15 @@ function loadTemplates(dir: string): {
   return { registry, byPath, errors };
 }
 
-/** テンプレの配置から既定 kind を引く。完全一致ファイル名 (連番抜き) > 雛形 (__name__) の順 */
+/**
+ * 既定 kind を引く。旧い構成は、テンプレの配置から: 完全一致ファイル名 (連番抜き) > 雛形 (__name__) の順。
+ * 新しい構成 (person / ai / client の下) は、まとまりのフォルダ名がテンプレの配置と一致しないので、
+ * まとまりの 1 段だけワイルドカードにした置き場所の型 (要件定義書 02 §7、core/Role.ts) から引く
+ * (REQ-304)。型だけでは kind が決まらない場所 (固定番号の文書など) は null で、frontmatter の kind に頼る。
+ */
 function kindFromPath(byPath: ReadonlyMap<string, PathSlot>, docRelPath: string): string | null {
+  const posixPath = docRelPath.split(sep).join('/');
+  if (roleOfPath(posixPath) !== null) return kindOfPath(posixPath);
   const slot = dirname(docRelPath) === '.' ? '' : dirname(docRelPath);
   const entry = byPath.get(slot);
   if (entry === undefined) return null;
