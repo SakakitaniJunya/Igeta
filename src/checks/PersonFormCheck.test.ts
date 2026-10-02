@@ -532,11 +532,12 @@ function commit(root: string, message: string): void {
   git(root, 'commit', '-q', '-m', message);
 }
 
-/** 正しい構成を 1 コミットにした git repo。ブランチ名は dest (変更を入れる先) */
-function makeRepo(): string {
+/** 正しい構成 (と、extra が足す文書) を 1 コミットにした git repo。ブランチ名は dest (変更を入れる先) */
+function makeRepo(extra?: (root: string) => void): string {
   const root = makeRoot();
   git(root, 'init', '-q');
   writeValidTree(root);
+  extra?.(root);
   commit(root, '宛先: 廃の行を持つ正しい構成');
   git(root, 'branch', '-M', 'dest');
   return root;
@@ -579,8 +580,11 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line.startsWith('| BF-104 | 使い直した')), /^BF-104 は 廃 の ID \(\d+ 行目\) なのに、同じ文書の別の行で使われている/, '廃の ID の使い直し');
   });
 
-  it('[TST-313] 無い ref・git の repo でない・docs が repo の外 / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
+  it('[TST-313] 無い ref・git の repo でない・docs が repo の外 / 起点の文書に frontmatter の id が無い / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
     const repo = makeRepo();
+    // 起点の文書に frontmatter の id が無い (廃の行を照らせない)
+    const idless = 'person/design/shared/11-notes.md';
+    const withIdless = makeRepo((root) => write(root, `docs/${idless}`, ['---', 'title: id の無い文書', 'kind: glossary', '---', '', '# 用語']));
     const notRepo = makeRoot();
     writeValidTree(notRepo);
     const elsewhere = makeRoot();
@@ -593,6 +597,7 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
       ['無い ref', run(repo, { base: 'no-such-ref' }), /^--base no-such-ref と比べられない/],
       ['git の repo でない', run(notRepo, { base: 'dest' }), /^--base dest と比べられない/],
       ['docs が repo の外', run(repo, { base: 'dest', docsDir: join(elsewhere, 'docs') }), /リポジトリの中の docs だけ/],
+      ['起点の文書に frontmatter の id が無い', run(withIdless, { base: 'dest' }), /^dest との枝分かれの点 \(\w{7}\) の文書に frontmatter の id が無く/],
       ['雛形に接頭辞が無い', run(repo, { templates: new Map([...TEMPLATES, ['business-flow', { idPrefixes: [] }]]) }), /kind: business-flow の雛形に id_prefix が無く/],
       ['Igeta の版を読めない', run(overLimit, { igetaRoot: makeRoot() }), /Igeta の版を読めない/],
     ];

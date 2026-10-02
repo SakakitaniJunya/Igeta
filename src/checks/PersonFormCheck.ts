@@ -17,10 +17,11 @@
 //    設定では変えられない。ADR-0005。RoleBoundaryCheck の旧い構成の切替と同じ作り)。版を読めなければ検査不能
 // P8 廃の行: (a) 同じ文書の中で、廃の ID を別の行に使えば違反。(b) base (宛先のブランチ) があれば、宛先と HEAD の枝分かれの点
 //    を起点に、起点の person/ の文書で 廃 だった行が、いまも同じ文書 (frontmatter の id で照らす) に 廃 のままなければ違反。
-//    起点を読めなければ検査不能
-// P9 書き込み口 (README.md を含む person/・client/ の全部の文書): HTML コメントは違反。生成区間は dir-index・adr-index・
-//    tentative-index の 3 種だけで、決まった文書に 1 つずつ、閉じていて、入れ子にしない。README.md は区間の外に
-//    frontmatter・見出し・目的の 1 行だけ
+//    起点を読めない・起点の文書に frontmatter の id が無いときは検査不能
+// P9 書き込み口 (README.md を含む person/・client/ の全部の文書): HTML コメントは違反 (コードフェンスの中の例は除く。
+//    インラインコードの中も違反)。生成区間の印は、生成器が書く文字列と行の全体が一致するものだけが例外。生成区間は
+//    dir-index・adr-index・tentative-index の 3 種だけで、決まった文書に 1 つずつ、閉じていて、入れ子にしない。
+//    README.md は区間の外に frontmatter・見出し・目的の 1 行だけ
 
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
@@ -277,6 +278,8 @@ export class PersonFormCheck implements Check {
         { severity: 'cannot-check', message: `--base で比べられるのは、リポジトリの中の docs だけ: ${docsDir}` },
       ];
     }
+    // 起点の文書に frontmatter の id が無いと、廃の行を id で照らせない。黙って通さず、検査不能にする
+    const unreadable: Violation[] = [];
     try {
       const start = mergeBase(root, base, 'HEAD');
       const where = `${base} との枝分かれの点 (${start.slice(0, 7)})`;
@@ -287,7 +290,14 @@ export class PersonFormCheck implements Check {
         const lines = readFileAtRef(root, start, path).split(/\r?\n/);
         const meta = parseFrontmatter(lines);
         const docId = meta === null ? undefined : nonEmpty(scalar(meta.data, 'id'));
-        if (meta === null || docId === undefined) continue;
+        if (meta === null || docId === undefined) {
+          unreadable.push({
+            severity: 'cannot-check',
+            message: `${where} の文書に frontmatter の id が無く、廃の行を照らせない (--base を付けた検査は、起点の文書を frontmatter の id で照らす)`,
+            file: path,
+          });
+          continue;
+        }
         for (const old of decisionRowsOf(lines, classifyLines(lines), meta.bodyStart)) {
           if (old.state !== STATE_ABOLISHED) continue;
           const now = (headRows.get(docId) ?? []).filter(({ row }) => row.id === old.id);
@@ -316,7 +326,7 @@ export class PersonFormCheck implements Check {
       if (!(error instanceof GitError)) throw error;
       return [...violations, { severity: 'cannot-check', message: `--base ${base} と比べられない: ${error.message}` }];
     }
-    return violations;
+    return [...violations, ...unreadable];
   }
 }
 
