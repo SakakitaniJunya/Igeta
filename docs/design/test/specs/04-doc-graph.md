@@ -35,7 +35,7 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 | # | 規則 |
 |---|---|
 | G1 | 向き: `person` が指してよいのは `person` だけ。`ai` は `person`・`ai`。`client` は 3 つとも。破れば違反 (参照元の行) |
-| G2 | G1 の参照は次の 4 種 ((b)〜(d) は本文の行だけを見る): (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く) (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する。(a) の値は、行末のコメント (空白と `#` から後ろ) を除いて読む (索引を作るときの読み方と同じ規則にそろえる)。(d) は、直前が英数字・`/`・`-` でないものを数える (斜体・太字・インラインコードの中も数える。パスの一部になっているもの (直前が `/`) は数えない)。次は数えない: 行をまたぐ行き先 / 引用やリストの中の参照の定義 / 同じ repo を指す絶対 URL / 字下げの無い frontmatter の配列 / HTML の `a`・`img` |
+| G2 | G1 の参照は次の 4 種 ((b)〜(d) は本文の行だけを見る): (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く) (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する。(a) の値は、行末のコメント (空白と `#` から後ろ) を除いて読む。字下げした `- x` の行は、直前の項目の値が同じ行に書いてあっても、その項目の配列に足す (どちらも、索引を作るときの読み方と同じ規則にそろえる)。(d) は、直前が英数字・`/`・`-` でないものを数える (斜体・太字・インラインコードの中も数える。パスの一部になっているもの (直前が `/`) は数えない)。次は数えない: 行をまたぐ行き先 / 引用やリストの中の参照の定義 / 同じ repo を指す絶対 URL / 字下げの無い frontmatter の配列 / HTML の `a`・`img` |
 | G3 | 届く: `ai/specs/**` の文書 (README.md を除く) は、`depends_on` を 1 回以上たどると `person/` の文書に届く。解決できない id と `external:` はたどらない。届かなければ違反 |
 | G4 | ADR の引用: status が `accepted`・`amended` の ADR (id が `adr-NNNN-…`) の番号を、`person/requirements/**` か `person/design/**` の決まりの行 (状態が `廃` の行を除く) のどれかが `ADR-NNNN` の形 (大文字。直前が英数字でなく、直後が数字でない) で持つ。無ければ違反 (ADR の 1 行目)。列の数が見出しと合わない行も、決まりの行として数える (列のずれは 03 の P3 が違反にする。G6 も同じ) |
 | G5 | ADR の索引は `docs/person/decisions/README.md` の `adr-index` 区間に出す。ADR があるのに README.md が無ければ違反。`docs-graph` が `decisions/README.md` を新しく作るときは、ADR が 1 本も無くても `adr-index` の区間を置く (何回回しても同じ結果になる)。手で書いた README.md に区間が無いときは、ADR の本数によらず、印を足すよう求めて止まる (いままでと同じ) |
@@ -79,7 +79,7 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 
 | ID | 観点 (手口・境界) | ケース | 期待結果 |
 |---|---|---|---|
-| TST-301 | 人が AI を指す | `person` の文書が `ai` の文書を、`depends_on` / `relates_to` / 本文のリンク / 参照の形の定義 / 修飾 ID で指す (5 通り)。frontmatter の行末にコメントがある (`depends_on: [x]  #メモ`・配列の 1 行ずつの形) / 修飾 ID を斜体・太字・インラインコードで囲む | どれも違反 |
+| TST-301 | 人が AI を指す | `person` の文書が `ai` の文書を、`depends_on` / `relates_to` / 本文のリンク / 参照の形の定義 / 修飾 ID で指す (5 通り)。frontmatter の行末にコメントがある (`depends_on: [x]  #メモ`・配列の 1 行ずつの形) / 値のある `depends_on: [x]` の次の行に、字下げした `- y` を続ける / 修飾 ID を斜体・太字・インラインコードで囲む | どれも違反 |
 | TST-302 | フォルダを指す | `person` の文書のリンク先が `docs/ai` (フォルダ) / `docs/ai/specs/` / 無いファイル `docs/ai/x.md` / `docs/client/` | 違反 |
 | TST-303 | AI が顧客を指す | `ai` の文書が `client` の文書を指す | 違反 |
 | TST-304 | 届かない | `ai/specs/` の文書の `depends_on` が空 / `ai` の文書だけを回る / 解決できない id だけ / `external:` だけ | 違反 |
