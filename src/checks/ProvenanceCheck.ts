@@ -8,9 +8,10 @@
 //   3. pending               … acceptedBy が無い
 //   4. self-approved        … acceptedBy が capturedBy と同じ
 //   5. open-stated-as-final … from の正本が未決なのに、章が確定を主張している (from ありのときだけ)
-//   6. needs-recompute      … 保存した normalizationVersion が今の版と違う (今の指紋と比較しても
-//                              古い正規化アルゴリズムとの差が混ざるため、stale の判定より先に切る)
-//   7. stale / orphan-content … 指紋が今の内容と違う (from の有無で呼び分ける)
+//   6. stale / orphan-content … 保存した版 (normalizationVersion) で計算した指紋が今の内容と違う
+//                              (from の有無で呼び分ける)。版が古いというだけでは stale にしない
+//   7. needs-recompute      … 保存した版の実装が無く確かめられない、または保存した版では一致するが
+//                              今の版と違う (igeta fingerprint-rebase で載せ替える)
 //   8. ok
 //
 // 「章が確定を主張している」は章 (delivery-chapter) 自身の frontmatter status。「正本が未決」は
@@ -22,8 +23,11 @@ import { join, relative } from 'node:path';
 import { normalizeActor } from '../core/ActorName.js';
 import { findDeliveryChapters, extractDeliveryBlocks } from '../core/DeliveryBlocks.js';
 import type { DeliveryBlock } from '../core/DeliveryBlocks.js';
-import { computeFingerprint, CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
+import type { DestinationRewriter } from '../core/Fingerprint.js';
+import { CURRENT_NORMALIZATION_VERSION, matchStoredFingerprint } from '../core/Fingerprint.js';
 import { parseFrontmatter, scalar } from '../core/Frontmatter.js';
+import type { LinkTable } from '../core/LinkTable.js';
+import { buildLinkTable } from '../core/LinkTable.js';
 import { readSidecar } from '../core/ProvenanceSidecar.js';
 import type { ProvenanceEntry } from '../core/ProvenanceSidecar.js';
 import type { SourceIndex } from '../core/SourceResolver.js';
@@ -62,11 +66,32 @@ function isSourceUnresolved(resolution: ReturnType<typeof resolveSource>): boole
   return resolution.doc.status === null || !FINAL_STATUSES.has(resolution.doc.status) || OPEN_REF_RE.test(resolution.text);
 }
 
+/**
+ * 保存した指紋を、保存した版で計算し直して比べる。版の違いだけでは stale にしない (一致して版が古いだけなら
+ * needs-recompute)。保存した版の実装が無ければ確かめられないので needs-recompute (一致とみなさない)。
+ */
+function judgeFingerprint(
+  stored: string,
+  version: number,
+  text: string,
+  rewrite: DestinationRewriter,
+): 'ok' | 'changed' | { readonly needsRecompute: string } {
+  const match = matchStoredFingerprint(stored, version, text, rewrite);
+  if (match === 'unverifiable') return { needsRecompute: `版 ${version} の実装が無く確かめられない。provenance-capture で取り直す` };
+  if (match === 'mismatch') return 'changed';
+  if (version !== CURRENT_NORMALIZATION_VERSION) {
+    return { needsRecompute: `版 ${version} で一致 (今は版 ${CURRENT_NORMALIZATION_VERSION})。igeta fingerprint-rebase で載せ替える` };
+  }
+  return 'ok';
+}
+
 function evaluateEntry(
   entry: ProvenanceEntry,
   blocks: readonly DeliveryBlock[],
   chapterStatus: string | null,
   sourceIndex: SourceIndex | null,
+  links: LinkTable,
+  chapterRelPath: string,
 ): EntryEvaluation {
   const block = blocks.find((b) => b.anchor === entry.anchor);
   if (block === undefined) return { anchor: entry.anchor, state: 'orphan' };
@@ -79,17 +104,17 @@ function evaluateEntry(
     if (isSourceUnresolved(resolution) && chapterStatus !== null && FINAL_STATUSES.has(chapterStatus)) {
       return { anchor: entry.anchor, state: 'open-stated-as-final' };
     }
-    if (entry.normalizationVersion !== CURRENT_NORMALIZATION_VERSION) return { anchor: entry.anchor, state: 'needs-recompute' };
-    if (computeFingerprint(resolution.text) !== entry.fingerprint) {
-      return { anchor: entry.anchor, state: 'stale', detail: `${resolution.doc.relPath}:${resolution.line}` };
-    }
+    const judged = judgeFingerprint(entry.fingerprint, entry.normalizationVersion, resolution.text, links.rewriterFor(resolution.doc.relPath));
+    if (judged === 'changed') return { anchor: entry.anchor, state: 'stale', detail: `${resolution.doc.relPath}:${resolution.line}` };
+    if (judged !== 'ok') return { anchor: entry.anchor, state: 'needs-recompute', detail: judged.needsRecompute };
     return { anchor: entry.anchor, state: 'ok' };
   }
 
   if (entry.acceptedBy === undefined) return { anchor: entry.anchor, state: 'pending' };
   if (entry.acceptedBy !== undefined && normalizeActor(entry.acceptedBy) === normalizeActor(entry.capturedBy)) return { anchor: entry.anchor, state: 'self-approved' };
-  if (entry.normalizationVersion !== CURRENT_NORMALIZATION_VERSION) return { anchor: entry.anchor, state: 'needs-recompute' };
-  if (computeFingerprint(block.text) !== entry.blockFingerprint) return { anchor: entry.anchor, state: 'orphan-content' };
+  const judged = judgeFingerprint(entry.blockFingerprint, entry.normalizationVersion, block.text, links.rewriterFor(chapterRelPath));
+  if (judged === 'changed') return { anchor: entry.anchor, state: 'orphan-content' };
+  if (judged !== 'ok') return { anchor: entry.anchor, state: 'needs-recompute', detail: judged.needsRecompute };
   return { anchor: entry.anchor, state: 'ok' };
 }
 
@@ -122,6 +147,7 @@ export class ProvenanceCheck {
     if (chapterPaths.length === 0) return { violations }; // sidecar が 1 つも無い既存案件は赤くしない
 
     const sourceIndex = buildSourceIndex(this.#options.targetRoot, docsDir);
+    const links = buildLinkTable(this.#options.targetRoot, sourceIndex);
     const strict = this.#options.strictNormalization ?? false;
 
     for (const chapterAbsPath of chapterPaths) {
@@ -168,7 +194,7 @@ export class ProvenanceCheck {
       if (sidecarResult.kind === 'absent') continue; // 由来が 1 件も無い章 → provenance-coverage の役割
 
       for (const entry of sidecarResult.sidecar.entries) {
-        const { state, detail } = evaluateEntry(entry, extracted.blocks, chapterStatus, sourceIndex);
+        const { state, detail } = evaluateEntry(entry, extracted.blocks, chapterStatus, sourceIndex, links, chapterRelPath);
         if (state === 'ok') continue;
         const message = `${entry.anchor}: ${state}${detail !== undefined ? ` (${detail})` : ''}`;
         if (state === 'needs-recompute' && !strict) {

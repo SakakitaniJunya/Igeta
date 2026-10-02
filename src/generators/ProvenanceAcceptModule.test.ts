@@ -56,6 +56,7 @@ describe('accept', () => {
   it('別の主体なら受け入れ、指紋を今の値に更新する', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -76,6 +77,7 @@ describe('accept', () => {
   it('拒否: capturedBy と同じ主体は self-approved で Violation、sidecar は書き換わらない', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -94,6 +96,7 @@ describe('accept', () => {
   it('拒否: 前後の空白・大文字小文字だけ違う同一主体も self-approved になる', () => {
     const { root, chapterPath, chapterRelPath } = setup(); // capturedBy: 'agent:writer'
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
@@ -116,6 +119,7 @@ describe('accept', () => {
       sourceIndex: buildSourceIndex(root, join(root, 'docs')),
     });
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'all' },
@@ -130,6 +134,7 @@ describe('accept', () => {
     const root = makeRoot();
     const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines);
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath: 'docs/delivery/02-reservation.md',
       target: { kind: 'all' },
@@ -143,6 +148,7 @@ describe('accept', () => {
   it('検査不能: 指定した anchor の由来が無い', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '存在しない節' },
@@ -157,6 +163,7 @@ describe('accept', () => {
     const { root, chapterPath, chapterRelPath } = setup();
     writeFileSync(chapterPath, chapterLines.join('\n').replace('## 1. 予約の受付', '## 1. 予約の受付 (改題)') + '\n');
     const result = accept({
+      targetRoot: root,
       chapterAbsPath: chapterPath,
       chapterRelPath,
       target: { kind: 'anchor', anchor: '1. 予約の受付' },
