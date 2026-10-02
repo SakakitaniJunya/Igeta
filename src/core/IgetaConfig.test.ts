@@ -4,7 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { matchesGlob } from '../gate/PathGlob.js';
 import { DEFAULT_IGETA_CONFIG, loadIgetaConfig } from './IgetaConfig.js';
+import { IGETA_ROOT } from './Paths.js';
 
 const workspaces: string[] = [];
 
@@ -277,5 +279,46 @@ describe('loadIgetaConfig: nonDocPaths (ADR-0003 決定 6)', () => {
     assert.deepEqual(result, {
       config: { ...DEFAULT_IGETA_CONFIG, contextSizeLimit: 100, humanPaths: ['src/gate/**'], nonDocPaths: ['docs/legacy/**'] },
     });
+  });
+});
+
+describe('Igeta 自身の .igeta.json (ADR-0008 決定 1)', () => {
+  const EXPECTED = [
+    'templates/**',
+    'src/checks/**',
+    'src/gate/**',
+    'src/core/Role.ts',
+    'src/core/IgetaConfig.ts',
+    'src/core/LineClassifier.ts',
+    'docs/explanation/0[3-9]-*.md',
+  ];
+
+  it('読めて、ADR-0008 が決めた 7 つの humanPaths を持つ', () => {
+    const result = loadIgetaConfig(IGETA_ROOT);
+    assert.ok('config' in result, JSON.stringify(result));
+    assert.deepEqual(result.config.humanPaths, EXPECTED);
+    assert.deepEqual(result.config.nonDocPaths, []);
+  });
+
+  it('全利用 repo の決まりを決めるもの・門の実装そのもの・person の行へ書き直すまでの解説が、人の承認で守られる', () => {
+    const result = loadIgetaConfig(IGETA_ROOT);
+    assert.ok('config' in result);
+    const guarded = (path: string): boolean => result.config.humanPaths.some((glob) => matchesGlob(path, glob));
+    for (const path of [
+      'templates/docs/README.md',
+      'src/checks/DocGraphCheck.ts',
+      'src/gate/ApprovalScope.ts', // approval-scope の本体。ここを人の承認なしに変えられると門が開く
+      'src/gate/PathGlob.ts',
+      'src/core/Role.ts',
+      'src/core/IgetaConfig.ts',
+      'src/core/LineClassifier.ts',
+      'docs/explanation/03-audience-layers.md',
+      'docs/explanation/09-reader-granularity.md',
+    ]) {
+      assert.equal(guarded(path), true, `${path} が守られていない`);
+    }
+    for (const path of ['src/cli/commands/InitCommand.ts', 'src/core/Report.ts', 'docs/explanation/02-human-review-layer.md', 'docs/explanation/10-folder-placement.md', 'README.md']) {
+      assert.equal(guarded(path), false, `${path} まで守られている`);
+    }
   });
 });
