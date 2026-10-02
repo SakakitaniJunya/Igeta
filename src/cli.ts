@@ -6,6 +6,7 @@ import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
 import { ApprovalScopeCommand } from './cli/commands/ApprovalScopeCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
+import { DoctorCommand } from './cli/commands/DoctorCommand.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
 import { FixIdsCommand } from './cli/commands/FixIdsCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
@@ -54,6 +55,7 @@ const cli = new Cli()
   .register(new AnalyzeCommand())
   .register(new FixIdsCommand())
   .register(new ApprovalScopeCommand())
+  .register(new DoctorCommand())
   .register(new VersionCheckCommand())
   .register(new UpgradeCommand());
 
