@@ -1,5 +1,5 @@
 <!--
-  人間レビュー層のレビューシート。使い方は templates/docs/guides/03-human-review.md 参照。
+  人間レビュー層のレビューシート。使い方は templates/docs/ai/handbook/how-to/03-human-review.md 参照。
   レビューする人はこのテンプレを埋めた PR 本文と `igeta review-sheet` の出力を並べて読む。
 -->
 
@@ -11,7 +11,7 @@
 
 ## 関わる DEC・OPEN
 
-<!-- docs/01-decisions.md の DEC-nnn / OPEN-nnn。新しい決定・仮置きを足したなら、その ID もここに書く -->
+<!-- docs/person/decisions/01-decisions.md の DEC-nnn / OPEN-nnn。新しい決定・仮置きを足したなら、その ID もここに書く -->
 
 -
 
