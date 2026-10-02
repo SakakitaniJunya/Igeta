@@ -21,7 +21,7 @@ relates_to: [audience-directories, adr-0009-kind-placement, adr-0010-value-owner
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001 / ADR-0002 / ADR-0003
-- **下流**: `src/core/Role.ts` / `TaxonomyGuideSync.test.ts` (新設) / `InitCommand.ts`・`ScaffoldCommand.ts` / 雛形の再編 / [テスト仕様 06](../design/test/specs/06-init-scaffold.md)
+- **下流**: `src/core/Role.ts` / `TaxonomyGuideSync.test.ts` (新設) / `InitCommand.ts`・`ScaffoldCommand.ts` / 雛形の再編 / テスト仕様 06 (init)
 
 ## Status
 
@@ -61,13 +61,13 @@ CI 設定と各 repo の制約文書は書き換えない (ガイドを指す参
 **4. 雛形と `init`/`scaffold`**: `templates/docs/` を `docs/` と同じ木に再編し、新しい repo には最初から 3 フォルダの
 構成を生成する。旧い構成の雛形は削除する。`person/` の雛形は人の型 (結論 → 図 → 決まりの表 → 決めてほしいこと) に
 作り直し、混ざった節と依存の向きは ADR-0010 のとおり直す。`data-management` の雛形を新しく作る。入口の 3 行
-(`AUDIENCE_ENTRANCE` と docs/README.md) を新しい構成に替える。`scaffold` は Igeta の手引き 3 本を生成しない
-(`implementation-order` はプロジェクトの文書として生成する)。person・client の雛形の指示の HTML コメントは外す
+(`AUDIENCE_ENTRANCE` と docs/README.md) を新しい構成に替える。`init` は Igeta の手引き 3 本を置かない
+(`implementation-order` は雛形を持ち、設計を始めるときにプロジェクトが作る)。person・client の雛形の指示の HTML コメントは外す
 
 **5. AI が読む範囲**: `context-files` の範囲は ADR-0004 決定 3 の 5 のとおり
 (`person/` の要件・全体共通・自分のまとまり + `ai/specs/` の全体共通・自分のまとまり + 隣の約束)
 
-**6. 人の承認の強制**: ADR-0008
+**6. 人の承認が要る変更の見分け**: ADR-0008 (強制の門は次の版)
 
 **詳細設計で決めた論点**: `AGENTS.md` の節 (テスト仕様 06 の I8) / `review-sheet` が金額・率・期限として拾う型
 (テスト仕様 05 の V7) / 字数の数え方 (テスト仕様 03 の P7)。`AgentsEntrypointCheck` は言及の有無だけを見る

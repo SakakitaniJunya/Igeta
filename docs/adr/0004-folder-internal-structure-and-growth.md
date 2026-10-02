@@ -21,7 +21,7 @@ relates_to: [adr-0009-kind-placement]
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001
-- **下流**: `src/checks/FolderSizeCheck.ts` (新設) / まとまりの境界の検査と `context-files` の改訂 ([テスト仕様 04](../design/test/specs/04-doc-graph.md)) / ADR-0009
+- **下流**: `src/checks/FolderSizeCheck.ts` (新設) / まとまりの境界の検査と `context-files` の改訂 (テスト仕様 04) / ADR-0009
 
 ## Status
 

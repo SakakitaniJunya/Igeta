@@ -22,7 +22,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 - **上流 (depends_on)**: ADR-0001
 - **下流**: `src/core/Role.ts` / `src/checks/{RoleBoundaryCheck,PersonFormCheck,FolderSizeCheck,AgentsEntrypointCheck}.ts` (新設) / `DocGraphCheck.ts` (拡張)
-  / 詳細は [テスト仕様 03](../design/test/specs/03-person-form.md)・[04](../design/test/specs/04-doc-graph.md)・[05](../design/test/specs/05-review-sheet.md)
+  / 詳細はテスト仕様 03 (人の文書の型)・04 (文書のつながり)・05 (変わった行の一覧)
 
 ## Status
 

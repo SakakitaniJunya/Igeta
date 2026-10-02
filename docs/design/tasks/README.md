@@ -16,6 +16,6 @@ owners: [eng]
 
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。`_(読み手: …)_` は frontmatter `kind` から機械判定した読み手 (顧客 / 開発者 / AI / 共通)。対応表は文書体系ガイド (docs/guides/01-document-taxonomy.md)「読み手 3 種」を参照。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
-- [01-v4-rollout.md](01-v4-rollout.md) — **実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4)** _(読み手: AI)_ `design` _(draft)_ — 文書モデル v4 を動く状態にするまでの分解。順序は「詳細設計 (テスト仕様) の評価が通る → 実装 → コードレビュー → 統合」で、 ← 上流: [audience-directories](../../product/02-audience-directories.md)
+- [01-v4-rollout.md](01-v4-rollout.md) — **実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4)** _(読み手: AI)_ `design` _(draft)_ — 文書モデル v4 を動く状態にするまでの分解。順序は「詳細設計 (テスト仕様) の評価が通る → 実装 → コードレビュー → 統合」 ← 上流: [audience-directories](../../product/02-audience-directories.md)
 
 <!-- AUTOGEN:dir-index:end -->
