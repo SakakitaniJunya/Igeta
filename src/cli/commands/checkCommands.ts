@@ -62,7 +62,8 @@ export class DomainDriftCommand extends CheckCommand {
   readonly summary = 'ドメイン図と実装の乖離を検査する';
   override readonly usage = [
     '  --root <dir>            対象リポジトリ (既定: カレントディレクトリ)',
-    '  --docs <dir>            図のディレクトリ (既定: <root>/docs/design/detail/domain)',
+    '  --docs <dir>            図のディレクトリ (既定: 新しい構成は <root>/docs/ai/specs/<まとまり>/domain の全部、',
+    '                          旧い構成は <root>/docs/design/detail/domain)',
     '  --allow-missing-code    code_root 未実装なら図側のみ検証する',
   ];
 
