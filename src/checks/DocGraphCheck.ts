@@ -4,6 +4,8 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 
 import type { Check, CheckContext } from '../core/Check.js';
 import { AUDIENCE_LABEL, audienceOfKind } from '../core/Audience.js';
+import type { AdrDoc, ConnectionDoc, PendingRow, ResolveDoc } from '../core/DocConnections.js';
+import { checkAdrCitations, checkDirections, checkReachability, collectPendingRows, loadConnectionDoc } from '../core/DocConnections.js';
 import { classifyLines, hasLiveOccurrence } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
 import type { Layout } from '../core/Role.js';
@@ -47,6 +49,14 @@ const stripGeneratedAt = (text: string): string => text.replace(/^> 自動生成
 const ADR_STATUSES = new Set(['proposed', 'accepted', 'deprecated', 'superseded', 'rejected', 'template']);
 // 新しい構成 (v4) の ADR は amended も持つ (ADR-0002 条件 13・雛形の status の欄)。旧い構成の語彙は変えない。
 const ADR_STATUSES_V4 = new Set([...ADR_STATUSES, 'amended']);
+
+// 新しい構成 (v4) で、docs/person・ai・client の README.md を新しく作るときの目的の行 (G7)。読み手はフォルダが示すので、
+// 索引の行には読み手の表示を出さない。docs/ 直下の入口の 3 行は生成区間の外にあり、docs-graph は書き換えない。
+const ROLE_README_PURPOSE: ReadonlyMap<string, string> = new Map([
+  ['person', '人が確定させる文書。確定の前に人が全部読んで承認する (要件・設計・決定)'],
+  ['ai', 'AI が書き、評価する AI が確定させる文書 (作り方の仕様と、作業の手引き)。人の承認は要らない (`humanPaths` で足したパスを除く)'],
+  ['client', '顧客と合意して渡す文書 (提出物の章と提案書)。渡す前に人が全部読む'],
+]);
 
 // arc42 12 章 (https://arc42.org/overview/)。索引はフォルダ順ではなく章順に並べる。
 const ARC42_CHAPTERS: ReadonlyArray<readonly [number, string, string]> = [
@@ -631,6 +641,21 @@ function buildTentativeTable(marks: readonly TentativeMark[], decisionLogRel: st
   return ['| OPEN | 場所 | 本文 |', '|---|---|---|', ...rows].join('\n');
 }
 
+/**
+ * 新しい構成 (v4) の決定台帳の一覧 (G6): person/ の決まりの行で、状態が 仮・未決 のもの。列は 対象 ID (修飾 ID)・状態・
+ * 場所 (台帳からの相対パスのリンク)・決まり (行の 2 番目のセル)。0 件なら `_該当なし_`。
+ */
+function buildPendingTable(rows: readonly PendingRow[], decisionLogRel: string): string {
+  if (rows.length === 0) return '_該当なし_';
+  const baseDir = dirname(decisionLogRel);
+  const lines = rows.map((row) => {
+    const href = relative(baseDir, row.path).split(sep).join('/');
+    const text = row.text.replace(/(?<!\\)\|/g, '\\|');
+    return `| ${row.qualifiedId} | ${row.state} | [${row.path}:${row.line}](${href}#L${row.line}) | ${text} |`;
+  });
+  return ['| 対象 ID | 状態 | 場所 | 決まり |', '|---|---|---|---|', ...lines].join('\n');
+}
+
 function spliceTentativeIndex(existing: string, table: string, decisionLogRel: string): string {
   const startIdx = existing.indexOf(TENTATIVE_INDEX_START);
   const endIdx = existing.indexOf(TENTATIVE_INDEX_END);
@@ -804,6 +829,10 @@ class DocGraph {
     const byAlias = indexAliases(docs, byId); // throws on alias/id collision
     const { errors, warnings } = validate(docs, byId, byAlias, v4 ? ADR_STATUSES_V4 : ADR_STATUSES);
     const hierarchyErrors = checkHierarchy(docs, byId);
+    // 新しい構成 (v4) の文書のつながり (G1 向き・G3 届く・G4 ADR の引用)。違反にするのは検査のときだけで、
+    // 索引を書くときは警告に留める (違反があっても索引は再生成できる。G8)。旧い構成では何もしない
+    const connectionDocs = v4 ? await this.#loadConnectionDocs(allFiles) : [];
+    const connectionViolations = v4 ? this.#checkConnections(connectionDocs, docs, byId, byAlias) : [];
 
     const depsOut = this.#buildDependencies(docs, byId, warnings);
 
@@ -833,9 +862,9 @@ class DocGraph {
     // ディレクトリ索引の差し込みはディスクの内容ではなく、ADR 索引を差し込んだ後の内容を土台にする (さもないと、
     // 古い ADR 索引のまま書き戻してしまう)。旧い構成の docs/adr/README.md は区間を 1 つしか持たないので、今のまま。
     const spliceBases = new Map<string, string>(v4 ? adrOverride : []);
-    const pass1 = await this.#buildDirIndexes(allFiles, new Map(adrOverride), spliceBases);
+    const pass1 = await this.#buildDirIndexes(allFiles, new Map(adrOverride), spliceBases, adrTable);
     const ov = new Map<string, string>([...adrOverride, ...pass1.indexes.map((di): [string, string] => [di.readmePath, di.desired])]);
-    const pass2 = await this.#buildDirIndexes(allFiles, ov, spliceBases);
+    const pass2 = await this.#buildDirIndexes(allFiles, ov, spliceBases, adrTable);
     const dirIndexes = pass2.indexes.map((di) => ({
       ...di,
       existing: di.readmePath === this.#adrReadme ? adrOut : di.existing,
@@ -855,17 +884,24 @@ class DocGraph {
       const decisionLogPath = join(this.#root, decisionLogDoc.path);
       decisionLogExisting = await readFile(decisionLogPath, 'utf8').catch(() => null);
       if (decisionLogExisting !== null) {
-        const marks = await collectTentativeMarks(
-          this.#root,
-          allFiles.filter((f) => f !== this.#output),
-          decisionLogPath,
-        );
-        decisionLogOut = spliceTentativeIndex(decisionLogExisting, buildTentativeTable(marks, decisionLogRel), decisionLogRel);
+        // 新しい構成の一覧は、person/ の決まりの行 (状態が 仮・未決) から作る (G6)。ai/・client/ からは集めない。
+        // 旧い構成は、「仮置き」を含む行を全文書から集める (今のまま)
+        const table = v4
+          ? buildPendingTable(collectPendingRows(connectionDocs), decisionLogRel)
+          : buildTentativeTable(
+              await collectTentativeMarks(
+                this.#root,
+                allFiles.filter((f) => f !== this.#output),
+                decisionLogPath,
+              ),
+              decisionLogRel,
+            );
+        decisionLogOut = spliceTentativeIndex(decisionLogExisting, table, decisionLogRel);
       }
     }
 
     if (this.#write) {
-      return this.#runWrite(depsOut, adrOut, dirIndexes, errors, hierarchyErrors, decisionLogOut, decisionLogDoc?.path);
+      return this.#runWrite(depsOut, adrOut, dirIndexes, errors, hierarchyErrors, connectionViolations, decisionLogOut, decisionLogDoc?.path);
     }
     return this.#runCheck(
       allFiles,
@@ -875,10 +911,47 @@ class DocGraph {
       dirIndexes,
       errors,
       hierarchyErrors,
+      connectionViolations,
       decisionLogExisting,
       decisionLogOut,
       decisionLogDoc?.path,
     );
+  }
+
+  /** 文書の全文を、つながりの検査が読む形にして集める。生成物 (dependencies.md・AUTOGENERATED で始まる文書) は除く */
+  async #loadConnectionDocs(allFiles: readonly string[]): Promise<readonly ConnectionDoc[]> {
+    const docs: ConnectionDoc[] = [];
+    for (const f of allFiles) {
+      if (f === this.#output) continue;
+      const content = await readFile(f, 'utf8').catch(() => null);
+      if (content === null || content.startsWith('<!-- AUTOGENERATED')) continue;
+      const toPosix = (path: string): string => path.split(sep).join('/');
+      docs.push(loadConnectionDoc(toPosix(relative(this.#root, f)), toPosix(relative(this.#docsDir, f)), content));
+    }
+    return docs;
+  }
+
+  /** G1・G3・G4 の違反。file と行の順 */
+  #checkConnections(
+    connectionDocs: readonly ConnectionDoc[],
+    docs: readonly Doc[],
+    byId: ReadonlyMap<string, Doc>,
+    byAlias: ReadonlyMap<string, Doc>,
+  ): readonly Violation[] {
+    const resolve: ResolveDoc = (id) => {
+      const doc = byId.get(id) ?? byAlias.get(id);
+      if (doc === undefined) return undefined;
+      const path = doc.path.split(sep).join('/');
+      return { path, docsRel: path.replace(/^docs\//, '') };
+    };
+    const adrs: AdrDoc[] = docs
+      .filter((d) => /^adr-\d{4}/.test(d.id))
+      .map((d) => ({ id: d.id, status: d.status, path: d.path.split(sep).join('/') }));
+    return [
+      ...checkDirections(connectionDocs, resolve),
+      ...checkReachability(connectionDocs, resolve),
+      ...checkAdrCitations(connectionDocs, adrs),
+    ].sort((a, b) => (a.file ?? '').localeCompare(b.file ?? '') || (a.line ?? 0) - (b.line ?? 0));
   }
 
   async #runWrite(
@@ -887,6 +960,7 @@ class DocGraph {
     dirIndexes: readonly DirIndex[],
     errors: readonly string[],
     hierarchyErrors: readonly string[],
+    connectionViolations: readonly Violation[],
     decisionLogOut: string | null,
     decisionLogPath: string | undefined,
   ): Promise<readonly Violation[]> {
@@ -906,6 +980,7 @@ class DocGraph {
       this.#warnings.push(`[link] ${p.file}:${p.line} → ${p.target} (解決先が存在しない。--check では ERROR)`);
     }
     for (const e of hierarchyErrors) this.#warnings.push(`${e} (--check では ERROR)`);
+    for (const v of connectionViolations) this.#warnings.push(`${v.file ?? ''}:${v.line ?? 1} ${v.message} (--check では ERROR)`);
     return [];
   }
 
@@ -917,6 +992,7 @@ class DocGraph {
     dirIndexes: readonly DirIndex[],
     errors: readonly string[],
     hierarchyErrors: readonly string[],
+    connectionViolations: readonly Violation[],
     decisionLogExisting: string | null,
     decisionLogOut: string | null,
     decisionLogPath: string | undefined,
@@ -937,7 +1013,7 @@ class DocGraph {
     ) {
       drift.push({
         severity: 'violation',
-        message: '[docs-graph] 決定台帳の仮置き一覧が out of date. Run: --write',
+        message: `[docs-graph] 決定台帳の${this.#layout === 'v4' ? '仮・未決' : '仮置き'}一覧が out of date. Run: --write`,
         file: decisionLogPath,
       });
     }
@@ -966,7 +1042,7 @@ class DocGraph {
       line: p.line,
     }));
     const hardErrors: Violation[] = [...errors, ...hierarchyErrors].map((message) => ({ severity: 'violation', message }));
-    return [...drift, ...hardErrors, ...linkViolations];
+    return [...drift, ...hardErrors, ...linkViolations, ...connectionViolations];
   }
 
   #buildDependencies(docs: readonly Doc[], byId: ReadonlyMap<string, Doc>, warnings: readonly string[]): string {
@@ -1043,10 +1119,13 @@ class DocGraph {
     return problems;
   }
 
-  #spliceDirReadme(dir: string, existing: string | null, table: string): string {
+  /** adrTable は、README.md を新しく作るときに adr-index の区間へ入れる表 (ADR 索引の README.md だけ。それ以外は null) */
+  #spliceDirReadme(dir: string, existing: string | null, table: string, adrTable: string | null): string {
     const block = `${DIR_INDEX_START}\n\n${table}\n\n${DIR_INDEX_END}`;
     if (existing === null) {
       const slug = relative(this.#docsDir, dir).replace(/[\\/]/g, '-') || 'docs';
+      // 新しい構成の docs/person・ai・client の README.md は、決まった目的の行で作る (G7)。ほかのフォルダは、書き手が埋める
+      const purpose = (this.#layout === 'v4' ? ROLE_README_PURPOSE.get(relative(this.#docsDir, dir)) : undefined) ?? '(要記入)';
       return [
         '---',
         `id: ${slug}-index`,
@@ -1058,8 +1137,9 @@ class DocGraph {
         '',
         `# ${basename(dir)}`,
         '',
-        '> このディレクトリの目的: (要記入)',
+        `> このディレクトリの目的: ${purpose}`,
         '',
+        ...(adrTable === null ? [] : [`${ADR_INDEX_START}\n\n${adrTable}\n\n${ADR_INDEX_END}`, '']),
         '## 索引',
         '',
         block,
@@ -1091,7 +1171,7 @@ class DocGraph {
     for (const f of entries) {
       const entry = meta.get(f);
       if (entry === undefined) continue;
-      const link = `[${cell(entry.title)}](${relative(from, f).split(sep).join('/')})${audienceMark(entry.fm)}`;
+      const link = `[${cell(entry.title)}](${relative(from, f).split(sep).join('/')})${this.#layout === 'v4' ? '' : audienceMark(entry.fm)}`;
       // 生成物 (dependencies.md 等) は設計書ではないので章を持たない。警告もしない。
       if (entry.content.startsWith('<!-- AUTOGENERATED')) {
         outside.push(link);
@@ -1137,7 +1217,9 @@ class DocGraph {
       );
     }
     if (unassigned.length) rows.push(`| **章未割当** (frontmatter に arc42 が無い) | ${unassigned.join(' · ')} |`);
-    return [`> ${AUDIENCE_LEGEND}。`, '', '| arc42 章 | 文書 |', '|---|---|', ...rows].join('\n');
+    // 新しい構成では、読み手の表示と凡例を出さない (フォルダが読み手を示す。G7)
+    const legend = this.#layout === 'v4' ? [] : [`> ${AUDIENCE_LEGEND}。`, ''];
+    return [...legend, '| arc42 章 | 文書 |', '|---|---|', ...rows].join('\n');
   }
 
   /**
@@ -1148,6 +1230,7 @@ class DocGraph {
     allFilesRaw: readonly string[],
     overrides: ReadonlyMap<string, string>,
     spliceBases: ReadonlyMap<string, string>,
+    adrTable: string,
   ): Promise<DirIndexResult> {
     const meta = new Map<string, DocMeta>();
     for (const f of new Set([...allFilesRaw, ...overrides.keys()])) {
@@ -1254,7 +1337,7 @@ class DocGraph {
             return target === undefined ? `${up} (未解決)` : `[${up}](${relative(dir, target).split(sep).join('/')})`;
           });
         return [
-          `[${basename(f)}](${basename(f)}) — **${cell(entry?.title)}**${audienceMark(fm)}`,
+          `[${basename(f)}](${basename(f)}) — **${cell(entry?.title)}**${this.#layout === 'v4' ? '' : audienceMark(fm)}`,
           type ? ` \`${cell(type)}\`` : '',
           status && status !== 'active' ? ` _(${cell(status)})_` : '',
           summary ? ` — ${cell(summary)}` : '',
@@ -1278,7 +1361,7 @@ class DocGraph {
     };
     const TREE_LEGEND =
       '> 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。' +
-      `${AUDIENCE_LEGEND}。` +
+      (this.#layout === 'v4' ? '' : `${AUDIENCE_LEGEND}。`) +
       '上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。';
     // 章別索引を出すディレクトリ。docs/design/ はツリーに在るときだけ対象にする
     // (無いのに README だけ作ると空フォルダが生える)。
@@ -1333,7 +1416,9 @@ class DocGraph {
         readmePath,
         rel: relative(this.#root, readmePath),
         existing,
-        desired: this.#spliceDirReadme(dir, spliceBases.get(readmePath) ?? existing, table),
+        // 新しい構成の decisions/README.md を新しく作るときは、ADR が 1 本も無くても adr-index の区間を置く。
+        // 区間が無い README.md を作ると、次の --write が「AUTOGEN マーカーが無い」で落ち続ける (G5)
+        desired: this.#spliceDirReadme(dir, spliceBases.get(readmePath) ?? existing, table, this.#layout === 'v4' && isAdrDir ? adrTable : null),
       });
     }
     return { indexes: results, arc42Warnings };

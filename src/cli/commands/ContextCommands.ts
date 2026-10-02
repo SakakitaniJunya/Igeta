@@ -75,7 +75,7 @@ export class ContextFilesCommand extends Command {
     '',
     '  --root <dir>       対象リポジトリ (既定: カレントディレクトリ)',
     '  --docs <dir>       検査対象 (既定: <root>/docs)',
-    '  --with-shared      既定 (map/glossary/自分の地図) に加えて共有文書を全部出す',
+    '  --with-shared      既定 (map/glossary/自分の地図) に加えて共有文書を全部出す (旧い構成だけ。新しい構成は範囲がフォルダで決まり、結果は変わらない)',
     '  --json             JSON 配列で出す',
   ];
 
