@@ -1,12 +1,10 @@
 // fingerprint-rebase: 由来 sidecar と合意台帳の指紋を、今の正規化の版へ載せ替える。
-// Spec: docs/adr/0007-fingerprint-link-normalization.md 決定 2、docs/adr/0006-provenance-migration-handling.md 決定 6 (b)
+// Spec: docs/adr/0007-fingerprint-link-normalization.md 決定 2
 //
 // 各エントリの対象本文を保存値の版で計算し、保存値と一致したものだけ、同じ本文から今の版で計算し直す。
 // 一致しないもの・保存値の版の実装が無いものは触らない (人の確認に回る)。承認は書き換えない。
 //   - sidecar: 指紋と normalizationVersion を付け替え、rebasedFrom/At/By を足す。acceptedBy/At は保つ
 //   - 合意台帳: 過去の行は書き換えず、fingerprint-rebase の行を追記する (指紋 1 つごとの対応表)
-// 状態の列だけを足した行 (ADR-0006 決定 6 (b)) は、stateColumnRows で元の行を渡すと同じ手順で載せ替える
-// (docs-migrate が呼ぶ。元の行は書き換え前の本文で、CLI からは渡せない)。
 
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -17,18 +15,16 @@ import {
   exportNormalizationVersion,
   findBaseline,
   findLedgerDirs,
-  followRedirect,
   ledgerPathFor,
   readLedger,
   rebaseKey,
   rebaseTable,
-  sourceRedirects,
 } from '../core/AgreementLedger.js';
 import { extractDeliveryBlocks, findDeliveryChapters } from '../core/DeliveryBlocks.js';
 import type { DestinationRewriter } from '../core/Fingerprint.js';
 import { CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
 import type { ChangeItem, RebaseDecision } from '../core/FingerprintRebase.js';
-import { IGETA_ACTOR, decideRebase, decideStateColumnRebase, describeKept, rebasedEntry } from '../core/FingerprintRebase.js';
+import { IGETA_ACTOR, decideRebase, describeKept, rebasedEntry } from '../core/FingerprintRebase.js';
 import type { LinkTable } from '../core/LinkTable.js';
 import { buildLinkTable } from '../core/LinkTable.js';
 import type { ProvenanceEntry } from '../core/ProvenanceSidecar.js';
@@ -40,14 +36,6 @@ import { isPathWithinRealDir } from '../export/Manifest.js';
 import { UnclosedAutogenError } from '../export/MarkdownStrip.js';
 import { chapterBody } from './AgreementRecordModule.js';
 
-/** 状態の列を足す前の表の行。 */
-export interface StateColumnRow {
-  /** 列を足す前の行 (元の行) */
-  readonly oldRow: string;
-  /** 元の行がある文書でのリンクの解決。省略すると今の行がある文書のものを使う (列を足す前後で文書の場所が変わらないとき) */
-  readonly oldRewrite?: DestinationRewriter;
-}
-
 export interface RebaseRequest {
   readonly targetRoot: string;
   /** 由来の `from` を解決する正本の検索対象 */
@@ -55,11 +43,6 @@ export interface RebaseRequest {
   /** 章の由来 (sidecar) と合意台帳を探す起点。docsDir の中でも、提出物のディレクトリでもよい */
   readonly dir: string;
   readonly now?: Date;
-  /**
-   * 状態の列だけを足した表の行。キーは由来の `from` (`<doc-id>/PREFIX-nnn`、今の居場所)。
-   * 通常の載せ替えで一致しなかった指紋だけに効く (元の行が保存値と一致し、新しい行が「元の行 + 状態の列」のときだけ載せ替える)。
-   */
-  readonly stateColumnRows?: ReadonlyMap<string, StateColumnRow>;
 }
 
 export interface RebaseResult {
@@ -79,28 +62,6 @@ interface Context {
   readonly rebased: ChangeItem[];
   readonly kept: ChangeItem[];
   readonly violations: Violation[];
-}
-
-/** 通常の載せ替えで一致しなければ、状態の列だけを足した行かどうかを確かめる。from は今の居場所。 */
-function decide(
-  ctx: Context,
-  from: string | null,
-  stored: string,
-  storedVersion: number,
-  text: string,
-  rewrite: DestinationRewriter,
-): RebaseDecision {
-  const normal = decideRebase({ stored, storedVersion, text, rewrite });
-  const stateColumn = from === null ? undefined : ctx.request.stateColumnRows?.get(from);
-  if (normal.kind === 'rebased' || stateColumn === undefined) return normal;
-  return decideStateColumnRebase({
-    stored,
-    storedVersion,
-    oldRow: stateColumn.oldRow,
-    oldRewrite: stateColumn.oldRewrite ?? rewrite,
-    newRow: text,
-    newRewrite: rewrite,
-  });
 }
 
 function rebaseSidecar(ctx: Context, chapterAbsPath: string): void {
@@ -141,7 +102,7 @@ function rebaseSidecar(ctx: Context, chapterAbsPath: string): void {
       rewrite = ctx.links.rewriterFor(resolution.doc.relPath);
     }
 
-    const decision = decide(ctx, entry.from, stored, entry.normalizationVersion, text, rewrite);
+    const decision = decideRebase({ stored, storedVersion: entry.normalizationVersion, text, rewrite });
     if (decision.kind === 'kept') return keep(describeKept(decision.reason, entry.normalizationVersion));
     ctx.rebased.push({ file: chapterRelPath, target: entry.anchor, detail: `版 ${entry.normalizationVersion} → ${CURRENT_NORMALIZATION_VERSION}` });
     return rebasedEntry(entry, decision.fingerprint, ctx.date);
@@ -180,7 +141,6 @@ function rebaseLedger(ctx: Context, ledgerDir: string): void {
     if (event === undefined || event.event !== 'export') continue;
     const version = exportNormalizationVersion(event);
     if (version === CURRENT_NORMALIZATION_VERSION) continue; // 載せ替える対象ではない
-    const redirects = sourceRedirects(ledger.events, index);
     const recorded = rebaseTable(ledger.events, index);
     const entriesForVersion = pending.get(version) ?? new Map<string, FingerprintRebaseEntry>();
     const itemsForVersion = pendingItems.get(version) ?? [];
@@ -217,7 +177,7 @@ function rebaseLedger(ctx: Context, ledgerDir: string): void {
       }
       try {
         const body = chapterBody(readFileSync(absPath, 'utf8'), relPath, event.omitSections);
-        const decision = decide(ctx, null, chapter.chapterFingerprint, version, body, ctx.links.rewriterFor(relPath));
+        const decision = decideRebase({ stored: chapter.chapterFingerprint, storedVersion: version, text: body, rewrite: ctx.links.rewriterFor(relPath) });
         if (decision.kind === 'kept') keep(CHAPTER_FINGERPRINT_TARGET, describeKept(decision.reason, version));
         else add(CHAPTER_FINGERPRINT_TARGET, chapter.chapterFingerprint, decision);
       } catch (error) {
@@ -226,13 +186,17 @@ function rebaseLedger(ctx: Context, ledgerDir: string): void {
       }
 
       for (const source of chapter.sources) {
-        const from = followRedirect(redirects, source.from);
-        const resolution = ctx.sourceIndex === null ? { kind: 'missing' as const } : resolveSource(ctx.sourceIndex, from);
+        const resolution = ctx.sourceIndex === null ? { kind: 'missing' as const } : resolveSource(ctx.sourceIndex, source.from);
         if (resolution.kind === 'missing') {
-          keep(source.from, `由来が指す正本が無い: ${from} (載せ替えない)`);
+          keep(source.from, `由来が指す正本が無い: ${source.from} (載せ替えない)`);
           continue;
         }
-        const decision = decide(ctx, from, source.fingerprint, version, resolution.text, ctx.links.rewriterFor(resolution.doc.relPath));
+        const decision = decideRebase({
+          stored: source.fingerprint,
+          storedVersion: version,
+          text: resolution.text,
+          rewrite: ctx.links.rewriterFor(resolution.doc.relPath),
+        });
         if (decision.kind === 'kept') keep(source.from, describeKept(decision.reason, version));
         else add(source.from, source.fingerprint, decision);
       }

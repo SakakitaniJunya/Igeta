@@ -17,9 +17,8 @@ import { Report } from '../core/Report.js';
 import { buildSourceIndex, resolveSource } from '../core/SourceResolver.js';
 import { chapterBody } from './AgreementRecordModule.js';
 import { rebaseFingerprints } from './FingerprintRebaseModule.js';
-import type { StateColumnRow } from './FingerprintRebaseModule.js';
 import {
-  ANCHOR_NO_SOURCE, ANCHOR_ROW, ANCHOR_SECTION, CHAPTER, ROW_101, ROW_102, ROW_FROM, SECTION_FROM, SUBMISSION,
+  ANCHOR_NO_SOURCE, ANCHOR_ROW, ANCHOR_SECTION, CHAPTER, ROW_101, ROW_FROM, SECTION_FROM, SUBMISSION,
   chapterDoc, cleanupWorkspaces, makeLegacyRepo, parseLedgerLines, readEntries, readLedgerBytes, relocate, reservationDoc, write,
 } from './rebaseFixture.test-support.js';
 import type { LegacyRepo } from './rebaseFixture.test-support.js';
@@ -29,8 +28,8 @@ after(cleanupWorkspaces);
 
 const NOW = new Date('2026-10-02T09:00:00Z');
 
-function rebase(repo: LegacyRepo, overrides: { stateColumnRows?: ReadonlyMap<string, StateColumnRow>; dir?: string } = {}): ReturnType<typeof rebaseFingerprints> {
-  return rebaseFingerprints({ targetRoot: repo.root, docsDir: repo.docsDir, dir: overrides.dir ?? repo.docsDir, now: NOW, stateColumnRows: overrides.stateColumnRows });
+function rebase(repo: LegacyRepo, overrides: { dir?: string } = {}): ReturnType<typeof rebaseFingerprints> {
+  return rebaseFingerprints({ targetRoot: repo.root, docsDir: repo.docsDir, dir: overrides.dir ?? repo.docsDir, now: NOW });
 }
 
 function runProvenance(root: string): { report: Report; warnings: readonly string[] } {
@@ -425,91 +424,6 @@ describe('fingerprint-rebase → 文書を動かす (docs-migrate が行う順�
     assert.match(provenance.report.format(), new RegExp(`${ANCHOR_SECTION}: stale`));
     const agreement = runAgreement(repo.root);
     assert.equal(agreement.report.exitCode, 1, agreement.report.format());
-  });
-});
-
-describe('fingerprint-rebase: 状態の列だけを足した行 (stateColumnRows、ADR-0006 決定 6 (b))', () => {
-  const withState = (row: string, state: string): string => `${row} ${state} |`;
-  const stateTable = (overrides: { row101?: string } = {}): string =>
-    reservationDoc({
-      header: '| ID | 要件 | 備考 | 状態 |',
-      separator: '|---|---|---|---|',
-      row101: overrides.row101 ?? withState(ROW_101, '確定'),
-      row102: withState(ROW_102, '確定'),
-    });
-  const oldRows = new Map<string, StateColumnRow>([[ROW_FROM, { oldRow: ROW_101 }]]);
-
-  it('(g) 状態の列だけを足した行は載せ替わる。sidecar は新しい行の v3、台帳の対応表は保存値 → 新しい行の v3', () => {
-    const repo = makeLegacyRepo();
-    const before = readEntries(repo.chapterPath);
-    write(repo.root, 'docs/requirements/reservation.md', stateTable());
-    const result = rebase(repo, { stateColumnRows: oldRows });
-    assert.deepEqual(result.violations, []);
-
-    const newRow = withState(ROW_101, '確定');
-    const entry = readEntries(repo.chapterPath)[0];
-    assert.ok(entry !== undefined && entry.from !== null);
-    assert.equal(entry.fingerprint, v3Of(repo.root, 'docs/requirements/reservation.md', newRow));
-    assert.equal(entry.rebasedFrom, before[0] !== undefined && before[0].from !== null ? before[0].fingerprint : undefined);
-    assert.equal(entry.acceptedBy, 'reviewer@example.com');
-
-    const row = parseLedgerLines(readLedgerBytes(repo)).at(-1);
-    const mapped = (row?.['entries'] as { target: string; to: string }[]).find((e) => e.target === ROW_FROM);
-    assert.equal(mapped?.to, v3Of(repo.root, 'docs/requirements/reservation.md', newRow));
-  });
-
-  it('(g) 載せ替えた後は、provenance-check も agreement-check も ok (列を足しただけでは再合意が出ない)', () => {
-    const repo = makeLegacyRepo();
-    write(repo.root, 'docs/requirements/reservation.md', stateTable());
-    rebase(repo, { stateColumnRows: oldRows });
-    const provenance = runProvenance(repo.root);
-    assert.equal(provenance.report.exitCode, 0, provenance.report.format());
-    const agreement = runAgreement(repo.root);
-    assert.equal(agreement.report.exitCode, 0, agreement.report.format());
-    assert.deepEqual(agreement.warnings, []);
-  });
-
-  it('(g) 対照: 元の行を渡さなければ (通常の載せ替えだけ) 載せ替わらず、stale・再合意が出る', () => {
-    const repo = makeLegacyRepo();
-    write(repo.root, 'docs/requirements/reservation.md', stateTable());
-    const result = rebase(repo);
-    assert.match(result.kept.find((i) => i.target === ANCHOR_ROW)?.detail ?? '', /版 2 で計算した今の本文が保存値と違う/);
-    assert.match(runProvenance(repo.root).report.format(), new RegExp(`${ANCHOR_ROW}: stale`));
-    assert.match(runAgreement(repo.root).report.format(), /再合意が要る.*REQ-101/);
-  });
-
-  it('(g) 他の文字も変えた行 (30 日前 → 60 日前 と列の追加) は載せ替わらない', () => {
-    const repo = makeLegacyRepo();
-    const before = readEntries(repo.chapterPath);
-    write(repo.root, 'docs/requirements/reservation.md', stateTable({ row101: withState(ROW_101.replace('30 日前', '60 日前'), '確定') }));
-    const ledgerBefore = readLedgerBytes(repo);
-    const result = rebase(repo, { stateColumnRows: oldRows });
-    assert.deepEqual(readEntries(repo.chapterPath)[0], before[0]);
-    assert.match(result.kept.find((i) => i.target === ANCHOR_ROW)?.detail ?? '', /元の行 \+ 状態の列/);
-    const row = parseLedgerLines(readLedgerBytes(repo)).at(-1);
-    assert.equal(
-      (row?.['entries'] as { target: string }[]).some((e) => e.target === ROW_FROM),
-      false,
-      '台帳の対応表にも載らない',
-    );
-    assert.ok(readLedgerBytes(repo).startsWith(ledgerBefore));
-    assert.match(runAgreement(repo.root).report.format(), /再合意が要る.*REQ-101/);
-  });
-
-  it('(g) 元の行を渡しても、元の行が保存値と一致しなければ (既に stale だった) 載せ替わらない', () => {
-    const repo = makeLegacyRepo();
-    const before = readEntries(repo.chapterPath);
-    write(repo.root, 'docs/requirements/reservation.md', stateTable());
-    const result = rebase(repo, { stateColumnRows: new Map([[ROW_FROM, { oldRow: ROW_101.replace('30 日前', '45 日前') }]]) });
-    assert.deepEqual(readEntries(repo.chapterPath)[0], before[0]);
-    assert.match(result.kept.find((i) => i.target === ANCHOR_ROW)?.detail ?? '', /版 2 で計算した今の本文が保存値と違う/);
-  });
-
-  it('(g) 状態の列を足していない行は、元の行を渡しても通常の載せ替えで載せ替わる (リンクだけが理由の v2 → v3)', () => {
-    const repo = makeLegacyRepo();
-    const result = rebase(repo, { stateColumnRows: oldRows });
-    assert.equal(readEntries(repo.chapterPath)[0]?.normalizationVersion, 3);
-    assert.equal(result.rebased.some((i) => i.target === ANCHOR_ROW), true);
   });
 });
 
