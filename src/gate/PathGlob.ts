@@ -10,11 +10,9 @@
 // 使えない構文 (`!` の否定・`\` のエスケープ・extglob・先頭の `/`・末尾の `/`・前後の空白・`..`・
 // `{1..3}` の範囲) は validateGlob が理由を返す。黙って当たらない glob にしない。
 //
-// どれも「当たらないより当たる」側に倒す (門は見落とすより多く拾う):
-// - 大文字小文字は区別しない。macOS・Windows の既定のファイルシステムでは `docs/Person/` と `docs/person/` が同じ
-//   場所になるので、大文字小文字だけを変えたパスで門を抜けられないようにする
-// - glob がパスの手前のディレクトリに当たれば、そのパスにも当たる (`docs/special` は `docs/special/x.md` にも当たる)。
-//   ディレクトリ名だけを書いて何にも当たらない設定にならないようにする
+// 大文字小文字は区別しない (テスト仕様 01 の R5)。macOS・Windows の既定のファイルシステムでは `docs/Person/` と
+// `docs/person/` が同じ場所になるので、大文字小文字だけを変えたパスで門を抜けられないようにする (門は見落とすより多く拾う)。
+// `X/**` は X そのもの (ファイル・symlink・submodule) にも当たる。名前の続き (`docs/personal/`) には当たらない。
 
 const MAX_BRACE_VARIANTS = 256;
 const EXTGLOB_OPENER = /[?*+@!]\(/;
@@ -161,10 +159,7 @@ function compileCached(pattern: string): readonly (readonly Segment[])[] {
   return result;
 }
 
-/**
- * glob が path (repo のルートからの相対パス、`/` 区切り) に当たるか。pattern は validateGlob を通したもの。
- * path そのものか、path の手前のディレクトリのどれかに当たれば true。
- */
+/** glob が path (repo のルートからの相対パス、`/` 区切り) に当たるか。pattern は validateGlob を通したもの。 */
 export function matchesGlob(path: string, pattern: string): boolean {
   const names = path.split('/');
   return compileCached(pattern).some((segments) => matchSegments(segments, names));
@@ -178,7 +173,7 @@ function matchSegments(segments: readonly Segment[], names: readonly string[]): 
     if (cached !== undefined) return cached;
     const segment = segments[gi];
     let result: boolean;
-    if (segment === undefined) result = true; // glob を使い切った。ここまでの階層に当たっていれば、その配下も当たる
+    if (segment === undefined) result = ni === names.length;
     else if (segment.kind === 'globstar') result = rec(gi + 1, ni) || (ni < names.length && rec(gi, ni + 1));
     else {
       const name = names[ni];
@@ -191,8 +186,7 @@ function matchSegments(segments: readonly Segment[], names: readonly string[]): 
 }
 
 /**
- * glob が folder (例 `docs/person`) そのもの、その配下のパス、または folder の手前のディレクトリ (`docs`) に
- * 当たりうるか (手前のディレクトリに当たる glob は、配下にも当たる)。
+ * glob が folder (例 `docs/person`) そのもの、またはその配下のパスに当たりうるか。
  * 配下のどの名前にも当たるように書ける (`docs/**`・`docs/*` + `/**`・`**` など) かを階層ごとに調べるので、
  * `docs/person/requirements/01-requirements.md` のような 1 本だけを指す glob も取りこぼさない。
  */
@@ -202,7 +196,7 @@ export function globCanMatchUnder(pattern: string, folder: string): boolean {
     const rec = (gi: number, ni: number): boolean => {
       if (ni === names.length) return true; // folder を使い切った。残りの階層は配下のどの名前にも合わせられる
       const segment = segments[gi];
-      if (segment === undefined) return true; // folder の手前のディレクトリ (例: `docs`) に当たる。配下の folder にも当たる
+      if (segment === undefined) return false; // folder より手前のパス (例: `docs`) にしか当たらない
       if (segment.kind === 'globstar') return rec(gi + 1, ni) || rec(gi, ni + 1);
       const name = names[ni];
       return name !== undefined && segment.regex.test(name) && rec(gi + 1, ni + 1);

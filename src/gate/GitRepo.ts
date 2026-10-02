@@ -1,49 +1,83 @@
-// approval-scope が使う git の呼び出し。差分の取り方は ADR-0008 決定 2
-// (`git diff --name-status --no-renames <merge-base>`。移動は元の削除と先の追加の 2 行になる)。
+// approval-scope が使う git の呼び出し。差分の取り方はテスト仕様 01 の R1・R2・R4。
 //
-// 作業ツリーのファイルと index の内容は書き換えない (git diff が index の stat キャッシュを更新することはある。
-// 手で git diff を打ったときと同じ)。失敗は GitError にして呼び出し側が検査不能にする
-// (git が使えないのに黙って `ai` を返さない)。
+// 作業ツリーのファイルと index の内容は書き換えない (git diff が index の stat キャッシュを更新し、
+// git merge-tree が object を書くことはある。手で打ったときと同じ)。失敗は GitError にして、呼び出し側が検査不能にする
+// (git が使えないのに、黙って `ai` を返さない)。
 
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 
 export class GitError extends Error {}
 
-export interface Change {
-  /** git の状態文字。A (追加) / M (変更) / D (削除) / T (種別の変更) / U (未解決)。 */
-  readonly status: string;
-  /** repo のルートからの相対パス (`/` 区切り) */
-  readonly path: string;
-}
-
-interface GitOutput {
+export interface GitOutput {
   readonly status: number;
   readonly stdout: string;
   readonly stderr: string;
 }
 
-// package-lock.json のような大きなファイルを git show で読むので、既定の 1 MiB では足りない
-const MAX_BUFFER = 512 * 1024 * 1024;
+/**
+ * git の呼び出し。テストが差し替えられるよう、実行する関数として渡す (doctor の gh と同じ形)。
+ * root は git を実行する作業ツリー (`git -C <root>`)。
+ */
+export type GitRunner = (root: string, args: readonly string[]) => GitOutput;
+
+// 差分は名前だけ (中身は読まない)。巨大な repo の名前の一覧でも収まる大きさ
+const MAX_BUFFER = 64 * 1024 * 1024;
+
+export const spawnGit: GitRunner = (root, args) => {
+  const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', maxBuffer: MAX_BUFFER });
+  if (result.error !== undefined) throw new GitError(`git を実行できない: ${result.error.message}`);
+  if (result.status === null) throw new GitError(`git ${args.join(' ')} が signal ${String(result.signal)} で終わった`);
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+};
+
+/** 差分の状態の文字。この 4 つ以外 (未解決 U など) は、パスの判定を誤りうるので受け付けない (R4)。 */
+export type ChangeStatus = 'A' | 'M' | 'D' | 'T';
+
+export interface Change {
+  readonly status: ChangeStatus;
+  /** repo のルートからの相対パス (`/` 区切り) */
+  readonly path: string;
+}
+
+const isChangeStatus = (status: string): status is ChangeStatus =>
+  status === 'A' || status === 'M' || status === 'D' || status === 'T';
+
+/** `git diff --name-status -z` の出力 (状態 NUL パス NUL の繰り返し) を読む。 */
+function parseNameStatus(output: string): readonly Change[] {
+  const tokens = output.split('\0');
+  const changes: Change[] = [];
+  for (let i = 0; i < tokens.length; i += 2) {
+    const status = tokens[i];
+    const path = tokens[i + 1];
+    if (status === '' && i === tokens.length - 1) break; // 末尾の NUL の後ろ
+    if (status === undefined || path === undefined || path === '') {
+      throw new GitError(`git diff --name-status -z の出力を読めない: ${JSON.stringify(tokens.slice(i, i + 2))}`);
+    }
+    if (!isChangeStatus(status)) {
+      throw new GitError(`差分の状態の文字が想定外: ${JSON.stringify(status)} (${path})。A・M・D・T 以外は判定できない`);
+    }
+    changes.push({ status, path });
+  }
+  return changes;
+}
+
+const DIFF_OPTIONS = ['--no-color', '--no-renames', '--ignore-submodules=none', '--name-status', '-z'] as const;
 
 export class GitRepo {
   readonly #root: string;
+  readonly #run: GitRunner;
 
-  constructor(root: string) {
+  constructor(root: string, run: GitRunner = spawnGit) {
     this.#root = root;
+    this.#run = run;
   }
 
   #spawn(args: readonly string[]): GitOutput {
-    const result = spawnSync('git', ['-C', this.#root, ...args], {
-      encoding: 'utf8',
-      maxBuffer: MAX_BUFFER,
-    });
-    if (result.error !== undefined) throw new GitError(`git を実行できない: ${result.error.message}`);
-    if (result.status === null) throw new GitError(`git ${args.join(' ')} が signal ${String(result.signal)} で終わった`);
-    return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+    return this.#run(this.#root, args);
   }
 
-  #run(args: readonly string[]): string {
+  #ok(args: readonly string[]): string {
     const result = this.#spawn(args);
     if (result.status !== 0) {
       throw new GitError(`git ${args.join(' ')} が失敗した (終了コード ${result.status}): ${result.stderr.trim()}`);
@@ -51,15 +85,19 @@ export class GitRepo {
     return result.stdout;
   }
 
-  /** root が git の作業ツリーの最上位か。monorepo の部分木から呼ぶと repo 直下のパス規則が合わなくなる。 */
+  /** root が git の作業ツリーの最上位か。部分木から呼ぶと、repo 直下のパスの規則が合わなくなる。 */
   isTopLevel(): boolean {
-    const top = this.#run(['rev-parse', '--show-toplevel']).trim();
+    const top = this.#ok(['rev-parse', '--show-toplevel']).trim();
     return realpathSync(top) === realpathSync(this.#root);
   }
 
-  /** ref が refname として正しいか。環境変数から来た名前を `main~5` のような式として解釈させない。 */
-  isValidRefName(refName: string): boolean {
-    return this.#spawn(['check-ref-format', refName]).status === 0;
+  /**
+   * name がブランチの名前として正しいか。環境変数から来た名前を、`main~5` のような式や、`-` で始まるオプションとして
+   * 読ませない (`-` で始まる名前は git のブランチ名にできない)。
+   */
+  isValidBranchName(name: string): boolean {
+    if (name.startsWith('-')) return false;
+    return this.#spawn(['check-ref-format', '--branch', name]).status === 0;
   }
 
   /** ref (または式) が指すコミット。無ければ null。 */
@@ -78,38 +116,54 @@ export class GitRepo {
   }
 
   /**
-   * base と作業ツリーの差分。追跡しているファイルは git diff、まだ git add していない新しいファイルは
-   * git diff に出ないので ls-files で足す (手元で add する前に確かめても `person/` の新規文書を見落とさない)。
-   * CI の clean な checkout では後者は空。
+   * commit のツリーにある paths の名前 (ls-tree。作業ツリーは見ない)。directoriesOnly ならフォルダだけ。
+   * 無い名前は結果に出ないので、空配列は「ツリーに無い」と分かった状態。
    */
-  changes(base: string): readonly Change[] {
-    const tracked = this.#run([
-      'diff',
-      '--no-color',
-      '--no-renames',
-      '--ignore-submodules=none',
-      '--name-status',
-      '-z',
-      base,
-      '--',
-    ]).split('\0');
-    const changes: Change[] = [];
-    for (let i = 0; i + 1 < tracked.length; i += 2) {
-      const status = tracked[i];
-      const path = tracked[i + 1];
-      if (status === undefined || path === undefined || status === '' || path === '') {
-        throw new GitError(`git diff --name-status -z の出力を読めない: ${JSON.stringify(tracked.slice(i, i + 2))}`);
-      }
-      changes.push({ status: status.charAt(0), path });
+  lsTree(commit: string, paths: readonly string[], directoriesOnly = false): readonly string[] {
+    const out = this.#ok(['ls-tree', '--name-only', '-z', ...(directoriesOnly ? ['-d'] : []), commit, '--', ...paths]);
+    return out.split('\0').filter((name) => name !== '');
+  }
+
+  /** commit の時点のファイルの内容 (作業ツリーのファイルは開かない)。 */
+  showAt(commit: string, path: string): string {
+    return this.#ok(['show', `${commit}:${path}`]);
+  }
+
+  /**
+   * destTip を宛先の先端、HEAD を変更の先端として merge した結果の tree。結果を作るだけで、branch や作業ツリーは変えない。
+   * 衝突するとき・git が `merge-tree --write-tree` (2.38 以降) を持たないときは、結果が決まらないので GitError。
+   */
+  mergeTree(destTip: string): string {
+    const result = this.#spawn(['merge-tree', '--write-tree', destTip, 'HEAD']);
+    if (result.status === 1) {
+      throw new GitError(`宛先の先端 (${destTip.slice(0, 12)}) と HEAD の merge が衝突する。衝突を解いてから確かめる`);
     }
-    for (const path of this.#run(['ls-files', '--others', '--exclude-standard', '-z']).split('\0')) {
+    if (result.status !== 0) {
+      throw new GitError(
+        `git merge-tree --write-tree が使えない (git 2.38 以降が要る) か、失敗した (終了コード ${result.status}): ${result.stderr.trim()}`,
+      );
+    }
+    const tree = (result.stdout.split('\n')[0] ?? '').trim();
+    if (!/^[0-9a-f]{40,64}$/.test(tree)) {
+      throw new GitError(`git merge-tree --write-tree の出力から tree を読めない: ${JSON.stringify(result.stdout.slice(0, 80))}`);
+    }
+    return tree;
+  }
+
+  /** from から to (commit か tree) までの差分。移動は削除と追加の 2 行になる。 */
+  diff(from: string, to: string): readonly Change[] {
+    return parseNameStatus(this.#ok(['diff', ...DIFF_OPTIONS, from, to, '--']));
+  }
+
+  /**
+   * from から作業ツリーまでの差分。まだ git add していない新しいファイルは git diff に出ないので ls-files で足す
+   * (手元で add する前に確かめても、`person/` の新規文書を見落とさない)。`--base` だけが使う。
+   */
+  diffWorkingTree(from: string): readonly Change[] {
+    const changes = [...parseNameStatus(this.#ok(['diff', ...DIFF_OPTIONS, from, '--']))];
+    for (const path of this.#ok(['ls-files', '--others', '--exclude-standard', '-z']).split('\0')) {
       if (path !== '') changes.push({ status: 'A', path });
     }
     return changes;
-  }
-
-  /** base の時点でのファイルの内容。 */
-  showAt(base: string, path: string): string {
-    return this.#run(['show', `${base}:${path}`]);
   }
 }

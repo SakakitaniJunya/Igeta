@@ -119,9 +119,26 @@ export function loadIgetaConfig(targetRoot: string, configPath?: string): LoadIg
     return { violation: { severity: 'cannot-check', message: `${path} はファイルでなくディレクトリ` } };
   }
 
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { violation: { severity: 'cannot-check', message: `${path} を読めない: ${message}` } };
+  }
+  return parseIgetaConfig(text, path);
+}
+
+/**
+ * `.igeta.json` の中身 (文字列) を読む。ファイルを開かずに、git から取り出した内容 (宛先のブランチの先端の
+ * `.igeta.json` など) を読めるようにする入口。`path` はメッセージに出す名前 (ファイルのパスや `<宛先>:.igeta.json`)。
+ * 項目の検査は loadIgetaConfig と同じ: JSON が壊れている・型が違う項目があれば CannotCheck、
+ * nonDocPaths が 3 フォルダの配下に当たれば violation。
+ */
+export function parseIgetaConfig(text: string, path: string): LoadIgetaConfigResult {
   let raw: unknown;
   try {
-    raw = JSON.parse(readFileSync(path, 'utf8'));
+    raw = JSON.parse(text);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { violation: { severity: 'cannot-check', message: `${path} の JSON が壊れている: ${message}` } };
