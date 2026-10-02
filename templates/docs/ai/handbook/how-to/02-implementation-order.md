@@ -48,7 +48,7 @@ relates_to: [domain-model, module-spec, test-plan]
 | 2 | **domain** | VO → entity → aggregate → domain event → port の順で作る + クラス図 | 単体テスト (不変条件・状態遷移の**否定ケース必須**) / カバレッジ 80% / `check:domain-drift` 緑 / `check:deps` 緑 |
 | 3 | **application** | use case / application service + DTO | port の手書きスタブだけで通る単体テスト (DB を立てない) / 異常系が `AppError` の `statusCode` で検証されている / カバレッジ 80% |
 | 4 | **infrastructure** | Prisma repository adapter / migration (EXCLUDE・RLS の raw SQL) / 外部 SaaS adapter | 結合テスト (実 Postgres): ① EXCLUDE 違反がドメインエラー (例: `SlotAlreadyTaken`) に翻訳される ② **他テナント行が 0 件で返る** ③ `withTenant()` を経由しないクエリが 0 件になる |
-| 5 | **presentation** | NestJS controller (生成型のみ使用) + `providers.ts` への配線 | contract test (生成型に対する request/response 検証) / 認可の否定テスト (他テナント指定で **403**) / `check:deps` 緑 |
+| 5 | **presentation** | NestJS controller (生成型のみ使用) + `providers.ts` への配線 | contract test (生成型に対する request/response 検証) / 認可の否定テスト (他テナント指定で **404**。値は XC-101) / `check:deps` 緑 |
 | 6 | **web** | `apps/web` の Server Component + 文言 catalog | 3 状態 (空 / ローディング / エラー = `loading.tsx` / `error.tsx` + 空表示) が実装済 / 日本語リテラル検出 lint 緑 / E2E で主要導線 1 本 |
 
 **Step 2 の内部順序を守る理由**: VO を後回しにすると entity が生文字列・生数値を持ったまま固まり、後から VO を差し込む作業が全 repository と全テストに波及する。port を最後にするのは、port のシグネチャが aggregate の形に依存するため。

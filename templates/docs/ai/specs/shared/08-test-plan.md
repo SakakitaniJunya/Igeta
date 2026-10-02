@@ -42,7 +42,7 @@ relates_to: [operations]
 | 単体 | domain / application | Vitest | 全 push | 80% | 状態遷移の不許可経路 |
 | 結合 | infrastructure (実 DB) | Vitest + testcontainers | PR | — | 他テナント 0 行 / 制約違反 |
 | 契約 | presentation ↔ OpenAPI | 生成型 | PR | — | 未定義フィールドの拒否 |
-| E2E | 主要導線 | Playwright | PR / nightly | — | 越境 403 |
+| E2E | 主要導線 | Playwright | PR / nightly | — | 越境 404 (XC-101) |
 
 ## 2. テスト環境
 
