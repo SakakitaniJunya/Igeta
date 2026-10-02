@@ -2,7 +2,8 @@
 // 旧い構成 (docs/person・ai・client が無い repo) の生成物と検査の結果が、新しい構成の検査を足す前と 1 バイトも変わらないこと
 // (テスト仕様 04 の適用範囲・TST-107)。sharedKinds の設定つきの旧い構成の木に、docs-graph・docs-check・context-boundary-check・
 // context-files・context-size を回し、新しい構成の検査を足す前 (a9fdd0c) の build が同じ木から作った出力と比べる。
-// 旧い構成の警告の文 (LEGACY_LAYOUT_MESSAGE) だけは、この版で意図して変えたので、定数で比べる。
+// 変えたのは、旧い構成の警告の 1 文だけ。その文は、設計 (テスト仕様 04 の適用範囲) に載せた文を、定数を使わずに
+// そのまま直書きして比べる (定数を直しても、文が設計から離れたことに気づけるように)。
 import { createHash } from 'node:crypto';
 import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +16,6 @@ import { ContextSizeModule } from '../generators/ContextSizeModule.js';
 import { ContextBoundaryCheck } from './ContextBoundaryCheck.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
 import { DocsCheck } from './DocsCheck.js';
-import { LEGACY_LAYOUT_MESSAGE } from './RoleBoundaryCheck.js';
 
 const workspaces: string[] = [];
 
@@ -108,6 +108,9 @@ function generatedDigests(root: string): Record<string, string> {
   );
 }
 
+/** 旧い構成の警告の 1 文 (テスト仕様 04 の適用範囲の文と 1 字も違わない)。これだけが、足す前から変わった */
+const LEGACY_WARNING = '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)';
+
 /** 基準 (a9fdd0c) の build が、上の木から作った生成物の digest */
 const BASELINE_DIGESTS: Readonly<Record<string, string>> = {
   'docs/README.md': '1a00e5dc20682e0b',
@@ -155,7 +158,7 @@ describe('旧い構成の検査と生成物は変わらない', () => {
     // docs-check: 違反は増えず、旧い構成の警告が 1 件
     const docsCheck = new DocsCheck();
     assert.deepEqual(await docsCheck.run(ctx), []);
-    assert.deepEqual(docsCheck.warnings, [LEGACY_LAYOUT_MESSAGE]);
+    assert.deepEqual(docsCheck.warnings, [LEGACY_WARNING]);
 
     // context-boundary-check: sharedKinds の設定に従う (function-list は共有で通り、用語集は共有でないので落ちる)。未割り当ての警告も出る
     const boundary = new ContextBoundaryCheck();
