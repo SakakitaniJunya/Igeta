@@ -1,11 +1,11 @@
 import { resolve } from 'node:path';
-import { ExitCode } from '../../core/ExitCode.js';
-import { Report } from '../../core/Report.js';
-import type { BaseSpec } from '../../gate/ApprovalScope.js';
-import { formatJudgement, judgeApprovalScope } from '../../gate/ApprovalScope.js';
-import { ArgParseError, parseArgs } from '../Args.js';
-import type { CommandContext } from '../Command.js';
-import { Command } from '../Command.js';
+import { ArgParseError, parseArgs } from '../cli/Args.js';
+import type { CommandContext } from '../cli/Command.js';
+import { Command } from '../cli/Command.js';
+import { ExitCode } from '../core/ExitCode.js';
+import { Report } from '../core/Report.js';
+import type { BaseSpec } from './ApprovalScope.js';
+import { formatJudgement, judgeApprovalScope } from './ApprovalScope.js';
 
 /** CI が渡す保護ブランチ (PR の向き先) の名前。GitHub Actions の pull_request / pull_request_target で設定される。 */
 const CI_BASE_BRANCH_VARIABLE = 'GITHUB_BASE_REF';
@@ -19,6 +19,9 @@ export interface ApprovalScopeCommandOptions {
  * 人の承認が要る変更かを、差分のパスだけで判定する (ADR-0008)。
  * 終了コードは既存の 3 値に割り当てる: ai = 0 (Ok) / human = 1 (Violation) / 検査不能 = 2 (CannotCheck)。
  * 自動で merge する仕組みは 0 のときだけ進む (1 でも 2 でも止まる)。
+ *
+ * 他のコマンドは src/cli/commands/ に置くが、これは門の一部なので src/gate/ に置く。終了コードの割り当てを
+ * 変える変更も、humanPaths の `src/gate/**` で人の承認を通る。
  */
 export class ApprovalScopeCommand extends Command {
   readonly name = 'approval-scope';
@@ -84,7 +87,8 @@ export class ApprovalScopeCommand extends Command {
       }
     }
 
+    // 検査不能の終了コードは Report 任せにせず、ここで固定する (門が Report の変更で開かないように)
     ctx.stderr(report.format());
-    return report.exitCode;
+    return ExitCode.CannotCheck;
   }
 }

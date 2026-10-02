@@ -3,7 +3,6 @@ import { IGETA_ROOT } from './core/Paths.js';
 import { Cli } from './cli/Cli.js';
 import { AgreementApproveCommand, AgreementCheckCommand } from './cli/commands/AgreementCommands.js';
 import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
-import { ApprovalScopeCommand } from './cli/commands/ApprovalScopeCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
 import { DoctorCommand } from './cli/commands/DoctorCommand.js';
@@ -28,6 +27,7 @@ import {
   TemplateCheckCommand,
 } from './cli/commands/checkCommands.js';
 import { UpgradeCommand, VersionCheckCommand } from './cli/commands/versionCommands.js';
+import { ApprovalScopeCommand } from './gate/ApprovalScopeCommand.js';
 
 const cli = new Cli()
   .register(new InitCommand())

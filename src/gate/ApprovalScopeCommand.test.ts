@@ -7,12 +7,12 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { Cli } from '../cli/Cli.js';
-import { ApprovalScopeCommand } from '../cli/commands/ApprovalScopeCommand.js';
 import { ExitCode } from '../core/ExitCode.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import { judgeApprovalScope } from './ApprovalScope.js';
+import { ApprovalScopeCommand } from './ApprovalScopeCommand.js';
 import type { BaseSpec } from './ApprovalScope.js';
-import { BASE, TestRepo, append, cannotCheckMessage, doc, generate, gitIn, judge, judged, local, packageJsonWith, tempDir, withOrigin } from './ApprovalScopeFixture.js';
+import { BASE, TestRepo, append, cannotCheckMessage, doc, generate, gitIn, judge, judged, local, packageJsonWith, pathsOf, tempDir, withOrigin } from './ApprovalScopeFixture.js';
 
 describe('起点: --ci は CI の保護ブランチとの merge-base、得られなければ検査不能', () => {
   const ci = (branch = 'main'): BaseSpec => ({ mode: 'ci', branch });
@@ -29,6 +29,32 @@ describe('起点: --ci は CI の保護ブランチとの merge-base、得られ
     append(repo, 'docs/person/requirements/01-requirements.md');
     repo.commit();
     assert.equal((await judged(repo, ci())).verdict, 'human');
+  });
+
+  it('GitHub Actions の pull_request の checkout と同じ形 (HEAD が「保護ブランチの先端 + PR の head」の merge commit) でも、PR の差分だけで判定する', async () => {
+    const { repo } = withOrigin();
+    repo.branch(); // PR の head
+    append(repo, 'docs/ai/specs/shared/01-spec.md');
+    repo.commit('PR');
+    repo.git('checkout', '-q', 'main');
+    append(repo, 'docs/person/requirements/01-requirements.md'); // 保護ブランチが先へ進んだ (別の人の変更)
+    repo.commit('保護ブランチの変更');
+    repo.git('push', '-q', 'origin', 'main');
+    repo.git('checkout', '-q', '--detach', 'origin/main');
+    repo.git('merge', '-q', '--no-ff', '-m', 'Merge pull request #1 from feature', 'feature'); // refs/pull/1/merge と同じ形
+    const ai = await judged(repo, ci());
+    assert.equal(ai.verdict, 'ai'); // 保護ブランチ側の person/ の変更は PR の差分ではない
+    assert.equal(ai.changedCount, 1);
+
+    // PR が person/ に触れていれば human (merge commit の上でも見落とさない)
+    repo.git('checkout', '-q', 'feature');
+    append(repo, 'docs/client/delivery/01-chapter.md');
+    repo.commit('PR: client');
+    repo.git('checkout', '-q', '--detach', 'origin/main');
+    repo.git('merge', '-q', '--no-ff', '-m', 'Merge pull request #1 from feature', 'feature');
+    const human = await judged(repo, ci());
+    assert.equal(human.verdict, 'human');
+    assert.deepEqual(pathsOf(human.reasons), ['docs/client/delivery/01-chapter.md']);
   });
 
   it('origin/main が手元の main より先へ進んでいても、merge-base で判定する', async () => {
