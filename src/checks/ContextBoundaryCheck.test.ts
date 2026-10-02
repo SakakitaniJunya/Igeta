@@ -306,7 +306,8 @@ describe('ContextBoundaryCheck: 新しい構成 (docs/person・ai・client)', ()
       '',
       'payment-refund/BF-001 も見る。',
     ]);
-    // ADR と手引きは、A・B のどちらも参照してよい (境界の検査に掛けない)
+    // ADR と手引き (と顧客への提出物) は、A・B のどちらも参照してよい (境界の検査に掛けない)
+    v4Doc(root, 'client/delivery/spec-v1/01-overview.md', 'delivery-overview', 'delivery-chapter', ['depends_on: [reservation-booking, payment-refund]']);
     v4Doc(root, 'person/decisions/2026/0001-x.md', 'adr-0001-x', 'adr', ['depends_on: [reservation-booking, payment-refund]']);
     v4Doc(root, 'ai/handbook/how-to/01-setup.md', 'setup', 'guide', [], [
       '[予約](../../../person/design/reservation/flows/01-booking.md)',
