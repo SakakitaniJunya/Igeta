@@ -89,7 +89,7 @@ relates_to: []
 ## 7. kind の置き場所 (正本)
 
 kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009。文書体系ガイドと `src/core/Role.ts` はこの表の転記で、
-`TaxonomyGuideSync.test.ts` が 3 つを突き合わせる。`<c>` はまとまりの名前 (`shared` を含む)。
+`TaxonomyGuideSync.test.ts` が 3 つを突き合わせる。`<c>` はまとまりの名前 (`shared` を含む)。ただし同じ階層の固定のフォルダの名前 (`ai/specs/` の下の `tasks`) には当たらず、context-contract の `<c>` は `shared` も除く (全体共通はどのまとまりからも引けるので、約束を持たない)。
 型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査し、(図) の kind は図も要る。図 = 図だけを検査。— = 検査しない。
 
 | 確定させる人 | kind | 置き場所 | 型の検査 |
