@@ -30,19 +30,19 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 
 **役割** = docs/ からのパスの第 1 階層 (`person`・`ai`・`client`)。docs/ 直下の生成索引 2 本と `nonDocPaths` は役割を持たない。
 **決まりの行**の定義は [テスト仕様 — 人の文書の型](./03-person-form.md) の §0。**本文の行** = 生成区間・コードフェンス・HTML コメントの外の行。
-**適用範囲**: G1〜G9 と B1〜B6 は新しい構成の repo だけに当てる。旧い構成の repo の検査と生成物は、いままでと 1 バイトも変えない。
+**適用範囲**: G1〜G9 と B1〜B6 は新しい構成の repo だけに当てる。旧い構成の repo の検査と生成物は、いままでと 1 バイトも変えない。変えるのは、旧い構成の警告の 1 文だけ (0.5.0 の文: 「旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)」)。違反の文は、文頭に `[direction]` (G1)・`[reach]` (G3)・`[adr]` (G4) を付ける。
 
 | # | 規則 |
 |---|---|
 | G1 | 向き: `person` が指してよいのは `person` だけ。`ai` は `person`・`ai`。`client` は 3 つとも。破れば違反 (参照元の行) |
-| G2 | G1 の参照は次の 4 種 ((b)〜(d) は本文の行だけを見る): (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く) (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する |
+| G2 | G1 の参照は次の 4 種 ((b)〜(d) は本文の行だけを見る): (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く) (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する。(a) の値は、行末のコメント (空白と `#` から後ろ) を除いて読む。字下げした `- x` の行は、直前の項目の値が同じ行に書いてあっても、その項目の配列に足す (どちらも、索引を作るときの読み方と同じ規則にそろえる)。(d) は、直前が英数字・`/`・`-` でないものを数える (斜体・太字・インラインコードの中も数える。パスの一部になっているもの (直前が `/`) は数えない)。次は数えない: 行をまたぐ行き先 / 引用やリストの中の参照の定義 / 同じ repo を指す絶対 URL / 字下げの無い frontmatter の配列 / HTML の `a`・`img` |
 | G3 | 届く: `ai/specs/**` の文書 (README.md を除く) は、`depends_on` を 1 回以上たどると `person/` の文書に届く。解決できない id と `external:` はたどらない。届かなければ違反 |
-| G4 | ADR の引用: status が `accepted`・`amended` の ADR (id が `adr-NNNN-…`) の番号を、`person/requirements/**` か `person/design/**` の決まりの行 (状態が `廃` の行を除く) のどれかが `ADR-NNNN` の形 (大文字。直前が英数字でなく、直後が数字でない) で持つ。無ければ違反 (ADR の 1 行目) |
-| G5 | ADR の索引は `docs/person/decisions/README.md` の `adr-index` 区間に出す。ADR があるのに README.md が無ければ違反 |
-| G6 | 仮・未決の一覧: 決定台帳の `tentative-index` 区間に、`person/` の決まりの行で状態が `仮`・`未決` のものを並べる。列は `対象 ID` (修飾 ID)・`状態`・`場所` (`[パス:行](台帳からの相対パス#L行)`)・`決まり` (2 番目のセル)。順は、docs/ からのパスの文字コード順、同じ文書の中は行の順。`ai/`・`client/` からは集めない。0 件なら `_該当なし_`。決定台帳の手書きの表 (DEC・OPEN) と「仮置き」の検査は変えない (OPEN の表は、まだどの文書の行にもなっていない論点に使う) |
+| G4 | ADR の引用: status が `accepted`・`amended` の ADR (id が `adr-NNNN-…`) の番号を、`person/requirements/**` か `person/design/**` の決まりの行 (状態が `廃` の行を除く) のどれかが `ADR-NNNN` の形 (大文字。直前が英数字でなく、直後が数字でない) で持つ。無ければ違反 (ADR の 1 行目)。列の数が見出しと合わない行も、決まりの行として数える (列のずれは 03 の P3 が違反にする。G6 も同じ) |
+| G5 | ADR の索引は `docs/person/decisions/README.md` の `adr-index` 区間に出す。ADR があるのに README.md が無ければ違反。`docs-graph` が `decisions/README.md` を新しく作るときは、ADR が 1 本も無くても `adr-index` の区間を置く (何回回しても同じ結果になる)。手で書いた README.md に区間が無いときは、ADR の本数によらず、印を足すよう求めて止まる (いままでと同じ) |
+| G6 | 仮・未決の一覧: 決定台帳の `tentative-index` 区間に、`person/` の決まりの行で状態が `仮`・`未決` のものを並べる。列は `対象 ID` (修飾 ID)・`状態`・`場所` (`[パス:行](台帳からの相対パス#L行)`)・`決まり` (2 番目のセル)。順は、docs/ からのパスの文字コード順、同じ文書の中は行の順。`ai/`・`client/` からは集めない。0 件なら `_該当なし_`。`場所` のパスは repo の直下から書き、frontmatter の id が無い文書の修飾 ID はファイル名 (拡張子なし) にする。決定台帳の手書きの表 (DEC・OPEN) と「仮置き」の検査は変えない (OPEN の表は、まだどの文書の行にもなっていない論点に使う) |
 | G7 | 索引の行に読み手の表示と凡例を出さない (フォルダが示す)。`docs/person/`・`docs/ai/`・`docs/client/` の README.md を作るときの目的の行は、決まった文 (下の表)。docs/README.md の入口の 3 行は生成区間の外にあり、`docs-graph` は書き換えない |
 | G8 | G1・G3・G4 は検査 (`docs-check`) のときだけ違反にする。索引を書くとき (`docs-graph`) は警告に留め、索引を書く (違反があっても索引は再生成できる) |
-| G9 | 置き場所: `.igeta.json` の `nonDocPaths` に当たるパスは置き場所の判定から外す。docs/ 直下にある、3 フォルダ・生成索引 2 本・`nonDocPaths` 以外のもの (文書でないファイルとフォルダを含む) は違反。中身が全部 `nonDocPaths` に当たるフォルダは違反にしない。frontmatter に Igeta の kind を書いた文書が `nonDocPaths` の下にあれば違反 |
+| G9 | 置き場所: `.igeta.json` の `nonDocPaths` に当たるパスは置き場所の判定から外す。docs/ 直下にある、3 フォルダ・生成索引 2 本・`nonDocPaths` 以外のもの (文書でないファイルとフォルダを含む) は違反。中身が全部 `nonDocPaths` に当たるフォルダは違反にしない。frontmatter に Igeta の kind (置き場所の表にある kind) を書いた文書が `nonDocPaths` の下にあれば違反。点で始まる名前と `node_modules` は見ない。中身が無いフォルダは違反。`.igeta.json` を読めない・`nonDocPaths` が 3 フォルダに当たるときは、その違反だけを返す |
 
 | フォルダ | README.md の目的の行 (G7) |
 |---|---|
@@ -52,33 +52,34 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 
 | # | まとまりの境界の規則 (`context-boundary-check`・`context-files`・`context-size`) |
 |---|---|
-| B1 | まとまりは、置き場所の型のまとまりの階層から導く。階層が無い場所 (`person/requirements/**`・`ai/specs/tasks/*.md`) は frontmatter の `context` (無記入は `shared`) |
+| B1 | まとまりは、置き場所の型のまとまりの階層から導く。階層が無い場所 (`person/requirements/**`・`ai/specs/tasks/*.md`) は frontmatter の `context` (無記入は `shared`)。kind が無い・置き場所に合わない文書も frontmatter の `context` を使う (置き場所の検査が、別に違反にする) |
 | B2 | `person/decisions/**`・`ai/handbook/**`・`client/**` は、参照元としても参照先としても検査に掛けない |
 | B3 | まとまり A の文書が別のまとまり B の文書を参照したら違反 (A・B とも `shared` 以外)。通すのは、参照先が B の約束 (`contract.md`) のときと、地図から地図のとき |
 | B4 | `shared` の文書が特定のまとまりの文書を参照したら違反。通すのは、参照元の kind が map・function-list・permission-matrix・domain-overview・aggregate-map のとき (コードに固定) |
-| B5 | 参照の種類はいままでと同じ (`depends_on`・本文のリンク・修飾 ID)。`sharedKinds` の設定は読まず、書いてあれば警告を 1 件出す。「未割り当て」の警告は出さない |
+| B5 | 参照の種類はいままでと同じ (`depends_on`・本文のリンク・修飾 ID)。frontmatter の他の項目 (`relates_to` など) は、境界の検査の対象にしない。`sharedKinds` の設定は読まず、書いてあれば警告を 1 件出す。「未割り当て」の警告は出さない |
 | B6 | `context-files <c>` が返すのは、`person/requirements/**`・`person/design/shared/**`・`person/design/<c>/**`・`ai/specs/shared/**`・`ai/specs/<c>/**` と、自分のまとまりの文書が参照する隣の `contract.md` (README.md を除く。パスの文字コード順)。`--with-shared` は結果を変えない。`<c>` のフォルダがどこにも無ければ検査不能。`context-size` は同じ範囲を数える |
 
 ## 1. テストケース一覧
 
 | ID | 層 | 対象 | 前提 (Given) | 操作 (When) | 期待結果 (Then) | 対応 |
 |---|---|---|---|---|---|---|
-| TST-101 | 結合 | 向き | `ai` → `person`・`ai`、`client` → 3 つとも、`person` → `person` の参照 (4 種とも)。`person` の文書のコードフェンスと生成区間の中に `docs/ai/` へのリンク | `docs-check` | 違反 0 件 | G1・G2 |
-| TST-102 | 結合 | 届く | `ai/specs/` の文書が、別の `ai/specs/` の文書を経て `person/` に届く。`depends_on` に `external:x` が混ざる | `docs-check` | 違反 0 件 | G3 |
+| TST-101 | 結合 | 向き | `ai` → `person`・`ai`、`client` → 3 つとも、`person` → `person` の参照 (4 種とも)。`person` の文書のコードフェンスと生成区間の中に `docs/ai/` へのリンク | `docs-check` | 違反 0 件。パスの一部に見える書き方 (修飾 ID の直前が `/`) は、修飾 ID に数えない | G1・G2 |
+| TST-102 | 結合 | 届く | `ai/specs/` の文書が、別の `ai/specs/` の文書を経て `person/` に届く。`depends_on` に `external:x` が混ざる。`depends_on` の行末にコメント (`#メモ`) がある | `docs-check` | 違反 0 件 | G3 |
 | TST-103 | 結合 | ADR | `accepted` の ADR を要件の決まりの行が `ADR-0003` と引く / `proposed`・`superseded` の ADR はどこからも引かれない | `docs-check` | 違反 0 件 | G4 |
 | TST-104 | 結合 | 索引 | ADR 2 本・状態が `仮` と `未決` の行を持つ人の文書 2 本 | `docs-graph` | `decisions/README.md` に ADR の表。決定台帳に 2 行が、パスの順で、修飾 ID・状態・場所・決まりを持つ。仮・未決が 0 件のときは `_該当なし_` | G5・G6 |
 | TST-105 | 結合 | 索引 | 新しい構成の docs (3 フォルダに README.md が無い) | `docs-graph` | 索引に `_(読み手:` の文字が無い。3 フォルダの README.md の目的の行が G7 の文 | G7 |
 | TST-106 | 結合 | 書ける | `person` → `ai` のリンクと、届かない `ai/specs/` の文書がある docs | `docs-graph` | 警告を出して索引を書く (終了コード 0)。続けて `docs-check` は違反 | G8 |
-| TST-107 | 結合 | 旧い構成 | 旧い構成の docs (`sharedKinds` の設定つき) | `docs-graph`・`docs-check`・`context-boundary-check`・`context-files` | 生成物と結果が、いままでと 1 バイトも変わらない | 適用範囲 |
+| TST-107 | 結合 | 旧い構成 | 旧い構成の docs (`sharedKinds` の設定つき) | `docs-graph`・`docs-check`・`context-boundary-check`・`context-files` | 生成物と結果が、いままでと 1 バイトも変わらない (旧い構成の警告の 1 文を除く。その 1 文は、適用範囲に書いた文と 1 字も違わない) | 適用範囲 |
 | TST-108 | 結合 | 置き場所 | `nonDocPaths: ["docs/demos/**"]` と `docs/demos/a.gif` | `docs-check` | 違反 0 件 | G9 |
 | TST-109 | 結合 | 境界 | A の文書が B の `contract.md` を参照 / A の地図が B の地図を参照 / `shared` の機能一覧が A の文書を参照 / ADR と手引きが A・B を参照 / `context: A` と書いた要件の文書が A の文書を参照 | `context-boundary-check` | 違反 0 件。「未割り当て」の警告が出ない | B1〜B5 |
 | TST-110 | 結合 | 読む範囲 | まとまり A・B と全体共通を持つ docs | `context-files A` (`--with-shared` の有無) / `context-size A` | どちらも B6 の範囲だけをパスの順で返す (B の文書・ADR・手引き・提出物・README.md を含まない)。`context-size` は同じ範囲の合計 | B6 |
+| TST-111 | 結合 | 索引 | 新しい構成で、`person/decisions/` に決定台帳だけがあり、ADR も README.md も無い | `docs-graph` を 3 回続けて回し、続けて ADR を 1 本足して 1 回回す | 3 回とも終了コード 0。2 回目と 3 回目で生成物が変わらず、`decisions/README.md` は `adr-index` の区間を持つ。ADR を足した後は、印を手で足さなくても区間の表に載る | G5 |
 
 ## 2. 否定テスト (必須)
 
 | ID | 観点 (手口・境界) | ケース | 期待結果 |
 |---|---|---|---|
-| TST-301 | 人が AI を指す | `person` の文書が `ai` の文書を、`depends_on` / `relates_to` / 本文のリンク / 参照の形の定義 / 修飾 ID で指す (5 通り) | どれも違反 |
+| TST-301 | 人が AI を指す | `person` の文書が `ai` の文書を、`depends_on` / `relates_to` / 本文のリンク / 参照の形の定義 / 修飾 ID で指す (5 通り)。frontmatter の行末にコメントがある (`depends_on: [x]  #メモ`・配列の 1 行ずつの形) / 値のある `depends_on: [x]` の次の行に、字下げした `- y` を続ける / 修飾 ID を斜体・太字・インラインコードで囲む | どれも違反 |
 | TST-302 | フォルダを指す | `person` の文書のリンク先が `docs/ai` (フォルダ) / `docs/ai/specs/` / 無いファイル `docs/ai/x.md` / `docs/client/` | 違反 |
 | TST-303 | AI が顧客を指す | `ai` の文書が `client` の文書を指す | 違反 |
 | TST-304 | 届かない | `ai/specs/` の文書の `depends_on` が空 / `ai` の文書だけを回る / 解決できない id だけ / `external:` だけ | 違反 |

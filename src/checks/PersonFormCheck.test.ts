@@ -13,6 +13,8 @@ import { TemplateCheckCommand } from '../cli/commands/checkCommands.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
 import { PLACEMENTS } from '../core/Role.js';
+import { DocGraphCheck } from './DocGraphCheck.js';
+import { DocTemplateCheck } from './DocTemplateCheck.js';
 import type { PersonFormTemplate } from './PersonFormCheck.js';
 import { PersonFormCheck } from './PersonFormCheck.js';
 
@@ -112,7 +114,8 @@ const FORM_DOCS: readonly FormDoc[] = [
   { id: 'risks-tech-debt', kind: 'risks-tech-debt', prefix: 'RSK', path: 'person/design/shared/07-risks-tech-debt.md' },
   { id: 'operations', kind: 'operations', prefix: 'OPS', path: 'person/design/shared/08-operations.md' },
   { id: 'migration-plan', kind: 'migration-plan', prefix: 'MIG', path: 'person/design/shared/09-migration-plan.md' },
-  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-booking.md', context: 'reservation', diagram: true },
+  // 日本語のファイル名。廃の行の起点の読み出し (TST-106・311・313) が、git ls-tree の出力の日本語のパスを読めることも、これで固める
+  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-予約.md', context: 'reservation', diagram: true },
   { id: 'payment-refund', kind: 'business-flow', prefix: 'BF', path: 'person/design/payment/flows/01-refund.md', context: 'payment', diagram: true },
   { id: 'reservation-top', kind: 'screen-spec', prefix: 'SCR', path: 'person/design/reservation/screens/01-top.md', context: 'reservation', diagram: true },
 ];
@@ -347,10 +350,19 @@ describe('テスト仕様 03 §1 テストケース一覧', () => {
     assert.deepEqual(run(root, { base: 'dest' }).violations, [], '宛先の先端ではなく、枝分かれの点と比べる');
   });
 
-  it('[TST-107] README.md (見出し・目的の 1 行・dir-index) / decisions/README.md (adr-index と dir-index) / 決定台帳 (tentative-index) → 違反 0 件', () => {
+  it('[TST-107] README.md (見出し・目的の 1 行・dir-index) / decisions/README.md (adr-index と dir-index) / 決定台帳 (tentative-index) → 違反 0 件。生成器 (docs-graph) が書き直した後も同じ', async () => {
     const root = makeRoot();
     writeGeneratedDocs(root);
     assert.deepEqual(run(root), { violations: [], warnings: [] });
+
+    // 検査が例外にする印の文字列は、生成器が書く文字列と同じでなければならない。ADR を足して、生成器に区間を書き直させる
+    write(root, 'docs/person/decisions/2026/0001-use-postgres.md', [
+      '---', 'id: adr-0001-use-postgres', 'title: ADR-0001 PostgreSQL を使う', 'type: adr', 'kind: adr', 'arc42: 9', 'status: accepted', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', '# ADR-0001',
+    ]);
+    for (let pass = 1; pass <= 2; pass += 1) {
+      assert.deepEqual(await new DocGraphCheck({ write: true }).run({ targetRoot: root, igetaRoot: IGETA_ROOT }), [], `docs-graph --write (${pass} 回目)`);
+    }
+    assert.deepEqual(run(root), { violations: [], warnings: [] }, '生成器が書き直した README.md・決定台帳');
   });
 
   it('[TST-108] 旧い構成の repo / `docs/ai/` の文書の HTML コメント → 何も出ない', () => {
@@ -435,12 +447,22 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     assertOnly(runWith(map, titled('map', 'map', ['![地図](./map.png)', ''])), map, 1, /^図が 1 枚も無い \(kind: map/, '図だけの kind (地図)');
   });
 
-  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 → 違反', () => {
-    assertOnly(runWith(BOOKING, padTo(booking([...MERMAID, ...decisions('BF')]), 101)), BOOKING, 1, /^人の文書の行数上限 \(100\) を超えている: 101 行/, '○ の kind');
-    assertOnly(runWith(REQUIREMENTS, padTo(formLines(docOf('requirements')), 151)), REQUIREMENTS, 1, /^人の文書の行数上限 \(150\) を超えている: 151 行/, 'requirements');
+  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 → 違反。template-check の全体で、行数の違反は 1 件だけ', () => {
+    const long = padTo(booking([...MERMAID, ...decisions('BF')]), 101);
+    const longRequirements = padTo(formLines(docOf('requirements')), 151);
+    assertOnly(runWith(BOOKING, long), BOOKING, 1, /^人の文書の行数上限 \(100\) を超えている: 101 行/, '○ の kind');
+    assertOnly(runWith(REQUIREMENTS, longRequirements), REQUIREMENTS, 1, /^人の文書の行数上限 \(150\) を超えている: 151 行/, 'requirements');
+
+    // 雛形の line_limit (業務フローは 100・要件は 150) による検査も含む template-check の全体で、文書ごとに行数の違反は 1 件
+    const root = makeRoot();
+    writeValidTree(root);
+    write(root, `docs/${BOOKING}`, long);
+    write(root, `docs/${REQUIREMENTS}`, longRequirements);
+    const lineViolations = new DocTemplateCheck().run({ targetRoot: root, igetaRoot: IGETA_ROOT }).filter((violation) => violation.message.includes('行数上限'));
+    assert.deepEqual(lineViolations.map((violation) => posix(violation.file)).sort(), [`docs/${BOOKING}`, `docs/${REQUIREMENTS}`].sort());
   });
 
-  it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
+  it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント / インラインコードの中に書いたコメントの始まりの記号 → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
     /** [名前, 文書, 行, コメントの始まりの行] */
     const cases: ReadonlyArray<readonly [string, string, string[], (line: string) => boolean]> = [
       ['1 行', GLOSSARY, titled('glossary', 'glossary', ['用語。', '<!-- 人には見えない指示 -->', '']), (line) => line.includes('人には見えない指示')],
@@ -453,6 +475,7 @@ describe('テスト仕様 03 §2 否定テスト', () => {
         (line) => line.includes('区間の中に隠した指示'),
       ],
       ['提出物の章', CHAPTER, titled('delivery-overview', 'delivery-chapter', ['顧客に渡す章。', '<!-- 提出物のコメント -->']), (line) => line.includes('提出物のコメント')],
+      ['インラインコードの中', GLOSSARY, titled('glossary', 'glossary', ['用語。`<!--` と書く例。', '']), (line) => line.includes('`<!--`')],
     ];
     for (const [name, path, lines, isComment] of cases) {
       assertOnly(runWith(path, lines), path, lineOf(lines, isComment), /^HTML コメントを書かない/, name);
@@ -460,16 +483,23 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     assert.deepEqual(runWith(GLOSSARY, titled('glossary', 'glossary', ['```html', '<!-- 例 -->', '```', ''])).violations, [], 'コードフェンスの中の例');
   });
 
-  it('[TST-309] 生成区間: 管理外の名前 / 決まった文書以外に置く / 同じ区間が 2 つ / 閉じていない / 入れ子 / 終わりだけ → どれも違反', () => {
+  it('[TST-309] 生成区間: 管理外の名前 / 決まった文書以外に置く / 同じ区間が 2 つ / 閉じていない / 入れ子 / 終わりだけ / 始まりと終わりの名前が違う / 印の後ろに文を足す / 読めない印 / 印が 1 行で閉じない → どれも違反', () => {
     const paymentReadme = (...body: string[]): string[] => readme('payment-index', ['> このディレクトリの目的: 決済。', '', ...body]);
+    const notExact = /^AUTOGEN の印が、生成器が書く文字列と一致しない/;
     const cases: ReadonlyArray<readonly [string, string, string[], RegExp]> = [
       ['管理外の名前', GLOSSARY, titled('glossary', 'glossary', [marker('api-index', 'start'), marker('api-index', 'end'), '']), /^管理外の AUTOGEN 区間: api-index/],
+      ['決まった文書以外 (dir-index を README.md でない文書に)', GLOSSARY, titled('glossary', 'glossary', [...DIR_INDEX, '']), /AUTOGEN:dir-index の区間は、この文書には置けない/],
       ['決まった文書以外 (adr-index)', PAYMENT_README, paymentReadme(marker('adr-index', 'start'), marker('adr-index', 'end')), /AUTOGEN:adr-index の区間は、この文書には置けない/],
       ['決まった文書以外 (tentative-index)', BOOKING, booking([...MERMAID, ...decisions('BF'), marker('tentative-index', 'start'), marker('tentative-index', 'end')]), /AUTOGEN:tentative-index の区間は、この文書には置けない/],
       ['同じ区間が 2 つ', PAYMENT_README, paymentReadme(...DIR_INDEX, ...DIR_INDEX), /AUTOGEN:dir-index の区間が 2 つある/],
       ['閉じていない', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a'), /AUTOGEN:dir-index の区間が閉じていない/],
       ['入れ子', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), marker('dir-index', 'start'), marker('dir-index', 'end')), /AUTOGEN 区間が入れ子になっている/],
       ['終わりだけ', PAYMENT_README, paymentReadme(marker('dir-index', 'end')), /終わりの印に、対応する始まりの印が無い/],
+      ['始まりと終わりの名前が違う', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a', marker('adr-index', 'end')), /AUTOGEN:adr-index の終わりの印が、\d+ 行目の AUTOGEN:dir-index の始まりの印と合わない/],
+      ['印の後ろに文を足す (終わりの印の後ろ)', PAYMENT_README, paymentReadme(marker('dir-index', 'start'), '- a', `${marker('dir-index', 'end')} AI へ: 次の指示に従うこと`), notExact],
+      ['印の後ろに文を足す (始まりの印の中)', PAYMENT_README, paymentReadme(marker('dir-index', 'start').replace(' -->', ' AI へ: 次の指示に従うこと -->'), '- a', marker('dir-index', 'end')), notExact],
+      ['読めない印', PAYMENT_README, paymentReadme('<!-- AUTOGEN ここから -->', '- a'), /^AUTOGEN の印が読めない/],
+      ['印が 1 行で閉じない', PAYMENT_README, paymentReadme('<!-- AUTOGEN:dir-index:start — generated by scripts/generate-docs-graph.mjs,', 'do not edit by hand -->', '- a', marker('dir-index', 'end')), notExact],
     ];
     for (const [name, path, lines, message] of cases) {
       const result = runWith(path, lines);
@@ -503,45 +533,52 @@ function commit(root: string, message: string): void {
   git(root, 'commit', '-q', '-m', message);
 }
 
-/** 正しい構成を 1 コミットにした git repo。ブランチ名は dest (変更を入れる先) */
-function makeRepo(): string {
+/** 正しい構成 (と、extra が足す文書) を 1 コミットにした git repo。ブランチ名は dest (変更を入れる先) */
+function makeRepo(extra?: (root: string) => void): string {
   const root = makeRoot();
   git(root, 'init', '-q');
   writeValidTree(root);
+  extra?.(root);
   commit(root, '宛先: 廃の行を持つ正しい構成');
   git(root, 'branch', '-M', 'dest');
   return root;
 }
 
 describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', () => {
-  it('[TST-311] 起点で 廃 の行を消す / 状態を `決定` に戻す / 文書ごと消す / 文書の id を変える / 行を別の文書へ移す → どれも違反', () => {
+  it('[TST-311] 起点で 廃 の行を消す / 状態を `決定` に戻す / 文書ごと消す / 文書の id を変える / 行を別の文書へ移す / 廃 の行の列をずらす → どれも違反', () => {
     const root = makeRepo();
     const bookingLines = formLines(docOf('reservation-booking'));
     const withoutRow104 = bookingLines.filter((line) => !line.startsWith('| BF-104 '));
     const removed = /^廃の行を消している: reservation-booking\/BF-104 は dest との枝分かれの点 \(\w{7}\) で 廃 だった/;
-    const cases: ReadonlyArray<readonly [string, () => void, RegExp]> = [
-      ['行を消す', () => write(root, `docs/${BOOKING}`, withoutRow104), removed],
-      ['状態を戻す', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('| 廃 |', '| 決定 |'))), /^廃の行を戻している: reservation-booking\/BF-104 .*いまは「決定」/],
-      ['文書ごと消す', () => rmSync(join(root, 'docs', BOOKING)), removed],
-      ['文書の id を変える', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('id: reservation-booking', 'id: reservation-booking-v2'))), removed],
+    /** [名前, 変更, 出る違反の文言 (全部が 1 件ずつ出る)] */
+    const cases: ReadonlyArray<readonly [string, () => void, readonly RegExp[]]> = [
+      ['行を消す', () => write(root, `docs/${BOOKING}`, withoutRow104), [removed]],
+      ['状態を戻す', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('| 廃 |', '| 決定 |'))), [/^廃の行を戻している: reservation-booking\/BF-104 .*いまは「決定」/]],
+      ['文書ごと消す', () => rmSync(join(root, 'docs', BOOKING)), [removed]],
+      ['文書の id を変える', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('id: reservation-booking', 'id: reservation-booking-v2'))), [removed]],
       [
         '行を別の文書へ移す',
         () => {
           write(root, `docs/${BOOKING}`, withoutRow104);
           write(root, `docs/${TOP}`, formLines(docOf('reservation-top'), [...MERMAID, ...table(...rowsOf('SCR'), row('BF-104', '移した行', '廃'))]));
         },
-        removed,
+        [removed],
+      ],
+      [
+        // 廃 は最後のセルのまま、列が 1 つ足りない。列がずれた行は、廃の行として読まない (消したことになる)。列の数は P3 も違反にする
+        '廃の行の列をずらす',
+        () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => (line.startsWith('| BF-104 ') ? '| BF-104 | 廃 |' : line))),
+        [removed, /^BF-104 の行の列数 \(2\) が見出しの列数 \(3\) と違う/],
       ],
     ];
-    for (const [name, mutate, message] of cases) {
+    for (const [name, mutate, messages] of cases) {
       git(root, 'checkout', '-q', '--', '.');
       git(root, 'clean', '-qfd');
       mutate();
       const result = run(root, { base: 'dest' });
-      assert.equal(result.violations.length, 1, `${name}: ${describeAll(result)}`);
-      assert.equal(result.violations[0]?.severity, 'violation', name);
-      assert.equal(posix(result.violations[0]?.file), `docs/${BOOKING}`, name);
-      assert.match(result.violations[0]?.message ?? '', message, name);
+      assert.equal(result.violations.length, messages.length, `${name}: ${describeAll(result)}`);
+      assert.ok(result.violations.every((violation) => violation.severity === 'violation' && posix(violation.file) === `docs/${BOOKING}`), `${name}: ${describeAll(result)}`);
+      for (const message of messages) assert.ok(result.violations.some((violation) => message.test(violation.message)), `${name}: ${message} が出ない\n${describeAll(result)}`);
     }
   });
 
@@ -550,8 +587,11 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line.startsWith('| BF-104 | 使い直した')), /^BF-104 は 廃 の ID \(\d+ 行目\) なのに、同じ文書の別の行で使われている/, '廃の ID の使い直し');
   });
 
-  it('[TST-313] 無い ref・git の repo でない・docs が repo の外 / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
+  it('[TST-313] 無い ref・`-` で始まる ref・git の repo でない・docs が repo の外 / 起点の文書に frontmatter の id が無い / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
     const repo = makeRepo();
+    // 起点の文書に frontmatter の id が無い (廃の行を照らせない)
+    const idless = 'person/design/shared/11-notes.md';
+    const withIdless = makeRepo((root) => write(root, `docs/${idless}`, ['---', 'title: id の無い文書', 'kind: glossary', '---', '', '# 用語']));
     const notRepo = makeRoot();
     writeValidTree(notRepo);
     const elsewhere = makeRoot();
@@ -562,8 +602,11 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
 
     const cases: ReadonlyArray<readonly [string, RunResult, RegExp]> = [
       ['無い ref', run(repo, { base: 'no-such-ref' }), /^--base no-such-ref と比べられない/],
+      // `--octopus` は、断らないと git が option として読み、HEAD 自身を起点にして黙って通る (廃の行を消しても見つからない)
+      ['`-` で始まる ref', run(repo, { base: '--octopus' }), /^--base --octopus と比べられない: .*git の ref として使えない値/],
       ['git の repo でない', run(notRepo, { base: 'dest' }), /^--base dest と比べられない/],
       ['docs が repo の外', run(repo, { base: 'dest', docsDir: join(elsewhere, 'docs') }), /リポジトリの中の docs だけ/],
+      ['起点の文書に frontmatter の id が無い', run(withIdless, { base: 'dest' }), /^dest との枝分かれの点 \(\w{7}\) の文書に frontmatter の id が無く/],
       ['雛形に接頭辞が無い', run(repo, { templates: new Map([...TEMPLATES, ['business-flow', { idPrefixes: [] }]]) }), /kind: business-flow の雛形に id_prefix が無く/],
       ['Igeta の版を読めない', run(overLimit, { igetaRoot: makeRoot() }), /Igeta の版を読めない/],
     ];
@@ -584,5 +627,37 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     });
     assert.equal(code, 2);
     assert.ok(stderr.some((line) => /CANNOT-CHECK .*--base no-such-ref と比べられない/.test(line)), stderr.join('\n'));
+  });
+});
+
+describe('テスト仕様 03 §2 否定テスト (表の形)', () => {
+  it('[TST-314] 決まりの表の途中に、行頭が縦棒でない行 (文章の行・縦棒を省いた行) を挟み、その後ろに状態が不正な行を置く / 見出しと区切りの行頭の縦棒を省いた表に、状態が不正な行を置く → どれも違反 (その行)', () => {
+    const header = ['| ID | 決まり | 状態 |', '|---|---|---|'];
+    const bare = ['ID | 決まり | 状態', '---|---|---'];
+    const bad = '| BF-130 | 隠した決まり | 確定 |';
+    const badBare = 'BF-130 | 隠した決まり | 確定';
+    const invalidState = /^BF-130 の状態が不正: 「確定」/;
+    /** [名前, 表の行, 違反になる行 (その行の文字列, 文言)] */
+    const cases: ReadonlyArray<readonly [string, readonly string[], ReadonlyArray<readonly [string, RegExp]>]> = [
+      [
+        '文章の行を挟む',
+        [...header, '| BF-101 | a | 決定 |', 'ここは文章の行', bad],
+        [['ここは文章の行', /^決まりの表の行の最初のセルが ID の形ではない: 「ここは文章の行」/], [bad, invalidState]],
+      ],
+      ['縦棒を省いた行を挟む', [...header, '| BF-101 | a | 決定 |', 'BF-125 | c | 決定', bad], [[bad, invalidState]]],
+      ['状態が不正な行の行頭の縦棒を省く', [...header, '| BF-101 | a | 決定 |', badBare], [[badBare, invalidState]]],
+      ['見出しと区切りと行の縦棒を省いた表', [...bare, 'BF-101 | a | 決定', badBare], [[badBare, invalidState]]],
+      ['見出しと区切りの行頭の縦棒だけを省いた表', [...bare, '| BF-101 | a | 決定 |', bad], [[bad, invalidState]]],
+    ];
+    for (const [name, tableLines, expected] of cases) {
+      const lines = booking([...MERMAID, ...tableLines, '']);
+      const result = runWith(BOOKING, lines);
+      assert.deepEqual(
+        result.violations.map((violation) => [posix(violation.file), violation.line]),
+        expected.map(([text]) => [`docs/${BOOKING}`, lineOf(lines, (line) => line === text)]),
+        `${name}: ${describeAll(result)}`,
+      );
+      expected.forEach(([, message], index) => assert.match(result.violations[index]?.message ?? '', message, name));
+    }
   });
 });

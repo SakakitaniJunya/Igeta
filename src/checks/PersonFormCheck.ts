@@ -10,16 +10,18 @@
 // P4 ○ の kind (core/Role.ts の formCheck): 自分の接頭辞の決まりの行が 1 つ以上ある。その接頭辞の ID を最初のセルに持つ
 //    行が、決まりの表でない表にあれば違反
 // P5 図が要る kind: ```mermaid のコードフェンスが 1 つ以上ある
-// P6 ○ の kind は 100 行 (requirements は 150 行)。他の kind の上限は、雛形の line_limit を DocTemplateCheck が見る
+// P6 ○ の kind は 100 行 (requirements は 150 行)。行数の違反は、この検査が 1 件だけ出す (DocTemplateCheck は、新しい構成の
+//    ○ の kind の人の文書に、雛形の line_limit による検査を当てない)
 // P7 まとまり (person/design/<c>/) の本文の合計 15,000 字、全体共通 (要件 + design/shared/) の合計 30,000 字を超えたら警告。
 //    Igeta の版が SIZE_LIMIT_VIOLATION_FROM_MAJOR 以上なら違反 (検査の強さは構成の実在と Igeta の版だけで決まり、利用 repo の
 //    設定では変えられない。ADR-0005。RoleBoundaryCheck の旧い構成の切替と同じ作り)。版を読めなければ検査不能
 // P8 廃の行: (a) 同じ文書の中で、廃の ID を別の行に使えば違反。(b) base (宛先のブランチ) があれば、宛先と HEAD の枝分かれの点
 //    を起点に、起点の person/ の文書で 廃 だった行が、いまも同じ文書 (frontmatter の id で照らす) に 廃 のままなければ違反。
-//    起点を読めなければ検査不能
-// P9 書き込み口 (README.md を含む person/・client/ の全部の文書): HTML コメントは違反。生成区間は dir-index・adr-index・
-//    tentative-index の 3 種だけで、決まった文書に 1 つずつ、閉じていて、入れ子にしない。README.md は区間の外に
-//    frontmatter・見出し・目的の 1 行だけ
+//    起点を読めない・起点の文書に frontmatter の id が無いときは検査不能
+// P9 書き込み口 (README.md を含む person/・client/ の全部の文書): HTML コメントは違反 (コードフェンスの中の例は除く。
+//    インラインコードの中も違反)。生成区間の印は、生成器が書く文字列と行の全体が一致するものだけが例外。生成区間は
+//    dir-index・adr-index・tentative-index の 3 種だけで、決まった文書に 1 つずつ、閉じていて、入れ子にしない。
+//    README.md は区間の外に frontmatter・見出し・目的の 1 行だけ
 
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
@@ -177,7 +179,7 @@ export class PersonFormCheck implements Check {
         }
       }
       const limit = kind === 'requirements' ? REQUIREMENTS_LINE_LIMIT : PERSON_LINE_LIMIT;
-      const total = countLines(doc.lines, doc.kinds);
+      const total = countLines(doc.lines);
       if (total > limit) {
         add(1, `人の文書の行数上限 (${limit}) を超えている: ${total} 行 (作り方の詳細は ai/ の文書へ移し、人が決める行だけを残す)`);
       }
@@ -276,6 +278,8 @@ export class PersonFormCheck implements Check {
         { severity: 'cannot-check', message: `--base で比べられるのは、リポジトリの中の docs だけ: ${docsDir}` },
       ];
     }
+    // 起点の文書に frontmatter の id が無いと、廃の行を id で照らせない。黙って通さず、検査不能にする
+    const unreadable: Violation[] = [];
     try {
       const start = mergeBase(root, base, 'HEAD');
       const where = `${base} との枝分かれの点 (${start.slice(0, 7)})`;
@@ -286,7 +290,14 @@ export class PersonFormCheck implements Check {
         const lines = readFileAtRef(root, start, path).split(/\r?\n/);
         const meta = parseFrontmatter(lines);
         const docId = meta === null ? undefined : nonEmpty(scalar(meta.data, 'id'));
-        if (meta === null || docId === undefined) continue;
+        if (meta === null || docId === undefined) {
+          unreadable.push({
+            severity: 'cannot-check',
+            message: `${where} の文書に frontmatter の id が無く、廃の行を照らせない (--base を付けた検査は、起点の文書を frontmatter の id で照らす)`,
+            file: path,
+          });
+          continue;
+        }
         for (const old of decisionRowsOf(lines, classifyLines(lines), meta.bodyStart)) {
           if (old.state !== STATE_ABOLISHED) continue;
           const now = (headRows.get(docId) ?? []).filter(({ row }) => row.id === old.id);
@@ -315,7 +326,7 @@ export class PersonFormCheck implements Check {
       if (!(error instanceof GitError)) throw error;
       return [...violations, { severity: 'cannot-check', message: `--base ${base} と比べられない: ${error.message}` }];
     }
-    return violations;
+    return [...violations, ...unreadable];
   }
 }
 
@@ -386,12 +397,9 @@ function checkOwnRows(tables: readonly MarkdownTable[], prefixes: readonly strin
   }
 }
 
-/** 行数。frontmatter も数える。末尾の改行 1 つと AUTOGEN 区間は数えない (DocTemplateCheck の行数上限と同じ数え方) */
-function countLines(lines: readonly string[], kinds: readonly LineKind[]): number {
-  let total = lines.length;
-  if (lines[lines.length - 1] === '') total -= 1;
-  for (const kind of kinds) if (kind === 'autogen') total -= 1;
-  return total;
+/** 行数 (P6)。frontmatter も数える。末尾の改行 1 つは数えない */
+function countLines(lines: readonly string[]): number {
+  return lines[lines.length - 1] === '' ? lines.length - 1 : lines.length;
 }
 
 /** Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例と、画像のリンクは数えない */
@@ -417,62 +425,62 @@ function countMermaidDiagrams(lines: readonly string[], bodyStart: number): numb
 // 書き込み口 (P9)
 // ---------------------------------------------------------------------------
 
-const AUTOGEN_COMMENT_RE = /<!--\s*AUTOGEN/;
-const AUTOGEN_MARKER_RE = /<!--\s*AUTOGEN:([A-Za-z0-9_-]+):(start|end)(?![A-Za-z0-9_-])/;
+const AUTOGEN_MARKER_RE = /^<!--\s*AUTOGEN:([A-Za-z0-9_-]+):(start|end)(?![A-Za-z0-9_-])/;
 const HEADING_RE = /^\s{0,3}#{1,6}(\s|$)/;
 
-/** person/・client/ の文書の、HTML コメント・AUTOGEN 区間・README.md の区間の外の文章 */
+/**
+ * 生成器 (checks/DocGraphCheck.ts の ADR_INDEX_START など) が書く、生成区間の印の文字列。行の全体がこれと一致する印
+ * だけが、HTML コメントの例外 (印の後ろに文を足したもの・読めない印・1 行で閉じない印は違反)。
+ */
+const markerStart = (name: string): string => `<!-- AUTOGEN:${name}:start — generated by scripts/generate-docs-graph.mjs, do not edit by hand -->`;
+const markerEnd = (name: string): string => `<!-- AUTOGEN:${name}:end -->`;
+const GENERATED_MARKERS: ReadonlySet<string> = new Set(AUTOGEN_NAMES.flatMap((name) => [markerStart(name), markerEnd(name)]));
+
+interface Region {
+  readonly name: string;
+  readonly line: number;
+}
+
+/** 区間の始まりと終わりの印を 1 つ読み、開いている区間 (無ければ null) を更新して返す */
+function trackRegion(doc: PersonDoc, open: Region | null, seen: Set<string>, name: string, edge: string, line: number, add: Add): Region | null {
+  if (edge === 'start') {
+    if (open !== null) {
+      add(line, `AUTOGEN 区間が入れ子になっている (${open.line} 行目の ${open.name} が閉じていない)`);
+      return open;
+    }
+    checkRegionName(doc, name, line, seen, add);
+    return { name, line };
+  }
+  if (open === null) {
+    add(line, `AUTOGEN:${name} の終わりの印に、対応する始まりの印が無い`);
+  } else if (open.name !== name) {
+    add(line, `AUTOGEN:${name} の終わりの印が、${open.line} 行目の AUTOGEN:${open.name} の始まりの印と合わない`);
+  }
+  return null;
+}
+
+/**
+ * person/・client/ の文書の、HTML コメント・AUTOGEN 区間・README.md の区間の外の文章。
+ * HTML コメントは、コードフェンスの外のものを全部違反にする (AUTOGEN 区間の中も、インラインコードの中の `<!--` も)。
+ * 複数行のコメントは、始まりの行を 1 件にする。例外は、生成器が書く印と行の全体が一致する行だけ。
+ */
 function checkWritePaths(doc: PersonDoc): readonly Violation[] {
   const violations: Violation[] = [];
   const add: Add = (line, message) => {
     violations.push({ severity: 'violation', message, file: doc.file, line });
   };
   const inside = new Array<boolean>(doc.lines.length).fill(false);
-
-  // AUTOGEN 区間。コードフェンスの中の例は、本物の区間ではない
-  let open: { readonly name: string; readonly line: number } | null = null;
+  let open: Region | null = null;
   const seen = new Set<string>();
-  for (let i = doc.bodyStart; i < doc.lines.length; i += 1) {
+  let inComment = false;
+
+  for (let i = 0; i < doc.lines.length; i += 1) {
     const line = doc.lines[i] ?? '';
-    if (doc.kinds[i] === 'code-fence' || !AUTOGEN_COMMENT_RE.test(line)) {
+    if (doc.kinds[i] === 'code-fence' && !inComment) {
       inside[i] = open !== null;
       continue;
     }
-    inside[i] = true;
-    const marker = AUTOGEN_MARKER_RE.exec(line);
-    const name = marker?.[1];
-    const edge = marker?.[2];
-    if (name === undefined || edge === undefined) {
-      add(i + 1, 'AUTOGEN の印が読めない (生成器が書く形は <!-- AUTOGEN:<名前>:start --> と <!-- AUTOGEN:<名前>:end -->)');
-      continue;
-    }
-    if (edge === 'start') {
-      if (open !== null) {
-        add(i + 1, `AUTOGEN 区間が入れ子になっている (${open.line} 行目の ${open.name} が閉じていない)`);
-        continue;
-      }
-      open = { name, line: i + 1 };
-      checkRegionName(doc, name, i + 1, seen, add);
-    } else if (open === null) {
-      add(i + 1, `AUTOGEN:${name} の終わりの印に、対応する始まりの印が無い`);
-    } else if (open.name !== name) {
-      add(i + 1, `AUTOGEN:${name} の終わりの印が、${open.line} 行目の AUTOGEN:${open.name} の始まりの印と合わない`);
-      open = null;
-    } else {
-      open = null;
-    }
-  }
-  if (open !== null) {
-    add(open.line, `AUTOGEN:${open.name} の区間が閉じていない (区間の中は、ほかの検査から見えない)`);
-  }
-
-  // HTML コメント。AUTOGEN の印は上で見た (1 行で閉じる印だけが、コメントではない)。AUTOGEN 区間の中のコメントも、
-  // コードフェンスの外なら落とす (区間は生成器が書く表だけで、コメントの置き場ではない)。複数行のコメントは、
-  // 始まりの行を 1 件にする
-  let inComment = false;
-  for (let i = 0; i < doc.lines.length; i += 1) {
-    if (doc.kinds[i] === 'code-fence' && !inComment) continue;
-    const line = doc.lines[i] ?? '';
+    inside[i] = open !== null;
     let at = 0;
     for (;;) {
       if (inComment) {
@@ -484,17 +492,34 @@ function checkWritePaths(doc: PersonDoc): readonly Violation[] {
       }
       const start = line.indexOf('<!--', at);
       if (start === -1) break;
-      const close = line.indexOf('-->', start + 4);
-      const isMarker = /^<!--\s*AUTOGEN/.test(line.slice(start)) && close !== -1;
-      if (!isMarker) {
+      const text = line.slice(start);
+      if (/^<!--\s*AUTOGEN/.test(text)) {
+        inside[i] = true;
+        const parsed = AUTOGEN_MARKER_RE.exec(text);
+        const name = parsed?.[1];
+        const edge = parsed?.[2];
+        if (name === undefined || edge === undefined) {
+          add(i + 1, 'AUTOGEN の印が読めない (生成器が書く形は <!-- AUTOGEN:<名前>:start — generated by scripts/generate-docs-graph.mjs, do not edit by hand --> と <!-- AUTOGEN:<名前>:end -->)');
+        } else {
+          // 管理外の名前は、区間の名前の検査 (trackRegion) が違反にする
+          if (AUTOGEN_NAMES.includes(name) && !GENERATED_MARKERS.has(line)) {
+            add(i + 1, 'AUTOGEN の印が、生成器が書く文字列と一致しない (行の全体が、生成器の書く始まりの印か終わりの印と同じものだけを置ける。印の後ろに文を足さない)');
+          }
+          open = trackRegion(doc, open, seen, name, edge, i + 1, add);
+        }
+      } else {
         add(i + 1, 'HTML コメントを書かない (person/・client/ の文書では、人の目に見えない書き込み口になる)');
       }
+      const close = line.indexOf('-->', start + 4);
       if (close === -1) {
         inComment = true;
         break;
       }
       at = close + 3;
     }
+  }
+  if (open !== null) {
+    add(open.line, `AUTOGEN:${open.name} の区間が閉じていない (区間の中は、ほかの検査から見えない)`);
   }
 
   if (doc.isReadme) {
