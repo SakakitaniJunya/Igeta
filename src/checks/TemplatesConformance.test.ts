@@ -116,6 +116,12 @@ function stubMapDoc(requirementsRelPath: string): string {
     '',
     '> **TL;DR**: テスト用スタブ。',
     '',
+    // 地図は図が要る kind (人の文書の型)。図の中身は検査しない
+    '```mermaid',
+    'flowchart LR',
+    '  A[地図] --> B[対象]',
+    '```',
+    '',
     '## 関連',
     '',
     '| 区分 | 文書 | 対応 ID |',
@@ -191,6 +197,8 @@ describe('テンプレ適合の CI 回帰 (b): docs-graph --write → docs-check
     // 無編集の実テンプレをそのまま置く (00-map.md / 01-decisions.md は id が固定なので他と競合しない)。
     copy('person/design/shared/00-map.md');
     copy('person/decisions/01-decisions.md');
+    // 決定台帳のフォルダの README.md (ADR 索引の区間を持つ)。新しい repo には init が置く
+    copy('person/decisions/README.md');
     // 要件定義書は id: <kebab-slug> のままだと id が定まらないので、実プロジェクトが最初に必ずやる
     // 「id を付ける」だけを行う (本文の構成は実テンプレの必須節に合わせた最小の記入例で、他テンプレへの
     // リンクは持たない自己完結な内容にする — 03-nonfunctional 等の相互リンクは (a) 側で個別に検査済み)。
