@@ -126,7 +126,7 @@ interface ContextMapDocOptions {
   readonly briefLink?: string;
 }
 
-// kind: context-map の必須節をすべて満たす最小 doc (templates/docs/contexts/maps/__context__.md 相当)
+// kind: context-map の必須節をすべて満たす最小 doc (templates/docs/person/design/__context__/00-map.md 相当)
 function contextMapDoc({ id = 'reservation-map', context = 'reservation', briefLink = 'なし' }: ContextMapDocOptions = {}): string {
   return [
     '---',
@@ -161,7 +161,7 @@ interface FeatureBriefDocOptions {
   readonly context?: string | null;
 }
 
-// kind: feature-brief の必須節をすべて満たす最小 doc (templates/docs/product/features/__feature__.md 相当)
+// kind: feature-brief の必須節をすべて満たす最小 doc (templates/docs/person/design/__context__/features/__feature__.md 相当)
 function featureBriefDoc({ id = 'reservation-flow', context = 'reservation' }: FeatureBriefDocOptions = {}): string {
   return [
     '---',
@@ -898,30 +898,31 @@ describe('DocTemplateCheck の人間レビュー層 (requireHumanReview)', () =>
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
-  it('実 templates/docs/01-decisions.md を無編集で置いても違反にならない (code-reviewer 実バグ #4)', () => {
+  it('実 templates/docs/person/decisions/01-decisions.md を無編集で置いても違反にならない (code-reviewer 実バグ #4)', () => {
     // スキャフォールド直後 (まだ 1 件も決定・仮置きを記録していない) の状態を再現する。
     writeDoc(root, '00-map.md', mapDoc());
-    writeDoc(root, '01-decisions.md', readFileSync(join(IGETA_ROOT, 'templates', 'docs', '01-decisions.md'), 'utf8'));
+    writeDoc(root, '01-decisions.md', readFileSync(join(IGETA_ROOT, 'templates', 'docs', 'person', 'decisions', '01-decisions.md'), 'utf8'));
     writeDoc(root, 'product/requirements.md', requirementsDoc());
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
 
   it('決定の帰属: kind: human-review (この仕組み自身を解説するガイド) は除外する (code-reviewer 実バグ #5)', () => {
-    // 実 templates/docs/guides/03-human-review.md をそのまま (無編集で) docs/ へ置く。このガイドは
+    // 実 templates/docs/ai/handbook/how-to/03-human-review.md をそのまま (無編集で) docs/ へ置く。このガイドは
     // 「OPEN-nnn」「DEC-nnn」という記法自体を解説する文書で、実在の決定・仮置きへの言及ではない。
     writeDoc(root, '00-map.md', mapDoc());
     writeDoc(root, '01-decisions.md', decisionLogDoc());
     writeDoc(root, 'product/requirements.md', requirementsDoc());
+    // 手引きは利用 repo には置かない kind なので、どの kind の置き場所にも当たらない所へ置く (置き場所は新しい構成の ai/ の下)
     writeDoc(
       root,
-      'guides/01-document-taxonomy.md',
-      readFileSync(join(IGETA_ROOT, 'templates', 'docs', 'guides', '01-document-taxonomy.md'), 'utf8'),
+      'ai/handbook/_pinned/01-document-taxonomy.md',
+      readFileSync(join(IGETA_ROOT, 'templates', 'docs', 'ai', 'handbook', 'how-to', '01-document-taxonomy.md'), 'utf8'),
     );
     writeDoc(
       root,
-      'guides/03-human-review.md',
-      readFileSync(join(IGETA_ROOT, 'templates', 'docs', 'guides', '03-human-review.md'), 'utf8'),
+      'ai/handbook/_pinned/03-human-review.md',
+      readFileSync(join(IGETA_ROOT, 'templates', 'docs', 'ai', 'handbook', 'how-to', '03-human-review.md'), 'utf8'),
     );
     const { report } = check(root, { requireHumanReview: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());

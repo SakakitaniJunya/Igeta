@@ -37,7 +37,7 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 - [ ] T011 [P] [audience-directories/REQ-101] 見分け: テスト仕様 01 の全部。中身で見分ける処理とそのテストを消し、設定を宛先の先端の内容から読み (作業ツリーのファイルを開かない)、`doctor` を 4 項目にする (`src/gate/**`・`src/cli/commands/DoctorCommand.ts`・`src/core/IgetaConfig.ts`)
 - [ ] T012 [P] [audience-directories/REQ-105] 行の移動の付け替えと状態の列の載せ替えを、この版から外す (ADR-0006 決定 7)。書く側 (`SourceMoveModule` の全部・`stateColumnRows`・`decideStateColumnRebase`) と、台帳を読む側 (`source-move` の行の受け付け・`sourceRedirects`・`followRedirect`) と、そのテストと、解説 08 の記述。受入: `source-move` の行を手で足した台帳は検査不能になる (`src/generators/{SourceMoveModule,FingerprintRebaseModule}.ts`・`src/core/{AgreementLedger,FingerprintRebase}.ts`・`src/checks/AgreementCheck.ts`・`docs/explanation/08-agreement-ledger.md`)
 - [ ] T013 [audience-directories/REQ-103] 人の文書の型 (branch `feat/v4-person`) を T010 の後に統合し、テスト仕様 03 に合わせる。`DocTemplateCheck.ts` は T010 と重なるので、重なりをここで解く (`src/checks/{PersonFormCheck,DocTemplateCheck}.ts`・`src/core/{DecisionRows,MarkdownTable,GitRef}.ts`・`src/cli/commands/checkCommands.ts`)
-- [ ] T014 [audience-directories/REQ-103] 文書のつながり: テスト仕様 04 の全部 (`src/checks/{DocGraphCheck,RoleBoundaryCheck,ContextBoundaryCheck}.ts`・`src/core/ContextGraph.ts`・`src/generators/{ContextFilesModule,ContextSizeModule}.ts`)
+- [ ] T014 [audience-directories/REQ-103] 文書のつながり: テスト仕様 04 の全部。旧い構成の警告の文は、0.5.0 では「移行コマンドは次の版で入る」にする (`src/checks/{DocGraphCheck,RoleBoundaryCheck,ContextBoundaryCheck}.ts`・`src/core/ContextGraph.ts`・`src/generators/{ContextFilesModule,ContextSizeModule}.ts`)
 - [ ] T015 [audience-directories/REQ-002] 変わった行の一覧: テスト仕様 05 の全部 (`src/generators/ReviewSheetModule.ts`・`src/cli/commands/ReviewSheetCommand.ts`)
 
 ## Phase 3+ User Story
@@ -48,14 +48,14 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 
 ### US-2 既存の repo を移す
 
-- [ ] T200 [audience-directories/REQ-105] `docs-migrate`: テスト仕様 07 の全部 (`src/cli/commands/DocsMigrateCommand.ts`・`src/generators/DocsMigrate*.ts`)
+- [ ] T200 [audience-directories/REQ-105] `docs-migrate`: テスト仕様 07 の全部。旧い構成の警告の文を「`igeta docs-migrate` を実行する」に戻す (`src/cli/commands/DocsMigrateCommand.ts`・`src/generators/DocsMigrate*.ts`)
 
 ### US-3 Igeta 自身を移す
 
 - [ ] T300 [audience-directories/REQ-105] Igeta 自身に `docs-migrate` を適用する (移す段。完了条件を満たすこと) (`docs/**`・`AGENTS.md`・`.github/CODEOWNERS`)
 - [ ] T301 [audience-directories/REQ-002] 要件 2 本・解決戦略・地図を人の型へ書き直し、ADR-0001〜0010 を決まりの行から `ADR-NNNN` の形で引く。ADR の本文から `ai/` の文書へのリンクを外す (`docs/person/**`)
 - [ ] T302 [audience-directories/REQ-101] Igeta 自身の `humanPaths` を、検査として実行されるものの全部 (`src/**`・`templates/**`・`package.json`・ロックファイル・`tsconfig.json`) と解説 03〜09 にする (`.igeta.json`)
-- [ ] T303 [audience-directories/REQ-001] README に「文書モデル」の節を書く。Mermaid の図 3 枚 (3 フォルダと確定させる人 / 人の文書の型 / 変更から承認までの流れ) と、3 つの小節 (置き場所の決め方 / 人の文書の書き方 / GitHub の保護の設定と、この版が保証しないこと)。CI で `template-check --base` と `approval-scope --ci` を呼ぶ書き方を書き、PR の作者の内容を特権のある CI (`pull_request_target`) で読む構成は勧めない。`igeta mermaid-check README.md` と `docs:lint` が通る (`README.md`)
+- [ ] T303 [audience-directories/REQ-001] README に「文書モデル」の節を書く。Mermaid の図 3 枚 (3 フォルダと確定させる人 / 人の文書の型 / 変更から承認までの流れ) と、3 つの小節 (置き場所の決め方 / 人の文書の書き方 / GitHub の保護の設定と、この版が保証しないこと)。CI で `template-check --base` と `approval-scope --ci` を呼ぶ書き方を書き、PR の作者の内容を特権のある CI (`pull_request_target`) で読む構成は勧めない。旧い構成と v3 の構成の repo を移すコマンドは 0.6.0 から、と書く。`igeta mermaid-check README.md` と `docs:lint` が通る (`README.md`)
 - [ ] T304 [audience-directories/REQ-105] README に「既存の repo を移す」の小節 (移す段と書き直す段の手順) を足す (`README.md`)
 
 ## Polish
@@ -75,18 +75,19 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 | T100・T013・T014 | T200 | 承認の割り当てのファイルの作り手と入口の 3 行は T100。書き直す段の作業の列は T013・T014 の検査が出す |
 | T200 | T300 | Igeta 自身の移行は `docs-migrate` で行う |
 | T300 | T301 → T302 → T304 | 同じ `docs/**` と repo 直下を触るので、順に行う |
-| T100 | T303 | README の図解は、`init` が置くものと検査の実際の振る舞いに合わせて書く |
+| T100 | T303 → T304 | README の図解は、`init` が置くものと検査の実際の振る舞いに合わせて書く。T304 は同じ `README.md` を後から触る |
+| 版に入るタスクの全部 | T900 → T901 | 版ごとに、全体のレビューの後で版を上げる |
 | T014・T100 | T902 | 同じテストのファイル (`RoleBoundaryCheck.test.ts`・`AgentsEntrypointCheck.test.ts`) を触る |
 
 **並列にしてよい組**: T011・T012 (触るファイルが重ならない)。T010 → T013 → T014 は順に行い、T015 は T013 の後。
-**共有のファイル**: `src/cli.ts` (コマンドの登録) と `src/checks/DocsCheck.ts` (検査の並び) は、各タスクが 1 行ずつ足す。統合は T010 → T013 → T014 → T011・T012・T015 → T100 → T200 の順に取り込み、重なりはそのつど解く
+**共有のファイル**: `src/cli.ts` (コマンドの登録) と `src/checks/DocsCheck.ts` (検査の並び) は、各タスクが 1 行ずつ足す。統合は、0.5.0 が T010 → T013 → T014 → T011・T012・T015 → T100、0.6.0 が T200 → T300 の順に取り込み、重なりはそのつど解く
 
 ## 版の区切り
 
 | 版 | 入るタスク | この版で見えるもの |
 |---|---|---|
-| 0.5.0 (1 本目の PR) | T010〜T014・T100・T303・T900・T901 | 新しい構成の雛形と検査、見分け、`init`、README の図解 |
-| 0.6.0 (2 本目の PR) | T015・T200・T300〜T302・T304・T902・T900・T901 | 移行コマンド、変わった行の一覧、Igeta 自身の移行 |
+| 0.5.0 (1 本目の PR) | T010〜T015・T100・T303・T900・T901 | 新しい構成の雛形と検査、見分け、変わった行の一覧、`init`、README の図解 |
+| 0.6.0 (2 本目の PR) | T200・T300〜T302・T304・T902・T900・T901 | 移行コマンド、Igeta 自身の移行 |
 
 ## この文書のタスクの外
 

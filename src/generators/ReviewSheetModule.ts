@@ -9,7 +9,7 @@ import { classifyLines } from '../core/LineClassifier.js';
  * 指定した修飾 ID (<doc-id>/REQ-nnn) の要件文・受入条件・関連 DEC/OPEN・下流の設計書を
  * 1 枚の Markdown に展開する。レビューする人はこれを見ながら PR の差分を読む。
  *
- * Spec: templates/docs/guides/03-human-review.md
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md
  */
 
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage', '.git']);

@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// 画面構成の最小例。
-/// TODO: docs/design/basic/screens の画面一覧に合わせてタブ・画面を増やす。
+/// TODO: docs/person/design/<まとまり>/screens の画面一覧に合わせてタブ・画面を増やす。
 /// 画面が増えたら 1 画面 1 ファイルに分割する。
 struct RootView: View {
     @Query private var items: [Item]

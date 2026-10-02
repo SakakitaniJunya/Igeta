@@ -1,6 +1,6 @@
 ---
 id: adr-0008-human-approval-scope
-title: ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定で行い、強制の門は次の版にする
+title: ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする
 type: adr
 kind: adr
 arc42: 9
@@ -12,7 +12,7 @@ depends_on: [adr-0001-document-role-directories, adr-0005-enforcement-rollout-an
 relates_to: [adr-0002-role-boundary-invariants]
 ---
 
-# ADR-0008: 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定で行い、強制の門は次の版にする
+# ADR-0008: 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする
 
 > **TL;DR**: この版の Igeta が受け持つのは、(1) 人の承認が要るパスの一覧 (2) 変更がそのパスに触れたかをパスだけで
 > 見分ける `approval-scope` (3) そのパスを人の持ち主に割り当てる CODEOWNERS の雛形 (4) GitHub の保護の設定を読む `doctor`。
