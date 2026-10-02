@@ -39,7 +39,7 @@ xcrun simctl launch <UDID> __BUNDLE_PREFIX__.app
 xcrun simctl io <UDID> screenshot screenshot.png
 ```
 
-`<UDID>` は `xcrun simctl list devices available` で調べる。画面設計 (`docs/design/basic/screens/`) と突き合わせて、設計どおりの表示・遷移になっているか確認する。画面を変えたらスクショを撮り直して差分を目視確認する。
+`<UDID>` は `xcrun simctl list devices available` で調べる。画面設計 (`docs/person/design/<まとまり>/screens/`) と突き合わせて、設計どおりの表示・遷移になっているか確認する。画面を変えたらスクショを撮り直して差分を目視確認する。
 
 ## 4. PR を出す前に
 

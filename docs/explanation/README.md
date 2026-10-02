@@ -18,11 +18,14 @@ owners: [eng]
 
 - [01-design-doc-standards.md](01-design-doc-standards.md) — **設計書テンプレが参照した外部標準** _(読み手: 共通)_ `explanation` — 設計書の背骨は arc42 12 章。読みやすさの部分 (関連 ID・依存・README 索引) だけ独自に足す。
 - [02-human-review-layer.md](02-human-review-layer.md) — **人間レビュー層 (地図・決定台帳・レビューシート) を足した理由** _(読み手: 共通)_ `explanation` — 1 文書 200 行の上限を守っていても、文書が 45 枚に増えると人は読めない。読み手の仕事
-  - [03-audience-layers.md](03-audience-layers.md) — **読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由** _(読み手: 共通)_ `explanation` — 読み手は顧客・開発者・AI の 3 種。顧客 (非エンジニア) が読むのは提出物の PDF だけ
+  - [03-audience-layers.md](03-audience-layers.md) — **読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由** _(読み手: 共通)_ `explanation` — 読み手は人 (発注側・開発者)・AI・顧客 の 3 種。人は確定する前に person/ の文書を全部読んで決める。
     - [04-provenance-and-agreement.md](04-provenance-and-agreement.md) — **由来・鮮度の形 (delivery-chapter 限定)** _(読み手: 共通)_ `explanation` — 由来・鮮度は既存 kind delivery-chapter (提出物の章、PR #11) だけに課す。
       - [05-coverage-and-learning.md](05-coverage-and-learning.md) — **由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)** _(読み手: 共通)_ `explanation` — 由来・鮮度 は「由来が古いか」だけを見る。ここでは
       - [08-agreement-ledger.md](08-agreement-ledger.md) — **顧客との合意台帳の形 (提出・承認・その後の変更)** _(読み手: 共通)_ `explanation` — 提出物を出すたびに、何を見せたか (版・章の指紋・由来が指す正本の指紋) を追記のみの台帳に残す。
     - [07-context-boundaries.md](07-context-boundaries.md) — **まとまり (業務コンテキスト) の境界で読み込む量を短くする理由** _(読み手: 共通)_ `explanation` — 設計書を業務のまとまり (context) ごとに分け、人も AI も**1 つのまとまりだけ読めば
+    - [09-reader-granularity.md](09-reader-granularity.md) — **人が読んで決める文書の型と量** _(読み手: 共通)_ `explanation` — person/ の文書は、確定する前に人が全部読んで承認する。変わったら、変わった行を人が読んで承認する。
 - [06-export-deliverable.md](06-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** _(読み手: 共通)_ `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
+- [10-folder-placement.md](10-folder-placement.md) — **どの文書をどこに置くか — 木の図と、その理由** _(読み手: 共通)_ `explanation` — 要件定義書 02 §7 (kind 47 種の置き場所) を木の形に描いた図と、なぜこう分けるかの説明。決めの正本は ← 上流: [audience-directories](../product/02-audience-directories.md)
+- [12-template-section-audit.md](12-template-section-audit.md) — **雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表** _(読み手: 共通)_ `explanation` — ai の雛形の全部の節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B) ← 上流: [audience-directories](../product/02-audience-directories.md)
 
 <!-- AUTOGEN:dir-index:end -->

@@ -10,7 +10,18 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join } from 'node:path';
 import type { Violation } from './Report.js';
 
-export interface ProvenanceEntryWithSource {
+/**
+ * `igeta fingerprint-rebase` が載せ替えたエントリに付く記録 (ADR-0007 決定 2)。
+ * 載せ替えは指紋の計算方法を付け替えるだけで、承認 (acceptedBy/acceptedAt) は書き換えない。
+ */
+export interface RebaseTrace {
+  /** 載せ替える前の指紋 (保存値の版で計算したもの) */
+  readonly rebasedFrom?: string;
+  readonly rebasedAt?: string;
+  readonly rebasedBy?: string;
+}
+
+export interface ProvenanceEntryWithSource extends RebaseTrace {
   readonly anchor: string;
   readonly from: string;
   readonly fingerprint: string;
@@ -21,7 +32,7 @@ export interface ProvenanceEntryWithSource {
   readonly normalizationVersion: number;
 }
 
-export interface ProvenanceEntryNoSource {
+export interface ProvenanceEntryNoSource extends RebaseTrace {
   readonly anchor: string;
   readonly from: null;
   readonly reason: string;
@@ -34,6 +45,12 @@ export interface ProvenanceEntryNoSource {
 }
 
 export type ProvenanceEntry = ProvenanceEntryWithSource | ProvenanceEntryNoSource;
+
+/** 指紋を今の本文から計算し直したエントリは、載せ替えた記録 (rebasedFrom/At/By) を引き継がない (記録が実態と食い違うため)。 */
+export function withoutRebaseTrace<E extends RebaseTrace>(entry: E): Omit<E, keyof RebaseTrace> {
+  const { rebasedFrom: _from, rebasedAt: _at, rebasedBy: _by, ...rest } = entry;
+  return rest;
+}
 
 export interface ProvenanceSidecar {
   readonly sourceDoc: string;
@@ -54,7 +71,7 @@ export type ReadSidecarResult =
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value !== '';
 
-function validateEntry(raw: unknown, sidecarPath: string, index: number): ProvenanceEntry | string {
+function validateEntryFields(raw: unknown, sidecarPath: string, index: number): ProvenanceEntry | string {
   if (typeof raw !== 'object' || raw === null) return `entries[${index}] がオブジェクトでない`;
   const r = raw as Record<string, unknown>;
   if (!isNonEmptyString(r['anchor'])) return `entries[${index}].anchor が無い`;
@@ -65,6 +82,12 @@ function validateEntry(raw: unknown, sidecarPath: string, index: number): Proven
   const acceptedAt = r['acceptedAt'];
   if (acceptedBy !== undefined && !isNonEmptyString(acceptedBy)) return `entries[${index}].acceptedBy の形が不正`;
   if (acceptedAt !== undefined && !isNonEmptyString(acceptedAt)) return `entries[${index}].acceptedAt の形が不正`;
+  const rebasedFrom = r['rebasedFrom'];
+  const rebasedAt = r['rebasedAt'];
+  const rebasedBy = r['rebasedBy'];
+  if (rebasedFrom !== undefined && !isNonEmptyString(rebasedFrom)) return `entries[${index}].rebasedFrom の形が不正`;
+  if (rebasedAt !== undefined && !isNonEmptyString(rebasedAt)) return `entries[${index}].rebasedAt の形が不正`;
+  if (rebasedBy !== undefined && !isNonEmptyString(rebasedBy)) return `entries[${index}].rebasedBy の形が不正`;
 
   const base = {
     anchor: r['anchor'] as string,
@@ -73,6 +96,9 @@ function validateEntry(raw: unknown, sidecarPath: string, index: number): Proven
     normalizationVersion: r['normalizationVersion'] as number,
     ...(isNonEmptyString(acceptedBy) ? { acceptedBy } : {}),
     ...(isNonEmptyString(acceptedAt) ? { acceptedAt } : {}),
+    ...(isNonEmptyString(rebasedFrom) ? { rebasedFrom } : {}),
+    ...(isNonEmptyString(rebasedAt) ? { rebasedAt } : {}),
+    ...(isNonEmptyString(rebasedBy) ? { rebasedBy } : {}),
   };
 
   if (r['from'] === null) {
@@ -83,6 +109,22 @@ function validateEntry(raw: unknown, sidecarPath: string, index: number): Proven
   if (!isNonEmptyString(r['from'])) return `entries[${index}].from は文字列か null でなければならない`;
   if (!isNonEmptyString(r['fingerprint'])) return `entries[${index}] に fingerprint が無い`;
   return { ...base, from: r['from'], fingerprint: r['fingerprint'] };
+}
+
+/**
+ * 検査した項目を、ファイルにあった順で返す (知らない項目は落とす)。読んで書き戻したとき、触らない項目の行が動かないので、
+ * 載せ替え・付け替えの差分には変えた項目だけが出る。人が差分で、承認 (acceptedBy / acceptedAt) が変わっていないことを確かめられる。
+ */
+function inFileOrder(entry: ProvenanceEntry, raw: Record<string, unknown>): ProvenanceEntry {
+  const checked = entry as unknown as Record<string, unknown>;
+  const ordered: Record<string, unknown> = {};
+  for (const key of Object.keys(raw)) if (key in checked) ordered[key] = checked[key];
+  return ordered as unknown as ProvenanceEntry;
+}
+
+function validateEntry(raw: unknown, sidecarPath: string, index: number): ProvenanceEntry | string {
+  const entry = validateEntryFields(raw, sidecarPath, index);
+  return typeof entry === 'string' ? entry : inFileOrder(entry, raw as Record<string, unknown>);
 }
 
 /** sidecar が無いのは正当な状態 (absent)。JSON が壊れている・形が不正なら invalid。 */

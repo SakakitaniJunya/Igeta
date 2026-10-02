@@ -11,11 +11,16 @@ import { sidecarPathFor } from '../core/ProvenanceSidecar.js';
 import { buildSourceIndex } from '../core/SourceResolver.js';
 import { ExitCode } from '../core/ExitCode.js';
 import { Report } from '../core/Report.js';
+import {
+  ANCHOR_NO_SOURCE, ANCHOR_ROW, ANCHOR_SECTION, CHAPTER, POLICY_DOC, ROW_FROM, SECTION_FROM, TERMS_DOC, chapterDoc, cleanupWorkspaces, makeLegacyRepo,
+  makeRoot as makeLinkedRoot, relocate, reservationDoc, write,
+} from '../generators/rebaseFixture.test-support.js';
 
 const workspaces: string[] = [];
 after(() => {
   for (const dir of workspaces) rmSync(dir, { recursive: true, force: true });
 });
+after(cleanupWorkspaces);
 
 function makeRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'igeta-provcheck-'));
@@ -58,7 +63,7 @@ describe('ProvenanceCheck', () => {
     writeDoc(root, 'requirements.md', requirementsDoc());
     const sourceIndex = buildSourceIndex(root, join(root, 'docs'));
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex });
     const { report } = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
@@ -69,7 +74,7 @@ describe('ProvenanceCheck', () => {
     writeDoc(root, 'requirements.md', requirementsDoc());
     const sourceIndex1 = buildSourceIndex(root, join(root, 'docs'));
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex: sourceIndex1 });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
 
     // 表の整形だけ変える (列幅の空白を増やす)。内容は同じ。
     writeDoc(root, 'requirements.md', [
@@ -86,7 +91,7 @@ describe('ProvenanceCheck', () => {
     writeDoc(root, 'requirements.md', requirementsDoc());
     const sourceIndex1 = buildSourceIndex(root, join(root, 'docs'));
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex: sourceIndex1 });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
 
     writeDoc(root, 'requirements.md', requirementsDoc('予約は 60 日前まで受け付ける'));
     const { report } = runCheck(root);
@@ -98,7 +103,7 @@ describe('ProvenanceCheck', () => {
     const root = makeRoot();
     const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines());
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'no-source', reason: 'x' }, by: 'agent:writer', sourceIndex: null });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: null });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: null });
 
     writeFileSync(chapterPath, chapterLines('1. 予約の受付 (改題)').join('\n') + '\n');
     const { report } = runCheck(root);
@@ -110,7 +115,7 @@ describe('ProvenanceCheck', () => {
     const root = makeRoot();
     const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines());
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'no-source', reason: 'x' }, by: 'agent:writer', sourceIndex: null });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: null });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: null });
 
     writeFileSync(
       chapterPath,
@@ -161,7 +166,7 @@ describe('ProvenanceCheck', () => {
     const reqPath = writeDoc(root, 'requirements.md', requirementsDoc());
     const sourceIndex1 = buildSourceIndex(root, join(root, 'docs'));
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex: sourceIndex1 });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
 
     rmSync(reqPath);
     const { report } = runCheck(root);
@@ -205,7 +210,7 @@ describe('ProvenanceCheck', () => {
     writeDoc(root, 'requirements.md', requirementsDoc('予約は 30 日前まで受け付ける', 'draft'));
     const sourceIndex1 = buildSourceIndex(root, join(root, 'docs'));
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex: sourceIndex1 });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
 
     const { report } = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Violation, report.format());
@@ -224,7 +229,7 @@ describe('ProvenanceCheck', () => {
     writeDoc(root, 'requirements.md', requirementsDoc('予約は 30 日前まで受け付ける', null));
     const sourceIndex1 = buildSourceIndex(root, join(root, 'docs'));
     capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: '1. 予約の受付', source: { kind: 'from', id: 'reservation-flow/REQ-114' }, by: 'agent:writer', sourceIndex: sourceIndex1 });
-    accept({ chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: 'docs/delivery/02-reservation.md', target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex: sourceIndex1 });
 
     const { report } = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Violation, report.format());
@@ -256,5 +261,92 @@ describe('ProvenanceCheck', () => {
     const { report } = runCheck(root);
     assert.equal(report.exitCode, ExitCode.Violation, report.format());
     assert.match(report.format(), /見出し \(anchor\) が章に 2 件重複している: 1\. 予約の受付/);
+  });
+});
+
+describe('ProvenanceCheck: 保存した版で計算して比べる (正規化 v3)', () => {
+  it('v3 で capture → accept した由来は、章・正本・提出物を動かしてリンクを書き換えても ok のまま (節と行・章と正本のリンクを含む)', () => {
+    const root = makeLinkedRoot('igeta-provcheck-v3-');
+    write(root, 'docs/requirements/reservation.md', reservationDoc());
+    write(root, 'docs/requirements/policy.md', POLICY_DOC);
+    write(root, 'docs/glossary/terms.md', TERMS_DOC);
+    const chapterPath = write(root, CHAPTER, chapterDoc());
+    const sourceIndex = buildSourceIndex(root, join(root, 'docs'));
+    for (const [anchor, source] of [
+      [ANCHOR_ROW, { kind: 'from', id: ROW_FROM }],
+      [ANCHOR_SECTION, { kind: 'from', id: SECTION_FROM }],
+      [ANCHOR_NO_SOURCE, { kind: 'no-source', reason: 'ご挨拶' }],
+    ] as const) {
+      assert.equal(capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor, source, by: 'agent:writer', sourceIndex }).kind, 'ok');
+    }
+    assert.deepEqual(accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: CHAPTER, target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex }).violations, []);
+    const before = runCheck(root);
+    assert.equal(before.report.exitCode, ExitCode.Ok, before.report.format());
+    assert.deepEqual(before.warnings, [], '今の版で計算した由来は needs-recompute にならない');
+
+    relocate({ root });
+    const after = runCheck(root);
+    assert.equal(after.report.exitCode, ExitCode.Ok, after.report.format());
+    assert.deepEqual(after.warnings, []);
+  });
+
+  it('v3 の由来でも、正本の本文が変われば stale (リンクの行き先を id にしても、文字の変更は検出する)', () => {
+    const root = makeLinkedRoot('igeta-provcheck-v3-');
+    write(root, 'docs/requirements/reservation.md', reservationDoc());
+    write(root, 'docs/requirements/policy.md', POLICY_DOC);
+    write(root, 'docs/glossary/terms.md', TERMS_DOC);
+    const chapterPath = write(root, CHAPTER, chapterDoc());
+    const sourceIndex = buildSourceIndex(root, join(root, 'docs'));
+    capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: ANCHOR_ROW, source: { kind: 'from', id: ROW_FROM }, by: 'agent:writer', sourceIndex });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: CHAPTER, target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex });
+    write(root, 'docs/requirements/reservation.md', reservationDoc({ row101: '| REQ-101 | 予約は 60 日前まで受け付ける | 備考 A |' }));
+    const { report } = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), new RegExp(`${ANCHOR_ROW}: stale`));
+  });
+
+  it('v3 の由来なしの塊は、リンク先の文書の id が変わると orphan-content (リンク先の付け替えは内容の変更)', () => {
+    const root = makeLinkedRoot('igeta-provcheck-v3-');
+    write(root, 'docs/requirements/reservation.md', reservationDoc());
+    write(root, 'docs/requirements/policy.md', POLICY_DOC);
+    write(root, 'docs/glossary/terms.md', TERMS_DOC);
+    const chapterPath = write(root, CHAPTER, chapterDoc());
+    const sourceIndex = buildSourceIndex(root, join(root, 'docs'));
+    capture({ chapterAbsPath: chapterPath, targetRoot: root, anchor: ANCHOR_NO_SOURCE, source: { kind: 'no-source', reason: 'x' }, by: 'agent:writer', sourceIndex });
+    accept({ targetRoot: root, chapterAbsPath: chapterPath, chapterRelPath: CHAPTER, target: { kind: 'all' }, by: 'reviewer@example.com', sourceIndex });
+    write(root, 'docs/glossary/terms.md', TERMS_DOC.replace('id: glossary-terms', 'id: glossary-terms-renamed'));
+    const { report } = runCheck(root);
+    assert.match(report.format(), /orphan-content/);
+  });
+
+  it('v2 の由来 (保存した版の実装がある) は、本文が同じなら needs-recompute (警告)。--strict-normalization で違反。載せ替えの案内が付く', () => {
+    const repo = makeLegacyRepo();
+    const warned = runCheck(repo.root);
+    assert.equal(warned.report.exitCode, ExitCode.Ok, warned.report.format());
+    assert.equal(warned.warnings.length, 3);
+    assert.match(warned.warnings[0] ?? '', /needs-recompute \(版 2 で一致 \(今は版 3\)。igeta fingerprint-rebase で載せ替える\)/);
+    const strict = runCheck(repo.root, { strictNormalization: true });
+    assert.equal(strict.report.exitCode, ExitCode.Violation, strict.report.format());
+  });
+
+  it('保存した版の実装が無い由来 (版 1) は、確かめられないので needs-recompute (一致とみなさず、stale にも決めつけない)', () => {
+    const root = makeRoot();
+    const chapterPath = writeDoc(root, 'delivery/02-reservation.md', chapterLines());
+    writeFileSync(
+      sidecarPathFor(chapterPath),
+      JSON.stringify({
+        sourceDoc: 'docs/delivery/02-reservation.md',
+        entries: [
+          {
+            anchor: '1. 予約の受付', from: null, reason: 'x', blockFingerprint: 'sha256:bogus',
+            capturedBy: 'agent:writer', capturedAt: '2026-09-28',
+            acceptedBy: 'reviewer@example.com', acceptedAt: '2026-09-28', normalizationVersion: 1,
+          },
+        ],
+      }),
+    );
+    const { report, warnings } = runCheck(root);
+    assert.equal(report.exitCode, ExitCode.Ok, report.format());
+    assert.match(warnings.join('\n'), /needs-recompute \(版 1 の実装が無く確かめられない/);
   });
 });

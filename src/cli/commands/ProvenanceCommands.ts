@@ -25,7 +25,7 @@ export class ProvenanceCaptureCommand extends Command {
     '  igeta provenance-capture <chapter> --anchor "<anchor>" (--from <doc-id>/PREFIX-nnn | --no-source --reason "<reason>") --by <name>',
     '',
     '  --root <dir>   対象リポジトリ (既定: カレントディレクトリ)',
-    '  --docs <dir>   正本の検索対象 (既定: <root>/docs、--from のときだけ使う)',
+    '  --docs <dir>   正本の検索対象 (既定: <root>/docs)。--no-source でも、章の本文のリンク先の文書 id を引くのに使う',
   ];
 
   protected readonly argSpec = { valueOptions: ['root', 'docs', 'anchor', 'from', 'reason', 'by'], boolOptions: ['no-source'] };
@@ -48,7 +48,9 @@ export class ProvenanceCaptureCommand extends Command {
     const chapterAbsPath = resolve(ctx.cwd, args.positional[0] ?? '');
     const docsDir = args.get('docs') ?? join(targetRoot, 'docs');
     const source: CaptureSource = fromId !== undefined ? { kind: 'from', id: fromId } : { kind: 'no-source', reason: reason ?? '' };
-    const sourceIndex = fromId !== undefined ? buildSourceIndex(targetRoot, docsDir) : null;
+    // --no-source でも索引を作る: 章の塊の指紋 (v3) は、リンクの行き先を文書 id で数える。provenance-check が
+    // 同じ索引で計算し直すので、capture だけ索引なしで計算すると、リンクを含む塊が直後に orphan-content になる
+    const sourceIndex = buildSourceIndex(targetRoot, docsDir);
 
     const result = capture({ chapterAbsPath, targetRoot, anchor, source, by, sourceIndex });
     if (result.kind === 'error') {
@@ -89,7 +91,7 @@ export class ProvenanceAcceptCommand extends Command {
     const docsDir = args.get('docs') ?? join(targetRoot, 'docs');
     const sourceIndex = buildSourceIndex(targetRoot, docsDir);
 
-    const result = accept({ chapterAbsPath, chapterRelPath, target, by, sourceIndex });
+    const result = accept({ targetRoot, chapterAbsPath, chapterRelPath, target, by, sourceIndex });
     for (const acceptedAnchor of result.accepted) ctx.stdout(`ACCEPTED ${acceptedAnchor}`);
 
     const report = new Report();

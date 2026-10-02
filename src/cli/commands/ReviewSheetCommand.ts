@@ -12,7 +12,7 @@ import { Command } from '../Command.js';
  * 人間レビュー層 (docs/00-map.md・docs/01-decisions.md) を前提に、指定した修飾 ID の
  * 要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown へ展開して stdout に出す。
  * --diff <base>..<head> なら「変更ファイル → タスク → FN → REQ」を辿る (S4)。
- * Spec: templates/docs/guides/03-human-review.md
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md
  */
 export class ReviewSheetCommand extends Command {
   readonly name = 'review-sheet';

@@ -6,7 +6,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { ScaffoldCommand } from '../cli/commands/ScaffoldCommand.js';
 import { DomainDiagramDriftCheck } from '../checks/DomainDiagramDriftCheck.js';
+import { ExitCode } from '../core/ExitCode.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import { Report } from '../core/Report.js';
 import { ScaffoldModule } from './ScaffoldModule.js';
@@ -182,6 +184,55 @@ describe('ScaffoldModule', () => {
 
     const report = driftReport(root);
     assert.equal(report.exitCode, 0, report.format());
+  });
+
+  it('[TST-109] 新しい構成の repo: scaffold の次の手順の案内が docs/ai/specs/booking/domain/ を指し、domain-drift (--docs なし) が 2 つのまとまりの図を見る', async () => {
+    // まとまり booking・billing に domain の図があり、どちらの図にも、実装に無いクラスが 1 つある
+    const diagram = (context: string, classes: readonly string[]): string =>
+      [
+        '---',
+        `id: ${context}-domain`,
+        'kind: domain-model',
+        `context: ${context}`,
+        `code_root: apps/api/src/modules/${context}`,
+        '---',
+        '',
+        '```mermaid',
+        'classDiagram',
+        ...classes.map((name) => `  class ${name}`),
+        '```',
+        '',
+      ].join('\n');
+    const write = (relPath: string, content: string): void => {
+      mkdirSync(join(root, relPath, '..'), { recursive: true });
+      writeFileSync(join(root, relPath), content);
+    };
+    write('docs/person/design/shared/00-map.md', '---\nkind: map\n---\n# 地図\n');
+    write(
+      'docs/ai/specs/booking/domain/01-reservation.md',
+      diagram('booking', ['Reservation', 'ReservationId', 'ReservationStatus', 'ReservationCreatedEvent', 'ReservationRepositoryPort', 'Ghost']),
+    );
+    write('docs/ai/specs/billing/domain/01-invoice.md', diagram('billing', ['Invoice', 'Phantom']));
+    write('apps/api/src/modules/billing/domain/invoice.ts', 'export class Invoice {}\n');
+
+    const stdout: string[] = [];
+    const code = await new ScaffoldCommand().run(
+      ['--root', root, '--kind', 'api', '--context', 'booking', '--aggregate', 'Reservation'],
+      { cwd: root, igetaRoot: IGETA_ROOT, stdout: (line) => stdout.push(line), stderr: (line) => stdout.push(line) },
+    );
+    assert.equal(code, ExitCode.Ok, stdout.join('\n'));
+    const guidance = stdout.filter((line) => line.startsWith('NEXT')).join('\n');
+    assert.ok(guidance.includes('docs/ai/specs/booking/domain/'), guidance);
+    assert.equal(guidance.includes('docs/design/detail/domain'), false, guidance);
+
+    const violations = new DomainDiagramDriftCheck({}).run({ targetRoot: root, igetaRoot: IGETA_ROOT });
+    assert.deepEqual(
+      violations.map((violation) => [violation.severity, violation.file, violation.message.replace(/ \(期待:.*$/, '')]),
+      [
+        ['violation', 'docs/ai/specs/billing/domain/01-invoice.md', '図にあるが実装に無い: Phantom'],
+        ['violation', 'docs/ai/specs/booking/domain/01-reservation.md', '図にあるが実装に無い: Ghost'],
+      ],
+    );
   });
 
   it('図に 1 クラス足りなければ drift check が落ちる (契約が実際に効いている)', () => {
