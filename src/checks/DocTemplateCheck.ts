@@ -1,10 +1,10 @@
-// 設計書がテンプレート (templates/docs/*.md) の必須構造を満たしているか検証する。
-// 文書体系の正典は docs/README.md、構造規約は docs/guides/01-document-taxonomy.md。
+// 設計書がテンプレート (templates/docs/**/*.md) の必須構造を満たしているか検証する。
+// 文書体系の正典は docs/README.md、構造規約は templates/docs/ai/handbook/how-to/01-document-taxonomy.md。
 //
-// kind は frontmatter が優先。無ければ **テンプレの配置と同じ docs 上の位置**から決まる
-// (templates/docs/design/basic/tables/__context__.md → docs/design/basic/tables/*.md)。
-// 両方あって食い違う場合は違反 (置き場所と宣言のどちらかが間違っている)。
-// 新しい構成 (docs/person・ai・client の下) の位置は、テンプレの配置ではなく置き場所の型 (core/Role.ts) から決まる。
+// kind は frontmatter が優先。無ければ置き場所から決まる。両方あって食い違う場合は違反 (置き場所と宣言のどちらかが
+// 間違っている)。新しい構成 (docs/person・ai・client の下) の置き場所は、置き場所の型 (core/Role.ts) から引く。
+// 旧い構成の置き場所は、雛形の配置ではなく固定の表 (core/LegacyTemplatePaths.ts) から引く。
+// 旧い構成の文書の必須節と行数上限も、雛形を新しい構成の木へ移す前の固定の表 (core/LegacyTemplateRules.ts) で検査する。
 //
 // 検証内容: ① frontmatter の kind がテンプレ登録済み ② テンプレの必須 H2 節が全部ある
 // ③ 「関連」節に上流・下流が 1 件以上 (表・箇条書きのどちらでもよい) ④ ID 接頭辞の形式 (PREFIX-nnn)
@@ -14,7 +14,7 @@
 // 利用者リポジトリは templates/ を持たず、Igeta のテンプレで検査される。
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import { readContext, SHARED_CONTEXT } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
@@ -23,6 +23,8 @@ import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
 import type { LineKind } from '../core/LineClassifier.js';
 import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
+import { LEGACY_TEMPLATE_RULES } from '../core/LegacyTemplateRules.js';
+import { legacyKindOfPath } from '../core/LegacyTemplatePaths.js';
 import { kindOfPath, roleOfPath } from '../core/Role.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
@@ -129,11 +131,6 @@ interface ResolvedDoc {
   readonly kinds: readonly LineKind[];
 }
 
-interface PathSlot {
-  readonly exact: Map<string, string>;
-  placeholder: string | null;
-}
-
 interface ParsedDoc {
   readonly file: string;
   readonly lines: readonly string[];
@@ -197,16 +194,8 @@ function sectionBody(
   return lines.slice(current.line, end);
 }
 
-/** ファイル名先頭の連番 (01-, 12-) を外す。連番は読む順であって種類ではないので、テンプレと番号が違っても同じ文書 */
-const withoutSeq = (name: string): string => name.replace(/^\d{2}-/, '');
-
-function loadTemplates(dir: string): {
-  registry: Map<string, TemplateEntry>;
-  byPath: Map<string, PathSlot>;
-  errors: string[];
-} {
+function loadTemplates(dir: string): { registry: Map<string, TemplateEntry>; errors: string[] } {
   const registry = new Map<string, TemplateEntry>();
-  const byPath = new Map<string, PathSlot>();
   const errors: string[] = [];
   for (const file of listMarkdown(dir, true)) {
     const lines = readFileSync(file, 'utf8').split(/\r?\n/);
@@ -233,39 +222,32 @@ function loadTemplates(dir: string): {
         .filter((section) => !section.text.endsWith(OPTIONAL_SUFFIX))
         .map((section) => section.text),
     });
-    const relPath = relative(dir, file);
-    const slot = dirname(relPath) === '.' ? '' : dirname(relPath);
-    const name = basename(relPath);
-    let entry = byPath.get(slot);
-    if (entry === undefined) {
-      entry = { exact: new Map<string, string>(), placeholder: null };
-      byPath.set(slot, entry);
-    }
-    if (/__[a-z-]+__|NNNN/.test(name)) {
-      if (entry.placeholder !== null) {
-        errors.push(`${file} 同じ階層に雛形ファイルが 2 枚ある (kind を決められない)`);
-      }
-      entry.placeholder = kind;
-    } else {
-      entry.exact.set(withoutSeq(name), kind);
-    }
   }
-  return { registry, byPath, errors };
+  return { registry, errors };
 }
 
 /**
- * 既定 kind を引く。旧い構成は、テンプレの配置から: 完全一致ファイル名 (連番抜き) > 雛形 (__name__) の順。
- * 新しい構成 (person / ai / client の下) は、まとまりのフォルダ名がテンプレの配置と一致しないので、
- * まとまりの 1 段だけワイルドカードにした置き場所の型 (要件定義書 02 §7、core/Role.ts) から引く
+ * 置き場所から既定の kind を引く。新しい構成 (person / ai / client の下) は、まとまりのフォルダ名が雛形の配置と
+ * 一致しないので、まとまりの 1 段だけワイルドカードにした置き場所の型 (要件定義書 02 §7、core/Role.ts) から引く
  * (REQ-304)。型だけでは kind が決まらない場所 (固定番号の文書など) は null で、frontmatter の kind に頼る。
+ * 旧い構成は、雛形の配置と同じ位置だった固定の表 (core/LegacyTemplatePaths.ts) から引く。
  */
-function kindFromPath(byPath: ReadonlyMap<string, PathSlot>, docRelPath: string): string | null {
+function kindFromPath(docRelPath: string): string | null {
   const posixPath = docRelPath.split(sep).join('/');
-  if (roleOfPath(posixPath) !== null) return kindOfPath(posixPath);
-  const slot = dirname(docRelPath) === '.' ? '' : dirname(docRelPath);
-  const entry = byPath.get(slot);
-  if (entry === undefined) return null;
-  return entry.exact.get(withoutSeq(basename(docRelPath))) ?? entry.placeholder;
+  return roleOfPath(posixPath) !== null ? kindOfPath(posixPath) : legacyKindOfPath(posixPath);
+}
+
+/**
+ * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。旧い構成の文書は、必須節・行数上限・ID の接頭辞と形式を、
+ * 雛形を新しい構成の木へ移す前の値 (core/LegacyTemplateRules.ts) にする。旧い構成の repo は、移すまでの間も既存の検査が
+ * 通る (REQ-106)。
+ */
+function templateFor(template: TemplateEntry, docRelPath: string): TemplateEntry {
+  if (roleOfPath(docRelPath.split(sep).join('/')) !== null) return template;
+  const legacy = LEGACY_TEMPLATE_RULES.get(template.kind);
+  return legacy === undefined
+    ? template
+    : { ...template, required: legacy.required, lineLimit: legacy.lineLimit, idPrefixes: legacy.idPrefixes, idPattern: legacy.idPattern };
 }
 
 // EARS (Easy Approach to Requirements Syntax): 機能要件は
@@ -843,7 +825,7 @@ export class DocTemplateCheck implements Check {
     if (!isDir(templatesDir)) return cannotCheck(`テンプレ置き場が無い: ${rel(templatesDir)}`);
     if (!isDir(docsDir)) return cannotCheck(`docs が無い: ${rel(docsDir)}`);
 
-    const { registry, byPath, errors } = loadTemplates(templatesDir);
+    const { registry, errors } = loadTemplates(templatesDir);
     if (errors.length > 0) return cannotCheck(...errors);
     if (registry.size === 0) return cannotCheck(`テンプレが 1 枚も無い: ${rel(templatesDir)}`);
 
@@ -891,7 +873,8 @@ export class DocTemplateCheck implements Check {
         unmanaged.push(relPath);
         continue;
       }
-      const pathKind = kindFromPath(byPath, relative(docsDir, file));
+      const docRelPath = relative(docsDir, file);
+      const pathKind = kindFromPath(docRelPath);
       const declared = scalar(meta.data, 'kind') ?? null;
       if (declared !== null && pathKind !== null && declared !== pathKind) {
         violations.push({
@@ -907,8 +890,8 @@ export class DocTemplateCheck implements Check {
         unmanaged.push(relPath);
         continue;
       }
-      const template = registry.get(kind);
-      if (template === undefined) {
+      const registered = registry.get(kind);
+      if (registered === undefined) {
         violations.push({
           severity: 'violation',
           message: `未登録の kind: ${kind} (templates/docs にテンプレを作るか kind を直す)`,
@@ -918,6 +901,7 @@ export class DocTemplateCheck implements Check {
         continue;
       }
       checkedCount += 1;
+      const template = templateFor(registered, docRelPath);
       const kinds = classifyLines(lines);
       violations.push(...checkDoc(relPath, lines, meta, template, idIndex, requireKind, kinds));
       resolved.push({ relPath, file, lines, meta, kind, template, kinds });

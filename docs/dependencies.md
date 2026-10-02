@@ -90,6 +90,8 @@ graph LR
   class requirements product
   tasks-v4-rollout["実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4) (draft)"]
   class tasks-v4-rollout design
+  template-section-audit["雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表"]
+  class template-section-audit explanation
   test-approval-gate["テスト仕様 — 人の承認が要る変更の見分け (approval-scope・doctor) (draft)"]
   class test-approval-gate design
   test-doc-graph["テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界) (draft)"]
@@ -128,6 +130,7 @@ graph LR
   audience-layers ==> provenance-and-agreement
   audience-layers ==> reader-granularity
   audience-directories ==> tasks-v4-rollout
+  audience-directories ==> template-section-audit
   adr-0008-human-approval-scope ==> test-approval-gate
   adr-0002-role-boundary-invariants ==> test-doc-graph
   adr-0004-folder-internal-structure-and-growth ==> test-doc-graph
@@ -171,6 +174,8 @@ graph LR
   tasks-v4-rollout -.- test-review-sheet
   tasks-v4-rollout -.- test-init-scaffold
   tasks-v4-rollout -.- test-docs-migrate
+  template-section-audit -.- adr-0010-value-ownership
+  template-section-audit -.- folder-placement
   test-approval-gate -.- adr-0002-role-boundary-invariants
   test-approval-gate -.- test-init-scaffold
   test-doc-graph -.- adr-0008-human-approval-scope
@@ -224,6 +229,7 @@ graph LR
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
 - **provenance-and-agreement** — [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md)
 - **reader-granularity** — [人が読んで決める文書の型と量](explanation/09-reader-granularity.md)
+- **template-section-audit** — [雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表](explanation/12-template-section-audit.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)
 

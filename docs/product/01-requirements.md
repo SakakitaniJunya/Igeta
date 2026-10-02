@@ -28,7 +28,7 @@ relates_to: []
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | なし (要件は最上流) | — |
-| 下流 | 生成索引 (dir-index) / [消費 repo 雛形](../../templates/docs/README.md) / [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) | REQ-101〜104 |
+| 下流 | 生成索引 (dir-index) / [消費 repo 雛形](../../templates/docs/README.md) / [文書体系ガイド](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) | REQ-101〜104 |
 
 ## 1. 業務要件
 
@@ -53,7 +53,7 @@ relates_to: []
 | ID | 制約 | 根拠 | 影響範囲 |
 |---|---|---|---|
 | REQ-201 | 読み手の判定入力は frontmatter `kind` のみ。新しい frontmatter フィールドを足さない | [explanation/03 §2](../explanation/03-audience-layers.md) の却下案 (kind が区別を既に担う。区別用フィールドを 2 つ持たない) | 索引生成・検査・全消費 repo の frontmatter |
-| REQ-202 | 本書および改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) 種類一覧の「上限」列 (requirements は 200 行) | 本書・templates/docs/** |
+| REQ-202 | 本書および改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) 種類一覧の「上限」列 (requirements は 200 行) | 本書・templates/docs/** |
 | REQ-203 | 読み手表示に関して検査を足す場合も、重い検査を既定 CI に入れない段階導入の方針を踏む | [explanation/03 §6](../explanation/03-audience-layers.md) | CI 既定経路 |
 
 ## 4. 前提

@@ -4,7 +4,7 @@
 //
 // 突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 図が要る kind / 置き場所のフォルダと
 // ファイル名 / 「15 本の対象外」/ 1 フォルダの上限 / 区分ごとの kind の数。
-// 文書体系ガイド (templates/docs/guides/01-document-taxonomy.md) は、新しい表をまだ持たないので対象に含めない。
+// 文書体系ガイド (templates/docs/ai/handbook/how-to/01-document-taxonomy.md) は、§7 の転記の節を持つが、ここではまだ突き合わせない (未整備)。
 //
 // 表の読み方は diffAgainstRoleTable に閉じ、表を書き換えた文書 (kind の削除・確定させる人の入れ替え・フォルダの
 // 取り違えなど) を渡して「食い違いを見つけること」も確かめる。1 行に kind が複数 (`a / b (図) / c`) 書かれた行は、

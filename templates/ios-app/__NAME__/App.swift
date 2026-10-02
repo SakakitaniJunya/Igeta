@@ -7,7 +7,7 @@ struct __NAME__App: App {
         WindowGroup {
             RootView()
         }
-        // TODO: 永続化するモデルを設計書 (docs/design/basic/tables) に合わせて列挙する。
+        // TODO: 永続化するモデルを設計書 (docs/ai/specs/<まとまり>/tables) に合わせて列挙する。
         .modelContainer(for: Item.self)
     }
 }

@@ -25,7 +25,7 @@ relates_to: []
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [読み手別の入口](./03-audience-layers.md) | — |
-| 下流 | `templates/docs/contexts/maps/__context__.md` / `templates/docs/contexts/contracts/__context__.md` | — |
+| 下流 | `templates/docs/person/design/__context__/00-map.md` / `templates/docs/ai/specs/__context__/contract.md` | — |
 
 ## 1. frontmatter `context`
 
@@ -40,7 +40,7 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
 
 | 論点 | 決定 |
 |---|---|
-| テンプレ置き場 | `templates/docs/contexts/maps/__context__.md` |
+| テンプレ置き場 | `templates/docs/person/design/__context__/00-map.md` |
 | 実ファイル置き場 | `docs/contexts/maps/<context-slug>.md` (スロット `contexts/maps` に固定。`<context-slug>` はファイル名で表す) |
 | `line_limit` | 150 |
 | `depends_on` 既定値 | `[map]` (全体地図) |
@@ -59,7 +59,7 @@ kind の解決は既存の決まり (ディレクトリの完全一致 + ファ�
 
 | 論点 | 決定 |
 |---|---|
-| テンプレ置き場 | `templates/docs/contexts/contracts/__context__.md` |
+| テンプレ置き場 | `templates/docs/ai/specs/__context__/contract.md` |
 | 実ファイル置き場 | `docs/contexts/contracts/<context-slug>.md` |
 | `depends_on` 既定値 | `[<自分の context-map の id>]` |
 | 書かないもの | 内部実装・内部だけで使う REQ・未確定の値の詳細 |
