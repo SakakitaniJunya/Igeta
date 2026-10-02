@@ -10,7 +10,7 @@ import { DocTemplateCheck } from '../checks/DocTemplateCheck.js';
  * と、本文の意味を取り違えたまま直ってしまうため。
  *
  * 既定は dry-run (plan() を呼ぶだけ)。実際に書き込むのは write() を呼んだときだけ。
- * Spec: templates/docs/guides/03-human-review.md §4
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md §4
  */
 
 export interface FixIdsPlanEntry {

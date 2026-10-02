@@ -10,7 +10,7 @@ import { collectRowDefinedTokens } from '../core/IdDefinitions.js';
  * タスクに載っていない変更ファイルを明示する。git 呼び出しは CLI 層の責務、このモジュールは
  * 変更ファイルの一覧を受け取るだけの純粋な集計にする (テストで git を要らなくするため)。
  *
- * Spec: templates/docs/guides/03-human-review.md §6
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md §6
  */
 
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage', '.git']);

@@ -27,8 +27,9 @@ owners: [eng]
 | **§7 Deployment View** (配置ビュー) | _未作成_ |
 | **§8 Crosscutting Concepts** (横断概念) | _未作成_ |
 | **§9 Architecture Decisions** (アーキテクチャ決定) | → [adr/](../adr/README.md) |
-| **§10 Quality Requirements** (品質要求) | _未作成_ |
+| **§10 Quality Requirements** (品質要求) | [テスト仕様 — 人の承認が要る変更の見分け (approval-scope・doctor)](test/specs/01-approval-gate.md) _(読み手: AI)_ · [テスト仕様 — 人の文書の型・量・書き込み口 (PersonFormCheck)](test/specs/03-person-form.md) _(読み手: AI)_ · [テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界)](test/specs/04-doc-graph.md) _(読み手: AI)_ · [テスト仕様 — 人が読む「変わった行」の一覧 (review-sheet --diff)](test/specs/05-review-sheet.md) _(読み手: AI)_ · [テスト仕様 — 新しい repo の骨格 (init・雛形・手引きの突き合わせ)](test/specs/06-init-scaffold.md) _(読み手: AI)_ · [テスト仕様 — 移行コマンド (docs-migrate)](test/specs/07-docs-migrate.md) _(読み手: AI)_ |
 | **§11 Risks and Technical Debt** (リスクと技術的負債) | _未作成_ |
 | **§12 Glossary** (用語集) | _未作成_ |
+| arc42 章外 (tutorial / guide / explanation / proposal / runbook / tasks) | [実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4)](tasks/01-v4-rollout.md) _(読み手: AI)_ |
 
 <!-- AUTOGEN:dir-index:end -->

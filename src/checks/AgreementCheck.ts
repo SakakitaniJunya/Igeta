@@ -7,15 +7,31 @@
 //       - reagreementRules (kind + 節) に当たる     → 再合意が要る (違反)
 //       - 当たらない                                 → 通知のみ (警告)
 // 承認された版が無い台帳は違反にしない (まだ合意が無い状態は正当)。台帳が 1 つも無ければ Ok。
+//
+// 指紋は基準の行 (export) が持つ正規化の版で計算して比べる (版の違いだけで再合意を出さない)。
+// 一致 = 保存値と同じ、または直近の fingerprint-rebase がその保存値に対応づけた値と同じ (ADR-0007)。
+// 由来の from は、基準より後の source-move の対応を通して今の from に直してから解決する (ADR-0006 決定 7)。
 
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
-import type { AgreementApproveEvent, AgreementExportEvent } from '../core/AgreementLedger.js';
-import { LEDGER_FILENAME, readLedger } from '../core/AgreementLedger.js';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import {
+  CHAPTER_FINGERPRINT_TARGET,
+  exportNormalizationVersion,
+  findBaseline,
+  findLedgerDirs,
+  followRedirect,
+  matchesRecorded,
+  readLedger,
+  rebaseKey,
+  rebaseTable,
+  sourceRedirects,
+} from '../core/AgreementLedger.js';
 import type { Check, CheckContext } from '../core/Check.js';
-import { computeFingerprint } from '../core/Fingerprint.js';
+import { computeFingerprint, isImplementedNormalizationVersion } from '../core/Fingerprint.js';
 import type { ReagreementRule } from '../core/IgetaConfig.js';
 import { loadIgetaConfig } from '../core/IgetaConfig.js';
+import type { LinkTable } from '../core/LinkTable.js';
+import { buildLinkTable } from '../core/LinkTable.js';
 import type { Violation } from '../core/Report.js';
 import type { SourceDoc, SourceIndex } from '../core/SourceResolver.js';
 import { buildSourceIndex, resolveSource } from '../core/SourceResolver.js';
@@ -30,27 +46,9 @@ export interface AgreementCheckOptions {
   readonly configPath?: string;
 }
 
-const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage']);
 const H2_RE = /^##\s+(.*?)\s*$/;
 const FENCE_RE = /^\s*(```|~~~)/;
 const LEADING_NUMBER_RE = /^\d+(\.\d+)*\.?\s+/;
-
-function findLedgerDirs(dir: string): string[] {
-  const found: string[] = [];
-  const walk = (current: string): void => {
-    for (const entry of readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const full = join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (SKIP_DIR.has(entry.name) || entry.name.startsWith('.')) continue;
-        walk(full);
-        continue;
-      }
-      if (entry.name === LEDGER_FILENAME) found.push(dirname(full));
-    }
-  };
-  walk(dir);
-  return found;
-}
 
 /** 正本の `line` (1 始まり) が属する H2 見出し。H2 より前なら null。 */
 function sectionHeadingAt(doc: SourceDoc, line: number): string | null {
@@ -111,12 +109,13 @@ export class AgreementCheck implements Check {
     if (dirs.length === 0) return []; // 台帳が 1 つも無い既存案件は赤くしない
 
     const sourceIndex = buildSourceIndex(ctx.targetRoot, docsDir);
+    const links = buildLinkTable(ctx.targetRoot, sourceIndex);
     const violations: Violation[] = [];
-    for (const dir of dirs) violations.push(...this.#checkOne(ctx.targetRoot, dir, rules, sourceIndex));
+    for (const dir of dirs) violations.push(...this.#checkOne(ctx.targetRoot, dir, rules, sourceIndex, links));
     return violations;
   }
 
-  #checkOne(targetRoot: string, dir: string, rules: readonly ReagreementRule[], sourceIndex: SourceIndex | null): Violation[] {
+  #checkOne(targetRoot: string, dir: string, rules: readonly ReagreementRule[], sourceIndex: SourceIndex | null, links: LinkTable): Violation[] {
     const relDir = relative(targetRoot, dir) || '.';
     const ledger = readLedger(dir);
     if (ledger.kind === 'invalid') return [ledger.violation];
@@ -124,31 +123,31 @@ export class AgreementCheck implements Check {
       return [{ severity: 'cannot-check', message: `合意台帳が無い: ${relDir}` }];
     }
 
-    // 基準は「承認済みの版のうち、提出の記録が最も後の版」。agreement-approve は
-    // 基準より前に提出された版の承認を拒否するため、通常は「最後に承認された版」と一致する。
-    // 承認と提出が交差する古い台帳 (ガード導入前) でも、基準が過去へ戻らないように
-    // 承認の記録順ではなく提出の記録順で選ぶ。
-    const approvedVersions = new Set(
-      ledger.events.filter((e): e is AgreementApproveEvent => e.event === 'approve').map((e) => e.targetVersion),
-    );
-    if (approvedVersions.size === 0) {
+    // 基準は「承認済みの版のうち、提出の記録が最も後の版」(findBaseline)。
+    const found = findBaseline(ledger.events);
+    if (found.kind === 'none') {
       this.#warnings.push(`${relDir}: 承認された版がまだ無い (検査する基準が無い)`);
       return [];
     }
-    let baseline: AgreementExportEvent | undefined;
-    let baselineVersion: string | null = null;
-    for (const event of ledger.events) {
-      if (event.event === 'export' && approvedVersions.has(event.version)) {
-        baseline = event;
-        baselineVersion = event.version;
-      }
+    if (found.kind === 'export-missing') {
+      return [{ severity: 'cannot-check', message: `${relDir}: 承認された版 (${found.versions.join(', ')}) の提出の記録が台帳に無い` }];
     }
-    if (baseline === undefined || baselineVersion === null) {
-      const approved = [...approvedVersions].join(', ');
-      return [{ severity: 'cannot-check', message: `${relDir}: 承認された版 (${approved}) の提出の記録が台帳に無い` }];
+    const baseline = found.event;
+    const approvedVersion = baseline.version;
+    const storedVersion = exportNormalizationVersion(baseline);
+    if (!isImplementedNormalizationVersion(storedVersion)) {
+      return [
+        {
+          severity: 'cannot-check',
+          message: `${relDir}: 承認した版 ${approvedVersion} の指紋は正規化の版 ${storedVersion} で計算されていて、確かめられない (この Igeta より新しい版で記録された台帳か)`,
+        },
+      ];
     }
-    const approvedVersion = baselineVersion;
+    // 基準より後に追記された、中身を変えない操作の記録。基準より前の行は、基準の行の値に効かない
+    const redirects = sourceRedirects(ledger.events, found.index);
+    const rebased = rebaseTable(ledger.events, found.index);
 
+    const unverifiableRebaseMessage = `${relDir}: fingerprint-rebase の対応表の正規化の版が確かめられない (この Igeta より新しい版で記録された台帳か)`;
     const violations: Violation[] = [];
     for (const chapter of baseline.chapters) {
       const absPath = join(dir, chapter.file);
@@ -164,8 +163,17 @@ export class AgreementCheck implements Check {
         continue;
       }
       try {
-        const current = chapterFingerprint(readFileSync(absPath, 'utf8'), relPath, baseline.omitSections);
-        if (current !== chapter.chapterFingerprint) {
+        const content = readFileSync(absPath, 'utf8');
+        const rewriteChapter = links.rewriterFor(relPath);
+        const matched = matchesRecorded(
+          chapter.chapterFingerprint,
+          storedVersion,
+          (version) => chapterFingerprint(content, relPath, baseline.omitSections, version, rewriteChapter),
+          rebased.get(rebaseKey(chapter.file, CHAPTER_FINGERPRINT_TARGET, chapter.chapterFingerprint)),
+        );
+        if (matched === 'unverifiable') {
+          violations.push({ severity: 'cannot-check', file: relPath, message: unverifiableRebaseMessage });
+        } else if (!matched) {
           violations.push({
             severity: 'violation',
             file: relPath,
@@ -178,17 +186,30 @@ export class AgreementCheck implements Check {
       }
 
       for (const source of chapter.sources) {
-        const resolution = sourceIndex === null ? { kind: 'missing' as const } : resolveSource(sourceIndex, source.from);
+        const from = followRedirect(redirects, source.from);
+        const fromLabel = from === source.from ? source.from : `${source.from} → ${from}`;
+        const resolution = sourceIndex === null ? { kind: 'missing' as const } : resolveSource(sourceIndex, from);
         if (resolution.kind === 'missing') {
           violations.push({
             severity: 'violation',
             file: relPath,
-            message: `再合意が要る: 承認した版 ${approvedVersion} の由来が指す正本が無くなった (${source.from})`,
+            message: `再合意が要る: 承認した版 ${approvedVersion} の由来が指す正本が無くなった (${fromLabel})`,
           });
           continue;
         }
-        if (computeFingerprint(resolution.text) === source.fingerprint) continue;
-        const where = `${source.from} (${resolution.doc.relPath}:${resolution.line})`;
+        const rewriteSource = links.rewriterFor(resolution.doc.relPath);
+        const matched = matchesRecorded(
+          source.fingerprint,
+          storedVersion,
+          (version) => computeFingerprint(resolution.text, version, rewriteSource),
+          rebased.get(rebaseKey(chapter.file, source.from, source.fingerprint)),
+        );
+        if (matched === 'unverifiable') {
+          violations.push({ severity: 'cannot-check', file: relPath, message: unverifiableRebaseMessage });
+          continue;
+        }
+        if (matched) continue;
+        const where = `${fromLabel} (${resolution.doc.relPath}:${resolution.line})`;
         if (matchesRule(rules, resolution.doc, sectionHeadingAt(resolution.doc, resolution.line))) {
           violations.push({
             severity: 'violation',

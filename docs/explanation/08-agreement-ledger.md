@@ -42,6 +42,13 @@ relates_to: [coverage-and-learning, export-deliverable]
 | `sources[].fingerprint` | 章の由来が指す正本の、**記録した時点**の指紋。由来の sidecar が後で書き換わっても、提出した版の記録は変わらない |
 | `omitSections` | 記録した時点の設定。検査のときに同じ除去を再現するために持つ |
 
+`export` と `approve` のほかに、中身を変えない操作の記録として `fingerprint-rebase` (指紋の正規化の版の載せ替えの対応表。
+[ADR-0007](../adr/0007-fingerprint-link-normalization.md)) と `source-move` (由来の `from` の付け替え。
+[ADR-0006](../adr/0006-provenance-migration-handling.md)) の行を追記することがある。どちらも承認の記録ではない。
+`export` の行は指紋を計算した正規化の版 `normalizationVersion` を持つ (無い行は 2)。`agreement-check` は、その版で計算した
+指紋が保存値と一致するか、`fingerprint-rebase` の対応表がその保存値に対応づけた値と一致すれば「変わっていない」とし、
+`source-move` の対応を通して由来の `from` を引く。
+
 壊れた行が 1 つでもあれば、読む側は検査不能で止まる (黙って読み飛ばさない)。末尾が改行で終わっていない台帳には
 追記しない (前の追記が途中で切れた疑いがあり、続けて書くと 2 行が繋がって両方が壊れる)。
 

@@ -9,8 +9,9 @@ import { readFileSync } from 'node:fs';
 import { normalizeActor } from '../core/ActorName.js';
 import { extractDeliveryBlocks } from '../core/DeliveryBlocks.js';
 import { computeFingerprint, CURRENT_NORMALIZATION_VERSION } from '../core/Fingerprint.js';
+import { buildLinkTable } from '../core/LinkTable.js';
 import type { ProvenanceEntry } from '../core/ProvenanceSidecar.js';
-import { readSidecar, writeSidecar } from '../core/ProvenanceSidecar.js';
+import { readSidecar, withoutRebaseTrace, writeSidecar } from '../core/ProvenanceSidecar.js';
 import type { SourceIndex } from '../core/SourceResolver.js';
 import { resolveSource } from '../core/SourceResolver.js';
 import type { Violation } from '../core/Report.js';
@@ -18,6 +19,8 @@ import type { Violation } from '../core/Report.js';
 export type AcceptTarget = { readonly kind: 'anchor'; readonly anchor: string } | { readonly kind: 'all' };
 
 export interface AcceptRequest {
+  /** 検査対象リポジトリのルート。v3 の指紋がリンク先の実在を確かめるのに使う */
+  readonly targetRoot: string;
   readonly chapterAbsPath: string;
   readonly chapterRelPath: string;
   readonly target: AcceptTarget;
@@ -49,6 +52,7 @@ export function accept(request: AcceptRequest): AcceptResult {
   const extracted = extractDeliveryBlocks(content, request.chapterRelPath);
   const blocks = extracted.kind === 'ok' ? extracted.blocks : [];
 
+  const links = buildLinkTable(request.targetRoot, request.sourceIndex);
   const violations: Violation[] = [];
   const accepted: string[] = [];
   const acceptedAt = (request.now ?? new Date()).toISOString().slice(0, 10);
@@ -73,8 +77,8 @@ export function accept(request: AcceptRequest): AcceptResult {
     }
     if (entry.from === null) {
       updated.set(entry.anchor, {
-        ...entry,
-        blockFingerprint: computeFingerprint(block.text),
+        ...withoutRebaseTrace(entry),
+        blockFingerprint: computeFingerprint(block.text, CURRENT_NORMALIZATION_VERSION, links.rewriterFor(request.chapterRelPath)),
         acceptedBy: by,
         acceptedAt,
         normalizationVersion: CURRENT_NORMALIZATION_VERSION,
@@ -92,8 +96,8 @@ export function accept(request: AcceptRequest): AcceptResult {
       continue;
     }
     updated.set(entry.anchor, {
-      ...entry,
-      fingerprint: computeFingerprint(resolution.text),
+      ...withoutRebaseTrace(entry),
+      fingerprint: computeFingerprint(resolution.text, CURRENT_NORMALIZATION_VERSION, links.rewriterFor(resolution.doc.relPath)),
       acceptedBy: by,
       acceptedAt,
       normalizationVersion: CURRENT_NORMALIZATION_VERSION,

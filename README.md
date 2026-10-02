@@ -23,7 +23,7 @@
 
 | 提供するもの | 中身 |
 |---|---|
-| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **44 種** |
+| **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **45 種** |
 | **検査スクリプト** (`src/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/api-*` / `web-feature`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js) |
 | **ストアスクショの型** (`templates/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
@@ -46,7 +46,7 @@
 2. **置き場所が型を決める**
    `templates/docs/` は `docs/` と**同じ階層**。書きたい場所と同じパスのテンプレをコピーすれば、文書の種類 (`kind`)・ID 接頭辞・必須節が自動で決まる。宣言と置き場所が食い違えば違反。ファイル名の先頭 `NN-` は同じフォルダ内の読む順で、フォルダを開いた瞬間に順番が分かる。
 3. **AS-IS と TO-BE を分ける**
-   `design/` は実装前の設計 (TO-BE)、`architecture/` は稼働中の構成 (AS-IS) 専用。混ぜると「どちらが今の姿か」が誰にも分からなくなる。
+   稼働中の構成 (AS-IS) は `as-is-overview` 専用の文書に書き、実装前の設計 (TO-BE) に混ぜない。混ぜると「どちらが今の姿か」が誰にも分からなくなる。
 
 ### 追跡 — 変更がどこに効くか分かる
 
@@ -66,42 +66,31 @@
 9. **無いものを書かない**
    未整備の検証手段・未決の仕様は「未整備」「未決」と書く。それらしい記述で埋めない。
 10. **画面は 3 状態**
-    全画面に **空 / ローディング / エラー** を定義する。ハッピーパスだけの画面設計は未完成。
+    全画面に **空 / ローディング / エラー** を持たせる。設計書は空とエラーの見え方を決め、ローディングの形はコードが決める。ハッピーパスだけの画面設計は未完成。
 11. **1 文書は読み切れる長さ**
-    冒頭に `> **TL;DR**` (手順書は `> **When to use**`) を必須とし、1 文書 200 行 (ADR 150 行 / 手順書・タスク 100 行) を上限にする。超えたら分割する。
+    冒頭に `> **TL;DR**` (手順書は `> **When to use**`) を必須とし、kind ごとの行数の上限 (人が決める文書は 100 行・要件定義書は 150 行・手順書とタスクは 100 行。文書体系ガイドに一覧) を超えたら分割する。
 
 ### 読み手 — 人の入口と機械の正本を分ける
 
 12. **人の入口と機械の正本を分ける**
-    原則 11 を守っても、文書群が数十枚に増えれば人は全部を読めない。**地図 (`docs/00-map.md`) と決定台帳 (`docs/01-decisions.md`) だけを人間の入口**にし、要件・設計の本体 (L1/L2) は実装者・AI が読む正本として変えない。人の決定 (`DEC-nnn`) と仮置き (`OPEN-nnn`) は台帳に集め、他ファイルの ID は `<doc-id>/PREFIX-nnn` の修飾形式で参照する — ローカル採番の ID を裸で持ち出すと、どのファイルの ID か分からなくなるため。
+    原則 11 を守っても、文書群が数十枚に増えれば人は全部を読めない。人が確定する文書は `docs/person/` に集め、**地図 (`docs/person/design/shared/00-map.md`) と決定台帳 (`docs/person/decisions/01-decisions.md`) を人間の入口**にする。作り方の詳細は AI が読み書きする `docs/ai/` に置き、人の決めた値は `person/` の行に 1 回だけ書いて `ai/` の文書はその ID を引く。人の決定 (`DEC-nnn`) と仮置き (`OPEN-nnn`) は台帳に集め、他ファイルの ID は `<doc-id>/PREFIX-nnn` の修飾形式で参照する — ローカル採番の ID を裸で持ち出すと、どのファイルの ID か分からなくなるため。
 
 <!-- markdownlint-enable MD029 -->
 
 ## 文書体系
 
-```mermaid
-flowchart LR
-  M["人間の入口<br/>00-map.md + 01-decisions.md"] -.-> R
-  R["要件定義<br/>product/"] --> B["基本設計<br/>design/basic/"]
-  B --> D["詳細設計<br/>design/detail/"]
-  D --> T["テスト<br/>design/test/"]
-  T --> O["運用・移行<br/>design/ops/ + runbooks/"]
-  A["ADR (横断)<br/>adr/"] -.-> B
-  A -.-> D
-```
+`docs/` の第 1 階層は、**確定させる人**で 3 つに分かれる。置き場所を決める問いは 1 つだけ: 「AI がこれを勝手に変えたら、事業・お金・顧客との約束・使う人の体験・法令のどれかが変わるか」。変わるなら `person/`、変わらないなら `ai/`。
 
-| 日本の工程 | arc42 の章 | 置き場所 |
+| フォルダ | 確定させる人 | 中身 |
 |---|---|---|
-| 人間の入口 (地図・決定台帳) | arc42 の外側 | `docs/00-map.md` / `docs/01-decisions.md` (原則 12) |
-| 要件定義 | §1 導入と目標 / §2 制約 | `docs/product/` (機能要件は [EARS](https://alistairmavin.com/ears/) 記法) |
-| 基本設計 (外部設計) | §3 コンテキスト / §4 解決戦略 / §5 上位 (画面・API・テーブル) / §7 配置 | `docs/design/basic/` |
-| 詳細設計 (内部設計) | §5 下位 (ドメイン・モジュール) / §6 実行時ビュー / §8 横断概念 | `docs/design/detail/` |
-| テスト設計 | §10 品質要求 | `docs/design/test/` |
-| 移行・運用設計 | §7 配置ビュー | `docs/design/ops/` / `docs/runbooks/` |
-| 技術判断 | §9 アーキテクチャ決定 | `docs/adr/` ([MADR](https://adr.github.io/madr/) 形式) |
+| `docs/person/` | 人 (確定する前に全部読んで承認する) | `requirements/` 要件定義 ([EARS](https://alistairmavin.com/ears/) 記法) / `design/` 全体共通 (`shared/`) とまとまりごとの決まり (地図・機能・業務・画面・非機能・権限・データの扱い) / `decisions/` 決定台帳と ADR ([MADR](https://adr.github.io/madr/) 形式) |
+| `docs/ai/` | 評価する AI | `specs/` 作り方 (方式・API・テーブル・ドメイン・シーケンス・テスト・タスク) / `handbook/` 作業の手引き (手順書・解説・障害の手順) |
+| `docs/client/` | 人と顧客 | `delivery/` 先方提出用の章 / `proposals/` 提案書 |
 
-44 種の一覧・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/guides/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
-地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/guides/03-human-review.md)**、
+AI の入口は repo 直下の `AGENTS.md`。背骨は arc42 の 12 章で、章はフォルダではなく各文書の frontmatter `arc42:` が持つ。
+
+kind 47 種の置き場所・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/ai/handbook/how-to/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/ai/handbook/how-to/03-human-review.md)**、
 足した理由は **[人間レビュー層を足した理由](docs/explanation/02-human-review-layer.md)** にある。
 
 ## はじめかた
@@ -114,8 +103,8 @@ npx github:SakakitaniJunya/Igeta#v0.2.1 init
 npm install
 
 # 2. 書きたい文書と同じパスの雛形を置く (templates/docs/<X> → docs/<X>)
-mkdir -p docs/product
-cp node_modules/igeta/templates/docs/product/01-requirements.md docs/product/
+mkdir -p docs/person/requirements
+cp node_modules/igeta/templates/docs/person/requirements/01-requirements.md docs/person/requirements/
 
 # 3. 検査する
 npm run docs:template-check
@@ -129,7 +118,7 @@ npm run docs:graph
 | コマンド | 検査内容 | 落ちる条件 |
 |---|---|---|
 | `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 / 行数上限超過 (`line_limit` を持つ kind のみ) |
-| `npm run docs:template-check -- --require-human-review` | 人間レビュー層 (既定 OFF・段階導入・**試験中**、既知の取りこぼしは guide §7) | `kind: requirements` が地図からリンクされていない / まとまりの地図が地図からリンクされていない / `feature-brief` がまとまりの地図からリンクされていない / 決定の帰属主張に `DEC-nnn` が無いか台帳に無い / 「仮置き」に `OPEN-nnn` が無いか台帳に無い / 他ファイルの ID を修飾形式 `<doc-id>/PREFIX-nnn` で書いていない |
+| `npm run docs:template-check -- --require-human-review` | 人間レビュー層 (既定 OFF・段階導入・**試験中**、既知の取りこぼしは人間レビュー層の手引き §7) | `kind: requirements` が地図からリンクされていない / まとまりの地図が地図からリンクされていない / `feature-brief` がまとまりの地図からリンクされていない / 決定の帰属主張に `DEC-nnn` が無いか台帳に無い / 「仮置き」に `OPEN-nnn` が無いか台帳に無い / 他ファイルの ID を修飾形式 `<doc-id>/PREFIX-nnn` で書いていない |
 | `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い / `docs/common/` が残っている (v3 の構成)。**新しい構成 (`docs/person`・`ai`・`client` のどれかがある repo) では加えて**: kind から導く置き場所と実際のパスの食い違い / フォルダ名のまとまりと `context` の食い違い / `docs/` 直下の 3 フォルダに属さない文書 / `ai/` の文書の未決の節 / 1 フォルダ 16 本以上 / `AGENTS.md` の欠落 / `.github/CODEOWNERS` の欠落、または人の承認が要る側 (`docs/person/` と `docs/client/` の配下全体・`.github/`・`.igeta.json`・`AGENTS.md`・`package.json`) を守っていない (GitHub と同じく最後に当たる行を見て、その行にオーナーが無い。`docs/person/*` は直下のファイルにしか当たらない)。旧い構成の repo は、移行を促す警告 1 件が出るだけ |
 | `npx igeta context-boundary-check` | まとまり (context) の境界 (既定 OFF、[詳細](docs/explanation/07-context-boundaries.md)) | `context: A` の文書が `context: B` (A と違い shared でも B の `context-contract` でもない) の文書を depends_on・本文リンク・修飾 ID で直接参照している |
 | `npx igeta context-size [<context>]` | まとまりの量の上限 (既定 OFF、`.igeta.json` の `contextSizeLimit` 未設定なら無制限) | 指定したまとまり (省略時は全部一覧) の「自分の文書 + 参照している隣の `context-contract`」の総行数が上限を超えている |
@@ -139,12 +128,13 @@ npm run docs:graph
 | `npx igeta provenance-check [<chapter> ...]` | 由来の鮮度 (既定 OFF) | `pending`/`stale`/`orphan`/`orphan-content`/`self-approved`/`source-missing`/`open-stated-as-final` (`needs-recompute` は既定警告、`--strict-normalization` で違反) |
 | `npx igeta provenance-coverage [<chapter> ...]` | 由来の順方向網羅 (既定 OFF) | delivery-chapter の H2 節 (「関連」除く) に由来が 1 件も無い |
 | `npx igeta source-coverage` | 由来の逆方向網羅 (既定 OFF) | 正本の行定義がどの章の由来にも現れない (`clientExempt`/`.igeta.json` の `coverageExemptions` で対象外にできる) |
+| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/adr/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
 | `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
-| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `design/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
+| `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `docs/ai/specs/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
 | `npm run docs:analyze` | 整合レポート (読み取り専用) | 網羅の穴・タスクが存在しない ID を参照しているダングリング参照・未決 OPEN・曖昧語・ID のローカル採番の重複。ダングリング参照だけ落ちる |
 | `npm run docs:fix-ids` | (生成・既定 dry-run) | 定義元が 1 件に一意な裸の ID 参照だけを修飾 ID に書き換える。`--write` を付けるまで書き込まない |
 | `npx igeta agreement-check` | 顧客との合意 | 承認した版から変わった章・正本を、再合意が要るものと通知のみに分けて出す。`export --record-agreement` で提出を記録し、`agreement-approve` で承認を記録する ([詳細](docs/explanation/08-agreement-ledger.md)) |
@@ -156,7 +146,7 @@ npm run docs:graph
 
 `--require-human-review` を付けていない緑は「地図・決定台帳が無くても出る」緑であって、
 人間レビュー層があることを意味しない。決定台帳の長期アーカイブ方針・地図の内容の陳腐化はこの検査の
-対象外 (詳細は [人間レビュー層の読み方](templates/docs/guides/03-human-review.md) §7)。
+対象外 (詳細は [人間レビュー層の読み方](templates/docs/ai/handbook/how-to/03-human-review.md) §7)。
 
 社内制約 ID の検出は `secret-scan --internal-ids` で明示的に有効にしたときだけ走る。非公開リポジトリでは
 規約 ID を本文から参照するのは正当なので既定 OFF、公開リポジトリでは漏洩なので ON にする。Igeta 自身は
@@ -171,7 +161,7 @@ npm run docs:graph
 ```text
 Igeta/
 ├── templates/              雛形置き場。パッケージに同梱され、使う人は `node_modules/igeta/templates/` から取る
-│   ├── docs/               設計書の雛形 44 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある
+│   ├── docs/               設計書の雛形 45 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある (person・ai・client)
 │   ├── .github/            使う人の .github/ にコピーする雛形 (PR テンプレ)
 │   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
 │   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
@@ -186,7 +176,7 @@ Igeta/
 └── .github/workflows/      CI
 ```
 
-**`templates/docs/` と `docs/` の違い**: `templates/docs/` は**雛形** (中身は空欄と記入例)、`docs/` は **Igeta 自身の背景** (なぜこの標準にしたか)。使う人がコピーするのは `templates/docs/` だけで、文書体系ガイドと実装順序ガイドもそこに入っている (全プロジェクトが自分の `docs/guides/` に持つ文書だから)。
+**`templates/docs/` と `docs/` の違い**: `templates/docs/` は**雛形** (中身は空欄と記入例)、`docs/` は **Igeta 自身の背景** (なぜこの標準にしたか)。使う人がコピーするのは `templates/docs/` だけ。ただし文書体系ガイド・人間レビュー層の手引き・由来の手順 (`templates/docs/ai/handbook/how-to/`) は Igeta の版ごとに決まる手引きなので、利用 repo にはコピーせず、インストールした版のものを `AGENTS.md` と `docs/README.md` から指す。実装順序ガイド (`02-implementation-order.md`) は、着手順をプロジェクトが埋める文書なのでコピーして使う。
 
 ## 参照した標準
 

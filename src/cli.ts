@@ -5,7 +5,9 @@ import { AgreementApproveCommand, AgreementCheckCommand } from './cli/commands/A
 import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
+import { DoctorCommand } from './cli/commands/DoctorCommand.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
+import { FingerprintRebaseCommand } from './cli/commands/FingerprintRebaseCommand.js';
 import { FixIdsCommand } from './cli/commands/FixIdsCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
 import { MermaidCheckCommand } from './cli/commands/MermaidCheckCommand.js';
@@ -26,6 +28,7 @@ import {
   TemplateCheckCommand,
 } from './cli/commands/checkCommands.js';
 import { UpgradeCommand, VersionCheckCommand } from './cli/commands/versionCommands.js';
+import { ApprovalScopeCommand } from './gate/ApprovalScopeCommand.js';
 
 const cli = new Cli()
   .register(new InitCommand())
@@ -42,6 +45,7 @@ const cli = new Cli()
   .register(new ProvenanceCheckCommand())
   .register(new ProvenanceCoverageCommand())
   .register(new SourceCoverageCommand())
+  .register(new FingerprintRebaseCommand())
   .register(new AgreementApproveCommand())
   .register(new AgreementCheckCommand())
   .register(new DiscrepancyAddCommand())
@@ -52,6 +56,8 @@ const cli = new Cli()
   .register(new ReviewSheetCommand())
   .register(new AnalyzeCommand())
   .register(new FixIdsCommand())
+  .register(new ApprovalScopeCommand())
+  .register(new DoctorCommand())
   .register(new VersionCheckCommand())
   .register(new UpgradeCommand());
 

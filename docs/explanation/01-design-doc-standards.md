@@ -24,7 +24,7 @@ relates_to: [docs-index]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [文書体系](../../templates/docs/guides/01-document-taxonomy.md) | 全接頭辞 |
+| 上流 (depends_on) | [文書体系](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) | 全接頭辞 |
 | 下流 | `templates/docs/**` / `scripts/check-doc-template.mjs` | — |
 
 ## 0. 背骨を arc42 にした理由
@@ -42,12 +42,12 @@ relates_to: [docs-index]
 
 | 標準 | 採ったもの | 反映先 |
 |---|---|---|
-| [MADR 4.0](https://adr.github.io/madr/) | `Decision Drivers` / 冒頭「採用: <案>。理由:」/ `Confirmation` (決定が守られていることを機械で確かめる手段) | `templates/docs/adr/NNNN-__slug__.md` |
-| [GitHub spec-kit](https://github.com/github/spec-kit) | tasks の行形式 `- [ ] T001 [P] [FN-001] 説明 (path)` と Setup / Foundational / User Story / Polish のフェーズ分け | `templates/docs/design/tasks/__feature__.md` |
-| [GitHub spec-kit](https://github.com/github/spec-kit) (2026-09-30 追加) | spec.md の WHAT/WHY・ユーザーストーリー (P1/P2/P3・Independent Test・Given/When/Then) を**機能ブリーフ**として採用 (要件文・受入条件は書かない)。`[NEEDS CLARIFICATION]` は**未決の関門**として、`/analyze` は `igeta analyze` として採用 | `templates/docs/product/features/__feature__.md`、`src/checks/DocTemplateCheck.ts` の `checkAcceptedGate`、`src/generators/AnalyzeModule.ts` |
-| [AWS Kiro spec + EARS](https://kiro.dev/docs/specs/) / [EARS 原典](https://alistairmavin.com/ears/) | 機能要件を「<トリガ>のとき、システムは<応答>しなければならない」に固定し、パターン列 (Ubiquitous / Event / State / Unwanted / Optional) を持たせる | `templates/docs/product/01-requirements.md`、`check-doc-template.mjs` が REQ-1xx 行の義務形を検査 |
+| [MADR 4.0](https://adr.github.io/madr/) | `Decision Drivers` / 冒頭「採用: <案>。理由:」/ `Confirmation` (決定が守られていることを機械で確かめる手段) | `templates/docs/person/decisions/__year__/NNNN-__slug__.md` |
+| [GitHub spec-kit](https://github.com/github/spec-kit) | tasks の行形式 `- [ ] T001 [P] [FN-001] 説明 (path)` と Setup / Foundational / User Story / Polish のフェーズ分け | `templates/docs/ai/specs/tasks/__feature__.md` |
+| [GitHub spec-kit](https://github.com/github/spec-kit) (2026-09-30 追加) | spec.md の WHAT/WHY・ユーザーストーリー (P1/P2/P3・Independent Test・Given/When/Then) を**機能ブリーフ**として採用 (要件文・受入条件は書かない)。`[NEEDS CLARIFICATION]` は**未決の関門**として、`/analyze` は `igeta analyze` として採用 | `templates/docs/person/design/__context__/features/__feature__.md`、`src/checks/DocTemplateCheck.ts` の `checkAcceptedGate`、`src/generators/AnalyzeModule.ts` |
+| [AWS Kiro spec + EARS](https://kiro.dev/docs/specs/) / [EARS 原典](https://alistairmavin.com/ears/) | 機能要件を「<トリガ>のとき、システムは<応答>しなければならない」に固定し、パターン列 (Ubiquitous / Event / State / Unwanted / Optional) を持たせる | `templates/docs/person/requirements/01-requirements.md`、`check-doc-template.mjs` が REQ-1xx 行の義務形を検査 |
 | [Diátaxis](https://diataxis.fr/) | tutorial / how-to / reference / explanation の 4 分類。`guides/` = how-to、`explanation/` = explanation、reference = 設計書本体 | `docs/guides/01-document-taxonomy.md` §2 の kind 分け |
-| [arc42](https://arc42.org/overview) | §8 Crosscutting Concepts を独立文書にする (各機能の設計書に散らさない) | `templates/docs/design/basic/04-crosscutting.md` |
+| [arc42](https://arc42.org/overview) | §8 Crosscutting Concepts を独立文書にする (各機能の設計書に散らさない) | `templates/docs/ai/specs/shared/01-crosscutting.md` |
 | [C4 model](https://c4model.com/) | L1 System Context / L2 Container / L3 Component / L4 Code を**図ごとに分ける**。1 枚に混ぜない | `architecture/01-overview.md` §2、`design/basic/08-infra-design.md` §1 |
 | [OpenAPI as SoT](https://learn.openapis.org/best-practices.html) | 契約の正は OpenAPI 1 か所。Markdown の API 一覧は生成物 | `design/basic/api/__resource__.md` §1 の AUTOGEN 区間 |
 

@@ -23,7 +23,7 @@ owners: [eng]
 | [0005](0005-enforcement-rollout-and-canonical-sync.md) | ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く | proposed | — | — |
 | [0006](0006-provenance-migration-handling.md) | ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い | proposed | — | — |
 | [0007](0007-fingerprint-link-normalization.md) | ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える | proposed | — | — |
-| [0008](0008-human-approval-scope.md) | ADR-0008 人の承認が要る変更を、差分のパスで見分ける | proposed | — | — |
+| [0008](0008-human-approval-scope.md) | ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする | proposed | — | — |
 | [0009](0009-kind-placement.md) | ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける | proposed | — | — |
 | [0010](0010-value-ownership.md) | ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く | proposed | — | — |
 

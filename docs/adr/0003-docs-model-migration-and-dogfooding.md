@@ -39,11 +39,11 @@ v3 の構成 (`common/` あり) へ移した repo は、Igeta の版を上げた
 ## Decision
 
 1. **2 段を 1 本の PR で**: ① 移す ② 書き直す。①だけの merge はしない。v3 の構成の repo は「版上げ + ① + ②」を 1 本にする
-2. **移行コマンド**: `igeta docs-migrate <dir> [--dry-run]`。既定は適用。(a) ファイル移動 (b) 相対リンク書き換え
-   (c) 索引・export manifest の書き換え (d) kind と `context` による配置 (e) `AGENTS.md` と `.github/CODEOWNERS` の新設
-   (f) 由来の付属ファイルの移行 (ADR-0006) (g) Igeta の手引き 3 本の写しのうち、版の手引きと同じものだけ消してリンクに
-   替える (違う写しは止めて一覧に出す。消した文書の id を指す `depends_on`・`relates_to` も外す)。適用前に作業ツリーが
-   clean であることを要求し、適用後に検査を回す
+2. **移行コマンド**: `igeta docs-migrate --owner <持ち主> [--dry-run]`。既定は適用。(a) ファイル移動 (b) 相対リンク書き換え
+   (c) 索引の再生成 (d) kind と `context` による配置 (e) `AGENTS.md`・`.github/CODEOWNERS` の新設 (ADR-0008)
+   (f) 由来の付属ファイルの移行 (ADR-0006) (g) Igeta の手引き 3 本の写しのうち、過去の版の手引きと同じものだけ消す
+   (違う写しは止めて一覧に出す。消した文書の id を指す `depends_on`・`relates_to` も外す)。適用前に作業ツリーが
+   clean であることを要求し、適用後に完了条件を確かめる。細目はテスト仕様 07 (移行コマンド)
 3. **移行元は 2 種類**: 旧い構成 (kind 別フォルダが docs 直下) と v3 の構成。どちらからも同じ置き場所表で移す。
    `docs/common/` が残っていたら違反
 4. **止めるもの・知らせるもの**: kind の無い文書は止めて一覧を出す (推定で置かない)。`context` の無い文書は `shared` に置き、一覧で知らせる

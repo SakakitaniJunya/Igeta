@@ -1,7 +1,8 @@
 // kind → 読み手の対応の正本 (docs/product/01-requirements.md REQ-102)。
 // 対応の設計確定版は docs/explanation/03-audience-layers.md §3「kind ごとの読み手」。
-// templates/docs/guides/01-document-taxonomy.md「読み手 3 種」の対応表はこの定数の転記 ——
-// kind を足す・読み手を変えるときはここだけを直し、ガイド側を写し直す。
+// 旧い構成 (person・ai・client が無い repo) の索引の読み手の判定。旧い版の文書体系ガイドにあった「読み手 3 種」の
+// 対応表は、この定数の転記だった。新しい構成のガイド (templates/docs/ai/handbook/how-to/01-document-taxonomy.md) は、
+// 確定させる人 (要件定義書 02 §7) で説明していて、この対応表を持たない。
 //
 // 「対象外」(双方が読む解説・手引き) と、表に載らない kind は索引では「共通」と出す
 // (要件定義の未確定事項 #2 はこれで確定)。判定入力は frontmatter `kind` のみで、

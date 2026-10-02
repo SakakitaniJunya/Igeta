@@ -102,7 +102,7 @@ flowchart LR
 
 ## 8. 下流の TODO
 
-- `templates/docs/guides/03-human-review.md` の読む順を、§3 の「地図 → まとまりの地図 → review-sheet」の 2 段に合わせて直す (本設計では文面は変えない。次の実装の対象)
+- `templates/docs/ai/handbook/how-to/03-human-review.md` の読む順を、§3 の「地図 → まとまりの地図 → review-sheet」の 2 段に合わせて直す (本設計では文面は変えない。次の実装の対象)
 
 ## 9. 残った論点
 

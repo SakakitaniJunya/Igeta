@@ -9,7 +9,7 @@ import { Command } from '../Command.js';
  * 一意に解決できる裸の ID 参照だけを修飾 ID に書き換える (non-blocking N3)。
  * 既定は dry-run (--write を付けない限り 1 バイトも書かない)。複数ファイルのローカル採番で
  * 曖昧なものは対象外 (人が判断する)。
- * Spec: templates/docs/guides/03-human-review.md §4
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md §4
  */
 export class FixIdsCommand extends Command {
   readonly name = 'fix-ids';

@@ -1,0 +1,11 @@
+{
+  "humanPaths": [
+    "templates/**",
+    "src/checks/**",
+    "src/gate/**",
+    "src/core/Role.ts",
+    "src/core/IgetaConfig.ts",
+    "src/core/LineClassifier.ts",
+    "docs/explanation/0[3-9]-*.md"
+  ]
+}

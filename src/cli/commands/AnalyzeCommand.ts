@@ -12,7 +12,7 @@ import { Command } from '../Command.js';
  * critical (タスクが存在しない ID を参照している等のダングリング参照) だけを exit 1 にする。
  * 網羅の穴・曖昧語は warning (advisory)、未決・重複は info — 人が優先順位を判断する材料であって
  * 機械が強制する規約ではないため。
- * Spec: templates/docs/guides/03-human-review.md §5
+ * Spec: templates/docs/ai/handbook/how-to/03-human-review.md §5
  */
 export class AnalyzeCommand extends Command {
   readonly name = 'analyze';
