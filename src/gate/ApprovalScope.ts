@@ -121,8 +121,12 @@ function resolveBase(repo: GitRepo, spec: BaseSpec): ResolvedBase | string {
   return { mode: spec.mode, ref: spec.mode === 'ci' ? `origin/${spec.branch}` : spec.ref, commit };
 }
 
-/** パスだけで決まる規則 (固定の規則と humanPaths)。当たらなければ null。 */
-function pathRule(path: string, humanPaths: readonly string[]): string | null {
+/**
+ * パスだけで決まる規則 (固定の規則と humanPaths)。当たらなければ null。
+ * 大文字小文字は区別しない (PathGlob.ts): 大文字小文字を区別しないファイルシステムでは `docs/Person/` も
+ * `docs/person/` と同じ場所になるので、大文字小文字だけを変えたパスで門を抜けられないようにする。
+ */
+export function pathRule(path: string, humanPaths: readonly string[]): string | null {
   for (const { glob, rule } of FIXED_RULES) {
     if (matchesGlob(path, glob)) return rule;
   }

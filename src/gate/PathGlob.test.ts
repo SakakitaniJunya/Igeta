@@ -54,8 +54,20 @@ describe('matchesGlob', () => {
     ['docs/読み手/*.md', 'docs/読み手/はじめに.md', true],
     ['a.b/c+d/(e).md', 'a.b/c+d/(e).md', true],
     ['a.b/c+d/(e).md', 'axb/c+d/(e).md', false],
-    // 大文字小文字は区別する
-    ['docs/person/**', 'docs/Person/x.md', false],
+    // 大文字小文字は区別しない (大文字小文字を区別しないファイルシステムでは同じ場所になる)
+    ['docs/person/**', 'docs/Person/x.md', true],
+    ['docs/person/**', 'DOCS/PERSON/x.md', true],
+    ['.github/CODEOWNERS', '.GitHub/codeowners', true],
+    ['docs/[a-c]*/x.md', 'docs/Person/x.md', false], // 文字クラスも同じ扱い (P は a-c の外)
+    ['docs/[a-p]*/x.md', 'docs/Person/x.md', true],
+    // glob が手前のディレクトリに当たれば、その配下のパスにも当たる (ディレクトリ名だけを書いても何にも当たらない設定にならない)
+    ['docs/special', 'docs/special/x.md', true],
+    ['docs/special', 'docs/special/sub/y.md', true],
+    ['docs/special', 'docs/special', true],
+    ['docs/special', 'docs/specialist/x.md', false],
+    ['docs/special', 'docs', false],
+    ['src', 'src/a/b.ts', true],
+    ['docs/*.md', 'docs/sub/a.md', false], // `*.md` はディレクトリ `sub` に当たらないので配下にも届かない
   ];
   for (const [pattern, path, expected] of cases) {
     it(`${pattern} ${expected ? 'は当たる' : 'は当たらない'}: ${path}`, () => {
@@ -74,6 +86,7 @@ describe('validateGlob', () => {
     '.github/workflows/**',
     'docs/a b/c.md',
     'docs/foo (1).md', // `(` の直前が extglob の記号でなければ文字
+    'docs/special', // ディレクトリ名だけ (配下にも当たる)
   ];
   for (const pattern of valid) {
     it(`使える: ${pattern}`, () => {
@@ -84,6 +97,8 @@ describe('validateGlob', () => {
   const invalid: ReadonlyArray<readonly [pattern: string, reason: RegExp]> = [
     ['', /空/],
     ['   ', /空/],
+    [' src/gate/**', /前後に空白/],
+    ['src/gate/** ', /前後に空白/],
     ['!docs/**', /否定/],
     ['/templates/**', /先頭の/],
     ['./templates/**', /先頭の/],
@@ -124,7 +139,19 @@ describe('globCanMatchUnder', () => {
 
   it('3 フォルダの配下に当たりうる glob は全部のフォルダで true', () => {
     // 配下の「どの名前にも」合わせられる書き方と、1 本だけを指す書き方の両方
-    const hitting = ['docs/**', '**', '**/*.md', 'docs/*/**', 'docs/*/*.md', 'docs/[a-z]*/x.md', 'docs/{person,ai,client}/**'];
+    const hitting = [
+      'docs/**',
+      '**',
+      '**/*.md',
+      'docs/*/**',
+      'docs/*/*.md',
+      'docs/[a-z]*/x.md',
+      'docs/{person,ai,client}/**',
+      'docs', // 手前のディレクトリに当たる glob は、配下の 3 フォルダにも当たる
+      'd*',
+      '*',
+      'DOCS/*/X.MD', // 大文字小文字は区別しない
+    ];
     for (const pattern of hitting) {
       for (const folder of folders) {
         assert.equal(globCanMatchUnder(pattern, folder), true, `${pattern} は ${folder} の配下に当たる`);
@@ -139,6 +166,8 @@ describe('globCanMatchUnder', () => {
     assert.equal(globCanMatchUnder('docs/p*/**', 'docs/person'), true);
     assert.equal(globCanMatchUnder('docs/ai/specs/**', 'docs/ai'), true);
     assert.equal(globCanMatchUnder('docs/client/delivery/*.md', 'docs/client'), true);
+    assert.equal(globCanMatchUnder('docs/Person/**', 'docs/person'), true); // 大文字小文字だけを変えても拾う
+    assert.equal(globCanMatchUnder('DOCS/AI', 'docs/ai'), true);
   });
 
   it('3 フォルダの外だけを指す glob は false', () => {
@@ -150,8 +179,9 @@ describe('globCanMatchUnder', () => {
       'docs/ai-notes/**', // `ai` で始まっても `ai` そのものではない
       'docs/{legacy,images}/**',
       'src/**',
-      'docs', // docs ディレクトリ (3 フォルダの手前) だけ
       '*.md',
+      'docs.md',
+      'doc*/x.md',
     ];
     for (const pattern of outside) {
       for (const folder of folders) {

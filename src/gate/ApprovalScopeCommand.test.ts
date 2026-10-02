@@ -251,6 +251,7 @@ describe('igeta approval-scope コマンド: 出力と終了コード', () => {
     assert.match(text, /0 = ai \/ 1 = human \/ 2 = 検査不能/);
     assert.match(text, /手元の確認用/);
     assert.match(text, /fetch-depth: 0/);
+    assert.match(text, /pull_request_target は既定で保護ブランチ側を checkout するので差分が空/);
   });
 });
 

@@ -1,12 +1,44 @@
 // node --test dist/gate/ApprovalScope.test.js
 // approval-scope (ADR-0008) の判定そのもの: パスで決まる判定・差分の取り方・検査不能。
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { IGETA_ROOT } from '../core/Paths.js';
-import { judgeApprovalScope } from './ApprovalScope.js';
+import { judgeApprovalScope, pathRule } from './ApprovalScope.js';
 import { BASE, GATE_GLOBS, TestRepo, append, cannotCheckMessage, change, judge, judged, local, pathsOf, tempDir, without } from './ApprovalScopeFixture.js';
+
+describe('パスの規則 (pathRule): 見落とすより多く拾う', () => {
+  it('大文字小文字だけを変えたパスでも person/・client/・門を決めるファイルに当たる', () => {
+    const cases: ReadonlyArray<readonly [path: string, rule: string]> = [
+      ['docs/Person/new.md', 'docs/person/ の文書'],
+      ['DOCS/PERSON/a/b.md', 'docs/person/ の文書'],
+      ['docs/Client/new.md', 'docs/client/ の文書'],
+      ['.github/Workflows/deploy.yml', '門を決めるファイル'],
+      ['.GitHub/codeowners', '門を決めるファイル'],
+      ['.IGETA.JSON', '門を決めるファイル'],
+      ['agents.md', '門を決めるファイル'],
+    ];
+    for (const [path, rule] of cases) assert.equal(pathRule(path, []), rule, path);
+  });
+
+  it('大文字小文字だけを変えたパスは humanPaths にも当たる', () => {
+    assert.equal(pathRule('SRC/Checks/X.ts', GATE_GLOBS), 'humanPaths: src/checks/**');
+    assert.equal(pathRule('Templates/docs/a.md', GATE_GLOBS), 'humanPaths: templates/**');
+  });
+
+  it('humanPaths にディレクトリ名だけを書いても、その配下に当たる (何にも当たらない設定にならない)', () => {
+    assert.equal(pathRule('docs/special/x.md', ['docs/special']), 'humanPaths: docs/special');
+    assert.equal(pathRule('docs/special/sub/y.md', ['docs/special']), 'humanPaths: docs/special');
+    assert.equal(pathRule('docs/specialist/x.md', ['docs/special']), null);
+  });
+
+  it('どれにも当たらなければ null (ai/・コード・生成索引)', () => {
+    for (const path of ['docs/ai/specs/x.md', 'docs/dependencies.md', 'docs/README.md', 'src/index.ts', 'package.json', 'sub/AGENTS.md', '.github/dependabot.yml']) {
+      assert.equal(pathRule(path, []), null, path);
+    }
+  });
+});
 
 describe('ADR-0008 決定 1 の表: パスで決まる判定', () => {
   it('person/ だけの変更は human。理由はそのパス', async () => {
@@ -94,6 +126,27 @@ describe('ADR-0008 決定 1 の表: パスで決まる判定', () => {
       assert.equal(result.verdict, 'human', path);
       assert.deepEqual(pathsOf(result.reasons), [path]);
     }
+  });
+
+  // 大文字小文字を区別するファイルシステム (Linux の CI) だけで、大文字小文字の違うディレクトリを本当に作って確かめる。
+  // macOS の既定のファイルシステムでは `docs/Person/` が `docs/person/` と同じ場所になり、git のパスが変わらないので、
+  // 同じことを pathRule の test (上) が確かめる。
+  const caseSensitive = ((): boolean => {
+    const dir = tempDir('igeta-case-probe-');
+    writeFileSync(join(dir, 'a'), '');
+    writeFileSync(join(dir, 'A'), '');
+    return readdirSync(dir).length === 2;
+  })();
+
+  it('大文字小文字だけを変えたディレクトリ (docs/Person/・.github/Workflows/) の変更も human', { skip: caseSensitive ? false : '大文字小文字を区別しないファイルシステム (pathRule の test が確かめる)' }, async () => {
+    const result = await change((repo) => {
+      repo.write('docs/Person/new.md', '# new\n');
+      repo.write('docs/CLIENT/new.md', '# new\n');
+      repo.write('.github/Workflows/deploy.yml', 'name: x\n');
+      repo.write('agents.md', '# x\n');
+    });
+    assert.equal(result.verdict, 'human');
+    assert.deepEqual(pathsOf(result.reasons), ['.github/Workflows/deploy.yml', 'agents.md', 'docs/CLIENT/new.md', 'docs/Person/new.md']);
   });
 
   it('名前が似ているだけのパス (入れ子の AGENTS.md・.igeta.json・workflows 以外の .github) は門ではない', async () => {
