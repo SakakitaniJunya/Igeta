@@ -11,6 +11,7 @@
 
 import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isImplementedNormalizationVersion } from './Fingerprint.js';
 import type { Violation } from './Report.js';
 
 export const LEDGER_FILENAME = 'agreements.ledger.jsonl';
@@ -304,26 +305,30 @@ export function findBaseline(events: readonly AgreementEvent[]): Baseline {
   return { kind: 'ok', event: found.event, index: found.index };
 }
 
-/**
- * afterIndex より後の source-move を、記録順に畳んだ「元の from → 今の from」の対応。
- * 後の行が勝つ。X → Y を畳むとき Y の付け替えを消す (Y は今の居場所なので、そこからさらに動かした
- * 古い記録を引きずらない)。Y は行き先を持たない状態になるので、対応が輪になることは無い。
- */
-export function sourceRedirects(events: readonly AgreementEvent[], afterIndex: number): ReadonlyMap<string, string> {
-  const redirects = new Map<string, string>();
-  for (const event of events.slice(afterIndex + 1)) {
-    if (event.event !== 'source-move') continue;
-    redirects.set(event.from, event.to);
-    redirects.delete(event.to);
-  }
-  return redirects;
+/** source-move の 1 本 (元の from → 新しい from)。 */
+export interface SourceMoveStep {
+  readonly from: string;
+  readonly to: string;
 }
 
-/** from を、source-move の対応で今の from までたどる (対応が無ければそのまま)。 */
-export function followRedirect(redirects: ReadonlyMap<string, string>, from: string): string {
-  let current = from;
-  for (let next = redirects.get(current); next !== undefined; next = redirects.get(current)) current = next;
-  return current;
+/**
+ * afterIndex より後の source-move を、記録の順に並べたもの。followRedirect に渡して、由来の from の今の居場所を求める。
+ * 基準の行より前の付け替えは、基準の行の値に効かない。
+ */
+export function sourceRedirects(events: readonly AgreementEvent[], afterIndex: number): readonly SourceMoveStep[] {
+  return events.slice(afterIndex + 1).flatMap((event) => (event.event === 'source-move' ? [{ from: event.from, to: event.to }] : []));
+}
+
+/**
+ * 由来の from (提出したときの居場所) を、付け替えを記録の順に当てて、今の居場所にする。
+ * 付け替えは「そのとき X にいる行を Y へ」なので、id ごとに居場所を追う (居場所が X のときだけ Y へ動く)。
+ * 後から別の行が X へ移ってきても (A → B のあとの C → A)、先に B へ動いた行には効かない。
+ * 行の入れ替え (A → T、B → A、T → B) は、2 行とも相手のいた場所へ届く。付け替えが無ければそのまま。
+ */
+export function followRedirect(moves: readonly SourceMoveStep[], from: string): string {
+  let location = from;
+  for (const move of moves) if (move.from === location) location = move.to;
+  return location;
 }
 
 /** fingerprint-rebase の対応表の 1 行を引くキー (章ファイル + 対象 + 保存値)。 */
@@ -345,4 +350,22 @@ export function rebaseTable(events: readonly AgreementEvent[], afterIndex: numbe
     for (const entry of event.entries) table.set(rebaseKey(entry.file, entry.target, entry.from), { to: entry.to, toVersion: event.toVersion });
   }
   return table;
+}
+
+/**
+ * 台帳の保存値が、今の本文と一致するか (agreement-check の「変わっていない」の判定。行を移す側も同じ判定で確かめる)。
+ * 一致 = 提出の行の版 (storedVersion) で今の本文を計算した値が保存値と同じ、または直近の fingerprint-rebase が
+ * その保存値に対応づけた値 (rebased) と、その表の版で計算した今の本文が同じ。
+ * 表の版の実装が無ければ確かめられない ('unverifiable')。storedVersion の実装は呼び出し側が先に確かめる。
+ */
+export function matchesRecorded(
+  stored: string,
+  storedVersion: number,
+  compute: (version: number) => string,
+  rebased: RebasedFingerprint | undefined,
+): boolean | 'unverifiable' {
+  if (compute(storedVersion) === stored) return true;
+  if (rebased === undefined) return false;
+  if (!isImplementedNormalizationVersion(rebased.toVersion)) return 'unverifiable';
+  return compute(rebased.toVersion) === rebased.to;
 }
