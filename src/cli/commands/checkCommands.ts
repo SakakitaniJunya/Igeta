@@ -36,10 +36,12 @@ export class TemplateCheckCommand extends CheckCommand {
     '  --templates <dir>       テンプレ置き場 (既定: Igeta 自身の templates/docs)',
     '  --require-kind          kind 未設定の doc を違反として扱う',
     '  --require-human-review  地図の網羅・決定の帰属・仮置きの OPEN 参照・修飾 ID を検査する',
+    '  --base <ref>            新しい構成 (person・ai・client) の repo で、廃の行を比べる起点 (git の ref。CI では merge-base)。',
+    '                          省略すると、同じ文書の中で廃の ID が使い直されていないことだけを見る',
   ];
 
   protected override readonly argSpec = {
-    valueOptions: ['docs', 'templates'],
+    valueOptions: ['docs', 'templates', 'base'],
     boolOptions: ['require-kind', 'require-human-review'],
   };
 
@@ -49,6 +51,7 @@ export class TemplateCheckCommand extends CheckCommand {
       templatesDir: args.get('templates'),
       requireKind: args.has('require-kind'),
       requireHumanReview: args.has('require-human-review'),
+      base: args.get('base'),
     });
   }
 }
