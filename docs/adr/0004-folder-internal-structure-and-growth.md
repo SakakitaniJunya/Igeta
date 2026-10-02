@@ -1,6 +1,6 @@
 ---
 id: adr-0004-folder-internal-structure-and-growth
-title: ADR-0004 フォルダの内部構造と、増えたときの分け方
+title: ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める
 type: adr
 kind: adr
 arc42: 9
@@ -9,73 +9,80 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [adr-0001-document-role-directories]
-relates_to: [context-boundaries, audience-directories]
+relates_to: [context-boundaries, folder-placement, template-realignment]
 ---
 
-# ADR-0004: フォルダの内部構造と、増えたときの分け方
+# ADR-0004: フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める
 
-> **TL;DR**: いまの決まりと作り方は、最初から**まとまり (`context`) のフォルダ**に置く (`person/design/<context>/`・
-> `ai/specs/<context>/`)。日付のある記録 (ADR・提案書) は**年**で分ける。閾値は**1フォルダ15本**で**違反**。
-> まとまりの中のフォルダが 15 本を超えたら、下位フォルダを足さず、まとまりを分ける合図として扱う。kind 全数の
-> 対応表・全体のフォルダ木 (正本) は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §1・§3 に置く
-> (本書は決定の核だけ)
+> **TL;DR**: いまの決まりと作り方は、最初からまとまり (`context`) のフォルダに置く。まとまりに属さないものは
+> `shared/` (これも 1 つのまとまりとして扱う)。日付のある記録 (ADR・提案書) は年で分ける。1 フォルダ 15 本を
+> 超えたら違反。超えたときの分け方はフォルダごとに 1 つで、場当たりの分け方を許さない
 
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001
-- **下流**: `src/core/Role.ts` / `src/checks/FolderSizeCheck.ts` (新設) / [どの文書をどこに置くか](../explanation/10-folder-placement.md)
+- **下流**: `src/core/Role.ts` / `src/checks/FolderSizeCheck.ts` (新設) / [置き場所](../explanation/10-folder-placement.md) / [雛形の組み直し](../explanation/11-template-realignment.md) §4
 
 ## Status
 
-2026-10-01 提案。director 指摘 (数値・鍵の誤りの訂正) を反映。arch-review 待ち。
+2026-10-02 提案 (ADR-0001 v4 に追随。arch-review v4 round 1 の FIX を反映)。arch-review 待ち。
 
 ## Context
 
-CEO 原文: 「guides のルートにファイルを直で置いてくだけの脳死はやめてほしい」「decisions の肥大化も考慮して」。
-director 実測: 利用 repo A は最大10本 (無害)、利用 repo B は design 配下1フォルダ33本・業務文書1フォルダ16本、
-旧社内 repo は ADR35・guides26・runbooks21 本。CEO 原文「ルールとして設定して」により、警告ではなく違反にする。
+フォルダの直下に文書を並べるだけの構成は、実測で 16〜35 本の平置きを生んでいた (設計 1 フォルダ 33 本、
+ADR 35 本など)。問題の無い repo は最大 10 本だった。人も AI も「1 つのまとまりだけ読めば作業できる」ためには、
+読む単位がフォルダとして見えている必要がある。
 
 ## Decision Drivers
 
-- 鍵は**書いた時点で決まり後から変わらないもの**。日付が意味を持つのは記録 (ADR/proposal) だけ
-- 閾値は実測から決め、新レイアウトの repo では違反にする (CEO 原文どおりルール化する)
-- 直下ファイル規則は kind ごとに1つの鍵が表 ([どの文書をどこに置くか](../explanation/10-folder-placement.md) §3) で決まっていることが前提
+- 分ける鍵は、書いた時点で決まり後から変わらないもの。フォルダが、そのまま読む単位になること
+- 上限は実測から決め、新しい構成の repo では違反にする
 
 ## Decision
 
-**1. 鍵は2種類だけ**: 日付記録 (`adr`/`proposal`) は**年**。いまの決まりと作り方は**`context`** で、最初から
-フォルダにする (`context` 無記入は `shared/`)。フォルダ名と frontmatter の `context` が食い違えば違反。
-`handbook/` の 3 フォルダは 15 本を超えたら主題 (`context`。例: runbook の `context: deploy`) の下位フォルダへ全部移す。kind ごとの割当は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §3 の表が正本
+**1. 鍵は 2 種類だけ**: いまの決まりと作り方は**まとまり** (`context`)、日付のある記録 (`adr`・`proposal`) は**年**。
+`context` の意味は「業務のまとまり」1 つだけで、主題 (デプロイなど) には使わない。`context` 無記入は `shared`。
+フォルダ名と frontmatter の `context` が食い違えば違反。kind ごとの割当は [置き場所](../explanation/10-folder-placement.md) §3
 
-**2. 閾値15本・既定で違反**: 1フォルダ15本を超えたら、ADR-0005 のレイアウト検出と同じ条件 (新しい 3 フォルダが
-実在する repo) で**即違反**にする (既定OFFの警告から変更。CEO 原文「ルールとして設定して」に応じる)。
-15 は実測の全ての痛み (16・21・23・26・33・35本) を捉え、無害な実例 (10本以下) を誤検知しない最小値
+**2. 1 フォルダ 15 本で違反**: 新しい構成の repo で、1 フォルダの文書が 15 本を超えたら違反。15 は、問題の
+起きた実例 (16・21・23・26・33・35 本) を全部捉え、問題の無い実例 (10 本以下) を捉えない値。日付のある記録の
+フォルダ (`decisions/<year>/`・`proposals/<year>/`) は対象外 (束で読まず、1 本ずつ承認する記録だから)
 
-**3. 直下ファイル規則 (1 文に言い直す)**: 文書を直下に置けるかどうかは、kind ごとの全数表
-([どの文書をどこに置くか](../explanation/10-folder-placement.md) §3) の「直下可否」列だけで決まる。
-全フォルダに同じ 1 つの根拠が当てはまり、個別の列挙はしない
+**3. 超えたときの分け方 (フォルダごとに 1 つ)**
 
-**4. `client/delivery/<提出物名>/` の内部は変えない**。`person/design/` と `ai/specs/` の内部は、まとまりごとのフォルダに組み直す (木の正本は [どの文書をどこに置くか](../explanation/10-folder-placement.md) §1)
+| フォルダ | 超えたとき |
+|---|---|
+| `person/design/<context>/{flows,screens,features}/` | まとまりを分ける合図。下位フォルダは足さない |
+| `person/design/shared/` の固定の文書 (100 行超) | 行を、属するまとまりの `design/<context>/NN-<kind>.md` へ移す |
+| `person/requirements/01-requirements.md` (150 行超) | まとまりごとに `requirements/<context>.md` へ分ける |
+| `ai/specs/tasks/`・`ai/handbook/{how-to,explanation,runbooks}/` | まとまりの下位フォルダ (`shared` を含む) へ全部移す |
+
+**4. 直下の決まり**: 文書を置ける場所は [置き場所](../explanation/10-folder-placement.md) §1 の木だけで決まる。
+木に無い場所 (例: `docs/person/` の直下) に置いたら違反。docs/ 直下に置けるのは生成索引の 2 本だけ
+
+**5. まとまりの境界 (07) の改訂**: まとまりをフォルダで表すため、07 の決めを 6 か所改める。一覧は
+[雛形の組み直し](../explanation/11-template-realignment.md) §4 (フォルダ化、kind 解決のパスの型、`shared` の扱いと
+`sharedKinds` の廃止、地図同士の参照、`context-files` の範囲、手引きを境界検査の対象外にする)
 
 ## 却下した選択肢
 
-- **常設文書も年で分ける (前版の誤り)**: director 指摘のとおり年は記録にしか意味を持たない。「脳死」と同じになる
-- **閾値を警告のみにする (前版の決定)**: CEO 原文「ルールとして設定して」に反する。実測を踏まえ違反へ変更
-- **閾値を実装側の裁量にする**: 「守らせ方の無い条件は条件にしない」に反する
+- **手引きや常設の文書も年で分ける**: 年は記録にしか意味を持たない。平置きと同じく、探す手がかりにならない
+- **`context` を主題 (デプロイなど) にも使う**: 業務のまとまりと主題が混ざり、境界検査が主題を業務のまとまりとして裁く
+- **上限を警告だけにする**: 「ルールとして設定して」に反する。15 本は実測がある値なので違反にする
 
 ## Consequences
 
-- 良い方向: ADR の参照が壊れない。新レイアウトの repo で平置きが実際に止まる (違反のため)
-- 代償: まとまりをフォルダにするので、[まとまりの境界](../explanation/07-context-boundaries.md) §2 の
-  「まとまりはフォルダで表さない」を改める (実装時に 07 を改訂)。まとまりを分け直すと文書が動く
+- 良い方向: 平置きが止まる。フォルダを開けば、そのまとまりの読むものが全部そろう
+- 代償: まとまりを分けると文書が動く (由来の指紋は ADR-0007 で動いても変わらない)。kind の解決を、
+  まとまりの 1 段だけワイルドカードにしたパスの型へ変える実装が要る
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| `FolderSizeCheck` (新設、新レイアウト検出で既定 violation) | 多数ファイル kind のフォルダ | 15本超で検出しない回帰 |
-| `RoleBoundaryCheck` 拡張 (直下ファイル規則) | 全フォルダの直下 | 全数表の「直下可否」列に反する配置を違反にしない |
+| `FolderSizeCheck` (新設) | 日付の記録以外のフォルダ | 16 本目を違反にしない |
+| `RoleBoundaryCheck` (新設) | 3 フォルダ配下 | 木に無い場所の文書、フォルダ名と `context` の食い違いを違反にしない |
 
 ## 再検討トリガ
 
-- `context` の意味拡張が運用で混乱を招いたら、専用フィールド (例: `subject`) を新設する案を再検討する
+- `shared/` が 15 本を超え続ける repo が出たら、全体共通の文書の切り方を見直す

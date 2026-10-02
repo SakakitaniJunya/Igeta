@@ -21,7 +21,7 @@ owners: [eng]
 | **§1 Introduction and Goals** (導入と目標) | → [product/](../product/README.md) |
 | **§2 Constraints** (制約) | _未作成_ |
 | **§3 Context and Scope** (コンテキストと範囲) | _未作成_ |
-| **§4 Solution Strategy** (解決戦略) | [文書モデルの解決戦略 — 承認者で 3 つに分け、検査で守り、モデル陳腐化に強くする](basic/02-solution-strategy.md) _(読み手: AI)_ |
+| **§4 Solution Strategy** (解決戦略) | [文書モデルの解決戦略 — 確定させる人で 3 つに分け、検査で守り、モデルの進化に左右されない](basic/02-solution-strategy.md) _(読み手: AI)_ |
 | **§5 Building Block View** (構成要素) | _未作成_ |
 | **§6 Runtime View** (実行時ビュー) | _未作成_ |
 | **§7 Deployment View** (配置ビュー) | _未作成_ |

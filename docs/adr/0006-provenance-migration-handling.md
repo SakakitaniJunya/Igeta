@@ -18,7 +18,7 @@ relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, 
 > ログを分割移動しない)。この前提なら manifest の `chapters`・台帳の `file` は自ディレクトリ相対のため
 > **書き換え不要**。書き換えが要るのは repo 相対パスを持つ 2 つだけ: sidecar の `sourceDoc` と食い違いログの
 > `location`。指紋はパスを含まないが、**本文の相対リンクが書き換わると変わる**。これは正規化 v3 (ADR-0007) で
-> 防ぐ。移行の完了条件は「移行前後で `provenance-check`・`agreement-check` の結果が同じ」
+> 防ぐ。① 移す段の完了条件は「前後で検査の結果が同じ」。② 書き直す段は文字が変わるので、影響を一覧にして人が承認し直す
 
 ## 関連
 
@@ -27,22 +27,18 @@ relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, 
 
 ## Status
 
-2026-10-01 提案。arch-review FIX 3 に基づく新設。04・05・08 の実装 (`ProvenanceSidecar.ts`・`AgreementLedger.ts`・
-`DiscrepancyLog.ts`・`Manifest.ts`) を読んで決めた。arch-review 待ち。
+2026-10-02 提案 (書き直しの段の扱いを追加)。04・05・08 の実装を読んで決めた。arch-review 待ち。
 
 ## Context
 
-`docs-migrate` が delivery-chapter を `client/delivery/` へ移すとき、章本体以外に 4 種のファイルが絡む:
-由来 sidecar (`<章>.provenance.json`)・合意台帳 (`agreements.ledger.jsonl`)・食い違いログ
-(`discrepancies.log.jsonl`)・export manifest (`deliverable.json`)。いずれも frontmatter を持たず
-`DocGraphCheck`/`RoleBoundaryCheck` の対象外のため、個別に扱いを決める必要がある。
+提出物の章を `client/delivery/` へ移すとき、章のほかに 4 種のファイルが絡む: 由来 (`<章>.provenance.json`)・
+合意台帳 (`agreements.ledger.jsonl`)・食い違いログ (`discrepancies.log.jsonl`)・export manifest (`deliverable.json`)。
+どれも frontmatter を持たず、検査の対象外なので、個別に扱いを決める。
 
 ## Decision Drivers
 
-- 提出物ディレクトリは実装上すでに「章・sidecar・台帳・ログが同じディレクトリ」という前提で作られている
-  (各ファイルの header コメント参照)
-- 台帳は追記のみ・改変しない契約 (08 §1) を migrate でも破らない
-- 指紋の再計算・再承認を migrate に持たせない (由来の承認は人の仕事、04 §4)
+- 提出物のディレクトリは、実装上すでに「章・由来・台帳・ログが同じディレクトリ」の前提で作られている
+- 台帳は追記のみ (08 §1) を移行でも破らない。由来の承認は人の仕事 (04 §4) で、移行が代わりに承認しない
 
 ## Decision
 
@@ -57,26 +53,26 @@ relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, 
 食い違いログの `location` (`<repo相対パス>[#anchor]`)。この 2 つだけ新パスへ書き換える
 
 **4. 指紋とリンク**: 指紋 (`chapterFingerprint`・`sources[].fingerprint`・`blockFingerprint`) はパスを含まないが、
-本文から計算する。正本 (`ai/specs/` へ動く) と章の本文にある相対リンクを `docs-migrate` が書き換えると、
+本文から計算する。正本 (`person/` か `ai/specs/` へ動く) と章の本文にある相対リンクを `docs-migrate` が書き換えると、
 中身が同じでも v2 の指紋は変わる (`Fingerprint.ts` はリンクの URL を正規化しない)。そこで `docs-migrate` は
 **リンクを書き換える前に** `fingerprint-rebase` を実行し、v2 で一致を確かめた指紋だけを v3 に載せ替える
 (ADR-0007)。由来の `from` は `<doc-id>/…` の形で、`SourceResolver.ts` が `byId` で解決するので移行で変わらない
 
-**5. 完了条件と取り消し**: 移行の前と後で `provenance-check`・`agreement-check` を回し、ok・stale の件数が
-同じであることを `docs-migrate` の完了条件にする。件数が変わったら失敗として終了し、作業ツリーの変更を
-`git` で戻す手順を出力する (移行は commit しない。commit は人が結果を見てから行う)
+**5. ① 移す段の完了条件**: 前と後で `provenance-check`・`agreement-check` を回し、ok・stale の件数が同じこと。
+変わったら失敗として終了し、作業ツリーを `git` で戻す手順を出す (移行は commit しない)
 
-**6. 台帳への追記**: しない。**過去の行も書き換えない**。台帳が記録する相対パスは移行後も正しく解決できるため
-(§2)、移行を示す行の追記は不要と判断する
+**6. ② 書き直す段の扱い**: 書き直しは正本の行の文字を変えるので、指紋が変わる。`docs-migrate --split-report` が、
+文字の変わった行を `from` に持つ由来のエントリと、`reagreementRules` に当たる正本の行を一覧にする。人が同じ PR で、
+由来は再 capture と再 accept を行い、合意は顧客へ出し直すかを決める。意味を変えない書き直しでも、
+顧客に出した章の元の文字が変わった事実は記録に残す
+
+**7. 台帳**: 移行で過去の行を書き換えず、移行を示す行も追記しない (§2 の相対パスは移行後も解決できる)
 
 ## 却下した選択肢
 
-- **台帳に「移行した」イベントを追記する**: §2 の理由により台帳の正しさに影響しないため、追記する理由がない。
-  追記すると「何が変わったか」を台帳から読み解く人の負担が増える
-- **sidecar・ログの全パスを無条件に書き換える**: §2 の自ディレクトリ相対パスまで書き換えると、書き換え後も
-  正しいパスを誤って別の値に変えてしまうリスクがある (変えなくてよいものは変えない)
-- **本文が変わる場合に migrate が自動で再 capture する**: 由来の承認は人の仕事 (04§4)。機械が無人で再承認すると
-  「作る主体と裁く主体を分ける」不変条件 (ADR-0002 #8) に反する
+- **台帳に「移行した」行を追記する**: 台帳の正しさに影響せず、読む人の負担だけが増える
+- **全部のパスを無条件に書き換える**: 正しい相対パスまで変えてしまう
+- **書き直しで変わった由来を、移行コマンドが自動で再承認する**: 由来の承認は人の仕事。作る主体と裁く主体が同じになる
 
 ## Consequences
 
@@ -89,7 +85,8 @@ relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, 
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| 移行前後の検査結果の比較 (`docs-migrate` の完了条件) | `provenance-check`・`agreement-check` | ok・stale の件数が変わる |
+| ① の前後の検査結果の比較 (`docs-migrate` の完了条件) | `provenance-check`・`agreement-check` | ok・stale の件数が変わる |
+| `--split-report` のテスト (新設) | 書き直した正本の行を指す由来・合意 | 文字の変わった行を指すエントリを一覧に出さない |
 | 提出物を含む fixture での移行テスト (新設) | 章・sidecar・台帳を持つテスト用の提出物 | 移行後に stale・要再合意が出る |
 | sourceDoc/location 書き換えテスト (新設) | sidecar・食い違いログ | repo 相対パスが新パスに揃っていない |
 | 提出物ディレクトリ完全性検査 (新設) | 移行対象の delivery-chapter 群 | 4 種のファイルが分散しているのに適用へ進む |

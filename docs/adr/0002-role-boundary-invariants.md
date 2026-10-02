@@ -1,6 +1,6 @@
 ---
 id: adr-0002-role-boundary-invariants
-title: ADR-0002 承認者の境界を守る不変条件と機械検査の対応
+title: ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応
 type: adr
 kind: adr
 arc42: 9
@@ -9,80 +9,83 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [adr-0001-document-role-directories]
-relates_to: [reader-granularity, folder-placement]
+relates_to: [reader-granularity, folder-placement, template-realignment]
 ---
 
-# ADR-0002: 承認者の境界を守る不変条件と機械検査の対応
+# ADR-0002: 確定させる人の境界を守る不変条件と機械検査の対応
 
-> **TL;DR**: ADR-0001 の `person`/`ai`/`client` 分割を「決めて終わり」にしないため、11 の不変条件に
+> **TL;DR**: ADR-0001 の `person`/`ai`/`client` 分割を「決めて終わり」にしないため、13 の不変条件に
 > 機械検査を対応させる。新設は 4 つ (`RoleBoundaryCheck`・`PersonFormCheck`・`AgentsEntrypointCheck`・
-> `approval-scope`)、既存の拡張は 1 つ (`DocGraphCheck`)。検査の無い条件は条件にしない
+> `approval-scope`)。量の上限は、1 本の行数を違反、まとまりの合計字数を警告で始める。検査の無い条件は採らない
 
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001
-- **下流**: `src/core/Role.ts` (新設) / `src/checks/RoleBoundaryCheck.ts`・`PersonFormCheck.ts`・`AgentsEntrypointCheck.ts` (新設) / `src/checks/DocGraphCheck.ts` (拡張)
+- **下流**: `src/core/Role.ts` / `src/checks/{RoleBoundaryCheck,PersonFormCheck,AgentsEntrypointCheck}.ts` (新設) / `src/checks/DocGraphCheck.ts` (拡張)
 
 ## Status
 
-2026-10-02 提案 (ADR-0001 v4 に追随して全面改訂)。arch-review 待ち。
+2026-10-02 提案 (ADR-0001 v4 に追随。arch-review v4 round 1 の FIX を反映)。arch-review 待ち。
 
 ## Context
 
-分ける基準が「読み手」から「承認者」に変わった (ADR-0001 v4)。`common/` が無くなり、依存の向きが単純になる。
-新しく要るのは、`person/` の文書が人の読める型と量を保つこと、`ai/` の設計が人の決定から浮かないこと、
-人の承認が要る変更を機械で見分けられること。
+分ける基準が「確定させる人」に変わり、`common/` が無くなった。新しく要るのは、`person/` が人の読める型と量を
+保つこと、`ai/` が人の決定から浮かないこと、人の承認が要る変更を機械で見分けること、承認済みの決定が
+いまの設計に反映されていること。
 
 ## Decision Drivers
 
-- 決定的な機械検査だけを門にする (正規表現・文字列一致・件数・SHA256)。モデルに裁かせない
-- 守らせ方の無い条件は採らない。既存検査を壊さない
+- 門は決定的な機械検査だけ (正規表現・文字列一致・件数・SHA256)。モデルに裁かせない
+- 守らせ方の無い条件は採らない。実測の無い数値は違反にしない
 
 ## Decision
 
-**採用: 以下 11 条件。**
+**採用: 以下 13 条件。**
 
-| # | 不変条件 | 検査 | 新設/既存 |
+| # | 不変条件 | 検査 | 強さ |
 |---|---|---|---|
-| 1 | kind→承認者と置き場所の正本は 1 か所 | `Role.test.ts` が重複 0 件・47 kind の網羅を assert | 新設 (`src/core/Role.ts`) |
-| 2 | 承認者は第1階層で分かる。まとまりはフォルダ名と `context` が一致する | `RoleBoundaryCheck`: kind から導く置き場所と実際のパスの食い違いを違反 | 新設 |
-| 3 | 依存は上流へ向かう: `ai` → `person`、`client` → `person`・`ai`。`person` は `ai`・`client` を指さない。`ai` は `client` を指さない | `DocGraphCheck` 拡張 (`depends_on`・本文リンク・修飾 ID) | 既存拡張 |
-| 4 | `ai/` の設計は人の決定から浮かない: `ai/` の文書は `depends_on` を辿ると `person/` の文書に届く | `DocGraphCheck` 拡張 | 既存拡張 |
-| 5 | `person/` の「いまの決まり」は人の読める型: `ai/` 側の ID を書かない、決まりの各行に状態、図 1 枚以上 | `PersonFormCheck` | 新設 |
-| 6 | `person/` の「いまの決まり」は全部読める量: 1 本 100 行、1 まとまり 15,000 字、全体共通 30,000 字 | `PersonFormCheck` | 新設 |
-| 7 | AI が 1 作業で読む量に上限 | 既存の行数上限・`context-size`・`context-files` | 既存 |
-| 8 | 未決は未決と書く。仮と未決は 1 か所に集まる | 既存 `checkAcceptedGate` + 決定台帳の生成一覧を `person/` の決まりの表の状態列まで広げる | 既存拡張 |
-| 9 | 人の承認が要る変更を見分ける: `person/`・`client/` を含む変更は人の承認が要る | `approval-scope` (ADR-0008) | 新設 |
-| 10 | AI の入口は repo 直下の 1 ファイル | `AgentsEntrypointCheck`: `AGENTS.md` の実在と `person/`・`ai/` への言及 | 新設 |
-| 11 | docs/ の文書は 3 フォルダか `nonDocPaths` のどちらかに属する (ADR-0005 決定 1) | `RoleBoundaryCheck`: どちらにも属さない文書 (直下の生成索引を除く) を違反 | 新設 |
+| 1 | kind → 置き場所の正本は 1 か所 | `Role.test.ts`: `ARC42_BY_KIND` と集合が一致し、重複 0 件 | 違反 |
+| 2 | 置き場所は第1階層とまとまりのフォルダで分かる。フォルダ名と `context` が一致する | `RoleBoundaryCheck` | 違反 |
+| 3 | 依存は上流へ: `ai` → `person`、`client` → `person`・`ai`。`person` は `ai`・`client` を指さない | `DocGraphCheck` 拡張 (`depends_on`・`relates_to`・本文リンク・修飾 ID) | 違反 |
+| 4 | `ai/specs/` の文書は `depends_on` を辿ると `person/` に届く | `DocGraphCheck` 拡張 | 違反 |
+| 5 | `person/` の行頭が ID の行は `状態` (決定・仮・未決・廃) を持つ。決まりの表が 1 つも無い文書は違反 | `PersonFormCheck` | 違反 |
+| 6 | 図が要る kind (map・context-map・business-flow・screen-spec・solution-strategy・as-is-overview) に図が 1 枚以上 | `PersonFormCheck` | 違反 |
+| 7 | 「いまの決まり」1 本は 100 行まで (`requirements` は 150 行) | `PersonFormCheck` | 違反 |
+| 8 | まとまりの合計 15,000 字、全体共通 (要件 + `design/shared/`) 30,000 字まで | `PersonFormCheck` | 警告。次のメジャー版で違反 |
+| 9 | `廃` にした ID を別の行で使い直さない | `PersonFormCheck` | 違反 |
+| 10 | 仮と未決は 1 か所に集まる | 決定台帳の生成一覧を `person/` の状態の列まで広げる | 生成 |
+| 11 | 人の承認が要る変更を見分ける | `approval-scope` (ADR-0008) | 違反 |
+| 12 | 承認済みの ADR は、いまの設計に反映されている: `accepted` の ADR の番号を、`person/requirements/` か `person/design/` のどれかの行が引く | `DocGraphCheck` 拡張 (`superseded` の ADR は対象外) | 違反 |
+| 13 | AI の入口は repo 直下の `AGENTS.md`。docs/ の文書は 3 フォルダか `nonDocPaths` のどちらかに属する | `AgentsEntrypointCheck` / `RoleBoundaryCheck` | 違反 |
 
-既存の「作る主体と裁く主体を分ける」(`provenance-accept` の self-approved 違反) は `client/` の提出物に
-そのまま効く。条件 9 がそれを `person/` に広げる形になる (AI が書いた決まりは、人が承認するまで `仮`)。
+条件 8 を警告で始める理由: 上限の値は、業務フロー 3 本の実測を他の文書へ当てはめた見込みから置いた
+([型と量](../explanation/09-reader-granularity.md) §6)。違反に上げる時期は Igeta の版で決まり、利用 repo の設定では
+変えられない (ADR-0005)。条件 12 は、人が古い ADR を読み返さなくても、いまの決まりが設計の文書だけで分かるための条件。
 
-**読む範囲**: 人は `person/` (自分のまとまり + 全体共通) を全部読む。AI は `context-files` が返す
-「`person/` の該当まとまり + 全体共通 + `ai/` の該当まとまり + 隣の約束」を読む。顧客は `client/` だけを読む。
+**読む範囲**: 人は `person/` のうち、自分のまとまりと全体共通を確定前に全部読む。AI は `context-files` が返す範囲を読む
+([雛形の組み直し](../explanation/11-template-realignment.md) §4 の 5)。顧客は `client/` だけを読む。
 
 ## 却下した選択肢
 
-- **「読みやすさ」を検査する**: 機械で決定的に判定できない。型と量と禁止語だけを検査し、残りは承認のときに人が見る
-- **コードの識別子 (バッククォート) を `person/` で禁止する**: 技術の選定を決める文書では要る。数を出すだけにする
-- **条件 4 を「`ai/` の各行が `person/` の ID を引く」まで細かくする**: 行単位の対応は書く量が増えすぎる。
-  文書単位の `depends_on` に留め、行の対応は `review-sheet` の「要追随」欄で補う
+- **「読みやすさ」を検査する**: 機械で決定的に判定できない。型・量・参照の向きだけを検査し、残りは承認のときに人が見る
+- **合計の上限を最初から違反にする**: 実測の無い値で CI を止めると、上限を超えた文書を `ai/` へ押し出す誘因になる
+- **条件 4 を行の単位にする**: 書く量が増えすぎる。文書単位に留め、行の追随は `review-sheet` の「要追随」欄で補う
 
 ## Consequences
 
-- 良い方向: 11 条件が全部「何で守るか」を持つ。`person/` が膨らむと検査が落ちるので、読める量が保たれる
-- 代償: 既存の基本設計の文書は条件 5・6 で落ちる。移行は分け直しを伴う (ADR-0003)
+- 良い方向: 13 条件が全部「何で守るか」を持つ。`person/` が膨らむと検査が知らせる
+- 代償: 既存の基本設計は条件 5〜7 で落ちる。移行は書き直しを伴う (ADR-0003)。人の決定を `ai/` に書く誤りは
+  どの条件でも落ちない (ADR-0001 の限界)
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| `Role.test.ts` (新設) | `ROLE_OF_KIND` | 同じ kind が 2 つの承認者に登録される / 47 kind に欠けがある |
+| `Role.test.ts` (新設) | `ROLE_OF_KIND` | `ARC42_BY_KIND` と集合が食い違う / 重複がある |
 | `RoleBoundaryCheck.test.ts` (新設) | fixture の 3 フォルダ | 置き場所・`context` の不一致、第 3 の場所を検出しない |
-| `PersonFormCheck.test.ts` (新設) | fixture の `person/` | `ai/` の ID・量の超過・状態の欠け・図の欠けを検出しない |
-| `DocGraphCheck` のテスト追加 | 依存の向き・`ai/` の孤立 | `person` → `ai` の参照、`person/` を指さない `ai/` 文書を検出しない |
+| `PersonFormCheck.test.ts` (新設) | fixture の `person/` | 状態の欠け・図の欠け・行数超過・`廃` の使い直しを検出しない / 合計超過を警告しない |
+| `DocGraphCheck` のテスト追加 | 向き・孤立・ADR の反映 | `person` → `ai` の参照、`person/` に届かない `ai/` 文書、どこからも引かれない `accepted` の ADR を検出しない |
 
 ## 再検討トリガ
 
-- 量の上限 (条件 6) は実案件 1 件の実測から置いた。最初の実案件を全部分け直したら測り直す
+- 条件 8 の測定 ([型と量](../explanation/09-reader-granularity.md) §6) が済んだら、値を改め、違反に上げる

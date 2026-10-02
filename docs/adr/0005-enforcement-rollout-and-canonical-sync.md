@@ -1,6 +1,6 @@
 ---
 id: adr-0005-enforcement-rollout-and-canonical-sync
-title: ADR-0005 検査の既定切替・正典の一致・消費repo/scaffoldの追随
+title: ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く
 type: adr
 kind: adr
 arc42: 9
@@ -9,91 +9,88 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [adr-0001-document-role-directories, adr-0002-role-boundary-invariants, adr-0003-docs-model-migration-and-dogfooding]
-relates_to: [audience-directories]
+relates_to: [audience-directories, template-realignment]
 ---
 
-# ADR-0005: 検査の既定切替・正典の一致・消費repo/scaffoldの追随
+# ADR-0005: 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く
 
-> **TL;DR**: 検査の強さはレイアウトの実在だけで決まる (設定で迂回できない)。`docs/person`・`ai`・`client` が
-> 1 つでもあれば全検査が**即違反** (CI 赤)。無い repo (旧レイアウト) は毎回警告を出し、次のメジャー版で違反にする。
-> ルールの正典は文書体系ガイド 1 か所で、コードの表との一致をテストで固定する
+> **TL;DR**: `docs/person`・`ai`・`client` が 1 つでもある repo では、全検査が即違反 (CI 赤)。無い repo は毎回警告を出し、
+> 次のメジャー版で違反にする。警告で始める検査 (まとまりの合計字数) も、違反に上げる時期は Igeta の版で決まる。
+> どれも利用 repo の設定では変えられない。ルールの正典は文書体系ガイド 1 か所で、コードの表との一致をテストで固定する
 
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001 / ADR-0002 / ADR-0003
-- **下流**: `src/core/Role.ts` / 新設 `TaxonomyGuideSync.test.ts` / `src/cli/commands/InitCommand.ts` / `ScaffoldCommand.ts`
+- **下流**: `src/core/Role.ts` / `TaxonomyGuideSync.test.ts` (新設) / `InitCommand.ts`・`ScaffoldCommand.ts` / [雛形の組み直し](../explanation/11-template-realignment.md)
 
 ## Status
 
-2026-10-01 提案。CEO 指摘 (「でなおしたら、ルールとして設定してくださいね」) に基づく。arch-review 待ち。
+2026-10-02 提案 (ADR-0001 v4 に追随。arch-review v4 round 1 の FIX を反映)。arch-review 待ち。
 
 ## Context
 
-移行しただけでは、次に書く文書が旧い書き方に戻る恐れがある。移行後の状態を**破れないルール**にする段取りが要る。
-「人が設定を外すだけで迂回できる形にしない」(CEO) — `.igeta.json` のフラグで検査を切れる形は採らない。
+移行しただけでは、次に書く文書が旧い書き方に戻る。移行後の状態を破れないルールにする段取りが要る。
+`.igeta.json` のフラグで検査を切れる形は、設定を外すだけで迂回できるので採らない。
 
 ## Decision Drivers
 
-- 既定の切替は物理的なレイアウトの実在だけで判定し、人の設定操作で迂回できないこと
+- 検査の強さは、構成の実在と Igeta の版だけで決まり、利用 repo の設定で変えられないこと
 - ルールの正典は 1 か所。ガイドとコードが食い違ったら検査で落ちること
-- Igeta の版を上げるだけで全消費 repo に効くこと (repo 側の個別作業を最小化する)
 
 ## Decision
 
-**1. 検査既定の切替 (抜け道を塞ぐ)**: `docs/person`・`ai`・`client` のいずれかが実在する repo では
-`RoleBoundaryCheck`・`PersonFormCheck`・`AgentsEntrypointCheck`・`FolderSizeCheck`(ADR-0004、15本) を全部**即
-violation** にする。`docs/common/` が残っていたら違反 (v3 の配置。先行して手で移した repo 向け)。
-**いずれも実在しない repo では、検査のたびに警告を出し次のメジャーバージョンで違反に切り替える** (期限の明記、
-CEO 確認は director)。**新レイアウトの repo では、`docs/` 直下 (README.md・dependencies.md 除く) で 3 フォルダにも
-`nonDocPaths`(ADR-0003 §7) にも属さない文書を違反にする** (「どこにも属さない第3の場所」を作らない。arch-review FIX)
+**1. 強さの切替**
 
-**2. 正典の一致**: 文書体系ガイド (新パス `templates/docs/person/handbook/how-to/01-document-taxonomy.md`、§4) の
-kind→置き場所表を正典とし、
-`src/core/Role.ts` の `ROLE_OF_KIND` はその転記と明記する (既存 `Audience.ts` と同じ型)。新設テスト
-`TaxonomyGuideSync.test.ts` がガイドの表を markdown から構造的に読み取り `ROLE_OF_KIND` と突き合わせ、
-1 行でも食い違えば落ちる (既存の「転記してください」という手書きコメントだけの運用を機械検査へ格上げする)
+| repo の状態 | 強さ |
+|---|---|
+| `docs/person`・`ai`・`client` のどれかがある | ADR-0002 の条件はすべて即違反。ただし条件 8 (合計字数) は警告で、次のメジャー版で違反 |
+| 上の 3 つがどれも無い (旧い構成) | 検査のたびに「`docs-migrate` を実行してください」と警告。次のメジャー版で違反 |
+| `docs/common/` が残っている (v3 の構成) | 違反 |
 
-**3. 消費 repo 側の追随**: CI 設定・各 repo の制約文書は手で書き換えない。Igeta の版を上げると `template-check`
-が新チェックを含んで動くため、**repo 側の作業は `npm update` 相当のみ**。`AGENTS.md` は `docs-migrate` が
-生成する。各 repo の制約文書 (「docs の構成規約を守る」に当たる条文) は文書体系ガイドを指す既存の参照のままで
-よい (ガイド自体が改訂されるため、repo 側の文言変更は不要)
+新しい構成の repo で、docs/ 直下 (生成索引の 2 本を除く) に 3 フォルダにも `nonDocPaths` (ADR-0003 決定 6) にも
+属さない文書があれば違反。
 
-**4. `igeta init`/`scaffold`**: 新規 repo には最初から新しい 3 フォルダ構成を生成する。旧レイアウトの雛形は削除する。
-**`templates/docs/` も `docs/` と同じ階層に再編する** (例: 文書体系ガイドの新パスは
-`templates/docs/person/handbook/how-to/01-document-taxonomy.md`)。`person/` の「いまの決まり」のテンプレは、
-人の型 (結論 → 図 → 決まりの表 → 決めてほしいこと) に作り直す。`TaxonomyGuideSync.test.ts`(§2) が指すガイドのパスも
-この新パスに揃える
+**2. 正典の一致**: 文書体系ガイド (新しいパス `templates/docs/ai/handbook/how-to/01-document-taxonomy.md`) の
+kind → 置き場所の表を正典とし、`src/core/Role.ts` の `ROLE_OF_KIND` はその転記とする。`TaxonomyGuideSync.test.ts`
+がガイドの表を読み、`ROLE_OF_KIND` と 1 行でも食い違えば落ちる
 
-**5. 人の承認の強制**: 人の承認が要る変更の見分け方は ADR-0008 に分ける
+**3. 利用 repo の追随**: 旧い構成の repo は、Igeta の版を上げてから ADR-0003 の手順で移す。v3 の構成の repo は、
+版上げ・移行・書き直しを 1 本の PR にする (版を上げた瞬間に新しい構成と判定されるため。ADR-0003 決定 1)。
+CI 設定と各 repo の制約文書は書き換えない (ガイドを指す参照のままでよい)
 
-**実装で決める論点 (設計はここに1か所にまとめる、詳細は実装時)**: `context-files` の既定allowlistが`map`を
-含める/外すかの最終判断、`AGENTS.md`の節構成の文面、`review-sheet`/`context-files`/`context-boundary-check`内の
-固定パス文字列の更新箇所、`AgentsEntrypointCheck`の判定の厳密さ (リンクの形式をどこまで見るか)
+**4. 雛形と `init`/`scaffold`**: `templates/docs/` を `docs/` と同じ木に再編し、新しい repo には最初から 3 フォルダの
+構成を生成する。旧い構成の雛形は削除する。`person/` の雛形は人の型 (結論 → 図 → 決まりの表 → 決めてほしいこと) に
+作り直し、混ざった節は [雛形の組み直し](../explanation/11-template-realignment.md) §1・§2 のとおり移す。
+依存の向きは同 §3 のとおり直す。`data-management` の雛形を新しく作る
+
+**5. AI が読む範囲**: `context-files` の範囲は [雛形の組み直し](../explanation/11-template-realignment.md) §4 の 5 のとおり
+(`person/` の要件・全体共通・自分のまとまり + `ai/specs/` の全体共通・自分のまとまり + 隣の約束)
+
+**6. 人の承認の強制**: ADR-0008
+
+**実装で決める論点 (ここに 1 か所)**: `AGENTS.md` の節の文面 / `AgentsEntrypointCheck` がリンクの形式をどこまで見るか /
+`review-sheet` が金額・率・期限らしい語として拾う語の一覧 / 字数の数え方の細目 (全角・半角はどちらも 1 字)
 
 ## 却下した選択肢
 
-- **`.igeta.json` に `enforceRoleBoundary: true/false` を置く**: 外すだけで迂回できてしまう (CEO 指摘に反する)
-- **移行済み repo に経過時間ベースの警告期間を置く**: 配置は移行コマンドが即座に正しくするため、移行済み repo に
-  時限は要らない (未移行 repo 向けの版ゲート §1 とは別の話。版番号は迂回できない固定点で、経過時間とは異なる)
-- **ガイドとコードの一致を人のレビューに委ねる (検査を新設しない)**: 「守らせ方の無い条件は条件にしない」に反する
+- **`.igeta.json` に `enforceRoleBoundary: true/false` を置く**: 外すだけで迂回できる
+- **経過時間で警告から違反に切り替える**: 時刻という余計な状態が要る。版番号は迂回できない固定点
+- **ガイドとコードの一致を人のレビューに委ねる**: 守らせ方の無い条件になる
 
 ## Consequences
 
-- 良い方向: 既存 2 消費 repo は版を上げるだけで新ルールに追随する。新規 repo は最初から正しい
-- 代償: `TaxonomyGuideSync.test.ts` はガイドの markdown 表を構造的に解析する実装が要り、ガイドの表の書式を
-  変えると解析が壊れる可能性がある (表の列順を変えたら追随させる)
+- 良い方向: 新しい repo は最初から正しく、移行した repo は旧い書き方に戻れない
+- 代償: `TaxonomyGuideSync.test.ts` はガイドの表の書式に依存する。表の列を変えたら追随させる
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| `TaxonomyGuideSync.test.ts` (新設) | ガイド表 vs `ROLE_OF_KIND` | 1 kind でも置き場所が食い違う |
-| `RoleBoundaryCheck`/`AgentsEntrypointCheck` のレイアウト検出テスト | 新しい 3 フォルダの有無 | 存在するのに検査が作動しない回帰 |
-| `InitCommand`/`ScaffoldCommand` のテスト更新 | 新規生成物 | 旧レイアウトのパスを生成したら落ちる |
-| 旧レイアウト警告のテスト (新設) | 新しい 3 フォルダが無い repo | 警告が出ない、または次期メジャーで違反に切り替わらない回帰 |
-| 「第3の場所」検査 (新設) | `docs/` 直下 | 3 フォルダ・`nonDocPaths` どちらにも属さない文書を見逃す回帰 |
+| `TaxonomyGuideSync.test.ts` (新設) | ガイドの表と `ROLE_OF_KIND` | 1 kind でも置き場所が食い違う |
+| 構成の検出のテスト | 3 フォルダの有無・`docs/common/` の残存 | 新しい構成で検査が動かない / 旧い構成で警告が出ない |
+| `InitCommand`・`ScaffoldCommand` のテスト | 新しく生成した repo | 旧い構成のパスを生成する / 生成直後に検査が落ちる |
+| 版の切替のテスト | 次のメジャー版の値を与えた検査 | 合計字数と旧い構成が違反に切り替わらない |
 
 ## 再検討トリガ
 
-- `TaxonomyGuideSync` がガイドの表組みの変更に追随できず頻発に壊れたら、解析対象をコード生成 (ガイド側を
-  `ROLE_OF_KIND` から生成する逆方向) に切り替える
+- `TaxonomyGuideSync` がガイドの書式の変更で頻繁に壊れたら、ガイドの表を `ROLE_OF_KIND` から生成する向きに変える
