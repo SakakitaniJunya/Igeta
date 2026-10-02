@@ -612,7 +612,7 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     assert.ok(violations.some((line) => line.includes('[direction]')) && violations.some((line) => line.includes('[reach]')), violations.join('\n'));
   });
 
-  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても、修飾 ID を斜体・太字・インラインコードで囲んでも同じ', async () => {
+  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても、値のある項目の次の行の字下げした配列でも、修飾 ID を斜体・太字・インラインコードで囲んでも同じ', async () => {
     const { person, ai } = ROLE_DOCS;
     const dependsOnLine = `depends_on: [${ai.dst.id}]`;
     /** 修飾 ID を decorate で囲んだ 1 行を、本文に持つ文書 */
@@ -635,6 +635,14 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
         lines: refDoc(person.src, [ai.dst], ['depends_on']).flatMap((line) => (line === dependsOnLine ? ['depends_on:', `  - ${ai.dst.id} #メモ`] : [line])),
         linePrefix: `  - ${ai.dst.id}`,
       },
+      // 値のある項目の次の行の字下げした `- y` も、その項目の配列に足す (索引が辺にするのと同じ)
+      {
+        name: '値のある depends_on の次の行に、字下げした - y を続ける',
+        lines: refDoc(person.src, [person.dst], ['depends_on']).flatMap((line) =>
+          line === `depends_on: [${person.dst.id}]` ? [line, `  - ${ai.dst.id}`] : [line],
+        ),
+        linePrefix: `  - ${ai.dst.id}`,
+      },
       // 修飾 ID を囲む記号は、直前の文字を英数字・/・- にしない
       { name: '修飾 ID を斜体で囲む', lines: qualified((id) => `_${id}_`), linePrefix: '参照: ' },
       { name: '修飾 ID を太字で囲む', lines: qualified((id) => `**${id}**`), linePrefix: '参照: ' },
@@ -643,6 +651,7 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     for (const { name, lines, linePrefix } of cases) {
       const root = makeRoot();
       write(root, person.src.path, lines);
+      write(root, person.dst.path, plainDoc(person.dst));
       write(root, ai.dst.path, plainDoc(ai.dst));
       const found = tagged(await checkedAfterConverge(root), 'direction');
       assert.equal(found.length, 1, name);

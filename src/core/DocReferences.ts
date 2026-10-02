@@ -3,8 +3,9 @@
 //
 // 参照は 4 種 (G2):
 //   (a) frontmatter の参照の項目: depends_on・relates_to・supersedes・superseded_by・canonical_for (行は項目の行)。
-//       値は、行末のコメント (空白と `#` から後ろ) を除いて読む。索引を作るときの読み方 (DocGraphCheck の frontmatter の読み) と
-//       同じ規則で、`#` の後ろに空白が無くても捨てる。core/Frontmatter.ts は `#` の後ろに空白を要る別の規則なので、使わない
+//       値は、行末のコメント (空白と `#` から後ろ) を除いて読む。字下げした `- x` の行は、直前の項目の値が同じ行に書いて
+//       あっても、その項目の配列に足す。どちらも索引を作るときの読み方 (DocGraphCheck の frontmatter の読み) と同じ規則。
+//       `#` の後ろに空白が無くても捨てる。core/Frontmatter.ts は `#` の後ろに空白を要る別の規則なので、使わない
 //   (b) リンクと画像 `[…](行き先)`・`![…](行き先)`
 //   (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く)
 //   (d) 修飾 ID `<doc-id>/接頭辞-nnn` の doc-id。直前が英数字・`/`・`-` のものは数えない (パスの一部)。斜体・太字・
@@ -29,8 +30,8 @@ export interface FrontmatterReference {
 
 /**
  * frontmatter の参照の項目を、行番号つきで拾う。書き方は、インラインの配列 `[a, b]`・ブロックの配列 (字下げした `- a`)・
- * 1 つの値。行末のコメント (空白と `#` から後ろ) は値に含めない。bodyStart は frontmatter の次の行 (0 始まり)。
- * frontmatter が無ければ (bodyStart が 0) 空。
+ * 1 つの値。行末のコメント (空白と `#` から後ろ) は値に含めない。字下げした `- a` の行は、直前の項目 (値が同じ行にあっても
+ * 空でも) の配列に足す。bodyStart は frontmatter の次の行 (0 始まり)。frontmatter が無ければ (bodyStart が 0) 空。
  */
 export function scanFrontmatterReferences(lines: readonly string[], bodyStart: number): readonly FrontmatterReference[] {
   const references: FrontmatterReference[] = [];
@@ -47,7 +48,7 @@ export function scanFrontmatterReferences(lines: readonly string[], bodyStart: n
     if (pair === null) continue;
     const key = pair[1] ?? '';
     const value = (pair[2] ?? '').trim();
-    blockKey = value === '' ? key : null;
+    blockKey = key;
     if (!REFERENCE_KEYS.includes(key) || value === '') continue;
     const values = value.startsWith('[') && value.endsWith(']') ? value.slice(1, -1).split(',') : [value];
     for (const entry of values) {
