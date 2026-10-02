@@ -22,7 +22,7 @@ relates_to: [adr-0007-fingerprint-link-normalization]
 ## 関連
 
 - **上流 (depends_on)**: ADR-0003
-- **下流**: ADR-0007 (指紋の正規化 v3) / `igeta docs-migrate` の付属ファイルの書き換え (新設)
+- **下流**: ADR-0007 (指紋の正規化 v3) / `igeta docs-migrate` の付属ファイルの書き換え・`igeta source-move` (新設)
 
 ## Status
 
@@ -61,8 +61,11 @@ relates_to: [adr-0007-fingerprint-link-normalization]
 由来を一覧にし、人が同じ PR で再 capture・再 accept する (承認し直した人と日時は `acceptedBy`・`acceptedAt` に残る)
 
 **7. 行の移動** (文書が上限を超えて、行を別の文書へ移すとき): 移した行の文字が元と同じことを指紋で確かめ、その行を
-`from` に持つ由来の `from` を新しい文書の id へ付け替える。台帳は過去の行を書き換えず、`source-move` の行
-(元の `from` → 新しい `from`) を追記する。`agreement-check` はこの対応を通して照合する。文字が違えば付け替えず、決定 6 に従う
+`from` に持つ由来の `from` を新しい文書の id へ付け替える。台帳は過去の行を書き換えず、`source-move` の行を追記する
+(1 回の操作の移動は 1 行にまとめ、同時に適用する)。`agreement-check` はこの対応を通して照合する。文字が違えば
+付け替えず、決定 6 に従う。移動は `igeta source-move` が、同じ ID で保存値と一致する行を探して見つける。
+移した後に書き換えた行の再合意の規則は、提出したときの文書といまの文書の両方で判定し、どちらかが当たれば
+再合意が要る (規則に当たらない文書へ移してから書き換えても、通知だけにならない)
 
 **8. 台帳**: 上の 2 種 (`fingerprint-rebase`・`source-move`) のほかに、移行を示す行は追記しない
 
@@ -83,9 +86,8 @@ relates_to: [adr-0007-fingerprint-link-normalization]
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
 | ① の前後の検査結果の比較 | `provenance-check`・`agreement-check` | ok・stale の件数が変わる |
-| 状態の列・行の移動のテスト (新設) | 列だけを足した行 / 別の文書へ移した行 | 再合意が要ると判定する / 文字を変えた行を載せ替える・付け替える |
-| `--split-report` のテスト (新設) | 書き直した正本の行を指す由来 | 文字の変わった行を指すエントリを一覧に出さない |
-| 提出物を含む fixture での移行テスト (新設) | 章・由来・台帳を持つテスト用の提出物 | 移行後に stale・要再合意が出る / 書き換えたパスが揃っていない |
+| [テスト仕様 — 行の移動・状態の列](../design/test/specs/02-provenance-moves.md) | 列だけを足した行 / 別の文書へ移した行 / 移した後に書き換えた行 | 表のテストが 1 件でも落ちる |
+| [テスト仕様 — 移行コマンド](../design/test/specs/07-docs-migrate.md) | 章・由来・台帳を持つテスト用の提出物 / `--split-report` | 表のテストが 1 件でも落ちる |
 
 ## 再検討トリガ
 

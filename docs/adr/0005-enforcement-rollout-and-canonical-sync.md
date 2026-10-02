@@ -21,7 +21,7 @@ relates_to: [audience-directories, adr-0009-kind-placement, adr-0010-value-owner
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001 / ADR-0002 / ADR-0003
-- **下流**: `src/core/Role.ts` / `TaxonomyGuideSync.test.ts` (新設) / `InitCommand.ts`・`ScaffoldCommand.ts` / 雛形の再編
+- **下流**: `src/core/Role.ts` / `TaxonomyGuideSync.test.ts` (新設) / `InitCommand.ts`・`ScaffoldCommand.ts` / 雛形の再編 / [テスト仕様 06](../design/test/specs/06-init-scaffold.md)
 
 ## Status
 
@@ -69,8 +69,8 @@ CI 設定と各 repo の制約文書は書き換えない (ガイドを指す参
 
 **6. 人の承認の強制**: ADR-0008
 
-**実装で決める論点 (ここに 1 か所)**: `AGENTS.md` の節の文面 / `AgentsEntrypointCheck` がリンクの形式をどこまで見るか /
-`review-sheet` が金額・率・期限らしい語として拾う語の一覧 / 字数の数え方の細目 (全角・半角はどちらも 1 字)
+**詳細設計で決めた論点**: `AGENTS.md` の節 (テスト仕様 06 の I8) / `review-sheet` が金額・率・期限として拾う型
+(テスト仕様 05 の V7) / 字数の数え方 (テスト仕様 03 の P7)。`AgentsEntrypointCheck` は言及の有無だけを見る
 
 ## 却下した選択肢
 

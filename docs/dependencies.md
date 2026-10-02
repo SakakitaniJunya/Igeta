@@ -36,7 +36,7 @@ graph LR
   class adr-0006-provenance-migration-handling adr
   adr-0007-fingerprint-link-normalization["ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える (proposed)"]
   class adr-0007-fingerprint-link-normalization adr
-  adr-0008-human-approval-scope["ADR-0008 人の承認が要る変更を、差分のパスで見分ける (proposed)"]
+  adr-0008-human-approval-scope["ADR-0008 人の承認の門は GitHub に置き、Igeta は見分けと点検を受け持つ (proposed)"]
   class adr-0008-human-approval-scope adr
   adr-0009-kind-placement["ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける (proposed)"]
   class adr-0009-kind-placement adr
@@ -60,6 +60,12 @@ graph LR
   class design-doc-standards explanation
   design-index["design — 索引"]
   class design-index index
+  design-tasks-index["design/tasks — 索引"]
+  class design-tasks-index index
+  design-test-index["design/test — 索引"]
+  class design-test-index index
+  design-test-specs-index["design/test/specs — 索引"]
+  class design-test-specs-index index
   docs-index["docs — Igeta 自身の説明書"]
   class docs-index index
   docs-model-strategy["文書モデルの解決戦略 — 確定させる人で 3 つに分け、検査で守り、モデルの進化に左右されない (draft)"]
@@ -82,6 +88,22 @@ graph LR
   class reader-granularity explanation
   requirements["要件定義書 (draft)"]
   class requirements product
+  tasks-v4-rollout["実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4) (draft)"]
+  class tasks-v4-rollout design
+  test-approval-gate["テスト仕様 — 人の承認の門 (approval-scope・doctor・雛形) (draft)"]
+  class test-approval-gate design
+  test-doc-graph["テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界) (draft)"]
+  class test-doc-graph design
+  test-docs-migrate["テスト仕様 — 移行コマンド (docs-migrate) (draft)"]
+  class test-docs-migrate design
+  test-init-scaffold["テスト仕様 — 新しい repo の骨格 (init・雛形・手引きの突き合わせ) (draft)"]
+  class test-init-scaffold design
+  test-person-form["テスト仕様 — 人の文書の型・量・書き込み口 (PersonFormCheck) (draft)"]
+  class test-person-form design
+  test-provenance-moves["テスト仕様 — 行の移動・状態の列と、由来・合意の照合 (draft)"]
+  class test-provenance-moves design
+  test-review-sheet["テスト仕様 — 人が読む「変わった行」の一覧 (review-sheet --diff) (draft)"]
+  class test-review-sheet design
   audience-directories ==> adr-0001-document-role-directories
   adr-0001-document-role-directories ==> adr-0002-role-boundary-invariants
   adr-0001-document-role-directories ==> adr-0003-docs-model-migration-and-dogfooding
@@ -107,6 +129,19 @@ graph LR
   audience-directories ==> folder-placement
   audience-layers ==> provenance-and-agreement
   audience-layers ==> reader-granularity
+  audience-directories ==> tasks-v4-rollout
+  adr-0008-human-approval-scope ==> test-approval-gate
+  adr-0002-role-boundary-invariants ==> test-doc-graph
+  adr-0004-folder-internal-structure-and-growth ==> test-doc-graph
+  adr-0003-docs-model-migration-and-dogfooding ==> test-docs-migrate
+  adr-0006-provenance-migration-handling ==> test-docs-migrate
+  adr-0005-enforcement-rollout-and-canonical-sync ==> test-init-scaffold
+  adr-0008-human-approval-scope ==> test-init-scaffold
+  adr-0002-role-boundary-invariants ==> test-person-form
+  adr-0006-provenance-migration-handling ==> test-provenance-moves
+  adr-0007-fingerprint-link-normalization ==> test-provenance-moves
+  adr-0002-role-boundary-invariants ==> test-review-sheet
+  adr-0008-human-approval-scope ==> test-review-sheet
   adr-0001-document-role-directories -.- adr-0009-kind-placement
   adr-0001-document-role-directories -.- adr-0010-value-ownership
   adr-0002-role-boundary-invariants -.- adr-0009-kind-placement
@@ -134,6 +169,20 @@ graph LR
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
   reader-granularity -.- human-review-layer
+  tasks-v4-rollout -.- test-approval-gate
+  tasks-v4-rollout -.- test-provenance-moves
+  tasks-v4-rollout -.- test-person-form
+  tasks-v4-rollout -.- test-doc-graph
+  tasks-v4-rollout -.- test-review-sheet
+  tasks-v4-rollout -.- test-init-scaffold
+  tasks-v4-rollout -.- test-docs-migrate
+  test-approval-gate -.- adr-0002-role-boundary-invariants
+  test-doc-graph -.- adr-0008-human-approval-scope
+  test-docs-migrate -.- test-provenance-moves
+  test-docs-migrate -.- test-init-scaffold
+  test-init-scaffold -.- adr-0009-kind-placement
+  test-person-form -.- audience-directories
+  test-review-sheet -.- test-person-form
 ```
 ## ドキュメント一覧 (type 別)
 ### map
@@ -149,13 +198,21 @@ graph LR
 - **adr-0005-enforcement-rollout-and-canonical-sync** _(proposed)_ — [ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く](adr/0005-enforcement-rollout-and-canonical-sync.md)
 - **adr-0006-provenance-migration-handling** _(proposed)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md)
 - **adr-0007-fingerprint-link-normalization** _(proposed)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](adr/0007-fingerprint-link-normalization.md)
-- **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認が要る変更を、差分のパスで見分ける](adr/0008-human-approval-scope.md)
+- **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認の門は GitHub に置き、Igeta は見分けと点検を受け持つ](adr/0008-human-approval-scope.md)
 - **adr-0009-kind-placement** _(proposed)_ — [ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける](adr/0009-kind-placement.md)
 - **adr-0010-value-ownership** _(proposed)_ — [ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く](adr/0010-value-ownership.md)
 
 ### design
 
 - **docs-model-strategy** _(draft)_ — [文書モデルの解決戦略 — 確定させる人で 3 つに分け、検査で守り、モデルの進化に左右されない](design/basic/02-solution-strategy.md)
+- **tasks-v4-rollout** _(draft)_ — [実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4)](design/tasks/01-v4-rollout.md)
+- **test-approval-gate** _(draft)_ — [テスト仕様 — 人の承認の門 (approval-scope・doctor・雛形)](design/test/specs/01-approval-gate.md)
+- **test-doc-graph** _(draft)_ — [テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界)](design/test/specs/04-doc-graph.md)
+- **test-docs-migrate** _(draft)_ — [テスト仕様 — 移行コマンド (docs-migrate)](design/test/specs/07-docs-migrate.md)
+- **test-init-scaffold** _(draft)_ — [テスト仕様 — 新しい repo の骨格 (init・雛形・手引きの突き合わせ)](design/test/specs/06-init-scaffold.md)
+- **test-person-form** _(draft)_ — [テスト仕様 — 人の文書の型・量・書き込み口 (PersonFormCheck)](design/test/specs/03-person-form.md)
+- **test-provenance-moves** _(draft)_ — [テスト仕様 — 行の移動・状態の列と、由来・合意の照合](design/test/specs/02-provenance-moves.md)
+- **test-review-sheet** _(draft)_ — [テスト仕様 — 人が読む「変わった行」の一覧 (review-sheet --diff)](design/test/specs/05-review-sheet.md)
 
 ### explanation
 
@@ -177,6 +234,9 @@ graph LR
 | adr-index | index | [`docs/adr/README.md`](adr/README.md) |
 | design-basic-index | index | [`docs/design/basic/README.md`](design/basic/README.md) |
 | design-index | index | [`docs/design/README.md`](design/README.md) |
+| design-tasks-index | index | [`docs/design/tasks/README.md`](design/tasks/README.md) |
+| design-test-index | index | [`docs/design/test/README.md`](design/test/README.md) |
+| design-test-specs-index | index | [`docs/design/test/specs/README.md`](design/test/specs/README.md) |
 | explanation-index | index | [`docs/explanation/README.md`](explanation/README.md) |
 | product-index | index | [`docs/product/README.md`](product/README.md) |
 

@@ -22,6 +22,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 - **上流 (depends_on)**: ADR-0001
 - **下流**: `src/core/Role.ts` / `src/checks/{RoleBoundaryCheck,PersonFormCheck,FolderSizeCheck,AgentsEntrypointCheck}.ts` (新設) / `DocGraphCheck.ts` (拡張)
+  / 詳細は [テスト仕様 03](../design/test/specs/03-person-form.md)・[04](../design/test/specs/04-doc-graph.md)・[05](../design/test/specs/05-review-sheet.md)
 
 ## Status
 
@@ -45,7 +46,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 |---|---|---|---|
 | 1 | kind → 置き場所の正本は 1 か所 | `Role.test.ts`: `ARC42_BY_KIND` と集合が一致、重複 0 | 違反 |
 | 2 | 文書は要件定義書 02 §7 の表のパスにある。フォルダ名と `context` が一致する | `RoleBoundaryCheck` | 違反 |
-| 3 | 依存は上流へ: `ai` → `person`、`client` → `person`・`ai`。`person` は `ai`・`client` を指さない | `DocGraphCheck` 拡張 (`depends_on`・`relates_to`・本文リンク・修飾 ID) | 違反 |
+| 3 | 依存は上流へ: `ai` → `person`、`client` → `person`・`ai`。`person` は `ai`・`client` を指さない | `DocGraphCheck` 拡張 (frontmatter の参照の項目・本文リンク・修飾 ID) | 違反 |
 | 4 | `ai/specs/` の文書は `depends_on` を辿ると `person/` に届く | `DocGraphCheck` 拡張 | 違反 |
 | 5 | ○ の kind: 決まりの表が 1 つ以上あり、行頭が自分の ID の行は `状態` (決定・仮・未決・廃) を持つ | `PersonFormCheck` | 違反 |
 | 6 | 図が要る kind (map・context-map・business-flow・screen-spec・solution-strategy・as-is-overview) に図が 1 枚以上 | `PersonFormCheck` | 違反 |
