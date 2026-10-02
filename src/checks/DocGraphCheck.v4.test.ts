@@ -489,11 +489,12 @@ async function runCommand(
 }
 
 describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・ADR の引用・索引の書き方)', () => {
-  it('[TST-101] person は person だけ・ai は person と ai・client は 3 つとも、4 種の参照で指してよい。コードフェンス・生成区間・インラインコードの中のリンクと脚注の定義は数えない', async () => {
+  it('[TST-101] person は person だけ・ai は person と ai・client は 3 つとも、4 種の参照で指してよい。コードフェンス・生成区間・インラインコードの中のリンクと脚注の定義、パスの一部に見える修飾 ID は数えない', async () => {
     const root = makeRoot();
     const { person, ai, client } = ROLE_DOCS;
     const aiLink = `[ai の手引き](${linkFrom(person.src, ai.dst)})`;
-    // 数えないもの: コードフェンス・生成区間・インラインコードの中のリンクと、脚注の定義 (`[^名前]:`。参照の形の定義ではない)
+    // 数えないもの: コードフェンス・生成区間・インラインコードの中のリンクと、脚注の定義 (`[^名前]:`。参照の形の定義ではない)。
+    // 修飾 ID に数えないもの: 直前が `/` (パスの一部)・英数字・`-` (G2 の (d))
     const hidden = [
       '```markdown',
       aiLink,
@@ -508,6 +509,10 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
       '文の最後に脚注を付ける。[^1]',
       '',
       `[^1]: ${linkFrom(person.src, ai.dst)}`,
+      '',
+      `パス: docs/ai/handbook/how-to/${ai.dst.id}/REQ-001`,
+      `英数字の後ろ: 9${ai.dst.id}/REQ-001`,
+      `ハイフンの後ろ: (-${ai.dst.id}/REQ-001)`,
     ];
     write(root, person.src.path, refDoc(person.src, [person.dst], ALL_HOWS, hidden));
     write(root, ai.src.path, refDoc(ai.src, [person.dst, ai.dst], ALL_HOWS));
@@ -600,9 +605,12 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     assert.ok(violations.some((line) => line.includes('[direction]')) && violations.some((line) => line.includes('[reach]')), violations.join('\n'));
   });
 
-  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても同じ', async () => {
+  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても、修飾 ID を斜体・太字・インラインコードで囲んでも同じ', async () => {
     const { person, ai } = ROLE_DOCS;
     const dependsOnLine = `depends_on: [${ai.dst.id}]`;
+    /** 修飾 ID を decorate で囲んだ 1 行を、本文に持つ文書 */
+    const qualified = (decorate: (id: string) => string): string[] =>
+      doc(person.src.id, person.src.kind, { type: person.src.type, body: [`参照: ${decorate(`${ai.dst.id}/REQ-001`)}`] });
     const cases: ReadonlyArray<{ readonly name: string; readonly lines: readonly string[]; readonly linePrefix: string }> = [
       { name: 'depends_on', lines: refDoc(person.src, [ai.dst], ['depends_on']), linePrefix: 'depends_on:' },
       { name: 'relates_to', lines: refDoc(person.src, [ai.dst], ['relates_to']), linePrefix: 'relates_to:' },
@@ -620,6 +628,10 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
         lines: refDoc(person.src, [ai.dst], ['depends_on']).flatMap((line) => (line === dependsOnLine ? ['depends_on:', `  - ${ai.dst.id} #メモ`] : [line])),
         linePrefix: `  - ${ai.dst.id}`,
       },
+      // 修飾 ID を囲む記号は、直前の文字を英数字・/・- にしない
+      { name: '修飾 ID を斜体で囲む', lines: qualified((id) => `_${id}_`), linePrefix: '参照: ' },
+      { name: '修飾 ID を太字で囲む', lines: qualified((id) => `**${id}**`), linePrefix: '参照: ' },
+      { name: '修飾 ID をインラインコードで囲む', lines: qualified((id) => `\`${id}\``), linePrefix: '参照: ' },
     ];
     for (const { name, lines, linePrefix } of cases) {
       const root = makeRoot();
