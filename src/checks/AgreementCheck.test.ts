@@ -13,6 +13,7 @@ import { buildSourceIndex } from '../core/SourceResolver.js';
 import { parseManifest } from '../export/Manifest.js';
 import { approveAgreement } from '../generators/AgreementApproveModule.js';
 import { appendAgreementRecord, prepareAgreementRecord } from '../generators/AgreementRecordModule.js';
+import { rebaseFingerprints } from '../generators/FingerprintRebaseModule.js';
 import {
   ANCHOR_NO_SOURCE, ANCHOR_ROW, ANCHOR_SECTION, MANIFEST, POLICY_DOC, ROW_FROM, SECTION_FROM, SUBMISSION as LINKED_SUBMISSION, TERMS_DOC,
   chapterDoc, cleanupWorkspaces, makeLegacyRepo, makeRoot as makeLinkedRoot, parseLedgerLines, relocate, reservationDoc,
@@ -497,6 +498,73 @@ describe('AgreementCheck: 指紋の正規化の版・載せ替えの対応表・
     const { report } = runCheck({ root: repo.root, submissionDir: repo.submissionDir, manifestPath: '' });
     assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
     assert.match(report.format(), /正規化の版 99 で計算されていて、確かめられない/);
+  });
+
+  describe('fingerprint-rebase の対応表 (載せ替えた後に、リンクを書き換えた状態)', () => {
+    /** 台帳を載せ替えた後、章・正本・提出物を動かす。agreement-check は対応表を通して照合する。 */
+    const rebasedAndMoved = (): { root: string; submissionDir: string; ledgerPath: string; rebaseLine: string; legacy: string[] } => {
+      const repo = makeLegacyRepo();
+      rebaseFingerprints({ targetRoot: repo.root, docsDir: repo.docsDir, dir: repo.docsDir, now: new Date('2026-10-02T00:00:00Z') });
+      const moved = relocate(repo);
+      const ledgerPath = ledgerPathFor(moved.submissionDir);
+      const lines = readFileSync(ledgerPath, 'utf8').replace(/\n$/, '').split('\n');
+      return { root: repo.root, submissionDir: moved.submissionDir, ledgerPath, rebaseLine: lines[lines.length - 1] ?? '', legacy: lines.slice(0, -1) };
+    };
+    const run = (r: { root: string; submissionDir: string }): ReturnType<typeof runCheck> => runCheck({ root: r.root, submissionDir: r.submissionDir, manifestPath: '' });
+
+    it('「保存値と一致」でなくても、直近の対応表がその保存値に対応づけた v3 の値と一致すれば一致', () => {
+      const r = rebasedAndMoved();
+      assert.equal(run(r).report.exitCode, ExitCode.Ok, run(r).report.format());
+    });
+
+    it('対応表が無ければ (載せ替えずに動かすと) 章の本文が変わったと数える', () => {
+      const r = rebasedAndMoved();
+      writeFileSync(r.ledgerPath, `${r.legacy.join('\n')}\n`);
+      const { report } = run(r);
+      assert.equal(report.exitCode, ExitCode.Violation, report.format());
+      assert.match(report.format(), /章の本文が承認した版 1\.0 から変わった/);
+    });
+
+    it('対応表は保存値まで合わせて引く: 別の保存値への対応づけは効かない', () => {
+      const r = rebasedAndMoved();
+      const row = JSON.parse(r.rebaseLine) as { entries: { from: string }[] };
+      for (const entry of row.entries) entry.from = 'sha256:somewhere-else';
+      writeFileSync(r.ledgerPath, `${[...r.legacy, JSON.stringify(row)].join('\n')}\n`);
+      assert.equal(run(r).report.exitCode, ExitCode.Violation);
+    });
+
+    it('対応づけた値 (to) が今の本文と違えば一致しない (対応表は承認の代わりにならない)', () => {
+      const r = rebasedAndMoved();
+      const row = JSON.parse(r.rebaseLine) as { entries: { to: string }[] };
+      for (const entry of row.entries) entry.to = 'sha256:not-the-current-text';
+      writeFileSync(r.ledgerPath, `${[...r.legacy, JSON.stringify(row)].join('\n')}\n`);
+      assert.equal(run(r).report.exitCode, ExitCode.Violation);
+    });
+
+    it('基準より前に書かれた対応表は、基準の行の値に効かない', () => {
+      const r = rebasedAndMoved();
+      writeFileSync(r.ledgerPath, `${[r.rebaseLine, ...r.legacy].join('\n')}\n`);
+      assert.equal(run(r).report.exitCode, ExitCode.Violation);
+    });
+
+    it('同じ保存値への対応づけが複数あれば、直近の行が勝つ (古い行は上書きされる)', () => {
+      const r = rebasedAndMoved();
+      const stale = JSON.parse(r.rebaseLine) as { entries: { to: string }[] };
+      for (const entry of stale.entries) entry.to = 'sha256:old-mapping';
+      writeFileSync(r.ledgerPath, `${[...r.legacy, JSON.stringify(stale), r.rebaseLine].join('\n')}\n`);
+      assert.equal(run(r).report.exitCode, ExitCode.Ok, run(r).report.format());
+      writeFileSync(r.ledgerPath, `${[...r.legacy, r.rebaseLine, JSON.stringify(stale)].join('\n')}\n`);
+      assert.equal(run(r).report.exitCode, ExitCode.Violation, '直近が古い対応づけなら、一致しない');
+    });
+
+    it('検査不能: 対応表の版の実装が無い (この Igeta より新しい版で記録された台帳)', () => {
+      const r = rebasedAndMoved();
+      const row = JSON.parse(r.rebaseLine) as Record<string, unknown>;
+      writeFileSync(r.ledgerPath, `${[...r.legacy, JSON.stringify({ ...row, toVersion: 99 })].join('\n')}\n`);
+      const { report } = run(r);
+      assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
+      assert.match(report.format(), /対応表の正規化の版が確かめられない/);
+    });
   });
 
   describe('source-move (由来の from の付け替え)', () => {

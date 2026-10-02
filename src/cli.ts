@@ -6,6 +6,7 @@ import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
+import { FingerprintRebaseCommand } from './cli/commands/FingerprintRebaseCommand.js';
 import { FixIdsCommand } from './cli/commands/FixIdsCommand.js';
 import { InitCommand } from './cli/commands/InitCommand.js';
 import { MermaidCheckCommand } from './cli/commands/MermaidCheckCommand.js';
@@ -42,6 +43,7 @@ const cli = new Cli()
   .register(new ProvenanceCheckCommand())
   .register(new ProvenanceCoverageCommand())
   .register(new SourceCoverageCommand())
+  .register(new FingerprintRebaseCommand())
   .register(new AgreementApproveCommand())
   .register(new AgreementCheckCommand())
   .register(new DiscrepancyAddCommand())
