@@ -12,7 +12,6 @@ import assert from 'node:assert/strict';
 
 import { ContextFilesModule } from '../generators/ContextFilesModule.js';
 import { ContextSizeModule } from '../generators/ContextSizeModule.js';
-import { IGETA_ROOT } from '../core/Paths.js';
 import { ContextBoundaryCheck } from './ContextBoundaryCheck.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
 import { DocsCheck } from './DocsCheck.js';
@@ -130,7 +129,11 @@ describe('旧い構成の検査と生成物は変わらない', () => {
     const root = mkdtempSync(join(tmpdir(), 'igeta-legacy-unchanged-'));
     workspaces.push(root);
     writeLegacyTree(root);
-    const ctx = { targetRoot: root, igetaRoot: IGETA_ROOT };
+    // 旧い構成は、Igeta の版が 1.0.0 以上になると警告でなく違反になる (ADR-0005)。版を 0.4.0 に固定した置き場所を渡す
+    const igetaRoot = mkdtempSync(join(tmpdir(), 'igeta-legacy-unchanged-igeta-'));
+    workspaces.push(igetaRoot);
+    writeFileSync(join(igetaRoot, 'package.json'), JSON.stringify({ name: 'igeta', version: '0.4.0' }));
+    const ctx = { targetRoot: root, igetaRoot };
     const read = (relPath: string): string => readFileSync(join(root, relPath), 'utf8');
 
     // docs-graph: 新しい木は 2 回で収束し、違反も警告も出ない
