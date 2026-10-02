@@ -1,6 +1,7 @@
 // node --test dist/cli/commands/InitCommand.test.js
 // `igeta init` の受入 (テスト仕様 06 の表: TST-101〜107・TST-301〜304・TST-306)。一時フォルダに実際に init を実行して確かめる。
 // 持ち主は架空の @lead・@other。個人情報は無い。
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -144,7 +145,7 @@ function entranceDiffs(readme: string): string[] {
 }
 
 describe('init: 置くもの (I1〜I4・I10)', () => {
-  it('[TST-101] 空のフォルダに init --owner @lead: I1 のファイルが全部あり、docs-check と template-check が違反 0 件・警告 0 件。手引き・実装順序の文書は無い', async () => {
+  it('[TST-101] 空のフォルダに init --owner @lead: I1 のファイルが全部あり、docs-check と template-check が違反 0 件・警告 0 件。手引き・実装順序の文書は無い。置いた markdownlint の設定で lint も 0 件', async () => {
     const root = makeRoot();
     const { code, stderr } = await runInit(root, ['--owner', OWNER]);
     assert.equal(code, ExitCode.Ok, stderr);
@@ -157,6 +158,13 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     const templateCheck = new DocTemplateCheck({ requireKind: true, requireHumanReview: true });
     assert.deepEqual(templateCheck.run(ctx), [], 'template-check --require-kind --require-human-review の違反');
     assert.deepEqual(templateCheck.warnings, [], 'template-check の警告');
+
+    // init が置いた markdownlint の設定 (.markdownlint.yaml・.markdownlint-cli2.yaml) のまま、置いた直後の文書の lint が 0 件
+    const lint = spawnSync(process.execPath, [join(IGETA_ROOT, 'node_modules', 'markdownlint-cli2', 'markdownlint-cli2-bin.mjs')], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    assert.equal(lint.status, 0, `markdownlint-cli2: ${lint.stdout}${lint.stderr}`);
 
     const docsDir = join(root, 'docs');
     const kinds = listDocFiles(docsDir).flatMap((rel) => {

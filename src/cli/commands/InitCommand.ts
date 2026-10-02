@@ -77,25 +77,47 @@ const EXAMPLE_TABLE_HEADS: ReadonlySet<string> = new Set(['ID', '問い']);
 /** 最初の業務要件の行 (番号 001) の状態 (I3) */
 const FIRST_ROW_STATE = '未決';
 
+/**
+ * markdownlint の規則。Igeta 自身の設計書と同じ (既定に、設計書の書き方と構造的に衝突する緩和だけを足す)。
+ * init が置いた直後の文書 (雛形と生成索引) が、この規則で 0 件になる。
+ */
 const MARKDOWNLINT = [
-  '# igeta init が置いた既定。プロジェクト固有の緩和はこのファイルに足す。',
+  '# igeta init が置いた既定。Igeta 自身の設計書と同じ規則 (既定に、設計書の書き方と構造的に衝突する緩和だけを足す)。',
+  '# プロジェクト固有の緩和は、理由を添えてこのファイルに足す。',
   'default: true',
-  'MD013: false',
-  'MD024:',
-  '  siblings_only: true',
-  'MD033: false',
+  '',
+  '# MD041 first-line-heading: 全文書が frontmatter (---) で始まるため、必ず落ちる。',
   'MD041: false',
+  '',
+  '# MD013 line-length: 日本語の設計書は 1 文 = 1 行で、表が長い。折り返すと表が壊れる。',
+  'MD013: false',
+  '',
+  '# MD025 single-title: 本文の H1 が 1 つであることだけを見る。',
+  "# 既定は frontmatter の `title:` も見出しとして数えるため、全文書が落ちる。",
+  'MD025:',
+  "  front_matter_title: ''",
+  '',
+  '# MD032 blanks-around-lists: 結論のブロック (`> **TL;DR**: ...` の次の行の `> - ...`) は、',
+  '# 引用の中のリストが直前の行に接するため落ちる。',
+  'MD032: false',
+  '',
+  '# MD036 no-emphasis-as-heading: 強調だけの行 (生成した一覧の `_該当なし_` や、表の直前のラベル) を、見出しと誤検出する。',
+  'MD036: false',
+  '',
+  '# MD037 no-space-in-emphasis: ID のワイルドカード表記 (`DEC-* / OPEN-*` を含む表のセル) を、強調の開始と誤検出する。',
+  'MD037: false',
   '',
 ].join('\n');
 
 const MARKDOWNLINT_CLI2 = [
-  '# igeta init が置いた既定。',
+  '# igeta init が置いた既定。検査対象は設計書のみ。生成物 (docs/dependencies.md) と、依存・ビルドの出力は除く。',
   'globs:',
   '  - "docs/**/*.md"',
   '  - "*.md"',
   'ignores:',
   '  - "node_modules/**"',
   '  - "dist/**"',
+  '  - "docs/dependencies.md"',
   '',
 ].join('\n');
 
