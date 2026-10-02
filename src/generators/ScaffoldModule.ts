@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, join, relative } from 'node:path';
 import type { CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
+import { detectLayout } from '../core/Role.js';
 
 /**
  * templates/ の雛形を <targetRoot>/apps/ へ展開する。
@@ -202,8 +203,13 @@ export class ScaffoldModule {
     const context = replacements['context'];
     const aggregate = replacements['Aggregate'];
     if (context === undefined || aggregate === undefined) return [];
+    // 図の置き場所。新しい構成 (docs/person・ai・client のどれかがある) は、まとまりごとのフォルダ (テスト仕様 06 の I13)
+    const diagram =
+      detectLayout(join(this.#ctx.targetRoot, 'docs')) === 'v4'
+        ? `docs/ai/specs/${context}/domain/ の図 (kind: domain-model・context: ${context})`
+        : `docs/design/detail/domain/${context}.md`;
     return [
-      `docs/design/detail/domain/${context}.md に code_root: apps/api/src/modules/${context}`,
+      `${diagram} に code_root: apps/api/src/modules/${context}`,
       'と下記 class 宣言を書く (書くまで domain-drift は DRIFT で落ちる):',
       `  class ${aggregate}`,
       `  class ${aggregate}Id`,
