@@ -114,7 +114,8 @@ const FORM_DOCS: readonly FormDoc[] = [
   { id: 'risks-tech-debt', kind: 'risks-tech-debt', prefix: 'RSK', path: 'person/design/shared/07-risks-tech-debt.md' },
   { id: 'operations', kind: 'operations', prefix: 'OPS', path: 'person/design/shared/08-operations.md' },
   { id: 'migration-plan', kind: 'migration-plan', prefix: 'MIG', path: 'person/design/shared/09-migration-plan.md' },
-  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-booking.md', context: 'reservation', diagram: true },
+  // 日本語のファイル名。廃の行の起点の読み出し (TST-106・311・313) が、git ls-tree の出力の日本語のパスを読めることも、これで固める
+  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-予約.md', context: 'reservation', diagram: true },
   { id: 'payment-refund', kind: 'business-flow', prefix: 'BF', path: 'person/design/payment/flows/01-refund.md', context: 'payment', diagram: true },
   { id: 'reservation-top', kind: 'screen-spec', prefix: 'SCR', path: 'person/design/reservation/screens/01-top.md', context: 'reservation', diagram: true },
 ];
