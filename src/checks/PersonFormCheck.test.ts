@@ -544,34 +544,40 @@ function makeRepo(extra?: (root: string) => void): string {
 }
 
 describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', () => {
-  it('[TST-311] 起点で 廃 の行を消す / 状態を `決定` に戻す / 文書ごと消す / 文書の id を変える / 行を別の文書へ移す → どれも違反', () => {
+  it('[TST-311] 起点で 廃 の行を消す / 状態を `決定` に戻す / 文書ごと消す / 文書の id を変える / 行を別の文書へ移す / 廃 の行の列をずらす → どれも違反', () => {
     const root = makeRepo();
     const bookingLines = formLines(docOf('reservation-booking'));
     const withoutRow104 = bookingLines.filter((line) => !line.startsWith('| BF-104 '));
     const removed = /^廃の行を消している: reservation-booking\/BF-104 は dest との枝分かれの点 \(\w{7}\) で 廃 だった/;
-    const cases: ReadonlyArray<readonly [string, () => void, RegExp]> = [
-      ['行を消す', () => write(root, `docs/${BOOKING}`, withoutRow104), removed],
-      ['状態を戻す', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('| 廃 |', '| 決定 |'))), /^廃の行を戻している: reservation-booking\/BF-104 .*いまは「決定」/],
-      ['文書ごと消す', () => rmSync(join(root, 'docs', BOOKING)), removed],
-      ['文書の id を変える', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('id: reservation-booking', 'id: reservation-booking-v2'))), removed],
+    /** [名前, 変更, 出る違反の文言 (全部が 1 件ずつ出る)] */
+    const cases: ReadonlyArray<readonly [string, () => void, readonly RegExp[]]> = [
+      ['行を消す', () => write(root, `docs/${BOOKING}`, withoutRow104), [removed]],
+      ['状態を戻す', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('| 廃 |', '| 決定 |'))), [/^廃の行を戻している: reservation-booking\/BF-104 .*いまは「決定」/]],
+      ['文書ごと消す', () => rmSync(join(root, 'docs', BOOKING)), [removed]],
+      ['文書の id を変える', () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => line.replace('id: reservation-booking', 'id: reservation-booking-v2'))), [removed]],
       [
         '行を別の文書へ移す',
         () => {
           write(root, `docs/${BOOKING}`, withoutRow104);
           write(root, `docs/${TOP}`, formLines(docOf('reservation-top'), [...MERMAID, ...table(...rowsOf('SCR'), row('BF-104', '移した行', '廃'))]));
         },
-        removed,
+        [removed],
+      ],
+      [
+        // 廃 は最後のセルのまま、列が 1 つ足りない。列がずれた行は、廃の行として読まない (消したことになる)。列の数は P3 も違反にする
+        '廃の行の列をずらす',
+        () => write(root, `docs/${BOOKING}`, bookingLines.map((line) => (line.startsWith('| BF-104 ') ? '| BF-104 | 廃 |' : line))),
+        [removed, /^BF-104 の行の列数 \(2\) が見出しの列数 \(3\) と違う/],
       ],
     ];
-    for (const [name, mutate, message] of cases) {
+    for (const [name, mutate, messages] of cases) {
       git(root, 'checkout', '-q', '--', '.');
       git(root, 'clean', '-qfd');
       mutate();
       const result = run(root, { base: 'dest' });
-      assert.equal(result.violations.length, 1, `${name}: ${describeAll(result)}`);
-      assert.equal(result.violations[0]?.severity, 'violation', name);
-      assert.equal(posix(result.violations[0]?.file), `docs/${BOOKING}`, name);
-      assert.match(result.violations[0]?.message ?? '', message, name);
+      assert.equal(result.violations.length, messages.length, `${name}: ${describeAll(result)}`);
+      assert.ok(result.violations.every((violation) => violation.severity === 'violation' && posix(violation.file) === `docs/${BOOKING}`), `${name}: ${describeAll(result)}`);
+      for (const message of messages) assert.ok(result.violations.some((violation) => message.test(violation.message)), `${name}: ${message} が出ない\n${describeAll(result)}`);
     }
   });
 
@@ -580,7 +586,7 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     assertOnly(runWith(BOOKING, lines), BOOKING, lineOf(lines, (line) => line.startsWith('| BF-104 | 使い直した')), /^BF-104 は 廃 の ID \(\d+ 行目\) なのに、同じ文書の別の行で使われている/, '廃の ID の使い直し');
   });
 
-  it('[TST-313] 無い ref・git の repo でない・docs が repo の外 / 起点の文書に frontmatter の id が無い / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
+  it('[TST-313] 無い ref・`-` で始まる ref・git の repo でない・docs が repo の外 / 起点の文書に frontmatter の id が無い / ○ の kind の雛形に接頭辞が無い / 合計が上限を超えていて Igeta の版を読めない → どれも検査不能', async () => {
     const repo = makeRepo();
     // 起点の文書に frontmatter の id が無い (廃の行を照らせない)
     const idless = 'person/design/shared/11-notes.md';
@@ -595,6 +601,8 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
 
     const cases: ReadonlyArray<readonly [string, RunResult, RegExp]> = [
       ['無い ref', run(repo, { base: 'no-such-ref' }), /^--base no-such-ref と比べられない/],
+      // `--octopus` は、断らないと git が option として読み、HEAD 自身を起点にして黙って通る (廃の行を消しても見つからない)
+      ['`-` で始まる ref', run(repo, { base: '--octopus' }), /^--base --octopus と比べられない: .*git の ref として使えない値/],
       ['git の repo でない', run(notRepo, { base: 'dest' }), /^--base dest と比べられない/],
       ['docs が repo の外', run(repo, { base: 'dest', docsDir: join(elsewhere, 'docs') }), /リポジトリの中の docs だけ/],
       ['起点の文書に frontmatter の id が無い', run(withIdless, { base: 'dest' }), /^dest との枝分かれの点 \(\w{7}\) の文書に frontmatter の id が無く/],
