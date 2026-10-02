@@ -3,7 +3,7 @@ id: <kebab-slug>
 title: <提案の件名>
 type: proposal
 kind: proposal
-status: draft              # draft | submitted | accepted | rejected
+status: draft
 canonical: true
 owners: [pm, eng]
 created: YYYY-MM-DD
@@ -22,16 +22,12 @@ relates_to: []
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [要件定義書](../product/01-requirements.md) | REQ-* |
-| 下流 | [ADR](../adr/) / 見積 | — |
+| 上流 (depends_on) | [要件定義書](../../../person/requirements/01-requirements.md) | REQ-* |
+| 下流 | [決定の記録](../../../person/decisions/) / 見積 | — |
 
 ## 1. 背景と課題
 
-<!-- 相手の言葉で書く。こちらの都合を課題にしない -->
-
 ## 2. 調査結果
-
-<!-- 一次情報のみ。出典 URL と確認日を必ず添える。「〜らしい」は書かない -->
 
 | # | 調査対象 | 実測・一次情報 | 出典 | 確認日 |
 |---|---|---|---|---|
@@ -43,16 +39,12 @@ relates_to: []
 
 ## 4. 推奨案
 
-<!-- なぜこれかを、相手の判断基準 (費用 / 期間 / リスク) で説明する -->
-
 ## 5. 費用と期間
 
 | 項目 | 内容 | 金額 | 期間 |
 |---|---|---|---|
 
 ## 6. 前提と免責
-
-<!-- 崩れたら金額・期間が変わる前提を明示する -->
 
 ## 7. 次のアクション (任意)
 

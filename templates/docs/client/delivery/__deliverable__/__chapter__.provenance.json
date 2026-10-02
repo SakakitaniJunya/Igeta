@@ -1,5 +1,5 @@
 {
-  "sourceDoc": "docs/delivery/<提出物名>/__chapter__.md",
+  "sourceDoc": "docs/client/delivery/<提出物名>/__chapter__.md",
   "entries": [
     {
       "anchor": "1. <節の見出し (連番込みの生テキスト)>",
