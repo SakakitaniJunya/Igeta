@@ -188,6 +188,10 @@ async function converge(root: string): Promise<void> {
 
 const read = (root: string, relPath: string): string => readFileSync(join(root, relPath), 'utf8');
 
+/** 文書の中で、prefix で始まる最初の行の行番号 (1 始まり)。無ければ 0 */
+const lineOf = (root: string, relPath: string, prefix: string): number =>
+  read(root, relPath).split('\n').findIndex((line) => line.startsWith(prefix)) + 1;
+
 describe('DocGraphCheck v4: ADR 索引は docs/person/decisions/README.md に出す', () => {
   let root: string;
   beforeEach(async () => {
@@ -237,7 +241,6 @@ describe('DocGraphCheck v4: ADR 索引は docs/person/decisions/README.md に出
     };
     writeLog('未決', '仮');
     await converge(root);
-    const lineOf = (path: string, needle: string): number => read(root, path).split('\n').findIndex((line) => line.startsWith(needle)) + 1;
     const log = read(root, 'docs/person/decisions/01-decisions.md');
     const region = log.slice(log.indexOf('AUTOGEN:tentative-index:start'), log.indexOf('AUTOGEN:tentative-index:end'));
     assert.deepEqual(
@@ -245,8 +248,8 @@ describe('DocGraphCheck v4: ADR 索引は docs/person/decisions/README.md に出
       [
         '| 対象 ID | 状態 | 場所 | 決まり |',
         '|---|---|---|---|',
-        `| reservation-booking/BF-102 | 未決 | [${bookingPath}:${lineOf(bookingPath, '| BF-102')}](../design/reservation/flows/01-booking.md#L${lineOf(bookingPath, '| BF-102')}) | キャンセル料は 0 円 |`,
-        `| requirements/REQ-003 | 仮 | [${requirementsPath}:${lineOf(requirementsPath, '| REQ-003')}](../requirements/01-requirements.md#L${lineOf(requirementsPath, '| REQ-003')}) | 予約は 15 分で失効する |`,
+        `| reservation-booking/BF-102 | 未決 | [${bookingPath}:${lineOf(root, bookingPath, '| BF-102')}](../design/reservation/flows/01-booking.md#L${lineOf(root, bookingPath, '| BF-102')}) | キャンセル料は 0 円 |`,
+        `| requirements/REQ-003 | 仮 | [${requirementsPath}:${lineOf(root, requirementsPath, '| REQ-003')}](../requirements/01-requirements.md#L${lineOf(root, requirementsPath, '| REQ-003')}) | 予約は 15 分で失効する |`,
       ],
     );
     assert.deepEqual((await run(root, 'check')).violations, []);
@@ -396,5 +399,352 @@ describe('DocGraphCheck: 旧い構成の ADR 索引は変えない', () => {
     const result = await run(root, 'check');
     assert.equal(result.violations.length, 1, result.detail);
     assert.match(result.violations[0]?.message ?? '', /ADR 番号の重複検出[\s\S]*ADR-0001/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 文書のつながり (テスト仕様 04 の G1〜G4・G6〜G8)
+// ---------------------------------------------------------------------------
+
+type Role = 'person' | 'ai' | 'client';
+/** 参照の書き方 (G2)。(a) depends_on・relates_to (b) リンク・画像 (c) 参照の形の定義 (d) 修飾 ID */
+type How = 'depends_on' | 'relates_to' | 'link' | 'image' | 'definition' | 'qualified-id';
+
+interface RoleDoc {
+  readonly id: string;
+  /** repo 直下からのパス */
+  readonly path: string;
+  readonly kind: string;
+  readonly type: string;
+}
+
+/** 役割ごとの、参照する側 (src) と参照される側 (dst)。どれも置き場所の型どおりで、依存の木の根になれる kind */
+const ROLE_DOCS: Readonly<Record<Role, { readonly src: RoleDoc; readonly dst: RoleDoc }>> = {
+  person: {
+    src: { id: 'person-src', path: 'docs/person/requirements/01-src.md', kind: 'requirements', type: 'design' },
+    dst: { id: 'person-dst', path: 'docs/person/requirements/02-dst.md', kind: 'requirements', type: 'design' },
+  },
+  ai: {
+    src: { id: 'ai-src', path: 'docs/ai/handbook/how-to/01-src.md', kind: 'guide', type: 'guide' },
+    dst: { id: 'ai-dst', path: 'docs/ai/handbook/how-to/02-dst.md', kind: 'guide', type: 'guide' },
+  },
+  client: {
+    src: { id: 'client-src', path: 'docs/client/delivery/spec-v1/01-src.md', kind: 'delivery-chapter', type: 'design' },
+    dst: { id: 'client-dst', path: 'docs/client/delivery/spec-v1/02-dst.md', kind: 'delivery-chapter', type: 'design' },
+  },
+};
+
+const ALL_HOWS: readonly How[] = ['depends_on', 'relates_to', 'link', 'image', 'definition', 'qualified-id'];
+
+const linkFrom = (from: RoleDoc, to: RoleDoc): string => posix.relative(posix.dirname(from.path), to.path);
+
+/** from が、targets を hows の書き方で全部指す文書。extraBody は本文の最後に足す行 */
+function refDoc(from: RoleDoc, targets: readonly RoleDoc[], hows: readonly How[], extraBody: readonly string[] = []): string[] {
+  const body: string[] = [];
+  for (const target of targets) {
+    const href = linkFrom(from, target);
+    if (hows.includes('link')) body.push(`[${target.id}](${href})`, '');
+    if (hows.includes('image')) body.push(`![${target.id}](${href})`, '');
+    if (hows.includes('definition')) body.push(`[${target.id}][ref-${target.id}]`, '', `[ref-${target.id}]: ${href}`, '');
+    if (hows.includes('qualified-id')) body.push(`${target.id}/REQ-001 を見る`, '');
+  }
+  return doc(from.id, from.kind, {
+    type: from.type,
+    dependsOn: hows.includes('depends_on') ? targets.map((target) => target.id) : [],
+    relatesTo: hows.includes('relates_to') ? targets.map((target) => target.id) : [],
+    body: [...body, ...extraBody],
+  });
+}
+
+const plainDoc = (target: RoleDoc): string[] => doc(target.id, target.kind, { type: target.type });
+
+/** 人の地図と、ADR 索引つきの decisions/README.md。文書のつながりの検査の土台 */
+function writeBase(root: string): void {
+  write(root, 'docs/person/design/shared/00-map.md', doc('map', 'map'));
+  write(root, 'docs/person/decisions/README.md', DECISIONS_README);
+}
+
+const tagged = (result: RunResult, tag: string): readonly Violation[] =>
+  result.violations.filter((violation) => violation.message.startsWith(`[${tag}]`));
+
+/** 木を書き、索引を収束させて、検査 (docs-check の索引と参照の部分) の結果を返す */
+async function checkedAfterConverge(root: string): Promise<RunResult> {
+  await converge(root);
+  return run(root, 'check');
+}
+
+async function runCommand(
+  command: DocsGraphCommand | DocsCheckCommand,
+  root: string,
+): Promise<{ code: ExitCode; stdout: string[]; stderr: string[] }> {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const code = await command.run(['--root', root], {
+    cwd: root,
+    igetaRoot: IGETA_ROOT,
+    stdout: (line) => stdout.push(line),
+    stderr: (line) => stderr.push(line),
+  });
+  return { code, stdout, stderr: stderr.flatMap((line) => line.split('\n')) };
+}
+
+describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・ADR の引用・索引の書き方)', () => {
+  it('[TST-101] person は person だけ・ai は person と ai・client は 3 つとも、4 種の参照で指してよい。コードフェンスと生成区間の中のリンクは数えない', async () => {
+    const root = makeRoot();
+    const { person, ai, client } = ROLE_DOCS;
+    const aiLink = `[ai の手引き](${linkFrom(person.src, ai.dst)})`;
+    const hidden = ['```markdown', aiLink, '```', '', '<!-- AUTOGEN:note:start -->', aiLink, '<!-- AUTOGEN:note:end -->'];
+    write(root, person.src.path, refDoc(person.src, [person.dst], ALL_HOWS, hidden));
+    write(root, ai.src.path, refDoc(ai.src, [person.dst, ai.dst], ALL_HOWS));
+    write(root, client.src.path, refDoc(client.src, [person.dst, ai.dst, client.dst], ALL_HOWS));
+    for (const target of [person.dst, ai.dst, client.dst]) write(root, target.path, plainDoc(target));
+    const result = await checkedAfterConverge(root);
+    assert.deepEqual(result.violations, [], result.detail);
+  });
+
+  it('[TST-102] ai/specs/ の文書は、別の ai/specs/ の文書を経ても person/ に届く。depends_on に external: が混ざってもよい', async () => {
+    const root = makeRoot();
+    writeBase(root);
+    write(root, 'docs/ai/specs/shared/01-crosscutting.md', doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: ['map'] }));
+    write(
+      root,
+      'docs/ai/specs/reservation/api/01-reserve.md',
+      doc('reservation-api', 'api-spec', { arc42: 5, context: 'reservation', dependsOn: ['crosscutting', 'external:x'] }),
+    );
+    const result = await checkedAfterConverge(root);
+    assert.deepEqual(result.violations, [], result.detail);
+  });
+
+  it('[TST-103] accepted の ADR は要件の決まりの行が ADR-0003 と引いていれば通り、proposed・superseded の ADR は引かれていなくてよい', async () => {
+    const root = makeRoot();
+    writeBase(root);
+    writeRequirements(root, ['0003']);
+    write(root, 'docs/person/decisions/2026/0003-cache.md', adr('0003', 'cache', 'accepted'));
+    write(root, 'docs/person/decisions/2026/0004-search.md', adr('0004', 'search', 'proposed'));
+    write(root, 'docs/person/decisions/2026/0005-old.md', adr('0005', 'old', 'superseded'));
+    const result = await checkedAfterConverge(root);
+    assert.deepEqual(result.violations, [], result.detail);
+  });
+
+  it('[TST-105] 新しい構成の索引に読み手の表示と凡例は出ず、person・ai・client の README.md は決まった目的の行で作られる', async () => {
+    const root = makeRoot();
+    write(root, 'docs/person/requirements/01-requirements.md', doc('requirements', 'requirements', { arc42: 1 }));
+    write(root, 'docs/ai/handbook/how-to/01-setup.md', doc('setup', 'guide', { type: 'guide' }));
+    write(root, 'docs/client/delivery/spec-v1/01-overview.md', doc('overview', 'delivery-chapter', { dependsOn: ['requirements'] }));
+    await converge(root);
+    const purposes: ReadonlyArray<readonly [folder: string, purpose: string]> = [
+      ['person', '人が確定させる文書。確定の前に人が全部読んで承認する (要件・設計・決定)'],
+      ['ai', 'AI が書き、評価する AI が確定させる文書 (作り方の仕様と、作業の手引き)。人の承認は要らない (`humanPaths` で足したパスを除く)'],
+      ['client', '顧客と合意して渡す文書 (提出物の章と提案書)。渡す前に人が全部読む'],
+    ];
+    for (const [folder, purpose] of purposes) {
+      assert.ok(read(root, `docs/${folder}/README.md`).split('\n').includes(`> このディレクトリの目的: ${purpose}`), folder);
+    }
+    const readmes = globSync('docs/**/README.md', { cwd: root });
+    assert.ok(readmes.length >= 4, readmes.join(', '));
+    for (const readme of readmes) assert.doesNotMatch(read(root, readme), /_\(読み手:/, readme);
+    assert.deepEqual((await run(root, 'check')).violations, []);
+  });
+
+  it('[TST-106] 人 → AI のリンクと届かない ai/specs/ の文書があっても、docs-graph は警告を出して索引を書き (終了コード 0)、続く docs-check は違反にする', async () => {
+    const root = makeRoot();
+    write(root, 'AGENTS.md', ['# AGENTS.md', '', '決まりは docs/person/、作り方は docs/ai/ を読む。']);
+    write(root, '.github/CODEOWNERS', [
+      'docs/person/ @owners',
+      'docs/client/ @owners',
+      '/.github/ @owners',
+      '/.igeta.json @owners',
+      '/AGENTS.md @owners',
+      '/package.json @owners',
+    ]);
+    const { person, ai } = ROLE_DOCS;
+    write(root, person.src.path, refDoc(person.src, [ai.dst], ['link']));
+    write(root, ai.dst.path, plainDoc(ai.dst));
+    write(root, 'docs/ai/specs/shared/01-crosscutting.md', doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: [ai.dst.id] }));
+
+    let written = await runCommand(new DocsGraphCommand(), root);
+    written = await runCommand(new DocsGraphCommand(), root);
+    assert.equal(written.code, ExitCode.Ok, written.stderr.join('\n'));
+    const warnings = written.stderr.filter((line) => line.startsWith('WARN '));
+    assert.equal(warnings.filter((line) => line.includes('[direction]')).length, 1, written.stderr.join('\n'));
+    assert.equal(warnings.filter((line) => line.includes('[reach]')).length, 1, written.stderr.join('\n'));
+    assert.equal(existsSync(join(root, 'docs', 'dependencies.md')), true);
+    assert.equal(existsSync(join(root, 'docs', 'person', 'README.md')), true);
+
+    const checked = await runCommand(new DocsCheckCommand(), root);
+    assert.equal(checked.code, ExitCode.Violation, checked.stderr.join('\n'));
+    const violations = checked.stderr.filter((line) => line.startsWith('VIOLATION '));
+    assert.equal(violations.length, 2, checked.stderr.join('\n'));
+    assert.ok(violations.some((line) => line.includes('[direction]')) && violations.some((line) => line.includes('[reach]')), violations.join('\n'));
+  });
+
+  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)', async () => {
+    const { person, ai } = ROLE_DOCS;
+    const cases: ReadonlyArray<readonly [how: How, linePrefix: string]> = [
+      ['depends_on', 'depends_on:'],
+      ['relates_to', 'relates_to:'],
+      ['link', `[${ai.dst.id}](`],
+      ['definition', `[ref-${ai.dst.id}]: `],
+      ['qualified-id', `${ai.dst.id}/REQ-001`],
+    ];
+    for (const [how, linePrefix] of cases) {
+      const root = makeRoot();
+      write(root, person.src.path, refDoc(person.src, [ai.dst], [how]));
+      write(root, ai.dst.path, plainDoc(ai.dst));
+      const found = tagged(await checkedAfterConverge(root), 'direction');
+      assert.equal(found.length, 1, how);
+      assert.equal(found[0]?.file, person.src.path, how);
+      assert.equal(found[0]?.line, lineOf(root, person.src.path, linePrefix), how);
+      assert.match(found[0]?.message ?? '', /person の文書が ai の文書を指している/, how);
+    }
+  });
+
+  it('[TST-302] person の文書のリンク先が docs/ai・docs/ai/specs/ (フォルダ)・無いファイル docs/ai/x.md・docs/client/ でも違反', async () => {
+    const { person, client } = ROLE_DOCS;
+    const root = makeRoot();
+    write(root, person.dst.path, plainDoc(person.dst));
+    write(root, 'docs/ai/specs/shared/01-crosscutting.md', doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: [person.dst.id] }));
+    write(root, client.dst.path, plainDoc(client.dst));
+    for (const target of ['../../ai', '../../ai/specs/', '../../ai/x.md', '../../client/']) {
+      write(root, person.src.path, doc(person.src.id, person.src.kind, { type: person.src.type, body: [`[リンク](${target})`] }));
+      const found = tagged(await checkedAfterConverge(root), 'direction');
+      assert.equal(found.length, 1, target);
+      assert.equal(found[0]?.file, person.src.path, target);
+      assert.equal(found[0]?.line, lineOf(root, person.src.path, '[リンク]('), target);
+    }
+  });
+
+  it('[TST-303] ai の文書が client の文書を、5 通りのどの書き方で指しても違反', async () => {
+    const { ai, client } = ROLE_DOCS;
+    const cases: ReadonlyArray<readonly [how: How, linePrefix: string]> = [
+      ['depends_on', 'depends_on:'],
+      ['relates_to', 'relates_to:'],
+      ['link', `[${client.dst.id}](`],
+      ['definition', `[ref-${client.dst.id}]: `],
+      ['qualified-id', `${client.dst.id}/REQ-001`],
+    ];
+    for (const [how, linePrefix] of cases) {
+      const root = makeRoot();
+      write(root, ai.src.path, refDoc(ai.src, [client.dst], [how]));
+      write(root, client.dst.path, plainDoc(client.dst));
+      const found = tagged(await checkedAfterConverge(root), 'direction');
+      assert.equal(found.length, 1, how);
+      assert.equal(found[0]?.file, ai.src.path, how);
+      assert.equal(found[0]?.line, lineOf(root, ai.src.path, linePrefix), how);
+      assert.match(found[0]?.message ?? '', /ai の文書が client の文書を指している/, how);
+    }
+  });
+
+  it('[TST-304] ai/specs/ の文書の depends_on が空・ai の文書だけを回る・解決できない id だけ・external: だけなら、person/ に届かず違反', async () => {
+    const crosscutting = 'docs/ai/specs/shared/01-crosscutting.md';
+    const testPlan = 'docs/ai/specs/shared/02-test-plan.md';
+    const cases: ReadonlyArray<{
+      readonly name: string;
+      readonly crosscutting: readonly string[];
+      readonly testPlan: readonly string[];
+      /** 届かないと言われる文書 */
+      readonly unreached: readonly string[];
+    }> = [
+      { name: 'depends_on が空', crosscutting: [], testPlan: ['crosscutting', 'map'], unreached: [crosscutting] },
+      { name: 'ai の文書だけを回る', crosscutting: ['test-plan'], testPlan: ['crosscutting'], unreached: [crosscutting, testPlan] },
+      { name: '解決できない id だけ', crosscutting: ['no-such-doc'], testPlan: ['crosscutting', 'map'], unreached: [crosscutting] },
+      { name: 'external: だけ', crosscutting: ['external:x'], testPlan: ['crosscutting', 'map'], unreached: [crosscutting] },
+    ];
+    for (const { name, crosscutting: crosscuttingDeps, testPlan: testPlanDeps, unreached } of cases) {
+      const root = makeRoot();
+      writeBase(root);
+      write(root, crosscutting, doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: crosscuttingDeps }));
+      write(root, testPlan, doc('test-plan', 'test-plan', { arc42: 10, dependsOn: testPlanDeps }));
+      const found = tagged(await checkedAfterConverge(root), 'reach');
+      assert.deepEqual(found.map((violation) => violation.file).sort(), [...unreached].sort(), name);
+      for (const violation of found) {
+        assert.equal(violation.line, lineOf(root, violation.file ?? '', 'depends_on:'), name);
+      }
+    }
+  });
+
+  it('[TST-305] accepted の ADR が、どこからも・ai の文書からだけ・廃の行からだけ・関連の表や地の文からだけ・ADR-0003・0006 の 0006・小文字の adr-0003 でしか引かれていなければ違反', async () => {
+    const adrFile = (number: string, slug: string): string => `docs/person/decisions/2026/${number}-${slug}.md`;
+    const aiRows = decisionTable([['AI-001', 'ADR-0003 に従う', '決定']]);
+    const cases: ReadonlyArray<{
+      readonly name: string;
+      readonly adrNumber: string;
+      readonly requirements: readonly string[];
+      readonly extra?: () => (root: string) => void;
+    }> = [
+      { name: 'どこからも引かれない', adrNumber: '0003', requirements: decisionTable([['REQ-001', '別の決まり', '決定']]) },
+      {
+        name: 'ai の文書からだけ',
+        adrNumber: '0003',
+        requirements: decisionTable([['REQ-001', '別の決まり', '決定']]),
+        extra: () => (root) => write(root, 'docs/ai/handbook/how-to/01-setup.md', doc('setup', 'guide', { type: 'guide', body: aiRows })),
+      },
+      { name: '廃の行からだけ', adrNumber: '0003', requirements: decisionTable([['REQ-001', 'ADR-0003 の古い決まり', '廃']]) },
+      {
+        name: '関連の表や地の文からだけ',
+        adrNumber: '0003',
+        requirements: [
+          ...decisionTable([['REQ-001', '別の決まり', '決定']]),
+          '',
+          'この決まりは ADR-0003 による。',
+          '',
+          '## 関連',
+          '',
+          '| 区分 | 文書 | 対応 ID |',
+          '|---|---|---|',
+          '| 上流 | ADR-0003 | ADR-0003 |',
+        ],
+      },
+      { name: 'ADR-0003・0006 の 0006', adrNumber: '0006', requirements: decisionTable([['REQ-001', 'ADR-0003・0006 を反映する', '決定']]) },
+      { name: '小文字の adr-0003', adrNumber: '0003', requirements: decisionTable([['REQ-001', 'adr-0003 を反映する', '決定']]) },
+    ];
+    for (const { name, adrNumber, requirements, extra } of cases) {
+      const root = makeRoot();
+      writeBase(root);
+      write(root, 'docs/person/requirements/01-requirements.md', doc('requirements', 'requirements', { arc42: 1, body: requirements }));
+      write(root, adrFile(adrNumber, 'cache'), adr(adrNumber, 'cache', 'accepted'));
+      extra?.()(root);
+      const found = tagged(await checkedAfterConverge(root), 'adr');
+      assert.equal(found.length, 1, `${name}: ${found.map((violation) => violation.message).join(' / ')}`);
+      assert.equal(found[0]?.file, adrFile(adrNumber, 'cache'), name);
+      assert.equal(found[0]?.line, 1, name);
+      assert.match(found[0]?.message ?? '', new RegExp(`ADR-${adrNumber}`), name);
+    }
+  });
+
+  it('[TST-306] ai の文書の 仮 の行は決定台帳の一覧に出ず、ai/ だけを変えても person/・client/ の下は 1 バイトも変わらない', async () => {
+    const root = makeRoot();
+    writeBase(root);
+    write(root, 'docs/person/decisions/01-decisions.md', DECISION_LOG);
+    write(
+      root,
+      'docs/person/requirements/01-requirements.md',
+      doc('requirements', 'requirements', { arc42: 1, body: decisionTable([['REQ-001', '予約は 15 分で失効する', '仮']]) }),
+    );
+    write(root, 'docs/client/delivery/spec-v1/01-overview.md', doc('delivery-overview', 'delivery-chapter', { dependsOn: ['requirements'] }));
+    const writeAi = (rows: ReadonlyArray<readonly [id: string, text: string, state: string]>): void =>
+      write(root, 'docs/ai/specs/shared/01-crosscutting.md', doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: ['map'], body: decisionTable(rows) }));
+    const snapshot = (): Record<string, string> =>
+      Object.fromEntries(
+        globSync('docs/{person,client}/**/*.md', { cwd: root })
+          .map((path) => path.split('\\').join('/'))
+          .sort()
+          .map((path) => [path, read(root, path)] as const),
+      );
+
+    writeAi([['AI-001', 'キャッシュは 5 分', '仮']]);
+    assert.deepEqual((await checkedAfterConverge(root)).violations, []);
+    const log = read(root, 'docs/person/decisions/01-decisions.md');
+    assert.match(log, /\| requirements\/REQ-001 \| 仮 \|/);
+    assert.doesNotMatch(log, /AI-001|crosscutting\//);
+    const before = snapshot();
+    assert.ok(Object.keys(before).length >= 4, Object.keys(before).join(', '));
+
+    writeAi([
+      ['AI-001', 'キャッシュは 5 分', '仮'],
+      ['AI-002', 'キューは 3 本', '未決'],
+    ]);
+    assert.deepEqual((await checkedAfterConverge(root)).violations, []);
+    assert.deepEqual(snapshot(), before);
   });
 });
