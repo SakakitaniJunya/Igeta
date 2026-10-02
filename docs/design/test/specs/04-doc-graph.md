@@ -35,7 +35,7 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 | # | 規則 |
 |---|---|
 | G1 | 向き: `person` が指してよいのは `person` だけ。`ai` は `person`・`ai`。`client` は 3 つとも。破れば違反 (参照元の行) |
-| G2 | G1 の参照は次の 4 種で、本文の行だけを見る: (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する |
+| G2 | G1 の参照は次の 4 種 ((b)〜(d) は本文の行だけを見る): (a) frontmatter の参照の項目 (`depends_on`・`relates_to`・`supersedes`・`superseded_by`・`canonical_for`) (b) リンクと画像 `[…](…)`・`![…](…)` (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く) (d) 修飾 ID (`<doc-id>/接頭辞-nnn`) の doc-id。(b)・(c) は、解決した先が `docs/ai`・`docs/client` そのものか、その下なら、ファイルが無くても、フォルダでも当たる。裸の ID は `template-check --require-human-review` が修飾を求めるので (d) に帰着する |
 | G3 | 届く: `ai/specs/**` の文書 (README.md を除く) は、`depends_on` を 1 回以上たどると `person/` の文書に届く。解決できない id と `external:` はたどらない。届かなければ違反 |
 | G4 | ADR の引用: status が `accepted`・`amended` の ADR (id が `adr-NNNN-…`) の番号を、`person/requirements/**` か `person/design/**` の決まりの行 (状態が `廃` の行を除く) のどれかが `ADR-NNNN` の形 (大文字。直前が英数字でなく、直後が数字でない) で持つ。無ければ違反 (ADR の 1 行目) |
 | G5 | ADR の索引は `docs/person/decisions/README.md` の `adr-index` 区間に出す。ADR があるのに README.md が無ければ違反 |
@@ -47,7 +47,7 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 | フォルダ | README.md の目的の行 (G7) |
 |---|---|
 | `docs/person/` | 人が確定させる文書。確定の前に人が全部読んで承認する (要件・設計・決定) |
-| `docs/ai/` | AI が書き、評価する AI が確定させる文書 (作り方の仕様と、作業の手引き)。人の承認は要らない |
+| `docs/ai/` | AI が書き、評価する AI が確定させる文書 (作り方の仕様と、作業の手引き)。人の承認は要らない (`humanPaths` で足したパスを除く) |
 | `docs/client/` | 顧客と合意して渡す文書 (提出物の章と提案書)。渡す前に人が全部読む |
 
 | # | まとまりの境界の規則 (`context-boundary-check`・`context-files`・`context-size`) |
