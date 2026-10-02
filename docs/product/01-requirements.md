@@ -9,7 +9,7 @@ status: draft
 canonical: true
 owners: [product, eng]
 created: 2026-10-01
-depends_on: [audience-layers]
+depends_on: []
 relates_to: []
 ---
 
@@ -20,12 +20,14 @@ relates_to: []
 > - 優先順位 1 位は **生成索引への読み手表示** (REQ-101) のみ。Igeta 本体に効き、索引の再生成で全消費 repo に波及する
 > - kind→読み手対応の正本は 1 つ (REQ-102)
 > - やらない: `audience` フィールド新設 / 全読み手への由来・検査強制 / 新しい kind (REQ-401〜403)
+> - **2026-10-02 改訂**: 読み手の区分 (顧客 / 開発者 / AI / 共通) は、[要件定義書 — 確定させる人ごとのディレクトリ](./02-audience-directories.md)
+>   と ADR-0001 v4 で「確定させる人 (人 / AI / 顧客)」に改めた。REQ-101〜104 の表示・入口・ガイドは、実装時に新しい 3 区分へ替える (ADR-0005 決定 4)
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由](../explanation/03-audience-layers.md) — 読み手 3 種・kind→読み手対応の設計確定版 | — |
+| 上流 (depends_on) | なし (要件は最上流) | — |
 | 下流 | 生成索引 (dir-index) / [消費 repo 雛形](../../templates/docs/README.md) / [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) | REQ-101〜104 |
 
 ## 1. 業務要件
@@ -58,7 +60,7 @@ relates_to: []
 
 | ID | 前提 | 未確認/確認済 | 崩れた場合の影響 |
 |---|---|---|---|
-| REQ-301 | 読み手 3 種と kind→読み手対応は explanation/03 §3 が確定版。本書はその機械化・可視化だけで、対応自体は再設計しない | 確認済 | 対応表の再設計からやり直し |
+| REQ-301 | (崩れた) 当初は「読み手 3 種と kind→読み手対応は確定版で再設計しない」としていた。ADR-0001 v4 で「確定させる人」で再設計した | 確認済 (崩れた) | 対応表の再設計 — 実施済み |
 | REQ-302 | 消費 repo の docs/README.md は `templates/docs/README.md` の系譜で、索引は `<!-- AUTOGEN:dir-index -->` 区間に生成され手書き禁止 | 確認済 | 入口 3 行を AUTOGEN 区間外に置く設計が別途要る |
 | REQ-303 | kind の解決は frontmatter 優先・置き場所由来で必ず判定できる (未登録 kind は template-check が落とす) | 確認済 | kind 未解決時の読み手の既定値 (「共通」側) を別途決める必要がある |
 

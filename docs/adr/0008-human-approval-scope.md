@@ -15,7 +15,7 @@ relates_to: [adr-0002-role-boundary-invariants]
 # ADR-0008: 人の承認が要る変更を、差分のパスで見分ける
 
 > **TL;DR**: 変更が `docs/person/`・`docs/client/` か、門を決めるファイル (CODEOWNERS・CI の設定・`.igeta.json`・
-> `AGENTS.md`・Igeta の版) を 1 つでも含めば、人の承認が要る。含まなければ評価する AI の判定で確定できる。
+> `AGENTS.md`・`package.json` の scripts と Igeta の版) を 1 つでも含めば、人の承認が要る。含まなければ評価する AI の判定で確定できる。
 > 判定は `igeta approval-scope` が差分のパスだけで行い、書いた主体・文面・変更の大きさは見ない
 
 ## 関連
@@ -25,7 +25,7 @@ relates_to: [adr-0002-role-boundary-invariants]
 
 ## Status
 
-2026-10-02 提案 (arch-review v4 round 1 の FIX を反映)。arch-review 待ち。
+2026-10-02 提案 (arch-review v4 round 2 の FIX-5 を反映)。arch-review 待ち。
 
 ## Context
 
@@ -44,11 +44,14 @@ ADR-0001 は置き場所を「確定させる人」で決めた。この決ま�
 | 差分に含まれるもの | 出力 |
 |---|---|
 | `docs/person/**`・`docs/client/**` のファイル (README.md は下の例外) | `human` |
-| `.github/CODEOWNERS`・`.github/workflows/**`・`.igeta.json`・`AGENTS.md`・`package.json` の `igeta` の版 | `human` |
+| `.github/CODEOWNERS`・`.github/workflows/**`・`.igeta.json`・`AGENTS.md`・`package.json` の `scripts` と `igeta` の依存・ロックファイルの `igeta` の行 | `human` |
+| `.igeta.json` の `humanPaths` に足したパス (足すことだけができ、外す設定は無い) | `human` |
 | 上のどれも無い (`docs/ai/**`・コード・生成索引だけ) | `ai` |
 
-各フォルダの README.md は、AUTOGEN 区間の中だけが変わったときに限り判定から除く。区間の外が変わったら `human`。
-`person/`・`client/` の README.md の区間の外に書けるのは frontmatter と 1 行の目的だけで、それ以外は `PersonFormCheck` が違反にする。
+各フォルダの README.md は、生成器が管理する AUTOGEN 区間 (dir-index・adr-index・tentative-index) の中だけが変わり、
+区間の中身が再生成の結果と一致するときに限り判定から除く。それ以外は `human`。`person/`・`client/` の README.md の
+区間の外に書けるのは frontmatter と 1 行の目的だけ。HTML コメントと管理外の区間は違反 (ADR-0002 条件 10)。
+Igeta 自身の repo は `humanPaths` に `templates/**`・`src/core/Role.ts`・`src/checks/**` を足す (全利用 repo の決まりを決めるため)。
 旧い構成の repo では判定できないので、検査不能を返す (`ai` を返さない)。出力は終了コードでも区別する。
 
 **2. 差分の取り方**: `git diff --name-status --no-renames <merge-base>`。移動は「元の削除」と「先の追加」の 2 行として
@@ -59,7 +62,7 @@ ADR-0001 は置き場所を「確定させる人」で決めた。この決ま�
 `docs/person/`・`docs/client/` と上の設定ファイルの行を生成し、`AgentsEntrypointCheck` がその行の実在を見る。
 
 **4. AI が `person/` を書くとき**: 起案してよい。決まりの状態は `仮` にし、人が承認したら `決定` に変える。
-`仮` のまま `ai/` の設計を進めてよいが、`仮` は決定台帳の一覧に出続ける (ADR-0002 条件 10)。
+`仮` のまま `ai/` の設計を進めてよいが、`仮` は決定台帳の一覧に出続ける (ADR-0002 条件 11)。
 
 **5. 人が読む量**: `human` のとき、`review-sheet --diff` は `person/` の決まりの表で変わった行だけを並べる。
 
@@ -81,7 +84,7 @@ ADR-0001 は置き場所を「確定させる人」で決めた。この決ま�
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| `approval-scope` のテスト (新設) | `person/`・`client/`・設定ファイル・`ai/` だけ・移動・AUTOGEN 区間だけの各差分 | 人の承認が要る差分を `ai` と判定する |
+| `approval-scope` のテスト (新設) | `person/`・`client/`・設定ファイル・`scripts`・`humanPaths`・`ai/` だけ・移動・AUTOGEN 区間だけの各差分 | 人の承認が要る差分を `ai` と判定する / 再生成と合わない区間の変更を除く |
 | 同上 | 旧い構成の repo | 検査不能ではなく `ai` を返す |
 | `AgentsEntrypointCheck` のテスト追加 | `.github/CODEOWNERS` | 必要な行が無いのに通す |
 | `PersonFormCheck` のテスト追加 | `person/`・`client/` の README.md | AUTOGEN 区間の外に決まりを書いても通す |

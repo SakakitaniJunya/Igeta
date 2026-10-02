@@ -9,7 +9,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [adr-0003-docs-model-migration-and-dogfooding]
-relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, export-deliverable]
+relates_to: [adr-0007-fingerprint-link-normalization]
 ---
 
 # ADR-0006: 由来sidecar・合意台帳・食い違いログの移行時の扱い
@@ -61,10 +61,11 @@ relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, 
 **5. ① 移す段の完了条件**: 前と後で `provenance-check`・`agreement-check` を回し、ok・stale の件数が同じこと。
 変わったら失敗として終了し、作業ツリーを `git` で戻す手順を出す (移行は commit しない)
 
-**6. ② 書き直す段の扱い**: 書き直しは正本の行の文字を変えるので、指紋が変わる。`docs-migrate --split-report` が、
-文字の変わった行を `from` に持つ由来のエントリと、`reagreementRules` に当たる正本の行を一覧にする。人が同じ PR で、
-由来は再 capture と再 accept を行い、合意は顧客へ出し直すかを決める。意味を変えない書き直しでも、
-顧客に出した章の元の文字が変わった事実は記録に残す
+**6. ② 書き直す段の扱い**: 再合意の対象 (既定は requirements、08 §5) の正本の行は、状態の列を足すだけにし、
+他の文字を変えない。列の追加は `fingerprint-rebase` が機械で確かめて載せ替える (状態の列を除いた行が元の行と
+一致し、元の行の v2 の指紋が保存値と一致するときだけ。ADR-0007 と同じ手順)。それ以外の書き直しで文字が変わった
+行は、`docs-migrate --split-report` が、その行を `from` に持つ由来のエントリを一覧にする。人が同じ PR で再 capture と
+再 accept を行う。誰がいつ承認し直したかは、由来のエントリの `acceptedBy`・`acceptedAt` に残る
 
 **7. 台帳**: 移行で過去の行を書き換えず、移行を示す行も追記しない (§2 の相対パスは移行後も解決できる)
 
@@ -86,7 +87,8 @@ relates_to: [provenance-and-agreement, agreement-ledger, coverage-and-learning, 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
 | ① の前後の検査結果の比較 (`docs-migrate` の完了条件) | `provenance-check`・`agreement-check` | ok・stale の件数が変わる |
-| `--split-report` のテスト (新設) | 書き直した正本の行を指す由来・合意 | 文字の変わった行を指すエントリを一覧に出さない |
+| `--split-report` のテスト (新設) | 書き直した正本の行を指す由来 | 文字の変わった行を指すエントリを一覧に出さない |
+| 状態の列の載せ替えのテスト (新設) | 状態の列だけを足した要件の行 | 載せ替えずに再合意が要ると判定する / 他の文字も変えた行を載せ替える |
 | 提出物を含む fixture での移行テスト (新設) | 章・sidecar・台帳を持つテスト用の提出物 | 移行後に stale・要再合意が出る |
 | sourceDoc/location 書き換えテスト (新設) | sidecar・食い違いログ | repo 相対パスが新パスに揃っていない |
 | 提出物ディレクトリ完全性検査 (新設) | 移行対象の delivery-chapter 群 | 4 種のファイルが分散しているのに適用へ進む |

@@ -9,7 +9,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [adr-0006-provenance-migration-handling]
-relates_to: [provenance-and-agreement, agreement-ledger]
+relates_to: [adr-0006-provenance-migration-handling]
 ---
 
 # ADR-0007: 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える
@@ -22,7 +22,7 @@ relates_to: [provenance-and-agreement, agreement-ledger]
 ## 関連
 
 - **上流 (depends_on)**: ADR-0006 (移行時の付属ファイルの扱い)
-- **下流**: `src/core/Fingerprint.ts` (正規化) / `explanation/04` §6 (正規化の決まり、実装時に v3 を追記) / `igeta fingerprint-rebase` (新設)
+- **下流**: `src/core/Fingerprint.ts` (正規化。正規化の決まりの解説にも実装時に v3 を追記する) / `igeta fingerprint-rebase` (新設)
 
 ## Status
 

@@ -38,6 +38,10 @@ graph LR
   class adr-0007-fingerprint-link-normalization adr
   adr-0008-human-approval-scope["ADR-0008 人の承認が要る変更を、差分のパスで見分ける (proposed)"]
   class adr-0008-human-approval-scope adr
+  adr-0009-kind-placement["ADR-0009 kind 47 種の置き場所と、増えたときの分け方 (proposed)"]
+  class adr-0009-kind-placement adr
+  adr-0010-value-ownership["ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く (proposed)"]
+  class adr-0010-value-ownership adr
   adr-index["adr — 索引"]
   class adr-index index
   agreement-ledger["顧客との合意台帳の形 (提出・承認・その後の変更)"]
@@ -64,7 +68,7 @@ graph LR
   class explanation-index index
   export-deliverable["igeta export — 提出用 PDF 出力基盤"]
   class export-deliverable explanation
-  folder-placement["どの文書をどこに置き、増えたらどう分けるか"]
+  folder-placement["どの文書をどこに置くか — 木の図と、その理由"]
   class folder-placement explanation
   human-review-layer["人間レビュー層 (地図・決定台帳・レビューシート) を足した理由"]
   class human-review-layer explanation
@@ -78,8 +82,6 @@ graph LR
   class reader-granularity explanation
   requirements["要件定義書 (draft)"]
   class requirements product
-  template-realignment["雛形の組み直し — 人の決定と作り方を節の単位で分け、依存の向きを揃える"]
-  class template-realignment explanation
   audience-directories ==> adr-0001-document-role-directories
   adr-0001-document-role-directories ==> adr-0002-role-boundary-invariants
   adr-0001-document-role-directories ==> adr-0003-docs-model-migration-and-dogfooding
@@ -92,6 +94,9 @@ graph LR
   adr-0006-provenance-migration-handling ==> adr-0007-fingerprint-link-normalization
   adr-0001-document-role-directories ==> adr-0008-human-approval-scope
   adr-0005-enforcement-rollout-and-canonical-sync ==> adr-0008-human-approval-scope
+  adr-0001-document-role-directories ==> adr-0009-kind-placement
+  adr-0004-folder-internal-structure-and-growth ==> adr-0009-kind-placement
+  adr-0009-kind-placement ==> adr-0010-value-ownership
   provenance-and-agreement ==> agreement-ledger
   requirements ==> audience-directories
   human-review-layer ==> audience-layers
@@ -99,53 +104,35 @@ graph LR
   provenance-and-agreement ==> coverage-and-learning
   requirements ==> docs-model-strategy
   audience-directories ==> docs-model-strategy
-  reader-granularity ==> folder-placement
+  adr-0009-kind-placement ==> folder-placement
   audience-layers ==> provenance-and-agreement
   audience-layers ==> reader-granularity
-  audience-layers ==> requirements
-  folder-placement ==> template-realignment
-  adr-0001-document-role-directories -.- audience-layers
-  adr-0001-document-role-directories -.- folder-placement
-  adr-0001-document-role-directories -.- reader-granularity
-  adr-0002-role-boundary-invariants -.- reader-granularity
-  adr-0002-role-boundary-invariants -.- folder-placement
-  adr-0002-role-boundary-invariants -.- template-realignment
+  adr-0001-document-role-directories -.- adr-0009-kind-placement
+  adr-0001-document-role-directories -.- adr-0010-value-ownership
+  adr-0002-role-boundary-invariants -.- adr-0009-kind-placement
+  adr-0002-role-boundary-invariants -.- adr-0010-value-ownership
   adr-0003-docs-model-migration-and-dogfooding -.- audience-directories
-  adr-0003-docs-model-migration-and-dogfooding -.- export-deliverable
-  adr-0003-docs-model-migration-and-dogfooding -.- template-realignment
-  adr-0004-folder-internal-structure-and-growth -.- context-boundaries
-  adr-0004-folder-internal-structure-and-growth -.- folder-placement
-  adr-0004-folder-internal-structure-and-growth -.- template-realignment
+  adr-0003-docs-model-migration-and-dogfooding -.- adr-0010-value-ownership
+  adr-0004-folder-internal-structure-and-growth -.- adr-0009-kind-placement
   adr-0005-enforcement-rollout-and-canonical-sync -.- audience-directories
-  adr-0005-enforcement-rollout-and-canonical-sync -.- template-realignment
-  adr-0006-provenance-migration-handling -.- provenance-and-agreement
-  adr-0006-provenance-migration-handling -.- agreement-ledger
-  adr-0006-provenance-migration-handling -.- coverage-and-learning
-  adr-0006-provenance-migration-handling -.- export-deliverable
-  adr-0007-fingerprint-link-normalization -.- provenance-and-agreement
-  adr-0007-fingerprint-link-normalization -.- agreement-ledger
+  adr-0005-enforcement-rollout-and-canonical-sync -.- adr-0009-kind-placement
+  adr-0005-enforcement-rollout-and-canonical-sync -.- adr-0010-value-ownership
+  adr-0006-provenance-migration-handling -.- adr-0007-fingerprint-link-normalization
   adr-0008-human-approval-scope -.- adr-0002-role-boundary-invariants
+  adr-0009-kind-placement -.- adr-0010-value-ownership
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
-  audience-directories -.- audience-layers
   audience-layers -.- provenance-and-agreement
   audience-layers -.- coverage-and-learning
   audience-layers -.- context-boundaries
   design-doc-standards -.- docs-index
-  docs-model-strategy -.- audience-layers
-  docs-model-strategy -.- context-boundaries
-  docs-model-strategy -.- human-review-layer
   export-deliverable -.- docs-index
-  folder-placement -.- template-realignment
+  folder-placement -.- reader-granularity
   folder-placement -.- context-boundaries
-  folder-placement -.- audience-directories
   map -.- requirements
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
-  reader-granularity -.- folder-placement
-  reader-granularity -.- template-realignment
   reader-granularity -.- human-review-layer
-  template-realignment -.- context-boundaries
 ```
 ## ドキュメント一覧 (type 別)
 ### map
@@ -162,6 +149,8 @@ graph LR
 - **adr-0006-provenance-migration-handling** _(proposed)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md)
 - **adr-0007-fingerprint-link-normalization** _(proposed)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](adr/0007-fingerprint-link-normalization.md)
 - **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認が要る変更を、差分のパスで見分ける](adr/0008-human-approval-scope.md)
+- **adr-0009-kind-placement** _(proposed)_ — [ADR-0009 kind 47 種の置き場所と、増えたときの分け方](adr/0009-kind-placement.md)
+- **adr-0010-value-ownership** _(proposed)_ — [ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く](adr/0010-value-ownership.md)
 
 ### design
 
@@ -175,11 +164,10 @@ graph LR
 - **coverage-and-learning** — [由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)](explanation/05-coverage-and-learning.md)
 - **design-doc-standards** — [設計書テンプレが参照した外部標準](explanation/01-design-doc-standards.md)
 - **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](explanation/06-export-deliverable.md)
-- **folder-placement** — [どの文書をどこに置き、増えたらどう分けるか](explanation/10-folder-placement.md)
+- **folder-placement** — [どの文書をどこに置くか — 木の図と、その理由](explanation/10-folder-placement.md)
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
 - **provenance-and-agreement** — [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md)
 - **reader-granularity** — [人が読んで決める文書の型と量](explanation/09-reader-granularity.md)
-- **template-realignment** — [雛形の組み直し — 人の決定と作り方を節の単位で分け、依存の向きを揃える](explanation/11-template-realignment.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)
 

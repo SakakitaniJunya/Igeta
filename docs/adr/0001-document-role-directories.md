@@ -9,7 +9,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [audience-directories]
-relates_to: [audience-layers, folder-placement, reader-granularity]
+relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 ---
 
 # ADR-0001: docs/ の第1階層を「誰が確定させるか」で 3 つに分ける
@@ -22,7 +22,7 @@ relates_to: [audience-layers, folder-placement, reader-granularity]
 ## 関連
 
 - **上流 (depends_on)**: [要件定義書 — 読み手別ディレクトリ](../product/02-audience-directories.md)
-- **下流**: ADR-0002〜0008 / [型と量](../explanation/09-reader-granularity.md) / [置き場所](../explanation/10-folder-placement.md) / [雛形の組み直し](../explanation/11-template-realignment.md)
+- **下流**: ADR-0002〜0010
 
 ## Status
 
@@ -44,15 +44,16 @@ v3 は「誰が読むか」で分けたため、人も AI も読む文書の置�
 
 **採用: 確定させる人で 3 つに分ける。**
 
-| フォルダ | 置くもの | 確定させる人 | 人は読むか |
+| フォルダ | 置くもの | 確定させる人 | 人が開くとき |
 |---|---|---|---|
 | `docs/person/` | 人の承認なしに変えてはいけない決まりと、その決定の記録 | 人 | 確定前に全部読む |
-| `docs/ai/` | 作り方の詳細と、作業の手引き (手順書・解説) | 評価する AI | 決めるために読む必要はない |
+| `docs/ai/specs/` | 作り方の詳細 (詳細設計・実装タスク) | 評価する AI | 読む必要はない |
+| `docs/ai/handbook/` | 作業の手引き (手順書・解説・障害の手順)。決まりは書かない | 評価する AI | その作業をするときに開く |
 | `docs/client/` | 顧客に渡して合意するもの | 人と顧客 | 渡す前に全部読む |
 
 **置き場所を決める問い (1 つだけ)**: 「AI がこれを勝手に変えたら、事業・お金・顧客との約束・使う人の体験・
-法令のどれかが変わるか」。変わるなら `person/`、変わらないなら `ai/`。kind 単位で振り分け、混ざった雛形は
-節の単位で組み直す ([雛形の組み直し](../explanation/11-template-realignment.md))。
+法令のどれかが変わるか」。変わるなら `person/`、変わらないなら `ai/`。kind 単位で振り分け (ADR-0009)、
+混ざった雛形は節の単位で組み直す (ADR-0010)。
 
 ```text
 AGENTS.md          ← AI の入口 (person/ を上流、ai/ を持ち場として指す)
@@ -62,8 +63,7 @@ docs/
 └── client/        ← delivery/・proposals/
 ```
 
-木の正本と kind 47 種の振り分けは [置き場所](../explanation/10-folder-placement.md)、型と量は
-[型と量](../explanation/09-reader-granularity.md)、承認の強制は ADR-0008。
+kind 47 種の置き場所は ADR-0009、型と量は ADR-0002、承認の強制は ADR-0008。
 実測では、業務フロー 3 本を ID を変えずに人の型へ書き直すと、本文が元の 26% になった。
 フォルダ名は小文字 (既存が全部小文字。macOS と Linux で大文字小文字の扱いが違う)。
 

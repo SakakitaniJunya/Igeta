@@ -10,7 +10,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [requirements, audience-directories]
-relates_to: [audience-layers, context-boundaries, human-review-layer]
+relates_to: []
 ---
 
 # 文書モデルの解決戦略 — 確定させる人で 3 つに分け、検査で守り、モデルの進化に左右されない
@@ -24,7 +24,7 @@ relates_to: [audience-layers, context-boundaries, human-review-layer]
 | 区分 | 文書 | 対応 |
 |---|---|---|
 | 上流 | [要件定義書](../../product/01-requirements.md) / [要件定義書 — 確定させる人ごとのディレクトリ](../../product/02-audience-directories.md) | REQ-1xx/2xx |
-| 下流 | ADR-0001〜0008 / [型と量](../../explanation/09-reader-granularity.md) / [置き場所](../../explanation/10-folder-placement.md) / [雛形の組み直し](../../explanation/11-template-realignment.md) | — |
+| 下流 | ADR-0001〜0010 | — |
 
 ## 0. 設計書とは何か (前提)
 
@@ -40,6 +40,7 @@ relates_to: [audience-layers, context-boundaries, human-review-layer]
 | SS-003 | 中の構造 | まとまりごとのフォルダ。日付の記録は年。1 フォルダ 15 本で違反 | フォルダが読む単位になる。実測 (16〜35 本の平置き) に基づく | ADR-0004 |
 | SS-004 | 移行とルール化 | 「移す」と「書き直す」の 2 段を 1 本の PR で。強さは構成の実在と版だけで決める | 半端な状態を残さない。設定で迂回できない | ADR-0003/0005 |
 | SS-005 | 承認の強制 | 差分のパスで人の承認の要否を決める | 主体に依存しない決定的な判定 | ADR-0008 |
+| SS-006 | 置き場所と値の持ち主 | kind 47 種の置き場所の表。人の決める値は person の行に 1 回だけ置き、ai は ID を引く | 決めの本体を人の承認の下に 1 か所だけ置く | ADR-0009/0010 |
 
 ## 2. 分割方針 (docs/ の軸と依存の向き)
 
@@ -65,7 +66,7 @@ flowchart LR
 | ID | 論点 | 決め | 破ってはいけない線 |
 |---|---|---|---|
 | SS-101 | 第 1 階層 | `person`/`ai`/`client` の 3 分割 | 「両方が読む」置き場所を作らない |
-| SS-102 | 第 2 階層以下 | まとまりごとのフォルダ (木の正本は [置き場所](../../explanation/10-folder-placement.md) §1) | 木に無い場所に文書を置かない |
+| SS-102 | 第 2 階層以下 | まとまりごとのフォルダ。kind ごとの置き場所は ADR-0009 | ADR-0009 の表に無い場所に文書を置かない |
 | SS-103 | 依存の向き | `ai` → `person`、`client` → `person`・`ai` | `person` から `ai`・`client` を指さない (`relates_to` も含む) |
 | SS-104 | AI の入口 | repo 直下の `AGENTS.md` | `docs/` の中に入口を作らない |
 
@@ -88,5 +89,5 @@ ADR の一覧は生成索引 ([docs/adr/README.md](../../adr/README.md)) が出�
 | フォルダ名・検査のコード (公開) | 「どの kind のどの節を人に倒すか」の判断。実案件の評価の反省から積む |
 | ADR の書式 | 食い違いの学習ループの実測ログ (05) と、`Role.ts` に積む誤判定の修正の履歴 |
 
-本書と ADR 群が確定した後の作業: 文書体系ガイドの改訂、雛形の再編 ([雛形の組み直し](../../explanation/11-template-realignment.md))、
+本書と ADR 群が確定した後の作業: 文書体系ガイドの改訂、雛形の再編 (ADR-0010)、
 新設の検査と `igeta docs-migrate` の実装、Igeta 自身の移行 (ADR-0003)。
