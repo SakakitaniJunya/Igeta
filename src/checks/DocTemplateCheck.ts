@@ -238,14 +238,16 @@ function kindFromPath(docRelPath: string): string | null {
 }
 
 /**
- * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。旧い構成の文書は、必須節と行数上限だけを、雛形を新しい構成の
- * 木へ移す前の値 (core/LegacyTemplateRules.ts) にする。旧い構成の repo は、移すまでの間も既存の検査が通る (REQ-106)。
- * ID の接頭辞・形式は雛形のまま。
+ * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。旧い構成の文書は、必須節・行数上限・ID の接頭辞と形式を、
+ * 雛形を新しい構成の木へ移す前の値 (core/LegacyTemplateRules.ts) にする。旧い構成の repo は、移すまでの間も既存の検査が
+ * 通る (REQ-106)。
  */
 function templateFor(template: TemplateEntry, docRelPath: string): TemplateEntry {
   if (roleOfPath(docRelPath.split(sep).join('/')) !== null) return template;
   const legacy = LEGACY_TEMPLATE_RULES.get(template.kind);
-  return legacy === undefined ? template : { ...template, required: legacy.required, lineLimit: legacy.lineLimit };
+  return legacy === undefined
+    ? template
+    : { ...template, required: legacy.required, lineLimit: legacy.lineLimit, idPrefixes: legacy.idPrefixes, idPattern: legacy.idPattern };
 }
 
 // EARS (Easy Approach to Requirements Syntax): 機能要件は

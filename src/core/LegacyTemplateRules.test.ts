@@ -1,46 +1,42 @@
 // node --test dist/core/LegacyTemplateRules.test.js
-// 旧い構成の文書を検査する、雛形の必須節と行数上限の固定表 (REQ-106、ADR-0005 決定 1・3・4)。
-// 表の値は、雛形を移す前の templates/docs/ の 44 本から機械的に起こした。ここでは表の形と、行数上限を持つ kind を固定する。
+// 旧い構成の文書を検査する固定表 (REQ-106、ADR-0005 決定 1・3・4) の全体を、SHA256 で固定する。
+//   - LEGACY_TEMPLATE_RULES: kind → 必須節・行数上限・ID の接頭辞と形式 (44 kind)
+//   - LEGACY_TEMPLATE_PATHS: 置き場所 → kind の対応 (27 フォルダ)
+// 表を書き換えると、旧い構成の repo の検査が変わる。表は 1 行も変えてはならない (変えてよいのは、旧い構成を違反にする
+// メジャー版 (ADR-0005 決定 1) で、表ごと消すとき)。この 1 本が、1 行の変更でも落ちる。
 // 旧い構成の文書がこの表で検査されること (新しい構成の文書は雛形で検査されること) は、DocTemplateCheck.legacyRules.test.ts が見る。
+import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { LEGACY_TEMPLATE_PATHS } from './LegacyTemplatePaths.js';
 import { LEGACY_TEMPLATE_RULES } from './LegacyTemplateRules.js';
 
-describe('LEGACY_TEMPLATE_RULES: 移す前の雛形の必須節と行数上限', () => {
-  it('移す前の雛形 44 kind を持ち、新しい kind (data-management) は持たない', () => {
-    assert.equal(LEGACY_TEMPLATE_RULES.size, 44);
-    assert.equal(LEGACY_TEMPLATE_RULES.has('data-management'), false);
-  });
+/**
+ * 期待する SHA256。v0.4.0 のタグの templates/docs/ (44 本) から、表と同じ形へ起こした値を JSON にして求めた
+ * (今の表の値は写していない)。
+ *   rules: [kind, line_limit, id_prefix (id_prefixes の全部)、id_pattern (無ければ numeric)、必須の H2 (連番と「(任意)」の付くものを除く)] を kind の順に並べる
+ *   paths: [フォルダ, [[連番を除いたファイル名, kind] を名前の順に], 名前を自由に付ける雛形の kind か null] をフォルダの順に並べる
+ */
+const EXPECTED_RULES_SHA256 = 'a038cfa326966179011b7222fceb0f0ed075cb751fb5352c845531df381097f0';
+const EXPECTED_PATHS_SHA256 = '2a97af486eb1e8fc88b7b04ae4ff79b1bd009616eadcc4702101137aa6423eee';
 
-  it('全 kind が「関連」を必須の節の先頭に持ち、必須の節に重複がない', () => {
-    for (const [kind, rule] of LEGACY_TEMPLATE_RULES) {
-      assert.equal(rule.required[0], '関連', kind);
-      assert.equal(new Set(rule.required).size, rule.required.length, kind);
-    }
-  });
+/** 並べる順は UTF-16 のコード単位の順 (ロケールに依らない) */
+const byCode = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+const sha256 = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-  it('行数上限を持つのは、地図・まとまりの地図・まとまりの約束・機能ブリーフの 4 kind だけ (150 行)', () => {
-    const limited = [...LEGACY_TEMPLATE_RULES].filter(([, rule]) => rule.lineLimit !== null).map(([kind, rule]) => [kind, rule.lineLimit]);
-    assert.deepEqual(limited.sort(), [
-      ['context-contract', 150],
-      ['context-map', 150],
-      ['feature-brief', 150],
-      ['map', 150],
-    ]);
-  });
-
-  it('移す前の必須節を、そのまま持つ (人の型へ作り直す前の節)', () => {
-    assert.deepEqual(LEGACY_TEMPLATE_RULES.get('function-list')?.required, ['関連', '機能一覧', '機能別の状態・権限', 'カバレッジ確認']);
-    assert.deepEqual(LEGACY_TEMPLATE_RULES.get('requirements')?.required, ['関連', '業務要件', '機能要件', '制約', '前提', 'スコープ外']);
-    assert.deepEqual(LEGACY_TEMPLATE_RULES.get('solution-strategy')?.required, [
-      '関連',
-      '技術選定の要約',
-      '分割方針',
-      '品質目標の達成手段',
-      '主要な設計判断 (ADR 一覧)',
-    ]);
-    assert.ok(LEGACY_TEMPLATE_RULES.get('domain-model')?.required.includes('未決事項'));
-    assert.ok(LEGACY_TEMPLATE_RULES.get('infra-design')?.required.includes('費用'));
+describe('旧い構成の固定表は、v0.4.0 の雛形から起こした値のまま', () => {
+  it('必須節・行数上限・ID の接頭辞と形式 (44 kind) と、置き場所 → kind の対応 (27 フォルダ) の全体が、SHA256 で一致する', () => {
+    const rules = [...LEGACY_TEMPLATE_RULES]
+      .sort(([a], [b]) => byCode(a, b))
+      .map(([kind, rule]) => [kind, rule.lineLimit, rule.idPrefixes, rule.idPattern, rule.required]);
+    const paths = [...LEGACY_TEMPLATE_PATHS]
+      .sort(([a], [b]) => byCode(a, b))
+      .map(([dir, slot]) => [dir, [...slot.exact].sort(([a], [b]) => byCode(a, b)), slot.placeholder]);
+    assert.deepEqual(
+      { kinds: rules.length, folders: paths.length, rules: sha256(rules), paths: sha256(paths) },
+      { kinds: 44, folders: 27, rules: EXPECTED_RULES_SHA256, paths: EXPECTED_PATHS_SHA256 },
+      '旧い構成の固定表の値が変わった。表の値を変えると、旧い構成の repo の検査が変わる (REQ-106)',
+    );
   });
 });

@@ -1,6 +1,6 @@
 // node --test dist/checks/DocTemplateCheck.legacyRules.test.js
-// 旧い構成の文書は、雛形を新しい構成の木へ移す前の必須節・行数上限 (core/LegacyTemplateRules.ts) で検査され、
-// 新しい構成の文書は雛形そのもので検査されること (REQ-106、ADR-0005 決定 1・3・4)。
+// 旧い構成の文書は、雛形を新しい構成の木へ移す前の必須節・行数上限・ID の接頭辞と形式 (core/LegacyTemplateRules.ts) で
+// 検査され、新しい構成の文書は雛形そのもので検査されること (REQ-106、ADR-0005 決定 1・3・4)。
 // 雛形は、旧い構成の値と食い違うように作った一時の置き場に置く (実際の雛形が今後変わっても、このテストは動く)。
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,13 +20,14 @@ after(() => {
 /** 旧い構成の function-list の雛形の必須節 (LEGACY_TEMPLATE_RULES と同じ) */
 const LEGACY_SECTIONS = ['機能一覧', '機能別の状態・権限', 'カバレッジ確認'];
 
-/** 雛形と食い違う function-list の雛形: 必須節が 1 つ違い、行数上限が 20 行 */
+/** 雛形と食い違う function-list の雛形: 必須節が 1 つ多く、行数上限が 20 行、ID は ZZ001 の形 (旧い構成の値は FN-nnn) */
 const LIVE_TEMPLATE = [
   '---',
   'id: <kebab-slug>',
   'kind: function-list',
   'arc42: 1',
-  'id_prefix: FN',
+  'id_prefix: ZZ',
+  'id_pattern: bare-numeric',
   'line_limit: 20',
   'depends_on: []',
   'relates_to: []',
@@ -45,7 +46,7 @@ const LIVE_TEMPLATE = [
   '',
   '## 機能一覧',
   '',
-  '| FN-001 | 内容 |',
+  '| ZZ001 | 内容 |',
   '',
   '## 新しい節',
   '',
@@ -115,9 +116,12 @@ describe('DocTemplateCheck: 旧い構成の文書は旧い構成の必須節で�
     assert.ok(messagesOf(violations, 'person/design/shared/01-function-list.md').some((message) => message.includes('行数上限 (20) を超えている')));
   });
 
-  it('旧い構成の文書も、ID の接頭辞・形式は雛形で検査する', () => {
-    const doc = functionListDoc('legacy-function-list').replace('| FN-001 | 内容 |', '| FN-1 | 内容 |');
-    const violations = analyze({ 'design/basic/function-list.md': doc });
-    assert.ok(messagesOf(violations, 'design/basic/function-list.md').some((message) => message.includes('ID 形式が不正: FN-1')));
+  it('ID の接頭辞・形式は、旧い構成の文書は旧い構成の値 (FN-nnn) で検査し、新しい構成の文書は雛形の値 (ZZ001) で検査する', () => {
+    const violations = analyze({
+      'design/basic/function-list.md': functionListDoc('legacy-function-list').replace('| FN-001 | 内容 |', '| FN-1 | 内容 |'),
+      'person/design/shared/01-function-list.md': functionListDoc('v4-function-list'),
+    });
+    assert.deepEqual(messagesOf(violations, 'design/basic/function-list.md'), ['ID 形式が不正: FN-1 (FN-nnn の 3 桁)']);
+    assert.ok(messagesOf(violations, 'person/design/shared/01-function-list.md').some((message) => message.includes('ZZnnn の ID が 1 件もない')));
   });
 });

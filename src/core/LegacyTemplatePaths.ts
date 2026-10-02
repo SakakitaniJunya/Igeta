@@ -11,7 +11,7 @@
 
 import { posix } from 'node:path';
 
-interface LegacySlot {
+export interface LegacySlot {
   /** 連番を除いたファイル名 → kind。固定名の雛形 (`01-function-list.md` → `function-list.md`) */
   readonly exact: ReadonlyMap<string, string>;
   /** 完全一致しないファイル名の kind。名前を自由に付ける雛形 (`__flow__.md` など) があるフォルダだけ持つ */
@@ -23,8 +23,11 @@ const slot = (exact: Readonly<Record<string, string>>, placeholder: string | nul
   placeholder,
 });
 
-/** docs/ からの相対のフォルダ (docs/ 直下は空文字) → そのフォルダに置く文書の kind の決め方 */
-const LEGACY_SLOTS: ReadonlyMap<string, LegacySlot> = new Map([
+/**
+ * docs/ からの相対のフォルダ (docs/ 直下は空文字) → そのフォルダに置く文書の kind の決め方。
+ * 値は v0.4.0 の雛形の置き場所から起こしたもので、LegacyTemplateRules.test.ts が全体を SHA256 で固定する。
+ */
+export const LEGACY_TEMPLATE_PATHS: ReadonlyMap<string, LegacySlot> = new Map([
   ['', slot({ 'map.md': 'map', 'decisions.md': 'decision-log' })],
   ['adr', slot({}, 'adr')],
   ['architecture', slot({ 'overview.md': 'as-is-overview', 'glossary.md': 'glossary' })],
@@ -88,7 +91,7 @@ const withoutSeq = (name: string): string => name.replace(/^\d{2}-/, '');
  */
 export function legacyKindOfPath(docsRelPath: string): string | null {
   const dir = posix.dirname(docsRelPath);
-  const found = LEGACY_SLOTS.get(dir === '.' ? '' : dir);
+  const found = LEGACY_TEMPLATE_PATHS.get(dir === '.' ? '' : dir);
   if (found === undefined) return null;
   return found.exact.get(withoutSeq(posix.basename(docsRelPath))) ?? found.placeholder;
 }
