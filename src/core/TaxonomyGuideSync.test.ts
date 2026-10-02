@@ -16,11 +16,14 @@ import assert from 'node:assert/strict';
 
 import { ARC42_BY_KIND } from '../checks/DocTemplateCheck.js';
 import { MAX_DOCS_PER_FOLDER } from '../checks/FolderSizeCheck.js';
+import { listDocFiles } from './DocFiles.js';
+import { parseFrontmatter, scalar } from './Frontmatter.js';
 import { IGETA_ROOT } from './Paths.js';
 import { FOLDER_SIZE_EXEMPT_DIRS, ROLE_OF_KIND, ROLES } from './Role.js';
 import type { FormCheck } from './Role.js';
 
-const REQUIREMENTS_PATH = join(IGETA_ROOT, 'docs', 'product', '02-audience-directories.md');
+/** 置き場所の正本の文書の id。場所ではなく id で探す (Igeta 自身の docs/ を移しても、このテストは動く。REQ-302) */
+const REQUIREMENTS_ID = 'audience-directories';
 
 /** 表のパスの記法のうち、コード側と書き方が違うもの */
 const TABLE_TOKENS: ReadonlyArray<readonly [string, string]> = [['<提出物名>', '<deliverable>']];
@@ -228,7 +231,17 @@ function diffAgainstRoleTable(markdown: string): string[] {
   return diffs;
 }
 
-const requirements = readFileSync(REQUIREMENTS_PATH, 'utf8');
+function readRequirements(): string {
+  const docsDir = join(IGETA_ROOT, 'docs');
+  const found = listDocFiles(docsDir).filter((rel) => {
+    const meta = parseFrontmatter(readFileSync(join(docsDir, rel), 'utf8').split(/\r?\n/));
+    return meta !== null && scalar(meta.data, 'id') === REQUIREMENTS_ID;
+  });
+  assert.equal(found.length, 1, `docs/ に id: ${REQUIREMENTS_ID} の文書が 1 本だけあること (見つかった: ${found.join(', ') || 'なし'})`);
+  return readFileSync(join(docsDir, found[0] ?? ''), 'utf8');
+}
+
+const requirements = readRequirements();
 
 /** 要件定義書の §7 の中の文字列を 1 か所だけ書き換える。書き換え元が無ければテストの前提が崩れているので落とす */
 function mutate(from: string, to: string): string {
