@@ -13,7 +13,7 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 
 # 雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表
 
-> **TL;DR**: ai の雛形 25 本の全 118 節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B・26 件)
+> **TL;DR**: ai の雛形 25 本の全 124 節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B・26 件)
 > - 答えが「変わる」なら、その値は人の承認が要るので person の行に置き、ai の節は ID を引く (ADR-0010)
 > - 表 A は `TemplateSectionAudit.test.ts` が雛形の節と突き合わせる。雛形に節を足したら、この表に行を足す
 
@@ -34,7 +34,7 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 
 ## 2. 表 A — 残した節 (雛形の全部の節。答えは全部「変わらない」)
 
-「節」の欄に `;` で並べたものは、同じ理由で同じ答えの節をまとめた (連番と「(任意)」は外した)。
+「節」の欄に `;` で並べたものは、同じ理由で同じ答えの節をまとめた (連番と「(任意)」は外した)。person から ai へ出した値 (ADR-0010 決定 2) の受け皿の節は、理由に「受け皿」と書いた。
 
 | kind | 節 | 答え | 移した先・理由 |
 |---|---|---|---|
@@ -43,6 +43,8 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 | crosscutting | エラー形式 ; 冪等性・リトライ ; テナント隔離 | 変わらない | 実装の方式 |
 | crosscutting | ログ・監査 | 変わらない | 必須フィールドだけ。保持期間・個人情報の扱いは data-management へ移し、DM の行を引く |
 | crosscutting | i18n・タイムゾーン | 変わらない | 方式の要約。対応する言語は nonfunctional (NFR) の行を引く |
+| crosscutting | レイヤの依存の向き | 変わらない | 依存の向きの規則 (dependency-cruiser が強制する)。solution-strategy から外したレイヤの向きの受け皿 |
+| crosscutting | 品質目標の達成手段 | 変わらない | 達成手段は方式。目標の数値は nonfunctional (NFR) の行を引く。solution-strategy から外した達成手段の受け皿 |
 | code-definitions | 区分値一覧 ; 格納形式の方針 ; 表示名の解決 | 変わらない | 格納値と実装の分類 |
 | code-definitions | 値の定義 | 変わらない | 格納値と意味。表示名は glossary の語へ移し、用語集の語を引く |
 | messages | エラーメッセージ一覧 | 変わらない | 定型の文言のカタログ。約束・法令になる文は business-flow・screen-spec の行 (BF・SCR) を引く |
@@ -56,10 +58,13 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 | infra-design | Secret / 環境変数 | 変わらない | 保管と参照。入れ替えの周期は nonfunctional (NFR) の行を引く |
 | infra-design | 環境分離 | 変わらない | 環境の分け方。環境ごとのデータは data-management (DM) の行を引く |
 | infra-design | ネットワーク・接続経路 | 変わらない | 経路の方式 |
+| infra-design | バックアップと監視の設定 | 変わらない | 設定。保持と復旧の目標は data-management・operations、閾値は nonfunctional の行を引く。operations から外した方式・設定の受け皿 |
+| infra-design | 稼働中の資源の一覧 | 変わらない | いま動いている資源の台帳。as-is-overview から外した一覧の受け皿 |
 | test-plan | テストピラミッド ; 品質ゲートと例外 | 変わらない | 検証の手段と開発の工程 |
 | test-plan | テスト環境 | 変わらない | 環境の種類。使うデータの個人情報の扱いは data-management (DM) の行を引く |
 | test-plan | Definition of Done | 変わらない | 1 ステップの完了だけ。リリースしてよい条件は migration-plan へ移した |
 | test-plan | 性能・負荷テスト | 変わらない | シナリオと負荷。合格の数値は nonfunctional (NFR) の行を引く |
+| test-plan | 品質目標の測り方 | 変わらない | 測り方と道具。目標の数値は nonfunctional (NFR) の行を引く。nonfunctional から外した測り方の受け皿 |
 | domain-overview | コンテキストマップ | 変わらない | 上流・下流と連携様式の図。分割の境界は solution-strategy (SS) が決める |
 | domain-overview | 図の規約 ; 集約横断の論点 | 変わらない | 図の書き方と技術的な論点 |
 | aggregate-map | 集約と境界 | 変わらない | トランザクション境界の図 |
@@ -75,6 +80,7 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 | table-spec | 制約 (RLS / EXCLUDE / CHECK) ; インデックス ; 中核 DDL 抜粋 ; 主要トランザクション ; 主要クエリ ; マイグレーション運用 ; 接続 ; 容量試算とスケール段階 | 変わらない | DB の実装手段。費用は solution-strategy の上限の範囲内。バックアップの保持は data-management へ移した |
 | table-spec | 参照整合性 | 変わらない | 外部キーの動き。論理削除・削除の方針は data-management (DM) へ移し、行を引く |
 | domain-model | クラス図 ; クラス ↔ ファイル対応表 ; 差し替え可能点 ; 他コンテキストとの関係 | 変わらない | 実装の構造 |
+| domain-model | 用語の対応 | 変わらない | 用語集の語とクラス名の対応。表示名は用語集が持つ。glossary から外した英語識別子の受け皿 |
 | domain-model | 不変条件 | 変わらない | 従う決まり (REQ・BF) の ID と、強制する主体・違反時の扱いだけ。決まりの内容は business-flow・requirements へ移した |
 | sequence-spec | ユースケース一覧 ; シーケンス図 ; 発行イベントと購読 ; 外部サービス呼び出し | 変わらない | 実行時の構造 |
 | sequence-spec | 例外・補償 | 変わらない | 検出・ロールバック・表現。業務としての扱いは business-flow の例外 (BF-1xx) へ移し、行を引く |

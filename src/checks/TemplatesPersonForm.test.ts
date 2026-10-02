@@ -214,3 +214,17 @@ describe('person の雛形のうち、図だけを検査する kind (地図・�
     });
   }
 });
+
+describe('person の雛形のうち、型の検査が ○ でない kind: 「決めてほしいこと」を置くなら、表の列が同じ', () => {
+  for (const doc of personDocs.filter((candidate) => candidate.kind !== undefined && placementOf(candidate.kind)?.formCheck !== 'full')) {
+    const heading = h2sOf(doc).find((h2) => h2.text.startsWith('決めてほしいこと'));
+    if (heading === undefined) continue;
+    it(`${doc.relPath} (${doc.kind})`, () => {
+      assert.equal(heading.text, '決めてほしいこと (任意)');
+      const questions = tablesOf(doc).filter((table) => table.header.join('|') === QUESTION_HEADER.join('|'));
+      assert.equal(questions.length, 1, '決めてほしいことの表が 1 つ');
+      assert.equal(h2sOf(doc).at(-1)?.text, '関連');
+    });
+  }
+});
+
