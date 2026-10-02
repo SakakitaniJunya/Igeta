@@ -49,7 +49,7 @@ ADR-0001 は置き場所を「確定させる人」で決めた。この決ま�
 | 上のどれも無い (`docs/ai/**`・コード・生成索引だけ) | `ai` |
 
 各フォルダの README.md は、生成器が管理する AUTOGEN 区間 (dir-index・adr-index・tentative-index) の中だけが変わり、
-区間の中身が再生成の結果と一致するときに限り判定から除く。それ以外は `human`。`person/`・`client/` の README.md の
+区間の中身が再生成の結果と一致するときに限り判定から除く。それ以外の README の変更は、置かれたフォルダの判定に従う (`person/`・`client/` なら `human`)。`person/`・`client/` の README.md の
 区間の外に書けるのは frontmatter と 1 行の目的だけ。HTML コメントと管理外の区間は違反 (ADR-0002 条件 10)。
 Igeta 自身の repo は `humanPaths` に、全利用 repo の決まりを決めるもの (`templates/**`・`src/checks/**`・`src/gate/**`
 (`approval-scope` の本体を置く)・`src/core/{Role,IgetaConfig,LineClassifier}.ts`) と、Igeta 自身の機能の決めをまだ持つ
