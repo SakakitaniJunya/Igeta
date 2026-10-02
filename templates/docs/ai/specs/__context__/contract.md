@@ -28,7 +28,7 @@ relates_to: []
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [このまとまりの地図](../maps/) | — |
+| 上流 (depends_on) | このまとまりの地図 (`person/design/<まとまり>/00-map.md`) | — |
 | 下流 | 参照する他まとまりの文書全部 | — |
 
 ## 1. 公開 API・イベント
@@ -49,7 +49,7 @@ relates_to: []
 
 ## 3. 用語
 
-<!-- 他まとまりが誤読しやすい語だけ。全部の用語集は architecture/02-glossary.md -->
+<!-- 他まとまりが誤読しやすい語だけ。全部の用語集は person/design/shared/10-glossary.md -->
 
 | 語 | このまとまりでの意味 |
 |---|---|

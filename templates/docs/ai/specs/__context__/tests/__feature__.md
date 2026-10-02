@@ -32,7 +32,7 @@ relates_to: [screen-spec, sequence-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [テスト計画](../01-test-plan.md) / [機能一覧](../../basic/01-function-list.md) / [API 仕様](../../basic/api/) | FN-* / API-* |
+| 上流 (depends_on) | [テスト計画](../../shared/08-test-plan.md) / [機能一覧](../../../../person/design/shared/01-function-list.md) / API 仕様 (`ai/specs/<まとまり>/api/`) | TSP-* / FN-* / API-* |
 | 下流 | 実装のテストコード (`*.spec.ts` / Playwright) | — |
 
 ## 1. テストケース一覧
@@ -58,5 +58,8 @@ relates_to: [screen-spec, sequence-spec]
 
 ## 4. テストデータ (任意)
 
-| ID | データセット | 生成方法 | 個人情報の扱い |
+<!-- 個人情報の扱いは、データの扱いの環境ごとの行 (DM-5xx) を引く。ここに書き写さない -->
+
+| ID | データセット | 生成方法 | 従う決まり (DM) |
 |---|---|---|---|
+| TST-401 | | | DM-503 |

@@ -23,8 +23,8 @@ relates_to: [sequence-spec, test-spec]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [機能一覧](../basic/01-function-list.md) / [シーケンス](../detail/sequences/) / [テーブル定義](../basic/tables/) | FN-* / SEQ-* / TBL-* |
-| 下流 | [テスト仕様](../test/specs/) / 実装 | TST-* |
+| 上流 (depends_on) | [機能一覧](../../../person/design/shared/01-function-list.md) / シーケンス (`ai/specs/<まとまり>/sequences/`) / テーブル定義 (`ai/specs/<まとまり>/tables/`) | FN-* / SEQ-* / TBL-* |
+| 下流 | テスト仕様 (`ai/specs/<まとまり>/tests/`) / 実装 | TST-* |
 
 <!--
   行形式: - [ ] T001 [P] [FN-001] 説明 (触るファイルのパス)
@@ -58,7 +58,7 @@ relates_to: [sequence-spec, test-spec]
 
 ## Polish
 
-<!-- 仕上げ。ここに「あとで直す」を積まない (原則: サイレント縮退禁止)。積むなら未決事項として上流へ返す -->
+<!-- 仕上げ。ここに「あとで直す」を積まない (原則: サイレント縮退禁止)。積むなら person の「決めてほしいこと」へ返す -->
 
 - [ ] T900 [FN-001] <ログ・監査・文言の整合> (`<path>`)
 

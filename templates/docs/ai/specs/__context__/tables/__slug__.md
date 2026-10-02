@@ -9,8 +9,8 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
-depends_on: [domain-model, api-spec]
-relates_to: [migration-plan, nonfunctional]
+depends_on: [domain-model, api-spec, data-management]
+relates_to: [nonfunctional]
 ---
 
 <!--
@@ -25,14 +25,14 @@ relates_to: [migration-plan, nonfunctional]
 
 > **TL;DR**: <対象テーブル群を 1 文で>
 > - 不変条件は**アプリでなく DB 制約**で守る (一意・外部キー・CHECK・EXCLUDE)
-> - テナント隔離は全業務テーブルの `tenant_id` + RLS。`WHERE` の付け忘れに依存しない
+> - テナント隔離は全業務テーブルの `tenant_id` + RLS。`WHERE` の付け忘れに依存しない。保持期間と削除の方針は `person/` のデータの扱いの ID を引く
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ドメインクラス図](../../detail/domain/) / [API 仕様](../api/) | class 名 / API-* |
-| 下流 | [移行・リリース計画](../../ops/02-migration-plan.md) / Prisma schema | MIG-* |
+| 上流 (depends_on) | ドメインクラス図 (`ai/specs/<まとまり>/domain/`) / API 仕様 (`ai/specs/<まとまり>/api/`) / [データの扱い](../../../../person/design/shared/05-data-management.md) | class 名 / API-* / DM-* |
+| 下流 | [移行・リリース計画](../../../../person/design/shared/09-migration-plan.md) / Prisma schema | MIG-* |
 
 ## 1. ER 図
 
@@ -50,9 +50,9 @@ erDiagram
 
 ## 2. テーブル一覧
 
-| ID | 物理名 | 論理名 | 対応集約 (CLS) | 想定件数/年 | 保持期間 |
+| ID | 物理名 | 論理名 | 対応集約 (CLS) | 想定件数/年 | 従う決まり (DM の保持期間) |
 |---|---|---|---|---|---|
-| TBL-001 | reservations | 予約 | CLS: Reservation | 10^4 | 無期限 |
+| TBL-001 | reservations | 予約 | CLS: Reservation | 10^4 | DM-201 |
 
 ## 3. 列定義
 
@@ -85,9 +85,11 @@ erDiagram
 | ID | テーブル | 列 | 種別 | 目的クエリ | 単調増加列を含むか |
 |---|---|---|---|---|---|
 
-## 6. 参照整合性と削除方針 (任意)
+## 6. 参照整合性 (任意)
 
-| ID | 親 | 子 | ON DELETE | 論理削除の有無 |
+<!-- 論理削除の有無・削除の方針は、データの扱い (DM-4xx) が決める。ここは外部キーの動きだけ -->
+
+| ID | 親 | 子 | ON DELETE | 従う決まり (DM) |
 |---|---|---|---|---|
 
 <!--
@@ -116,7 +118,9 @@ erDiagram
 | 論点 | 決め |
 |---|---|
 
-## 11. 接続・バックアップ (任意)
+## 11. 接続 (任意)
+
+<!-- 接続数・プール・タイムアウト。バックアップの保持と復旧の目標は、データの扱い・運用設計が決める -->
 
 | 論点 | 決め |
 |---|---|

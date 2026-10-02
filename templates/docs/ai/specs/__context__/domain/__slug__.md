@@ -12,7 +12,7 @@ owners: [eng-domain-architect]
 created: YYYY-MM-DD
 context: <context>          # 境界づけられたコンテキスト名 (kebab)
 code_root: apps/api/src/modules/<context>   # 必須。CI の図↔実装照合がこれを使う
-depends_on: [requirements]
+depends_on: [requirements, business-flow]
 relates_to: [table-spec, sequence-spec, module-spec]
 ---
 
@@ -28,15 +28,15 @@ relates_to: [table-spec, sequence-spec, module-spec]
 # <コンテキスト名> — <コンテキストの一言説明>
 
 > **TL;DR**: <このコンテキストが持つものと持たないものを 1 文で>
-> - <最重要の不変条件>
+> - 守る不変条件は `person/` の要件・業務フローの行が決める。本書はその ID を引く
 > - <持たないもの (他コンテキストの責務)>
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [要件定義書](../../../product/01-requirements.md) | REQ-* |
-| 下流 | [テーブル定義](../../basic/tables/) / [モジュール仕様](../modules/) | TBL-* / MOD-* |
+| 上流 (depends_on) | [要件定義書](../../../../person/requirements/01-requirements.md) / 業務フロー (`person/design/<まとまり>/flows/`) | REQ-* / BF-* |
+| 下流 | テーブル定義 (`ai/specs/<まとまり>/tables/`) / モジュール仕様 (`ai/specs/<まとまり>/modules/`) | TBL-* / MOD-* |
 
 ## 1. クラス図
 
@@ -69,9 +69,9 @@ classDiagram
 
 ## 2. 不変条件
 
-<!-- 「誰が強制するか」と「違反したら何が起きるか」を必ず書く。書けない不変条件は守られない -->
+<!-- 不変条件のうち業務の決まりに当たるものは、person の要件・業務フローの行にある。ここはその ID を引き、「誰が強制するか」と「違反したら何が起きるか」を書く。書けない不変条件は守られない -->
 
-| # | 不変条件 | 強制する主体 | 違反時 |
+| # | 従う決まり (REQ・BF の ID) | 強制する主体 | 違反時の扱い (例外) |
 |---|---|---|---|
 
 ## 3. クラス ↔ ファイル対応表
@@ -98,9 +98,4 @@ classDiagram
 ## 5. 他コンテキストとの関係
 
 | 相手 | 方向 | 連携様式 (Published Language / ACL / 共有カーネル) | 受け渡すもの |
-|---|---|---|---|
-
-## 6. 未決事項
-
-| # | 論点 | 現在の扱い | 確定する条件 |
 |---|---|---|---|

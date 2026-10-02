@@ -9,7 +9,7 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
-depends_on: [domain-model]
+depends_on: [domain-model, glossary]
 relates_to: [table-spec, screen-spec, messages]
 ---
 
@@ -24,15 +24,15 @@ relates_to: [table-spec, screen-spec, messages]
 # 区分値定義
 
 > **TL;DR**: <この案件で使う区分値 (enum) の正典>
-> - **格納値と表示名を分ける**。表示名を DB に入れると文言変更が migration になる
+> - **格納値と表示名を分ける**。表示名を DB に入れると文言変更が migration になる。表示名は用語集の語を引く
 > - 区分値の追加は本書を先に直す。コードと DB だけ足すのは禁止 (原則: 上流から直す)
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ドメインクラス図](../detail/domain/) | class 名 |
-| 下流 | [テーブル定義](./tables/) / [画面設計](./screens/) | TBL-* / SCR-* |
+| 上流 (depends_on) | ドメインクラス図 (`ai/specs/<まとまり>/domain/`) / [用語集](../../../person/design/shared/10-glossary.md) | class 名 |
+| 下流 | テーブル定義 (`ai/specs/<まとまり>/tables/`) / [画面設計](../../../person/design/) | TBL-* / SCR-* |
 
 ## 1. 区分値一覧
 
@@ -44,9 +44,9 @@ relates_to: [table-spec, screen-spec, messages]
 
 ### CD-001 予約状態
 
-| 格納値 | 表示名 (ja) | 表示名 (en) | 意味 | 並び順 |
-|---|---|---|---|---|
-| tentative | 仮予約 | Tentative | | 10 |
+| 格納値 | 用語集の語 (表示名) | 意味 | 並び順 |
+|---|---|---|---|
+| tentative | 仮予約 | | 10 |
 
 ## 3. 格納形式の方針
 

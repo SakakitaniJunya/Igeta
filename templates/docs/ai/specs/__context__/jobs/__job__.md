@@ -25,20 +25,20 @@ relates_to: [operations, infra-design, state-machine]
 
 > **TL;DR**: <定期・非同期で動く処理を 1 文で>
 > - **冪等キーの無いジョブを作らない**。再実行で二重に効く処理は必ず壊れる
-> - 失敗は握りつぶさない。通知先と再実行手順を決めてから実装する (原則: サイレント縮退禁止)
+> - 失敗は握りつぶさない。通知先と閾値は `person/` の非機能要件が決め、再実行の手順は手順書に書く (原則: サイレント縮退禁止)
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [業務フロー](../../basic/flows/) / [状態遷移](../state-machines/) | BF-* / STM-* |
-| 下流 | [運用設計](../../ops/01-operations.md) / [インフラ設計](../../basic/08-infra-design.md) | OPS-* / INF-* |
+| 上流 (depends_on) | 業務フロー (`person/design/<まとまり>/flows/`) / 状態遷移 (`ai/specs/<まとまり>/state-machines/`) | BF-* / STM-* |
+| 下流 | [運用設計](../../../../person/design/shared/08-operations.md) / [インフラ設計](../../shared/05-infra-design.md) | OPS-* / INF-* |
 
 ## 1. ジョブ一覧
 
-| ID | ジョブ | 目的 | トリガ | スケジュール | 実行基盤 |
-|---|---|---|---|---|---|
-| JOB-001 | | | 時刻 / イベント / 手動 | (cron 式・JST) | Cloud Scheduler → Cloud Run jobs |
+| ID | ジョブ | 目的 | 従う決まり (BF-2xx の期限) | トリガ | スケジュール | 実行基盤 |
+|---|---|---|---|---|---|---|
+| JOB-001 | | | BF-201 | 時刻 / イベント / 手動 | (cron 式・JST) | Cloud Scheduler → Cloud Run jobs |
 
 ## 2. 冪等性と再実行
 
@@ -50,9 +50,11 @@ relates_to: [operations, infra-design, state-machine]
 
 ## 3. 失敗時の扱い
 
-| ID | 失敗の種類 | リトライ | 上限 | 通知先 | 放置した場合に起きること |
+<!-- 通知先は非機能要件の監視の閾値 (NFR-3xx) が決める。ここはリトライと上限だけ -->
+
+| ID | 失敗の種類 | リトライ | 上限 | 従う決まり (NFR-3xx の通知) | 放置した場合に起きること |
 |---|---|---|---|---|---|
-| JOB-001 | | | | | |
+| JOB-001 | | | | NFR-301 | |
 
 ## 4. 権限とデータ範囲
 
@@ -64,5 +66,7 @@ relates_to: [operations, infra-design, state-machine]
 
 ## 5. 観測 (任意)
 
-| ID | 指標 | 正常の閾値 | 異常時の判断 |
-|---|---|---|---|
+<!-- 正常の閾値は非機能要件の行を引く -->
+
+| ID | 指標 | 従う決まり (NFR の閾値) |
+|---|---|---|

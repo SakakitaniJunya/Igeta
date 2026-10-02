@@ -1,5 +1,5 @@
 ---
-id: <kebab-slug>            # 例: domain-model
+id: <kebab-slug>            # 例: domain-overview
 title: ドメイン総論 — コンテキストマップと横断規約
 type: architecture
 kind: domain-overview
@@ -25,14 +25,14 @@ relates_to: [glossary]
 
 > **TL;DR**: <コンテキスト分割の考え方を 1 文で>
 > - <上流コンテキストと共有カーネル>
-> - <未確定で分割が動きうる点>
+> - 分割の境界は `person/` の解決戦略が決める。人が決めきれていない点は、その「決めてほしいこと」に書く
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [要件定義書](../../../product/01-requirements.md) | REQ-* |
-| 下流 | 各コンテキストのクラス図 / [状態遷移](../state-machines/) / [テーブル定義](../../basic/tables/) | TBL-* |
+| 上流 (depends_on) | [要件定義書](../../../person/requirements/01-requirements.md) | REQ-* |
+| 下流 | 各コンテキストのクラス図 (`ai/specs/<まとまり>/domain/`) / 状態遷移 (`ai/specs/<まとまり>/state-machines/`) / テーブル定義 (`ai/specs/<まとまり>/tables/`) | TBL-* |
 
 ## 1. コンテキストマップ
 
@@ -48,12 +48,3 @@ flowchart TB
 <!-- 個別のクラス図が従う共通ルール。ここに書いたことは個別図で繰り返さない -->
 
 ## 3. 集約横断の論点 (任意)
-
-## 4. 未確定分岐
-
-<!-- 「どちらを選ぶと後から変更が高くつくか」を明記する。断定しない -->
-
-| # | 論点 | 選択肢 | 変更コストが高い方向 | 確認先 |
-|---|---|---|---|---|
-
-## 5. ヒアリング項目への追加提案 (任意)

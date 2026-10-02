@@ -26,5 +26,6 @@ owners: [eng]
     - [09-reader-granularity.md](09-reader-granularity.md) — **人が読んで決める文書の型と量** _(読み手: 共通)_ `explanation` — person/ の文書は、確定する前に人が全部読んで承認する。変わったら、変わった行を人が読んで承認する。
 - [06-export-deliverable.md](06-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** _(読み手: 共通)_ `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
 - [10-folder-placement.md](10-folder-placement.md) — **どの文書をどこに置くか — 木の図と、その理由** _(読み手: 共通)_ `explanation` — 要件定義書 02 §7 (kind 47 種の置き場所) を木の形に描いた図と、なぜこう分けるかの説明。決めの正本は ← 上流: [audience-directories](../product/02-audience-directories.md)
+- [12-template-section-audit.md](12-template-section-audit.md) — **雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表** _(読み手: 共通)_ `explanation` — ai の雛形 25 本の全 118 節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B・26 件) ← 上流: [audience-directories](../product/02-audience-directories.md)
 
 <!-- AUTOGEN:dir-index:end -->

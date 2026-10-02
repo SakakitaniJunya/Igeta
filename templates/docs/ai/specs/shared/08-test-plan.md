@@ -9,8 +9,8 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
-depends_on: [nonfunctional, function-list]
-relates_to: [test-spec, operations]
+depends_on: [nonfunctional, function-list, data-management, migration-plan]
+relates_to: [operations]
 ---
 
 <!--
@@ -24,16 +24,16 @@ relates_to: [test-spec, operations]
 
 # テスト計画
 
-> **TL;DR**: <何をどこまで検証したら出荷するかを 1 文で>
+> **TL;DR**: <何をどこまで検証するかを 1 文で>
 > - **正常系だけのテストは未完成**。否定テスト (権限・越境・競合) を階層ごとに必須にする
-> - 緑であることと安全であることは別。壊れたテスト・書かれていないテストを定期的に探す
+> - 合格の数値は非機能要件、リリースしてよい条件は移行・リリース計画、テストデータの個人情報の扱いはデータの扱いが決める。本書はその ID を引く
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [非機能要件](../basic/03-nonfunctional.md) / [機能一覧](../basic/01-function-list.md) | NFR-* / FN-* |
-| 下流 | [テスト仕様](./specs/) / [運用設計](../ops/01-operations.md) | TST-* / OPS-* |
+| 上流 (depends_on) | [非機能要件](../../../person/design/shared/03-nonfunctional.md) / [機能一覧](../../../person/design/shared/01-function-list.md) / [データの扱い](../../../person/design/shared/05-data-management.md) / [移行・リリース計画](../../../person/design/shared/09-migration-plan.md) | NFR-* / FN-* / DM-* / MIG-* |
+| 下流 | テスト仕様 (`ai/specs/<まとまり>/tests/`) | TST-* |
 
 ## 1. テストピラミッド
 
@@ -46,16 +46,18 @@ relates_to: [test-spec, operations]
 
 ## 2. テスト環境
 
-| ID | 環境 | データ | 外部サービス | 破棄方針 |
+| ID | 環境 | 従う決まり (DM の環境ごとの扱い) | 外部サービス | 破棄方針 |
 |---|---|---|---|---|
-| TSP-001 | ローカル結合 | seed スクリプト | stub | 毎回破棄 |
+| TSP-001 | ローカル結合 | DM-503 | stub | 毎回破棄 |
 
 ## 3. Definition of Done
+
+<!-- リリースしてよい条件は移行・リリース計画 (MIG) が決める。ここは 1 ステップの完了だけ -->
 
 | 対象 | DoD |
 |---|---|
 | 1 ステップ完了 | 該当層のテスト緑 + カバレッジ 80% + `check:domain-drift` 緑 + `check:deps` 緑 |
-| リリース可 | 全層緑 + 越境 403 の E2E + 監視閾値の設定済 |
+| リリース可 | 移行・リリース計画 MIG-201 の条件を満たす |
 
 ## 4. 品質ゲートと例外
 
@@ -65,5 +67,8 @@ relates_to: [test-spec, operations]
 
 ## 5. 性能・負荷テスト (任意)
 
-| ID | シナリオ | 負荷 | 合格条件 |
+<!-- 合格の数値は非機能要件の行を引く。ここに書き写さない -->
+
+| ID | シナリオ | 負荷 | 従う決まり (NFR) |
 |---|---|---|---|
+| TSP-201 | | | NFR-001 |

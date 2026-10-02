@@ -32,8 +32,8 @@ relates_to: [test-plan]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ドメインクラス図](../domain/) / [シーケンス](../sequences/) | CLS: * / SEQ-* |
-| 下流 | [テスト計画](../../test/01-test-plan.md) / 実装 `apps/api/src/modules/<context>/` | TST-* |
+| 上流 (depends_on) | ドメインクラス図 (`ai/specs/<まとまり>/domain/`) / シーケンス (`ai/specs/<まとまり>/sequences/`) | CLS: * / SEQ-* |
+| 下流 | [テスト計画](../../shared/08-test-plan.md) / 実装 `apps/api/src/modules/<context>/` | TST-* |
 
 ## 1. モジュール一覧
 

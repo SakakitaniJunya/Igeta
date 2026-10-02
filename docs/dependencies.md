@@ -82,6 +82,8 @@ graph LR
   class reader-granularity explanation
   requirements["要件定義書 (draft)"]
   class requirements product
+  template-section-audit["雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表"]
+  class template-section-audit explanation
   audience-directories ==> adr-0001-document-role-directories
   adr-0001-document-role-directories ==> adr-0002-role-boundary-invariants
   adr-0001-document-role-directories ==> adr-0003-docs-model-migration-and-dogfooding
@@ -107,6 +109,7 @@ graph LR
   audience-directories ==> folder-placement
   audience-layers ==> provenance-and-agreement
   audience-layers ==> reader-granularity
+  audience-directories ==> template-section-audit
   adr-0001-document-role-directories -.- adr-0009-kind-placement
   adr-0001-document-role-directories -.- adr-0010-value-ownership
   adr-0002-role-boundary-invariants -.- adr-0009-kind-placement
@@ -134,6 +137,8 @@ graph LR
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
   reader-granularity -.- human-review-layer
+  template-section-audit -.- adr-0010-value-ownership
+  template-section-audit -.- folder-placement
 ```
 ## ドキュメント一覧 (type 別)
 ### map
@@ -169,6 +174,7 @@ graph LR
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](explanation/02-human-review-layer.md)
 - **provenance-and-agreement** — [由来・鮮度の形 (delivery-chapter 限定)](explanation/04-provenance-and-agreement.md)
 - **reader-granularity** — [人が読んで決める文書の型と量](explanation/09-reader-granularity.md)
+- **template-section-audit** — [雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表](explanation/12-template-section-audit.md)
 
 ## 孤立ドキュメント (誰からも参照されていない)
 

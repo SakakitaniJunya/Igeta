@@ -9,8 +9,8 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
-depends_on: [nonfunctional]
-relates_to: [operations, migration-plan]
+depends_on: [solution-strategy, nonfunctional, data-management, operations]
+relates_to: [migration-plan]
 ---
 
 <!--
@@ -24,32 +24,22 @@ relates_to: [operations, migration-plan]
 
 # インフラ設計
 
-> **TL;DR**: <構成を 1 文で>
+> **TL;DR**: <配置を 1 文で>
 > - 設定値は**コマンドに貼れる粒度**で書く (フラグ名と値)。「適切に設定する」は不可
-> - 費用は月額実数で出す。無料枠に依存する記述は枠を超えた時の額も併記する
+> - 費用は `person/` の解決戦略の「費用の上限」に収める。利用者・外部システムの図 (C4 L1) とコンテナの図 (C4 L2) も解決戦略が持ち、本書は配置・経路・権限の図だけを持つ
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [非機能要件](./03-nonfunctional.md) | NFR-* |
-| 下流 | [運用設計](../ops/01-operations.md) / [移行・リリース計画](../ops/02-migration-plan.md) | OPS-* / MIG-* |
+| 上流 (depends_on) | [解決戦略](../../../person/design/shared/02-solution-strategy.md) / [非機能要件](../../../person/design/shared/03-nonfunctional.md) / [データの扱い](../../../person/design/shared/05-data-management.md) / [運用設計](../../../person/design/shared/08-operations.md) | SS-* / NFR-* / DM-* / OPS-* |
+| 下流 | 手順書 (`ai/handbook/runbooks/`) / ジョブ仕様 (`ai/specs/<まとまり>/jobs/`) | RUN-* / JOB-* |
 
 ## 1. 構成図
 
-<!-- C4 model (https://c4model.com/)。L1 と L2 を分け、本書の主図は **Deployment 図 (C4)** -->
+### 1.1 配置図 (Deployment)
 
-### 1.1 System Context (C4 L1)
-
-```mermaid
-flowchart TB
-  user["利用者"] --> sys["本システム"]
-  sys --> ext["外部システム"]
-```
-
-### 1.2 Container / Deployment 図 (C4 L2)
-
-<!-- 実行環境・リージョン・接続経路まで描く。クラス図 (C4 L4) は design/detail/domain/ -->
+<!-- 実行環境・リージョン・接続経路まで描く。利用者・外部システムとコンテナの論理構成は解決戦略の図。クラス図 (C4 L4) は ai/specs/<まとまり>/domain/ -->
 
 ```mermaid
 flowchart TB
@@ -63,10 +53,10 @@ flowchart TB
   他クラウドの記入例 (subgraph 名をプロバイダ + リージョンにし、マネージドサービス名をそのまま書く):
   AWS:   subgraph aws["AWS ap-northeast-1"]  alb["ALB"] --> ecs["ECS Fargate: api"] --> rds[("RDS PostgreSQL")]
   Azure: subgraph az["Azure Japan East"]     fd["Front Door"] --> aca["Container Apps: api"] --> pg[("Azure DB for PostgreSQL")]
-  図に描くのは「構成要素がどこで動くか」まで。設定値は §2、費用は §5 に分ける (図に数字を書かない)
+  図に描くのは「構成要素がどこで動くか」まで。設定値は §2 に分ける (図に数字を書かない)
 -->
 
-### 1.3 ネットワーク構成図
+### 1.2 ネットワーク構成図
 
 <!-- VPC / サブネット / 公開・非公開の境界 / 外部からの経路。「何が外に出ていないか」が読める図にする -->
 
@@ -91,9 +81,9 @@ flowchart LR
 | INF-402 | api → DB | private IP / 5432 | public IP | VPC connector / private service access |
 | INF-403 | api → 外部 SaaS | 443 (固定 IP が要るなら NAT) | | |
 
-### 1.4 IAM・権限境界図
+### 1.3 IAM・権限境界図
 
-<!-- 「誰 (人 / サービスアカウント) が何にどの権限で触れるか」。最小権限になっていることを図で確認する -->
+<!-- 「誰 (人 / サービスアカウント) が何にどの権限で触れるか」。最小権限になっていることを図で確認する。業務上のロールと権限は権限マトリクスが決める -->
 
 ```mermaid
 flowchart LR
@@ -110,37 +100,29 @@ flowchart LR
 | INF-502 | CI SA | サービスアカウント | deploy / image push | DB 直接接続 | |
 | INF-503 | 開発者 | 人 | 閲覧 + 開発環境の deploy | 本番 DB 接続 | |
 
-### 1.5 データフロー図
+### 1.4 データの経路と暗号化
 
-<!-- 個人情報・決済情報が「どこに置かれ、どこを通るか」。保持場所と暗号化を 1 行ずつ。監査・法令対応の根拠になる -->
+<!-- 保持期間・越境・個人情報の扱いは書かず、データの扱いの ID を引く。ここは経路と暗号化だけ -->
 
-```mermaid
-flowchart LR
-  user["利用者"] -- "氏名 / 連絡先 (TLS)" --> api
-  api -- "保存 (暗号化 at rest)" --> db[("DB")]
-  api -- "カード情報は送らない (トークンのみ)" --> pay["決済 SaaS"]
-  db -- "日次バックアップ" --> bk["バックアップ保管 (別リージョン)"]
-```
+| ID | データの区分 | 発生元 → 保管先 | 経路の暗号化 | 保管の暗号化 | 従う決まり (DM) |
+|---|---|---|---|---|---|
+| INF-601 | 氏名・連絡先 | 利用者 → DB | TLS | at rest | DM-001 |
+| INF-602 | 決済情報 | 利用者 → 決済 SaaS | TLS | — | DM-002 |
 
-| ID | データ | 発生元 → 保管先 | 経路の暗号化 | 保管の暗号化 | 保持期間 | 越境 |
-|---|---|---|---|---|---|---|
-| INF-601 | 氏名・連絡先 | 利用者 → DB | TLS | at rest | | 国内のみ |
-| INF-602 | 決済情報 | 利用者 → 決済 SaaS (自システムに保存しない) | TLS | — | — | |
-| INF-603 | バックアップ | DB → 保管先 | | | 30 日 | |
+### 1.5 環境別の差分
 
-### 1.6 環境別の差分
-
-<!-- 本番と同じ図を環境ごとに描き直さない。本番を正とし、差分だけを表にする -->
+<!-- 本番と同じ図を環境ごとに描き直さない。本番を正とし、差分だけを表にする。環境ごとに使うデータは、データの扱いが決める -->
 
 | ID | 項目 | prod | stg | dev |
 |---|---|---|---|---|
 | INF-701 | インスタンス数 (min / max) | | | |
 | INF-702 | DB | 専用 / HA | 専用 / 単一 | 共有 / 単一 |
 | INF-703 | 外部 SaaS | 本番キー | サンドボックス | サンドボックス |
-| INF-704 | データ | 本番 | 匿名化した複製 | ダミー |
-| INF-705 | 公開範囲 | Internet | IP 制限 / 認証 | 開発者のみ |
+| INF-704 | 公開範囲 | Internet | IP 制限 / 認証 | 開発者のみ |
 
 ## 2. サービス設定値
+
+<!-- 設定は、解決戦略の費用の上限に収まる範囲で決める -->
 
 | ID | リソース | 設定 | 値 | 根拠 |
 |---|---|---|---|---|
@@ -148,24 +130,20 @@ flowchart LR
 
 ## 3. Secret / 環境変数
 
-| ID | 名前 | 保管先 | 参照方法 | ローテーション |
+<!-- 鍵・認証情報の入れ替えの周期は、非機能要件の行を引く -->
+
+| ID | 名前 | 保管先 | 参照方法 | 従う決まり (NFR の入れ替え) |
 |---|---|---|---|---|
-| INF-101 | DATABASE_URL | Secret Manager | Cloud Run 環境変数注入 | |
+| INF-101 | DATABASE_URL | Secret Manager | Cloud Run 環境変数注入 | NFR-202 |
 
 ## 4. 環境分離
 
-| ID | 環境 | プロジェクト/インスタンス | データ | アクセス制限 |
+| ID | 環境 | プロジェクト/インスタンス | アクセス制限 | 従う決まり (DM の環境ごとの扱い) |
 |---|---|---|---|---|
-| INF-201 | prod | | 本番 | |
-| INF-202 | stg | | 匿名化 | |
+| INF-201 | prod | | | DM-501 |
+| INF-202 | stg | | | DM-502 |
 
-## 5. 費用
-
-| ID | 項目 | 月額 | 算出根拠 | 変動要因 |
-|---|---|---|---|---|
-| INF-301 | | ¥ | | |
-
-## 6. ネットワーク・接続経路 (任意)
+## 5. ネットワーク・接続経路 (任意)
 
 | ID | 経路 | 方式 | 制限 |
 |---|---|---|---|
