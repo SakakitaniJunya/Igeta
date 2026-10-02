@@ -53,10 +53,16 @@ async function makeV4Root(): Promise<string> {
   write(root, 'docs/ai/handbook/how-to/01-setup.md', doc('guide', [], 'setup'));
   write(root, 'docs/ai/handbook/explanation/01-why.md', doc('explanation', [], 'why'));
   write(root, 'AGENTS.md', '# AGENTS.md\n\n決まりは docs/person/、作り方は docs/ai/ を読む。\n');
+  // 人の承認が要るパス (ADR-0008 決定 1) の全部に持ち主を付ける (`init` が置く CODEOWNERS と同じ 10 行)
   write(
     root,
     '.github/CODEOWNERS',
-    ['docs/person/ @owners', 'docs/client/ @owners', '/.github/ @owners', '/.igeta.json @owners', '/AGENTS.md @owners', '/package.json @owners', ''].join('\n'),
+    [
+      ...['/docs/person/', '/docs/client/', '/.github/', '/CODEOWNERS', '/docs/CODEOWNERS', '/.igeta.json', '/.igeta-version', '/.claude/', 'AGENTS.md', 'CLAUDE.md'].map(
+        (pattern) => `${pattern} @owners`,
+      ),
+      '',
+    ].join('\n'),
   );
   await writeIndexes(root);
   return root;

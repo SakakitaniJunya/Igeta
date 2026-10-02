@@ -1,7 +1,7 @@
 // node --test dist/checks/AgentsEntrypointCheck.test.js
-// AI の入口 (repo 直下の AGENTS.md) と、人の承認が要る側に CODEOWNERS のオーナーが付いているかの検査
-// (ADR-0002 条件 15、ADR-0008 決定 1・3)。CODEOWNERS は GitHub の規則どおり読む: 後ろの行が勝ち、
-// `docs/person/*` は直下のファイルにしか当たらない。
+// AI の入口 (repo 直下の AGENTS.md) と、人の承認が要るパス (ADR-0008 決定 1・`.igeta.json` の humanPaths) に
+// CODEOWNERS のオーナーが付いているかの検査 (ADR-0002 条件 15、テスト仕様 06 の I14)。CODEOWNERS は GitHub の
+// 規則どおり読む: 後ろの行が勝ち、`docs/person/*` は直下のファイルにしか当たらない。
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -10,7 +10,6 @@ import assert from 'node:assert/strict';
 
 import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
-import { kindOfPath } from '../core/Role.js';
 import { AgentsEntrypointCheck, CODEOWNERS_TARGETS } from './AgentsEntrypointCheck.js';
 
 const workspaces: string[] = [];
@@ -33,15 +32,22 @@ const AGENTS_OK = [
   '',
 ].join('\n');
 
-/** scaffold が作る形: 人の承認が要る側 (docs/person/・docs/client/ と、門を決める設定ファイル) にオーナーを付ける */
+/** `init` が置く形 (テスト仕様 06 の I8): ADR-0008 決定 1 のパスを、1 行ずつ持ち主に結ぶ */
 const CODEOWNERS_LINES: readonly string[] = [
-  'docs/person/ @creanest/owners',
-  'docs/client/ @creanest/owners',
-  '/.github/ @creanest/owners',
-  '/.igeta.json @creanest/owners',
-  '/AGENTS.md @creanest/owners',
-  '/package.json @creanest/owners',
+  '/docs/person/ @org/owners',
+  '/docs/client/ @org/owners',
+  '/.github/ @org/owners',
+  '/CODEOWNERS @org/owners',
+  '/docs/CODEOWNERS @org/owners',
+  '/.igeta.json @org/owners',
+  '/.igeta-version @org/owners',
+  '/.claude/ @org/owners',
+  'AGENTS.md @org/owners',
+  'CLAUDE.md @org/owners',
 ];
+
+/** 末尾に足した行の、ファイルの中の行番号 (codeowners() が先頭に注釈の行を 1 行足す) */
+const APPENDED_LINE = CODEOWNERS_LINES.length + 2;
 
 const codeowners = (lines: readonly string[]): string => `${['# 人の承認が要る側', ...lines].join('\n')}\n`;
 
@@ -64,7 +70,16 @@ const labelsOf = (violations: readonly Violation[]): (string | undefined)[] =>
 
 const PERSON = 'docs/person/ (配下全体)';
 const CLIENT = 'docs/client/ (配下全体)';
-const CONFIG_LABELS = ['.github/CODEOWNERS (自身)', '.github/workflows/ (配下全体)', '.igeta.json', 'AGENTS.md', 'package.json'];
+/** `/docs/` の外にある、人の承認が要るパスの対象 (`/docs/ @lead` の 1 行では守られないもの) */
+const OUTSIDE_DOCS_LABELS = [
+  '.github/ (配下全体)',
+  'CODEOWNERS (repo 直下)',
+  '.igeta.json',
+  '.igeta-version',
+  '.claude/ (配下全体)',
+  'AGENTS.md (どの階層)',
+  'CLAUDE.md',
+];
 
 describe('AgentsEntrypointCheck: AGENTS.md', () => {
   let root: string;
@@ -147,7 +162,7 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
 
   describe('配下全体を守る書き方だけを数える (`/*` は直下のファイルにしか当たらない)', () => {
     it('docs/person/* と docs/client/* は、下のフォルダの文書を守らないので落ちる', () => {
-      setCodeowners(withDocsLines('docs/person/* @creanest/owners', 'docs/client/* @creanest/owners'));
+      setCodeowners(withDocsLines('docs/person/* @org/owners', 'docs/client/* @org/owners'));
       const violations = run(root);
       assert.deepEqual(labelsOf(violations), [PERSON, CLIENT]);
       assert.ok(violations.every((violation) => violation.severity === 'violation' && violation.file === '.github/CODEOWNERS'));
@@ -159,7 +174,7 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
     });
 
     it('先頭に / を付けた /docs/person/* も同じ (repo 直下の docs/person/ の、直下のファイルだけ)', () => {
-      setCodeowners(withDocsLines('/docs/person/* @creanest/owners', '/docs/client/* @creanest/owners'));
+      setCodeowners(withDocsLines('/docs/person/* @org/owners', '/docs/client/* @org/owners'));
       assert.deepEqual(labelsOf(run(root)), [PERSON, CLIENT]);
     });
 
@@ -173,20 +188,20 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
     ];
     for (const [person, client] of WHOLE_FOLDER_FORMS) {
       it(`配下全体に当たる書き方 ${person} と ${client} は通る (オーナーが複数・メールでもよい)`, () => {
-        setCodeowners(withDocsLines(`${person} @a @creanest/owners person@example.com`, `${client} @b`));
+        setCodeowners(withDocsLines(`${person} @a @org/owners person@example.com`, `${client} @b`));
         assert.deepEqual(run(root), []);
       });
     }
 
     it('名前の続きだけが似ているフォルダ (docs/personal/・docs/client-old/) の行は、docs/person/・docs/client/ を守らない', () => {
-      setCodeowners(withDocsLines('docs/personal/ @creanest/owners', 'docs/client-old/ @creanest/owners'));
+      setCodeowners(withDocsLines('docs/personal/ @org/owners', 'docs/client-old/ @org/owners'));
       assert.deepEqual(labelsOf(run(root)), [PERSON, CLIENT]);
     });
 
     it('1 つ下のフォルダだけを守る行 (docs/person/design/・docs/person/decisions/) は、requirements の文書を守らないので落ちる', () => {
       setCodeowners([
-        'docs/person/design/ @creanest/owners',
-        'docs/person/decisions/ @creanest/owners',
+        'docs/person/design/ @org/owners',
+        'docs/person/decisions/ @org/owners',
         ...CODEOWNERS_LINES.slice(1),
       ]);
       const violations = run(root);
@@ -207,12 +222,10 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
       assert.deepEqual(run(root), []);
     });
 
-    it('/docs/ のような広い行は docs/person/・docs/client/ を守るが、設定ファイルは別の行が要る', () => {
+    it('/docs/ のような広い行は docs/ の下 (docs/person/・docs/client/・docs/CODEOWNERS) を守るが、docs/ の外は別の行が要る', () => {
       setCodeowners(['/docs/ @lead']);
-      assert.deepEqual(labelsOf(run(root)), CONFIG_LABELS);
+      assert.deepEqual(labelsOf(run(root)), OUTSIDE_DOCS_LABELS);
       setCodeowners(['docs/ @lead', ...CODEOWNERS_LINES.slice(2)]);
-      assert.deepEqual(run(root), []);
-      setCodeowners(['/docs/ @lead', '/.github/ @lead', '/.igeta.json @lead', '/AGENTS.md @lead', '/package.json @lead']);
       assert.deepEqual(run(root), []);
     });
 
@@ -227,7 +240,10 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
       setCodeowners([...CODEOWNERS_LINES, 'docs/person/decisions/2026/']);
       const violations = run(root);
       assert.deepEqual(labelsOf(violations), [PERSON]);
-      assert.match(violations[0]?.message ?? '', /docs\/person\/decisions\/2026\/0001-x\.md に最後に当たる 8 行目 \(docs\/person\/decisions\/2026\/\) にオーナーが無い/);
+      assert.match(
+        violations[0]?.message ?? '',
+        new RegExp(`docs/person/decisions/2026/0001-x\\.md に最後に当たる ${APPENDED_LINE} 行目 \\(docs/person/decisions/2026/\\) にオーナーが無い`),
+      );
       assert.equal(/requirements\/01-requirements\.md/.test(violations[0]?.message ?? ''), false);
     });
 
@@ -235,74 +251,48 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
       setCodeowners([...CODEOWNERS_LINES, '/docs/client/delivery/x/01.md']);
       const violations = run(root);
       assert.deepEqual(labelsOf(violations), [CLIENT]);
-      assert.match(violations[0]?.message ?? '', /docs\/client\/delivery\/x\/01\.md に最後に当たる 8 行目/);
+      assert.match(violations[0]?.message ?? '', new RegExp(`docs/client/delivery/x/01\\.md に最後に当たる ${APPENDED_LINE} 行目`));
     });
 
     it('後ろの行が別のオーナーに替えるだけなら通る。前の行がオーナーを外していても、後ろの行がオーナーを付ければ通る', () => {
-      setCodeowners([...CODEOWNERS_LINES, 'docs/person/decisions/ @creanest/decision-makers']);
+      setCodeowners([...CODEOWNERS_LINES, 'docs/person/decisions/ @org/decision-makers']);
       assert.deepEqual(run(root), []);
       setCodeowners(['docs/person/', 'docs/client/', '* @lead']);
       assert.deepEqual(run(root), []);
-      setCodeowners(['docs/person/', 'docs/person/ @creanest/owners', ...CODEOWNERS_LINES.slice(1)]);
+      setCodeowners(['docs/person/', 'docs/person/ @org/owners', ...CODEOWNERS_LINES.slice(1)]);
       assert.deepEqual(run(root), []);
     });
 
     it('どの行にも当たらないパスは、守られていない (当たる行が無い)。オーナーがあっても、別のパスの行は守らない', () => {
       setCodeowners(['/src/ @lead']);
       const violations = run(root);
-      assert.deepEqual(labelsOf(violations), [PERSON, CLIENT, ...CONFIG_LABELS]);
+      assert.deepEqual(
+        labelsOf(violations),
+        CODEOWNERS_TARGETS.map((target) => target.label),
+      );
       assert.ok(violations.every((violation) => /に当たる行が無い/.test(violation.message)));
     });
 
     it('拡張子で当てる行 (*.md) は、その拡張子のファイルだけを守る', () => {
       setCodeowners(['*.md @lead']);
-      // docs/person/・docs/client/ の代表のパスは全部 .md、設定ファイルは AGENTS.md だけが .md
-      assert.deepEqual(labelsOf(run(root)), ['.github/CODEOWNERS (自身)', '.github/workflows/ (配下全体)', '.igeta.json', 'package.json']);
-    });
-  });
-
-  describe('設定ファイル (ADR-0008 決定 3): CODEOWNERS 自身・workflows・.igeta.json・AGENTS.md・package.json', () => {
-    const CONFIG_LINE_REMOVALS: ReadonlyArray<readonly [string, readonly string[]]> = [
-      ['/.github/ @creanest/owners', ['.github/CODEOWNERS (自身)', '.github/workflows/ (配下全体)']],
-      ['/.igeta.json @creanest/owners', ['.igeta.json']],
-      ['/AGENTS.md @creanest/owners', ['AGENTS.md']],
-      ['/package.json @creanest/owners', ['package.json']],
-    ];
-    for (const [line, labels] of CONFIG_LINE_REMOVALS) {
-      it(`${line} の行が無ければ、${labels.join('・')} が落ちる`, () => {
-        setCodeowners(CODEOWNERS_LINES.filter((candidate) => candidate !== line));
-        assert.deepEqual(labelsOf(run(root)), labels);
-      });
-    }
-
-    it('.github/workflows/ の行だけ・.github/CODEOWNERS の行だけでも、それぞれの対象は守れる', () => {
-      setCodeowners([...CODEOWNERS_LINES.slice(0, 2), '.github/workflows/ @creanest/owners', ...CODEOWNERS_LINES.slice(3)]);
-      assert.deepEqual(labelsOf(run(root)), ['.github/CODEOWNERS (自身)']);
-      setCodeowners([...CODEOWNERS_LINES.slice(0, 2), '.github/CODEOWNERS @creanest/owners', ...CODEOWNERS_LINES.slice(3)]);
-      assert.deepEqual(labelsOf(run(root)), ['.github/workflows/ (配下全体)']);
-    });
-
-    it('名前だけの行 (AGENTS.md・package.json) はどの階層の同じ名前にも当たるので、repo 直下のものも守る', () => {
-      setCodeowners([...CODEOWNERS_LINES.slice(0, 3), '.igeta.json @a', 'AGENTS.md @a', 'package.json @a']);
-      assert.deepEqual(run(root), []);
-    });
-
-    it('* の後ろで設定ファイルのオーナーを外すと、その設定ファイルだけが落ちる', () => {
-      setCodeowners(['* @lead', '/.igeta.json']);
-      assert.deepEqual(labelsOf(run(root)), ['.igeta.json']);
-      setCodeowners(['* @lead', '.github/workflows/']);
-      assert.deepEqual(labelsOf(run(root)), ['.github/workflows/ (配下全体)']);
-      setCodeowners(['* @lead', '/.github/CODEOWNERS']);
-      assert.deepEqual(labelsOf(run(root)), ['.github/CODEOWNERS (自身)']);
+      // 代表のパスが全部 .md のもの (docs/person/・docs/client/・AGENTS.md・CLAUDE.md) は守られ、ほかは守られない
+      assert.deepEqual(labelsOf(run(root)), [
+        '.github/ (配下全体)',
+        'CODEOWNERS (repo 直下)',
+        'docs/CODEOWNERS',
+        '.igeta.json',
+        '.igeta-version',
+        '.claude/ (配下全体)',
+      ]);
     });
   });
 
   describe('コメント', () => {
     it('行頭のコメント・行頭が空白のコメントの行は、行とみなさない。オーナーの後ろのコメントは読み飛ばす', () => {
       setCodeowners([
-        '# docs/client/ @creanest/owners',
-        '   # docs/person/ @creanest/owners',
-        'docs/person/ @creanest/owners # 人の決まり',
+        '# docs/client/ @org/owners',
+        '   # docs/person/ @org/owners',
+        'docs/person/ @org/owners # 人の決まり',
         ...CODEOWNERS_LINES.slice(2),
       ]);
       assert.deepEqual(labelsOf(run(root)), [CLIENT]);
@@ -312,26 +302,28 @@ describe('AgentsEntrypointCheck: .github/CODEOWNERS (人の承認が要る側に
       setCodeowners([...CODEOWNERS_LINES, 'docs/person/ # オーナーなし']);
       const violations = run(root);
       assert.deepEqual(labelsOf(violations), [PERSON]);
-      assert.match(violations[0]?.message ?? '', /8 行目 \(docs\/person\/\) にオーナーが無い/);
+      assert.match(violations[0]?.message ?? '', new RegExp(`${APPENDED_LINE} 行目 \\(docs/person/\\) にオーナーが無い`));
     });
   });
 
-  it('代表のパスは、置き場所の表 (Role.ts) にある場所と、設定ファイルのパス', () => {
-    for (const target of CODEOWNERS_TARGETS) {
-      for (const path of target.paths) {
-        if (path.startsWith('docs/')) {
-          assert.notEqual(kindOfPath(path.slice('docs/'.length)), null, `${path} が置き場所の表の場所ではない`);
-        }
-      }
-    }
-    assert.deepEqual(
-      CODEOWNERS_TARGETS.map((target) => target.label),
-      [PERSON, CLIENT, ...CONFIG_LABELS],
-    );
-    assert.deepEqual(
-      CODEOWNERS_TARGETS.flatMap((target) => (target.label.startsWith('docs/') ? [] : target.paths)),
-      ['.github/CODEOWNERS', '.github/workflows/ci.yml', '.igeta.json', 'AGENTS.md', 'package.json'],
-    );
+  it('[TST-307] 持ち主を外すと違反になる: .igeta-version の行を消す / /docs/person/ を /docs/person/* に変える / humanPaths に当たるいまあるファイルの行が無い', () => {
+    // (1) 決定 1 の 1 つのパスの行を消すと、そのパスの対象だけが落ちる
+    setCodeowners(CODEOWNERS_LINES.filter((line) => !line.startsWith('/.igeta-version ')));
+    assert.deepEqual(labelsOf(run(root)), ['.igeta-version']);
+
+    // (2) /docs/person/ を /docs/person/* に変えると、下のフォルダの文書が守られない
+    setCodeowners(CODEOWNERS_LINES.map((line) => (line.startsWith('/docs/person/ ') ? '/docs/person/* @org/owners' : line)));
+    assert.deepEqual(labelsOf(run(root)), [PERSON]);
+
+    // (3) humanPaths に当たる、いまあるファイルに当たる行が無い。行を足せば通る (違反の理由が、そのファイルの行が無いことだけ)
+    write(root, '.igeta.json', JSON.stringify({ humanPaths: ['src/core/**'] }));
+    write(root, 'src/core/a.ts', 'export {};\n');
+    setCodeowners(CODEOWNERS_LINES);
+    const violations = run(root);
+    assert.deepEqual(labelsOf(violations), ['humanPaths の src/core/**']);
+    assert.match(violations[0]?.message ?? '', /src\/core\/a\.ts に当たる行が無い/);
+    setCodeowners([...CODEOWNERS_LINES, '/src/core/ @org/owners']);
+    assert.deepEqual(run(root), []);
   });
 });
 
