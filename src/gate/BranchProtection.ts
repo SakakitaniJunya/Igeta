@@ -1,22 +1,25 @@
-// 保護ブランチの設定 (必須のレビュー・CODEOWNERS のレビュー) を gh で読み、docs/person/ の変更に人のレビューが
-// 必須になっているかを確かめる (`igeta doctor`)。
-// Spec: docs/adr/0008-human-approval-scope.md「限界」(2)
+// GitHub の保護の設定を gh で読み、人の承認が実際に求められる設定かを点検する (`igeta doctor`)。
+// Spec: docs/design/test/specs/01-approval-gate.md (R7)、docs/adr/0008-human-approval-scope.md 決定 2・6
 //
-// GitHub の保護ブランチの設定は Igeta の検査からは見えない。gh で読めたときだけ確かめ、読めなければ
-// 検査不能にする (黙って成功にしない)。読む先は 2 つ: 従来のブランチ保護と ruleset。どちらも同じブランチに
-// 重なって効くので、必須の承認数は大きい方、CODEOWNERS のレビューはどちらかが要求していれば必須とみなす。
+// 読むのは既定ブランチの保護 (従来のブランチ保護と ruleset) と、GitHub が返す CODEOWNERS の誤りだけで、次の 4 つを
+// 1 つずつ点検する: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す /
+// CODEOWNERS の誤りが 0 件。従来の保護と ruleset は同じブランチに重なって効くので、どちらかが満たしていれば満たす。
+// 欠けていれば違反、gh が無い・権限が無くて読めない・60 秒で終わらなければ検査不能 (黙って成功にしない)。確かめないことは
+// NOT_CHECKED。
 
 import { spawnSync } from 'node:child_process';
 
 export type GhResult =
   | { readonly kind: 'exited'; readonly status: number; readonly stdout: string; readonly stderr: string }
-  /** gh を動かせなかった (PATH に無い・時間切れなど)。reason は利用者に見せる */
+  /** gh を動かせなかった (PATH に無いなど)。reason は利用者に見せる */
   | { readonly kind: 'not-run'; readonly reason: string };
 
 export type GhRunner = (args: readonly string[], cwd: string) => GhResult;
 
+/** gh が応答しないまま、点検が止まり続けないための時間切れ (R7)。 */
 const GH_TIMEOUT_MS = 60_000;
 
+/** gh を実行する。timeoutMs を過ぎても終わらなければ打ち切って not-run にする (テストが短い時間に差し替える)。 */
 export function runGh(args: readonly string[], cwd: string, timeoutMs: number = GH_TIMEOUT_MS): GhResult {
   const result = spawnSync('gh', [...args], { cwd, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
   if (result.error !== undefined) {
@@ -29,27 +32,47 @@ export function runGh(args: readonly string[], cwd: string, timeoutMs: number = 
   return { kind: 'exited', status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
-/** 1 つの設定の読み取り結果。 */
-export type SourceReading =
-  /** PR のレビューを要求する設定を読めた */
-  | { readonly kind: 'rule'; readonly approvals: number; readonly codeOwnerReview: boolean }
-  /** 読めたが、PR のレビューを要求していない (設定が無い・レビューの項目が無い) */
-  | { readonly kind: 'none'; readonly note: string }
+/** 確かめないこと (ADR-0008 の限界)。点検が通ったときも出力に書く。 */
+export const NOT_CHECKED: readonly string[] = [
+  '持ち主が実在し、書き込み権限を持つか',
+  '管理者の迂回',
+  '必須の検査',
+  '既定ブランチ以外の保護',
+];
+
+/** 従来のブランチ保護か ruleset の 1 つを読んだ結果。 */
+export type Layer =
+  /** 設定を読めた。PR を要求しない保護も、全部 false で読める */
+  | { readonly kind: 'read'; readonly pullRequest: boolean; readonly ownerReview: boolean; readonly dismissStale: boolean }
+  /** 保護・ruleset が置かれていない */
+  | { readonly kind: 'absent' }
+  /** GitHub が「この契約では使えない」と返した */
+  | { readonly kind: 'unavailable'; readonly message: string }
+  /** 権限が無い・応答を読めないなどで、読めなかった */
   | { readonly kind: 'unreadable'; readonly reason: string };
 
-export interface ProtectionSource {
+export interface NamedLayer {
   readonly name: 'ブランチ保護' | 'ruleset';
-  readonly reading: SourceReading;
+  readonly layer: Layer;
 }
+
+/** GitHub が返す CODEOWNERS の誤りの問い合わせ (`codeowners/errors`) の結果。 */
+export type CodeownersReading =
+  | { readonly kind: 'ok'; readonly errors: readonly string[] }
+  /** 404: CODEOWNERS が無い */
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'unavailable'; readonly message: string }
+  | { readonly kind: 'unreadable'; readonly reason: string };
 
 export interface ProtectionReport {
   /** `owner/name` */
   readonly repo: string;
   readonly branch: string;
-  readonly sources: readonly ProtectionSource[];
+  readonly layers: readonly NamedLayer[];
+  readonly codeowners: CodeownersReading;
 }
 
-export type ProtectionResult = { readonly report: ProtectionReport } | { readonly cannotCheck: string };
+export type ReadResult = { readonly report: ProtectionReport } | { readonly cannotCheck: string };
 
 type JsonObject = Readonly<Record<string, unknown>>;
 
@@ -64,116 +87,159 @@ function parseJson(text: string): unknown {
   }
 }
 
-/** 成功した gh api の本文。gh が動かない・失敗したときは、その理由。 */
-function apiBody(result: GhResult, what: string): { readonly body: unknown } | { readonly failure: string; readonly stdout?: string } {
-  if (result.kind === 'not-run') return { failure: result.reason };
-  if (result.status !== 0) {
-    return { failure: `${what} が失敗した (終了コード ${result.status}): ${firstLine(result.stderr)}`, stdout: result.stdout };
+/** `gh api` の結果。成功なら本文、失敗なら GitHub の応答の種類と理由。 */
+type ApiOutcome =
+  | { readonly kind: 'body'; readonly body: unknown }
+  | { readonly kind: 'not-protected' }
+  | { readonly kind: 'not-found' }
+  | { readonly kind: 'unavailable'; readonly message: string }
+  | { readonly kind: 'failed'; readonly reason: string };
+
+// 保護も ruleset も置けない契約のときに GitHub が返す文 (403)。契約の問題なので、読めなかったのではなく、使えない
+const CONTRACT_MESSAGE = /upgrade to github|make this repository public/i;
+
+function callApi(run: GhRunner, cwd: string, path: string): ApiOutcome {
+  const result = run(['api', path], cwd);
+  if (result.kind === 'not-run') return { kind: 'failed', reason: result.reason };
+  if (result.status === 0) {
+    const body = parseJson(result.stdout);
+    return body === undefined ? { kind: 'failed', reason: `gh api ${path} の出力を JSON として読めない` } : { kind: 'body', body };
   }
-  const body = parseJson(result.stdout);
-  if (body === undefined) return { failure: `${what} の出力を JSON として読めない` };
-  return { body };
+  const error = parseJson(result.stdout);
+  const message = isObject(error) && typeof error['message'] === 'string' ? error['message'] : '';
+  if (CONTRACT_MESSAGE.test(message)) return { kind: 'unavailable', message };
+  if (message === 'Branch not protected') return { kind: 'not-protected' };
+  if ((isObject(error) && error['status'] === '404') || /\(HTTP 404\)/.test(result.stderr)) return { kind: 'not-found' };
+  return { kind: 'failed', reason: `gh api ${path} が失敗した (終了コード ${result.status}): ${firstLine(result.stderr)}` };
 }
 
 const encodeBranch = (branch: string): string => branch.split('/').map(encodeURIComponent).join('/');
 
-function readClassicProtection(run: GhRunner, cwd: string, branch: string): SourceReading {
-  const what = 'gh api の branches/<branch>/protection';
-  const result = apiBody(run(['api', `repos/{owner}/{repo}/branches/${encodeBranch(branch)}/protection`], cwd), what);
-  if ('failure' in result) {
-    // 保護が無いブランチは HTTP 404 `Branch not protected`。読めなかったのではなく「設定が無い」と読めた
-    const errorBody = result.stdout === undefined ? undefined : parseJson(result.stdout);
-    const notProtected = isObject(errorBody) && errorBody['message'] === 'Branch not protected';
-    return notProtected ? { kind: 'none', note: 'ブランチ保護が設定されていない' } : { kind: 'unreadable', reason: result.failure };
-  }
-  if (!isObject(result.body)) return { kind: 'unreadable', reason: `${what} の出力がオブジェクトでない` };
-  const reviews = result.body['required_pull_request_reviews'];
-  if (!isObject(reviews)) return { kind: 'none', note: 'PR のレビューを要求していない' };
-  const approvals = reviews['required_approving_review_count'];
+function readClassic(outcome: ApiOutcome): Layer {
+  // 保護の無いブランチは 404 `Branch not protected`。ただの 404 Not Found は、権限が無いときにも返るので、「無い」とは言わない
+  if (outcome.kind === 'not-protected') return { kind: 'absent' };
+  if (outcome.kind === 'not-found') return { kind: 'unreadable', reason: 'ブランチ保護の問い合わせが 404 Not Found' };
+  if (outcome.kind === 'unavailable') return { kind: 'unavailable', message: outcome.message };
+  if (outcome.kind === 'failed') return { kind: 'unreadable', reason: outcome.reason };
+  if (!isObject(outcome.body)) return { kind: 'unreadable', reason: 'ブランチ保護の応答がオブジェクトでない' };
+  const reviews = outcome.body['required_pull_request_reviews'];
   return {
-    kind: 'rule',
-    approvals: typeof approvals === 'number' ? approvals : 0,
-    codeOwnerReview: reviews['require_code_owner_reviews'] === true,
+    kind: 'read',
+    pullRequest: isObject(reviews),
+    ownerReview: isObject(reviews) && reviews['require_code_owner_reviews'] === true,
+    dismissStale: isObject(reviews) && reviews['dismiss_stale_reviews'] === true,
   };
 }
 
-function readRulesets(run: GhRunner, cwd: string, branch: string): SourceReading {
-  const what = 'gh api の rules/branches/<branch>';
-  const result = apiBody(run(['api', `repos/{owner}/{repo}/rules/branches/${encodeBranch(branch)}`], cwd), what);
-  if ('failure' in result) return { kind: 'unreadable', reason: result.failure };
-  if (!Array.isArray(result.body)) return { kind: 'unreadable', reason: `${what} の出力が配列でない` };
-  const rules: readonly unknown[] = result.body;
-  let found = false;
-  let approvals = 0;
-  let codeOwnerReview = false;
-  for (const rule of rules) {
-    if (!isObject(rule) || rule['type'] !== 'pull_request') continue;
-    found = true;
-    const parameters = rule['parameters'];
-    if (!isObject(parameters)) continue;
-    const count = parameters['required_approving_review_count'];
-    if (typeof count === 'number') approvals = Math.max(approvals, count);
-    if (parameters['require_code_owner_review'] === true) codeOwnerReview = true;
-  }
-  return found ? { kind: 'rule', approvals, codeOwnerReview } : { kind: 'none', note: 'PR のレビューを要求する ruleset が無い' };
+function readRuleset(outcome: ApiOutcome): Layer {
+  if (outcome.kind === 'not-protected' || outcome.kind === 'not-found') return { kind: 'unreadable', reason: 'ruleset の問い合わせが 404' };
+  if (outcome.kind === 'unavailable') return { kind: 'unavailable', message: outcome.message };
+  if (outcome.kind === 'failed') return { kind: 'unreadable', reason: outcome.reason };
+  if (!Array.isArray(outcome.body)) return { kind: 'unreadable', reason: 'ruleset の応答が配列でない' };
+  const rules: readonly unknown[] = outcome.body;
+  const pullRequestRules = rules.filter((rule): rule is JsonObject => isObject(rule) && rule['type'] === 'pull_request');
+  if (pullRequestRules.length === 0) return { kind: 'absent' };
+  const parameters = pullRequestRules.map((rule) => (isObject(rule['parameters']) ? rule['parameters'] : {}));
+  return {
+    kind: 'read',
+    pullRequest: true,
+    ownerReview: parameters.some((p) => p['require_code_owner_review'] === true),
+    dismissStale: parameters.some((p) => p['dismiss_stale_reviews_on_push'] === true),
+  };
+}
+
+function readCodeowners(outcome: ApiOutcome): CodeownersReading {
+  if (outcome.kind === 'not-found' || outcome.kind === 'not-protected') return { kind: 'missing' };
+  if (outcome.kind === 'unavailable') return { kind: 'unavailable', message: outcome.message };
+  if (outcome.kind === 'failed') return { kind: 'unreadable', reason: outcome.reason };
+  const errors = isObject(outcome.body) ? outcome.body['errors'] : undefined;
+  if (!Array.isArray(errors)) return { kind: 'unreadable', reason: 'CODEOWNERS の誤りの応答に errors が無い' };
+  const messages: readonly unknown[] = errors;
+  return {
+    kind: 'ok',
+    errors: messages.map((error) => {
+      if (!isObject(error)) return String(error);
+      const where = typeof error['path'] === 'string' && typeof error['line'] === 'number' ? `${error['path']}:${error['line']} ` : '';
+      return `${where}${typeof error['kind'] === 'string' ? error['kind'] : '誤り'}`;
+    }),
+  };
 }
 
 /**
- * repo の保護ブランチ (既定は既定ブランチ) の設定を gh で読む。gh が動かない・認証できない・repo を特定できないときは
- * 検査不能。個々の設定 (ブランチ保護・ruleset) が読めなかったことは report の中に残す。
+ * repo の既定ブランチの保護と、CODEOWNERS の誤りを gh で読む。gh が動かない・認証できない・repo を特定できないときは
+ * 検査不能。個々の設定が読めなかったことは、report の中に残す。
  */
-export function readBranchProtection(run: GhRunner, cwd: string, branchOption?: string): ProtectionResult {
-  const repoInfo = apiBody(run(['api', 'repos/{owner}/{repo}'], cwd), 'gh api の repos/{owner}/{repo}');
-  if ('failure' in repoInfo) return { cannotCheck: `repo の情報を gh で読めない: ${repoInfo.failure}` };
-  const body = repoInfo.body;
-  const repo = isObject(body) ? body['full_name'] : undefined;
-  const defaultBranch = isObject(body) ? body['default_branch'] : undefined;
-  if (typeof repo !== 'string' || typeof defaultBranch !== 'string') {
+export function readDefaultBranchProtection(run: GhRunner, cwd: string): ReadResult {
+  const info = callApi(run, cwd, 'repos/{owner}/{repo}');
+  if (info.kind !== 'body') {
+    const reason = info.kind === 'failed' ? info.reason : info.kind === 'unavailable' ? info.message : 'repo が見つからない (HTTP 404)';
+    return { cannotCheck: `repo の情報を gh で読めない: ${reason}` };
+  }
+  const repo = isObject(info.body) ? info.body['full_name'] : undefined;
+  const branch = isObject(info.body) ? info.body['default_branch'] : undefined;
+  if (typeof repo !== 'string' || typeof branch !== 'string') {
     return { cannotCheck: 'repo の情報を gh で読めない: 出力に full_name と default_branch が無い' };
   }
-  const branch = branchOption ?? defaultBranch;
+  const encoded = encodeBranch(branch);
   return {
     report: {
       repo,
       branch,
-      sources: [
-        { name: 'ブランチ保護', reading: readClassicProtection(run, cwd, branch) },
-        { name: 'ruleset', reading: readRulesets(run, cwd, branch) },
+      layers: [
+        { name: 'ブランチ保護', layer: readClassic(callApi(run, cwd, `repos/{owner}/{repo}/branches/${encoded}/protection`)) },
+        { name: 'ruleset', layer: readRuleset(callApi(run, cwd, `repos/{owner}/{repo}/rules/branches/${encoded}`)) },
       ],
+      codeowners: readCodeowners(callApi(run, cwd, 'repos/{owner}/{repo}/codeowners/errors')),
     },
   };
 }
 
-export type PersonReviewVerdict =
-  | { readonly kind: 'required'; readonly approvals: number }
-  | { readonly kind: 'not-required'; readonly approvals: number; readonly codeOwnerReview: boolean }
-  /** 読めなかった設定があり、読めた設定だけでは必須と言えない */
-  | { readonly kind: 'unknown'; readonly unreadable: readonly string[] };
+export type ItemState = 'ok' | 'missing' | 'unknown';
 
-/** docs/person/ の変更に人のレビューが必須か。承認が 1 件以上 かつ CODEOWNERS のレビューが必須のときだけ必須。 */
-export function judgePersonReview(report: ProtectionReport): PersonReviewVerdict {
-  let approvals = 0;
-  let codeOwnerReview = false;
-  const unreadable: string[] = [];
-  for (const { name, reading } of report.sources) {
-    if (reading.kind === 'rule') {
-      approvals = Math.max(approvals, reading.approvals);
-      codeOwnerReview ||= reading.codeOwnerReview;
-    } else if (reading.kind === 'unreadable') {
-      unreadable.push(`${name}: ${reading.reason}`);
-    }
-  }
-  if (approvals >= 1 && codeOwnerReview) return { kind: 'required', approvals };
-  if (unreadable.length > 0) return { kind: 'unknown', unreadable };
-  return { kind: 'not-required', approvals, codeOwnerReview };
+export interface Item {
+  readonly label: string;
+  readonly state: ItemState;
+  /** どの設定が満たす・満たさないか。表示と違反の説明に出す */
+  readonly detail: string;
 }
 
-/** 設定の表示 (1 つにつき 1 行)。 */
-export function describeSource(source: ProtectionSource): string {
-  const { reading } = source;
-  if (reading.kind === 'rule') {
-    return `${source.name}: 必須の承認 ${reading.approvals} 件・CODEOWNERS のレビュー ${reading.codeOwnerReview ? '必須' : '不要'}`;
+function describeLayer(layer: Layer): string {
+  if (layer.kind === 'read') return 'この項目を要求していない';
+  if (layer.kind === 'absent') return 'なし';
+  if (layer.kind === 'unavailable') return `この契約では使えない (GitHub: ${layer.message})`;
+  return `読めない (${layer.reason})`;
+}
+
+/** 3 つの項目の 1 つ。どれかの設定が満たせば満たす。満たす設定が無く、読めなかった設定があれば不明。 */
+function layerItem(report: ProtectionReport, label: string, provides: (layer: Layer & { kind: 'read' }) => boolean): Item {
+  const providers = report.layers.filter(({ layer }) => layer.kind === 'read' && provides(layer));
+  if (providers.length > 0) return { label, state: 'ok', detail: providers.map(({ name }) => name).join('・') };
+  const detail = report.layers.map(({ name, layer }) => `${name}: ${describeLayer(layer)}`).join(' / ');
+  const unreadable = report.layers.some(({ layer }) => layer.kind === 'unreadable');
+  return { label, state: unreadable ? 'unknown' : 'missing', detail };
+}
+
+/** 4 つの項目を 1 つずつ点検する。 */
+export function inspectProtection(report: ProtectionReport): readonly Item[] {
+  const codeowners = report.codeowners;
+  let owners: Item;
+  const label = 'GitHub が返す CODEOWNERS の誤りが 0 件';
+  if (codeowners.kind === 'ok') {
+    owners =
+      codeowners.errors.length === 0
+        ? { label, state: 'ok', detail: '0 件' }
+        : { label, state: 'missing', detail: `${codeowners.errors.length} 件: ${codeowners.errors.join(' / ')}` };
+  } else if (codeowners.kind === 'missing') {
+    owners = { label, state: 'missing', detail: 'CODEOWNERS が無い (誤りの問い合わせが 404)' };
+  } else if (codeowners.kind === 'unavailable') {
+    owners = { label, state: 'missing', detail: `この契約では使えない (GitHub: ${codeowners.message})` };
+  } else {
+    owners = { label, state: 'unknown', detail: `読めない (${codeowners.reason})` };
   }
-  if (reading.kind === 'none') return `${source.name}: ${reading.note}`;
-  return `${source.name}: 読めない (${reading.reason})`;
+  return [
+    layerItem(report, 'PR が必須', (layer) => layer.pullRequest),
+    layerItem(report, 'CODEOWNERS の持ち主のレビューが必須', (layer) => layer.ownerReview),
+    layerItem(report, '新しい push で承認を取り消す', (layer) => layer.dismissStale),
+    owners,
+  ];
 }

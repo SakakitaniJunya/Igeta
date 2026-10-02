@@ -1,15 +1,16 @@
-// approval-scope のテストが共有する fixture (ADR-0008)。一時ディレクトリに本物の git repo を作り、差分を実際に commit して判定させる。
-// テストファイルを分けて並列に動かすため (git の呼び出しが多く、1 ファイルでは 20 秒かかる)、共通部分をここに置く。
+// approval-scope のテストが共有する fixture (テスト仕様 01 §4)。一時ディレクトリに本物の git repo を作り、変更を実際に
+// commit して判定させる。テストファイルを分けて並列に動かすため、共通部分をここに置く。
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { devNull, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { DocGraphCheck } from '../checks/DocGraphCheck.js';
+import { Cli } from '../cli/Cli.js';
 import { IGETA_ROOT } from '../core/Paths.js';
-import { judgeApprovalScope } from './ApprovalScope.js';
-import type { BaseSpec, ScopeJudgement, ScopeReason, ScopeResult } from './ApprovalScope.js';
+import { ApprovalScopeCommand } from './ApprovalScopeCommand.js';
+import { spawnGit } from './GitRepo.js';
+import type { GitOutput, GitRunner } from './GitRepo.js';
 
 // 利用者の git の設定 (署名・hooksPath・diff.renames など) と、この test を動かす環境の GIT_* (hook の中など) に左右されない
 for (const name of Object.keys(process.env)) if (name.startsWith('GIT_')) delete process.env[name];
@@ -48,7 +49,7 @@ export class TestRepo {
   }
 
   /** main に files を commit した repo。 */
-  static create(files: Readonly<Record<string, string | Buffer>> = {}): TestRepo {
+  static create(files: Readonly<Record<string, string>> = {}): TestRepo {
     const repo = new TestRepo(tempDir('igeta-approval-scope-test-'));
     repo.git('init', '-q', '-b', 'main');
     for (const [rel, content] of Object.entries(files)) repo.write(rel, content);
@@ -61,14 +62,10 @@ export class TestRepo {
     return gitIn(this.root, ...args);
   }
 
-  write(rel: string, content: string | Buffer): void {
+  write(rel: string, content: string): void {
     const target = join(this.root, rel);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, content);
-  }
-
-  remove(rel: string): void {
-    rmSync(join(this.root, rel), { force: true });
   }
 
   move(from: string, to: string): void {
@@ -76,192 +73,132 @@ export class TestRepo {
     this.git('mv', from, to);
   }
 
+  /** 今の HEAD から branch を切って移る。 */
   branch(name = 'feature'): void {
     this.git('checkout', '-q', '-b', name);
+  }
+
+  checkout(name: string): void {
+    this.git('checkout', '-q', name);
   }
 
   commit(message = 'change'): void {
     this.git('add', '-A');
     this.git('commit', '-q', '-m', message);
   }
+
+  /** 既存のファイルの 1 行目の後ろに 1 行足す (中身は判定に関係しない。変更があったことだけを作る)。 */
+  touch(rel: string): void {
+    this.write(rel, `${rel}\n変更\n`);
+  }
 }
 
-export const GATE_GLOBS = [
-  'templates/**',
-  'src/checks/**',
-  'src/gate/**',
-  'src/core/Role.ts',
-  'src/core/IgetaConfig.ts',
-  'src/core/LineClassifier.ts',
-  'docs/explanation/0[3-9]-*.md',
-];
-
-export const PACKAGE_JSON = JSON.stringify(
-  {
-    name: 'app',
-    version: '1.0.0',
-    scripts: { build: 'tsc', 'docs:check': 'igeta docs-check' },
-    dependencies: { 'left-pad': '1.0.0' },
-    devDependencies: { igeta: 'github:SakakitaniJunya/Igeta#v0.4.0', typescript: '^5.9.3' },
-  },
-  null,
-  2,
-);
-
-export const packageJsonWith = (overrides: Record<string, unknown>): string => JSON.stringify({ ...JSON.parse(PACKAGE_JSON), ...overrides }, null, 2);
-
-export const PACKAGE_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3', integrity = 'sha512-igeta'): string =>
-  [
-    '{',
-    '  "name": "app",',
-    '  "lockfileVersion": 3,',
-    '  "packages": {',
-    '    "": {',
-    '      "devDependencies": {',
-    '        "igeta": "github:SakakitaniJunya/Igeta#v0.4.0",',
-    '        "typescript": "^5.9.3"',
-    '      }',
-    '    },',
-    '    "node_modules/igeta": {',
-    '      "version": "0.4.0",',
-    `      "resolved": "git+ssh://git@github.com/SakakitaniJunya/Igeta.git#${igetaSha}",`,
-    `      "integrity": "${integrity}",`,
-    '      "dev": true',
-    '    },',
-    '    "node_modules/typescript": {',
-    `      "version": "${typescript}",`,
-    `      "resolved": "https://registry.npmjs.org/typescript/-/typescript-${typescript}.tgz",`,
-    '      "dev": true',
-    '    }',
-    '  }',
-    '}',
-    '',
-  ].join('\n');
-
-export const YARN_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3'): string =>
-  [
-    '# yarn lockfile v1',
-    '',
-    '"igeta@github:SakakitaniJunya/Igeta#v0.4.0":',
-    '  version "0.4.0"',
-    `  resolved "https://codeload.github.com/SakakitaniJunya/Igeta/tar.gz/${igetaSha}"`,
-    '',
-    'typescript@^5.9.3:',
-    `  version "${typescript}"`,
-    '',
-  ].join('\n');
-
-export const PNPM_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3'): string =>
-  [
-    "lockfileVersion: '9.0'",
-    '',
-    'importers:',
-    '  .:',
-    '    devDependencies:',
-    '      igeta:',
-    '        specifier: github:SakakitaniJunya/Igeta#v0.4.0',
-    `        version: https://codeload.github.com/SakakitaniJunya/Igeta/tar.gz/${igetaSha}`,
-    '      typescript:',
-    '        specifier: ^5.9.3',
-    `        version: ${typescript}`,
-    '',
-  ].join('\n');
-
-export const BUN_LOCK = (igetaSha = 'a'.repeat(40), typescript = '5.9.3'): string =>
-  [
-    '{',
-    '  "packages": {',
-    `    "igeta": ["igeta@github:SakakitaniJunya/Igeta#${igetaSha}", {}, "x"],`,
-    `    "typescript": ["typescript@${typescript}", "", {}, "sha512-ts"],`,
-    '  }',
-    '}',
-    '',
-  ].join('\n');
-
-/** 新しい構成の repo (person・client・ai の 3 フォルダと、門を決めるファイル・Igeta 自身の humanPaths)。 */
-export const BASE: Readonly<Record<string, string | Buffer>> = {
-  'docs/person/requirements/01-requirements.md': '# 要件\n',
-  'docs/person/decisions/2026/0001-x.md': '# ADR\n',
-  'docs/client/delivery/01-chapter.md': '# 章\n',
-  'docs/ai/specs/shared/01-spec.md': '# 仕様\n',
-  'docs/ai/handbook/how-to/01-howto.md': '# 手順\n',
-  'docs/ai/handbook/AGENTS.md': '# 入口に似た名前\n',
-  'docs/explanation/01-a.md': '# a\n',
-  'docs/explanation/02-b.md': '# b\n',
-  'docs/explanation/03-c.md': '# c\n',
-  'docs/explanation/09-d.md': '# d\n',
-  'docs/explanation/10-e.md': '# e\n',
-  'docs/explanation/README.md': '# explanation\n',
-  'src/index.ts': 'export {};\n',
-  'src/cli/Command.ts': 'export {};\n',
-  'src/checks/Check.ts': 'export {};\n',
-  'src/gate/Gate.ts': 'export {};\n',
-  'src/core/Role.ts': 'export {};\n',
-  'src/core/IgetaConfig.ts': 'export {};\n',
-  'src/core/LineClassifier.ts': 'export {};\n',
-  'src/core/Other.ts': 'export {};\n',
-  'templates/docs/a.md': '# t\n',
-  'sub/AGENTS.md': '# 入口に似た名前\n',
-  'sub/.igeta.json': '{}\n',
-  'README.md': '# app\n',
-  'AGENTS.md': '# agents\n',
-  '.github/CODEOWNERS': 'docs/person/ @owner\n',
-  '.github/workflows/ci.yml': 'name: ci\n',
-  '.github/ISSUE_TEMPLATE/bug.md': '# bug\n',
-  '.github/dependabot.yml': 'version: 2\n',
-  '.igeta.json': `${JSON.stringify({ humanPaths: GATE_GLOBS }, null, 2)}\n`,
-  'package.json': PACKAGE_JSON,
-  'package-lock.json': PACKAGE_LOCK(),
-};
-
-export const local = (ref = 'main'): BaseSpec => ({ mode: 'local', ref });
-
-export const without = (...names: string[]): Record<string, string | Buffer> =>
-  Object.fromEntries(Object.entries(BASE).filter(([name]) => !names.includes(name)));
-
-/** origin (bare) に main を push した作業用 repo。ここから feature ブランチを切る。 */
-export function withOrigin(): { readonly repo: TestRepo; readonly origin: string } {
+/** origin (bare) に main を push した repo。`--ci` の宛先 `origin/main` を持つ。 */
+export function withOrigin(files: Readonly<Record<string, string>>): { readonly repo: TestRepo; readonly origin: string } {
   const origin = tempDir('igeta-approval-scope-origin-');
   gitIn(origin, 'init', '-q', '--bare', '-b', 'main');
-  const repo = TestRepo.create(BASE);
+  const repo = TestRepo.create(files);
   repo.git('remote', 'add', 'origin', origin);
   repo.git('push', '-q', 'origin', 'main');
   return { repo, origin };
 }
 
-export const doc = (id: string, title: string, kind = 'requirements', arc42 = 1): string =>
-  ['---', `id: ${id}`, `title: ${title}`, 'type: design', `kind: ${kind}`, `arc42: ${arc42}`, 'status: active', 'owners: [eng]', 'depends_on: []', 'relates_to: []', '---', '', `# ${title}`, '', `> **TL;DR**: ${title}`, ''].join('\n');
+/** 新しい構成の repo: 人のフォルダ・AI のフォルダ・生成索引・コード・決定 1 のファイル。 */
+export const BASE_FILES: Readonly<Record<string, string>> = {
+  'docs/person/requirements/01-requirements.md': '# 要件\n',
+  'docs/person/design/README.md': [
+    '# design',
+    '',
+    '<!-- AUTOGEN:dir-index:start — generated by scripts/generate-docs-graph.mjs, do not edit by hand -->',
+    '',
+    '| 文書 |',
+    '|---|',
+    '| 01 |',
+    '',
+    '<!-- AUTOGEN:dir-index:end -->',
+    '',
+  ].join('\n'),
+  'docs/client/delivery/01-chapter.md': '# 章\n',
+  'docs/ai/specs/shared/01-spec.md': '# 仕様\n',
+  'docs/ai/AGENTS.md': '# docs/ai の入口\n',
+  'docs/README.md': '# docs\n',
+  'docs/dependencies.md': '# 依存\n',
+  'src/index.ts': 'export {};\n',
+  'src/core/a.ts': 'export {};\n',
+  'package.json': '{ "name": "app", "scripts": { "build": "tsc" }, "devDependencies": { "igeta": "1.0.0" } }\n',
+  'package-lock.json': '{ "lockfileVersion": 3, "packages": {} }\n',
+  '.github/workflows/x.yml': 'name: x\n',
+  '.github/actions/a/action.yml': 'name: a\n',
+  '.github/CODEOWNERS': 'docs/person/ @owner\n',
+  CODEOWNERS: 'docs/person/ @owner\n',
+  'docs/CODEOWNERS': 'person/ @owner\n',
+  '.igeta.json': '{}\n',
+  '.igeta-version': '0.4.0\n',
+  'AGENTS.md': '# agents\n',
+  'CLAUDE.md': '# claude\n',
+  '.claude/settings.json': '{}\n',
+};
 
-/** 作業ツリーの docs/ から索引 (README・dependencies.md) を再生成する。 */
-export async function generate(repo: TestRepo): Promise<void> {
-  const violations = await new DocGraphCheck({ write: true }).run({ targetRoot: repo.root, igetaRoot: IGETA_ROOT });
-  assert.deepEqual(violations, []);
+export interface Run {
+  readonly code: number;
+  readonly stdout: readonly string[];
+  readonly stderr: readonly string[];
 }
 
-export const judge = (repo: TestRepo, base: BaseSpec = local()): Promise<ScopeResult> =>
-  judgeApprovalScope({ root: repo.root, igetaRoot: IGETA_ROOT, base });
-
-export async function judged(repo: TestRepo, base: BaseSpec = local()): Promise<ScopeJudgement> {
-  const result = await judge(repo, base);
-  assert.ok('judgement' in result, JSON.stringify(result));
-  return result.judgement;
+/** `igeta approval-scope <argv>` を動かす。env は環境変数 (既定は空)、git は git の呼び出しの差し替え。 */
+export async function scope(
+  argv: readonly string[],
+  cwd: string,
+  options: { readonly env?: Readonly<Record<string, string | undefined>>; readonly git?: GitRunner } = {},
+): Promise<Run> {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const command = new ApprovalScopeCommand({ env: options.env ?? {}, ...(options.git === undefined ? {} : { git: options.git }) });
+  const code = await new Cli().register(command).run(['approval-scope', ...argv], {
+    cwd,
+    igetaRoot: IGETA_ROOT,
+    stdout: (line) => stdout.push(line),
+    stderr: (line) => stderr.push(line),
+  });
+  return { code, stdout, stderr };
 }
 
-export function cannotCheckMessage(result: ScopeResult): string {
-  assert.ok('violation' in result, `検査不能のはずが判定が出た: ${JSON.stringify(result)}`);
-  assert.equal(result.violation.severity, 'cannot-check');
-  return result.violation.message;
+/** 標準出力の理由の行 (`- <パス> (<理由>)`) から、パスと理由を取り出す。 */
+export function reasons(run: Run): ReadonlyArray<{ readonly path: string; readonly rule: string }> {
+  return run.stdout
+    .filter((line) => line.startsWith('- '))
+    .map((line) => {
+      const cut = line.lastIndexOf(' (');
+      return { path: line.slice(2, cut), rule: line.slice(cut + 2, -1) };
+    });
 }
 
-export const pathsOf = (reasons: readonly ScopeReason[]): string[] => reasons.map((r) => r.path);
+export const reasonPaths = (run: Run): string[] => reasons(run).map((reason) => reason.path);
 
-/** BASE に feature ブランチで mutate を加えて commit し、判定を返す。 */
-export async function change(mutate: (repo: TestRepo) => void, files: Readonly<Record<string, string | Buffer>> = BASE): Promise<ScopeJudgement> {
-  const repo = TestRepo.create(files);
-  repo.branch();
-  mutate(repo);
-  repo.commit();
-  return judged(repo);
+/** 適合 (`ai`)・終了コード 0・理由なし。 */
+export function assertAi(run: Run, label = ''): void {
+  assert.equal(run.code, 0, `${label} ai のはずが終了コード ${run.code}: ${run.stdout.join(' | ')} ${run.stderr.join(' | ')}`);
+  assert.equal(run.stdout[0], 'ai', label);
+  assert.deepEqual(reasonPaths(run), [], label);
+  assert.deepEqual(run.stderr, [], label);
 }
 
-export const append = (repo: TestRepo, rel: string): void => repo.write(rel, `${rel}\n追記\n`);
+/** `human`・終了コード 1。paths を渡せば、理由のパスがその一覧と一致する。 */
+export function assertHuman(run: Run, paths?: readonly string[], label = ''): void {
+  assert.equal(run.code, 1, `${label} human のはずが終了コード ${run.code}: ${run.stdout.join(' | ')} ${run.stderr.join(' | ')}`);
+  assert.equal(run.stdout[0], 'human', label);
+  if (paths !== undefined) assert.deepEqual(reasonPaths(run), [...paths].sort(), label);
+}
+
+/** 検査不能・終了コード 2。標準出力は空 (human でも ai でもない)。message を渡せば、標準エラーがそれに当たる。 */
+export function assertCannotCheck(run: Run, message?: RegExp, label = ''): void {
+  assert.equal(run.code, 2, `${label} 検査不能のはずが終了コード ${run.code}: ${run.stdout.join(' | ')}`);
+  assert.deepEqual(run.stdout, [], label);
+  if (message !== undefined) assert.match(run.stderr.join('\n'), message, label);
+}
+
+/** 本物の git を呼び、override が出力を返した呼び出しだけ差し替える (テスト仕様 01 の「git の呼び出しを差し替える」テスト)。 */
+export const fakeGit =
+  (override: (args: readonly string[]) => GitOutput | undefined): GitRunner =>
+  (root, args) =>
+    override(args) ?? spawnGit(root, args);
