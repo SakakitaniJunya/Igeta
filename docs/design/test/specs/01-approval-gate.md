@@ -34,12 +34,12 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | # | 規則 |
 |---|---|
 | R1 | `approval-scope` は、次の 2 つの差分のパスの和集合 (`git diff --name-status --no-renames -z --ignore-submodules=none`。移動は削除と追加の 2 行) を、ADR-0008 決定 1 の表と `humanPaths` に当てる: (a) 枝分かれの点から HEAD まで (b) 宛先の先端から、宛先の先端と HEAD を merge した結果 (`git merge-tree --write-tree`) まで。(b) は、宛先でファイルが移された後に古い枝が旧いパスを編集する場合に、移した先のパスを拾う。1 つでも当たれば `human`、当たらなければ `ai`。ファイルの中身は見ない。`--base` のときだけ、作業ツリーの変更と未追跡のファイルも含める |
-| R2 | 構成 (新しい構成か) と `humanPaths` は、**宛先の先端**のツリー (`git ls-tree`・`git show <宛先>:.igeta.json`) から読む。作業ツリーのファイルは開かず、枝分かれの点の値も使わない (変更の作者が選べるものを信頼しない) |
+| R2 | 構成 (新しい構成か) と `humanPaths` は、**宛先の先端**のツリー (`git ls-tree`・`git show <宛先>:.igeta.json`) から読む。作業ツリーのファイルは開かず、枝分かれの点の値も使わない (変更の作者が選べるものを信頼しない)。宛先のツリーに `.igeta.json` が無いと `ls-tree` で分かったときだけ既定値を使い、あるのに読み出せないときは検査不能 |
 | R3 | `--ci` と `--base <ref>` のどちらか 1 つが必須で、同時には指定できない |
 | R4 | 次のどれかなら検査不能 (終了コード 2) で、`ai` を返さない: 宛先が決まらない (環境変数が無い・ref が無い・共通の祖先が無い・ref の名前が不正) / 宛先が旧い構成 / git の repo でない・`--root` が repo の最上位でない / 宛先の `.igeta.json` が読めない (壊れている・glob が不正) / 差分の状態の文字が A・M・D・T 以外 / merge が衝突する・git が `merge-tree --write-tree` を持たない |
 | R5 | パスの照合は大文字と小文字を区別しない。`X/**` は `X` そのもの (ファイル・symlink・submodule) にも当たる。`**/AGENTS.md` は repo 直下にも当たる。名前の続き (`docs/personal/`) には当たらない |
 | R6 | 終了コード: `ai` = 0 / `human` = 1 / 検査不能 = 2。標準出力の 1 行目は `human` か `ai`、続けて理由のパスを 1 行ずつ (`humanPaths` で当たったものは、その glob を添える) |
-| R7 | `doctor` は、GitHub から既定ブランチの保護 (従来の保護と ruleset) を読み、次の 4 つを 1 つずつ出す: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す / GitHub が返す CODEOWNERS の誤りが 0 件。4 つともそろえば適合 (0)、1 つでも欠ければ違反 (1)。GitHub が「この契約では使えない」と返したときも違反 (1)。`gh` が無い・権限が無くて読めないときは検査不能 (2)。確かめないこと (持ち主が実在し書き込み権限を持つか・管理者の迂回・必須の検査・既定ブランチ以外の保護) を、適合のときも出力に書く |
+| R7 | `doctor` は、GitHub から既定ブランチの保護 (従来の保護と ruleset) を読み、次の 4 つを 1 つずつ出す: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す / GitHub が返す CODEOWNERS の誤りが 0 件。4 つともそろえば適合 (0)、1 つでも欠ければ違反 (1)。GitHub が「この契約では使えない」と返したときと、CODEOWNERS が無い (誤りの問い合わせが 404) ときも違反 (1)。`gh` が無い・権限が無くて読めないときは検査不能 (2)。確かめないこと (持ち主が実在し書き込み権限を持つか・管理者の迂回・必須の検査・既定ブランチ以外の保護) を、適合のときも出力に書く |
 
 ## 1. テストケース一覧
 
@@ -68,10 +68,10 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | TST-309 | 名前だけのフォルダ | `docs/personal/x.md`・`docs/clients/x.md` を変える | `ai` |
 | TST-310 | フォルダを差し替える | `docs/person` を symlink か submodule に置き換える | `human` |
 | TST-311 | 設定が壊れている | 宛先の `.igeta.json` が JSON でない / `humanPaths` の glob が不正 / git の差分の出力に状態の文字 `U` が混ざる (出力を差し替える単体テスト) | 検査不能・2 |
-| TST-312 | doctor: 設定の欠け | 保護も ruleset も無い / 持ち主のレビューが任意 / 新しい push で承認を取り消さない / GitHub が CODEOWNERS の誤りを 1 件返す、の 4 通り。GitHub が「この契約では使えない」と返す場合 | どれも違反・1 |
-| TST-314 | 宛先で移された文書 | 宛先で `docs/ai/x.md` が `docs/person/x.md` へ移された後、その前に切った枝が `docs/ai/x.md` を編集する | `human` (merge した結果の差分に `docs/person/x.md` が出る) |
-| TST-315 | merge できない | 宛先と HEAD が同じ行を別々に変えていて衝突する | 検査不能・2 |
+| TST-312 | doctor: 設定の欠け | 保護も ruleset も無い / 持ち主のレビューが任意 / 新しい push で承認を取り消さない / GitHub が CODEOWNERS の誤りを 1 件返す / CODEOWNERS が無い (404)、の 5 通り。GitHub が「この契約では使えない」と返す場合 | どれも違反・1 |
 | TST-313 | doctor: 読めない | `gh` が無い / 権限が無くて設定を読めない | 検査不能・2 (成功にしない) |
+| TST-314 | 宛先で移された文書 | 宛先で `docs/ai/x.md` が `docs/person/x.md` へ移された後、その前に切った枝が `docs/ai/x.md` を編集する | `human` (merge した結果の差分に `docs/person/x.md` が出る) |
+| TST-315 | merge できない | 宛先と HEAD が同じ行を別々に変えていて衝突する / git が `merge-tree --write-tree` を持たない (git の呼び出しを差し替える単体テスト) / 宛先のツリーに `.igeta.json` はあるが読み出しに失敗する (同) | どれも検査不能・2 |
 
 ## 3. トレーサビリティ
 
