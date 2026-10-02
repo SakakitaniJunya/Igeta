@@ -26,7 +26,8 @@ export class DoctorCommand extends Command {
     '  --branch <name>   確かめる保護ブランチ (既定: repo の既定ブランチ)',
     '',
     '  gh で読んだ設定 (必須の承認数・CODEOWNERS のレビューの要否。従来のブランチ保護と ruleset) を表示し、',
-    '  承認が 1 件以上かつ CODEOWNERS のレビューが必須でなければ WARN を出す。',
+    '  承認が 1 件以上かつ CODEOWNERS のレビューが必須でなければ WARN を出す。読むのは GitHub の設定だけで、',
+    '  CODEOWNERS の中身 (docs/person/ の行があるか) は見ない。',
     '  gh が無い・読めないときは検査不能 (終了コード 2)。成功にはしない',
   ];
 
@@ -57,7 +58,11 @@ export class DoctorCommand extends Command {
 
     const verdict = judgePersonReview(read.report);
     if (verdict.kind === 'required') {
-      ctx.stdout('OK docs/person/ の変更に人のレビューが必須になっている');
+      // 読んだのは GitHub の設定だけ。CODEOWNERS の中身 (docs/person/ の行) は読まないので、そこまでは言わない
+      ctx.stdout(
+        `OK 保護ブランチ ${protectedBranch} は承認 ${verdict.approvals} 件以上・CODEOWNERS のレビューを必須にしている ` +
+          '(CODEOWNERS に docs/person/ の行があるかは、このコマンドでは見ない)',
+      );
       return ExitCode.Ok;
     }
     if (verdict.kind === 'not-required') {

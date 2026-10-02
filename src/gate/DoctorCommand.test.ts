@@ -80,7 +80,7 @@ describe('igeta doctor', () => {
       '保護ブランチ: main (SakakitaniJunya/Igeta)',
       '  ブランチ保護: 必須の承認 1 件・CODEOWNERS のレビュー 必須',
       '  ruleset: PR のレビューを要求する ruleset が無い',
-      'OK docs/person/ の変更に人のレビューが必須になっている',
+      'OK 保護ブランチ main は承認 1 件以上・CODEOWNERS のレビューを必須にしている (CODEOWNERS に docs/person/ の行があるかは、このコマンドでは見ない)',
     ]);
     assert.deepEqual(result.stderr, []);
   });
@@ -115,7 +115,7 @@ describe('igeta doctor', () => {
     assert.equal(result.code, ExitCode.Ok);
     assert.deepEqual(result.stderr, []);
     assert.ok(result.stdout.includes('  ruleset: 必須の承認 1 件・CODEOWNERS のレビュー 必須'));
-    assert.equal(result.stdout.at(-1), 'OK docs/person/ の変更に人のレビューが必須になっている');
+    assert.match(result.stdout.at(-1) ?? '', /^OK 保護ブランチ main は承認 1 件以上・CODEOWNERS のレビューを必須にしている/);
   });
 
   it('設定の一部が読めず必須と言えないときは検査不能 (終了コード 2)。読めた設定は表示する', async () => {
@@ -173,6 +173,7 @@ describe('igeta doctor', () => {
     const text = stdout.join('\n');
     assert.match(text, /CODEOWNERS のレビュー/);
     assert.match(text, /承認が 1 件以上かつ CODEOWNERS のレビューが必須でなければ WARN/);
+    assert.match(text, /CODEOWNERS の中身 \(docs\/person\/ の行があるか\) は見ない/);
     assert.match(text, /検査不能 \(終了コード 2\)。成功にはしない/);
   });
 });
@@ -230,7 +231,7 @@ describe('実際の igeta コマンド (dist/cli.js) を、PATH 上の偽の gh 
     const result = doctor(bin);
     assert.equal(result.status, 0);
     assert.match(result.stdout, /^保護ブランチ: main \(o\/r\)\n {2}ブランチ保護: 必須の承認 1 件・CODEOWNERS のレビュー 必須\n/);
-    assert.match(result.stdout, /OK docs\/person\/ の変更に人のレビューが必須になっている\n$/);
+    assert.match(result.stdout, /OK 保護ブランチ main は承認 1 件以上・CODEOWNERS のレビューを必須にしている \(CODEOWNERS に docs\/person\/ の行があるかは、このコマンドでは見ない\)\n$/);
     assert.equal(result.stderr, '');
   });
 
