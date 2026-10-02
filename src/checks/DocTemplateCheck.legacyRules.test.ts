@@ -107,13 +107,15 @@ describe('DocTemplateCheck: 旧い構成の文書は旧い構成の必須節で�
     assert.ok(messagesOf(violations, 'person/design/shared/01-function-list.md').some((message) => message.includes('必須の節がない: ## 新しい節')));
   });
 
-  it('旧い構成の文書には行数上限が無く (旧い構成の function-list は上限なし)、新しい構成の文書には雛形の上限がかかる', () => {
+  it('旧い構成の文書には行数上限が無く (旧い構成の function-list は上限なし)、新しい構成の ○ の kind の人の文書には雛形の上限を当てない (行数の違反は PersonFormCheck の 1 件だけ)', () => {
     const violations = analyze({
-      'design/basic/function-list.md': functionListDoc('legacy-function-list', 60),
-      'person/design/shared/01-function-list.md': functionListDoc('v4-function-list', 60),
+      'design/basic/function-list.md': functionListDoc('legacy-function-list', 100),
+      'person/design/shared/01-function-list.md': functionListDoc('v4-function-list', 100),
     });
     assert.deepEqual(messagesOf(violations, 'design/basic/function-list.md'), []);
-    assert.ok(messagesOf(violations, 'person/design/shared/01-function-list.md').some((message) => message.includes('行数上限 (20) を超えている')));
+    const lineMessages = messagesOf(violations, 'person/design/shared/01-function-list.md').filter((message) => message.includes('行数上限'));
+    assert.equal(lineMessages.length, 1, lineMessages.join('\n'));
+    assert.match(lineMessages[0] ?? '', /^人の文書の行数上限 \(100\) を超えている: \d+ 行/);
   });
 
   it('ID の接頭辞・形式は、旧い構成の文書は旧い構成の値 (FN-nnn) で検査し、新しい構成の文書は雛形の値 (ZZ001) で検査する', () => {

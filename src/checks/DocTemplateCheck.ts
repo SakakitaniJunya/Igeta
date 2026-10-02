@@ -25,7 +25,8 @@ import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClas
 import type { Violation } from '../core/Report.js';
 import { LEGACY_TEMPLATE_RULES } from '../core/LegacyTemplateRules.js';
 import { legacyKindOfPath } from '../core/LegacyTemplatePaths.js';
-import { kindOfPath, roleOfPath } from '../core/Role.js';
+import { detectLayout, kindOfPath, placementOf, roleOfPath } from '../core/Role.js';
+import { PersonFormCheck } from './PersonFormCheck.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage']);
@@ -50,6 +51,11 @@ export interface DocTemplateOptions {
    * キーワード判定は文書 lint であり会社 OS の「選ぶ」判断ではないので設定として持てる。
    */
   readonly decisionAttributionPatterns?: readonly RegExp[];
+  /**
+   * 新しい構成 (v4) の人の文書の検査 (PersonFormCheck) が、廃の行を比べる起点の宛先のブランチ (変更を入れる先)。
+   * HEAD との枝分かれの点を起点にする。無ければ、同じ文書の中だけを見る。
+   */
+  readonly base?: string;
 }
 
 /**
@@ -238,12 +244,16 @@ function kindFromPath(docRelPath: string): string | null {
 }
 
 /**
- * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。旧い構成の文書は、必須節・行数上限・ID の接頭辞と形式を、
- * 雛形を新しい構成の木へ移す前の値 (core/LegacyTemplateRules.ts) にする。旧い構成の repo は、移すまでの間も既存の検査が
- * 通る (REQ-106)。
+ * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。ただし、型の検査が ○ の kind の人の文書は、行数の違反を
+ * PersonFormCheck が 1 件だけ出す (テスト仕様 03 の P6) ので、雛形の line_limit による検査は当てない (宣言は雛形に残る)。
+ * 旧い構成の文書は、必須節・行数上限・ID の接頭辞と形式を、雛形を新しい構成の木へ移す前の値 (core/LegacyTemplateRules.ts)
+ * にする。旧い構成の repo は、移すまでの間も既存の検査が通る (REQ-106)。
  */
 function templateFor(template: TemplateEntry, docRelPath: string): TemplateEntry {
-  if (roleOfPath(docRelPath.split(sep).join('/')) !== null) return template;
+  const role = roleOfPath(docRelPath.split(sep).join('/'));
+  if (role !== null) {
+    return role === 'person' && placementOf(template.kind)?.formCheck === 'full' ? { ...template, lineLimit: null } : template;
+  }
   const legacy = LEGACY_TEMPLATE_RULES.get(template.kind);
   return legacy === undefined
     ? template
@@ -796,9 +806,15 @@ export class DocTemplateCheck implements Check {
   readonly name = 'template-check';
 
   readonly #options: DocTemplateOptions;
+  #warnings: string[] = [];
 
   constructor(options: DocTemplateOptions = {}) {
     this.#options = options;
+  }
+
+  /** 直近の run()・analyze() が出した非ブロッキング警告 (人の文書の、まとまりの合計字数) */
+  get warnings(): readonly string[] {
+    return this.#warnings;
   }
 
   run(ctx: CheckContext): readonly Violation[] {
@@ -807,6 +823,7 @@ export class DocTemplateCheck implements Check {
 
   /** 違反に加えて検査の内訳 (kind 数・検査本数・kind 未設定) も返す。CLI の要約表示用。 */
   analyze(ctx: CheckContext): DocTemplateResult {
+    this.#warnings = [];
     const docsDir = this.#options.docsDir ?? join(ctx.targetRoot, 'docs');
     const templatesDir = this.#options.templatesDir ?? join(ctx.igetaRoot, 'templates', 'docs');
     const requireKind = this.#options.requireKind ?? false;
@@ -916,6 +933,13 @@ export class DocTemplateCheck implements Check {
           line: 1,
         });
       }
+    }
+
+    // 新しい構成 (v4) の repo だけ、人の文書の型・量・書き込み口を見る (旧い構成では何も出ない)
+    if (detectLayout(docsDir) === 'v4') {
+      const personForm = new PersonFormCheck({ docsDir, templates: registry, base: this.#options.base });
+      violations.push(...personForm.run(ctx));
+      this.#warnings.push(...personForm.warnings);
     }
 
     let unambiguousFixes: readonly QualifiedIdFix[] = [];
