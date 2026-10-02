@@ -54,12 +54,14 @@ export interface IgetaConfig {
   readonly reagreementRules: readonly ReagreementRule[];
   /**
    * 人の承認が要る追加のパス (glob、repo のルートからの相対)。足すことだけができ、外す設定は無い
-   * (ADR-0008 決定 1)。既定は空。
+   * (ADR-0008 決定 1)。既定は空。glob の書き方は src/gate/PathGlob.ts (大文字小文字は区別せず、
+   * ディレクトリ名だけを書いても配下に当たる)。
    */
   readonly humanPaths: readonly string[];
   /**
    * docs/ の置き場所の判定と docs-migrate の移動対象から外すパス (glob)。docs/person・docs/ai・
    * docs/client の配下に当たる glob は設定そのものが違反 (ADR-0003 決定 6)。既定は空。
+   * 当たるかどうかの判定は humanPaths と同じ glob の意味 (src/gate/PathGlob.ts の matchesGlob)。
    */
   readonly nonDocPaths: readonly string[];
 }
