@@ -38,7 +38,7 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | R3 | `--ci` と `--base <ref>` のどちらか 1 つが必須で、同時には指定できない |
 | R4 | 次のどれかなら検査不能 (終了コード 2) で、`ai` を返さない: 宛先が決まらない (環境変数が無い・ref が無い・共通の祖先が無い・ref の名前が不正) / 宛先が旧い構成 / git の repo でない・`--root` が repo の最上位でない / 宛先の `.igeta.json` が読めない (壊れている・glob が不正) / 差分の状態の文字が A・M・D・T 以外 / merge が衝突する・git が `merge-tree --write-tree` を持たない。glob に使える書き方は `*`・`?`・`[ ]`・`{a,b}` と、階層をまたぐ `**`。`!`・`\`・extglob・先頭と末尾の `/`・前後の空白・`..`・範囲 (`{1..3}`)・制御文字・空の文字列は不正 |
 | R5 | パスの照合は大文字と小文字を区別しない。`X/**` は `X` そのもの (ファイル・symlink・submodule) にも当たる。`**/AGENTS.md` は repo 直下にも当たる。名前の続き (`docs/personal/`) には当たらない。glob がパスの手前のフォルダに当たれば、その配下にも当たる (`humanPaths` の `src/core` は `src/core/**` と同じ。書き間違いで何も守らない設定を作らない) |
-| R6 | 終了コード: `ai` = 0 / `human` = 1 / 検査不能 = 2。標準出力の 1 行目は `human` か `ai`、続けて理由のパスを 1 行ずつ (`- <パス> (<理由>)`。`humanPaths` で当たったものは、その glob を添える。制御文字を含むパスは JSON の文字列で出す)。その後に空行を 1 つ置き、`宛先: <ref> (<先端の 12 桁>)・枝分かれの点: <12 桁>` の行 (`--ci` のときは末尾に ` (--ci)`) を出す。`--base` のときは、次の行に「手元の確認用」である旨を出す |
+| R6 | 終了コード: `ai` = 0 / `human` = 1 / 検査不能 = 2。標準出力の 1 行目は `human` か `ai`、続けて理由のパスを 1 行ずつ (`- <パス> (<理由>)`。`humanPaths` で当たったものは、その glob を添える。制御文字を含むパスは JSON の文字列で出す)。その後に空行を 1 つ置き、`宛先: <ref> (<先端の 12 桁>)・枝分かれの点: <12 桁>` の行 (`--ci` のときは、末尾に空白 1 つと `(--ci)` を付ける) を出す。`--base` のときは、次の行に「手元の確認用」である旨を出す |
 | R7 | `doctor` は、GitHub から既定ブランチの保護 (従来の保護と ruleset) を読み、次の 4 つを 1 つずつ出す: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す / GitHub が返す CODEOWNERS の誤りが 0 件。4 つともそろえば適合 (0)、1 つでも欠ければ違反 (1)。GitHub が「この契約では使えない」と返したときと、CODEOWNERS が無い (誤りの問い合わせが 404) ときも違反 (1)。`gh` が無い・権限が無くて読めない・60 秒で終わらないときは検査不能 (2)。確かめないこと (持ち主が実在し書き込み権限を持つか・管理者の迂回・必須の検査・既定ブランチ以外の保護) を、適合のときも出力に書く |
 
 ## 1. テストケース一覧
@@ -46,7 +46,7 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | ID | 層 | 対象 | 前提 (Given) | 操作 (When) | 期待結果 (Then) | 対応 |
 |---|---|---|---|---|---|---|
 | TST-101 | 結合 | approval-scope | 新しい構成の git repo | `docs/ai/` の文書だけ / `src/` のコードだけ / docs/ 直下の生成索引だけ / `package.json` とロックファイルだけ、を変える。差分が無い場合も | どれも `ai`・終了コード 0 | R1 |
-| TST-102 | 結合 | 同上 | 同上 | `docs/person/` か `docs/client/` の文書を 1 本変える / `docs/ai/` と `docs/person/` を両方変える | `human`・1。理由は人のパスだけ。出力の全文 (1 行目・理由の行・空行・宛先の行) が R6 の形 | R1・R6 |
+| TST-102 | 結合 | 同上 | 同上 | `docs/person/` か `docs/client/` の文書を 1 本変える / `docs/ai/` と `docs/person/` を両方変える | `human`・1。理由は人のパスだけ。出力の全文 (1 行目・理由の行・空行・宛先の行) が R6 の形。改行を含む名前のパスは、理由の行に JSON の文字列で出る (行を偽造できない) | R1・R6 |
 | TST-103 | 結合 | 同上 | 同上 | 決定 1 のファイルを 1 つずつ変える (`.github/workflows/x.yml`・`.github/actions/a/action.yml`・`.github/CODEOWNERS`・`CODEOWNERS`・`docs/CODEOWNERS`・`.igeta.json`・`.igeta-version`・`AGENTS.md`・`docs/ai/AGENTS.md`・`CLAUDE.md`・`.claude/settings.json`) | どれも `human` | R1・R5 |
 | TST-104 | 結合 | 同上 | 宛先の `.igeta.json` に `humanPaths: ["src/core/**"]` | `src/core/a.ts` を変える | `human`・理由に glob | R1・R2・R6 |
 | TST-105 | 結合 | 同上 | 枝を切った後で、宛先に `humanPaths: ["src/core/**"]` が足された | 古い枝で `src/core/a.ts` を変え、`--ci` | `human` (宛先の先端の設定で見る) | R2 |
