@@ -77,39 +77,183 @@
 
 <!-- markdownlint-enable MD029 -->
 
-## 文書体系
+## 文書モデル — 誰が確定させるかで 3 つに分ける
 
-`docs/` の第 1 階層は、**確定させる人**で 3 つに分かれる。置き場所を決める問いは 1 つだけ: 「AI がこれを勝手に変えたら、事業・お金・顧客との約束・使う人の体験・法令のどれかが変わるか」。変わるなら `person/`、変わらないなら `ai/`。
+docs/ を開いた人が、文書を 1 本も開かずに「自分が読んで決める文書はどれか」を分かるようにする。
+分ける基準は読み手ではなく、**誰が確定させるか**。人も AI も両方の文書を読むが、確定させる人は 1 人に決まる。
 
-| フォルダ | 確定させる人 | 中身 |
-|---|---|---|
-| `docs/person/` | 人 (確定する前に全部読んで承認する) | `requirements/` 要件定義 ([EARS](https://alistairmavin.com/ears/) 記法) / `design/` 全体共通 (`shared/`) とまとまりごとの決まり (地図・機能・業務・画面・非機能・権限・データの扱い) / `decisions/` 決定台帳と ADR ([MADR](https://adr.github.io/madr/) 形式) |
-| `docs/ai/` | 評価する AI | `specs/` 作り方 (方式・API・テーブル・ドメイン・シーケンス・テスト・タスク) / `handbook/` 作業の手引き (手順書・解説・障害の手順) |
-| `docs/client/` | 人と顧客 | `delivery/` 先方提出用の章 / `proposals/` 提案書 |
+```mermaid
+flowchart TB
+  H(["人"])
+  AI(["AI"])
+  K(["顧客"])
+  subgraph docs["docs/"]
+    P["person/<br/>要件・設計の決まり・決定の記録"]
+    A["ai/<br/>作り方の仕様・作業の手引き"]
+    C["client/<br/>提出物の章・提案書"]
+  end
+  H -->|"確定の前に全部読んで承認する"| P
+  AI -->|"書く。評価する AI が確定させる"| A
+  H -->|"渡す前に全部読む"| C
+  C -->|"合意する"| K
+  A -.->|"従う (ID を引く)"| P
+  C -.->|"元にする"| P
+```
 
-AI の入口は repo 直下の `AGENTS.md`。背骨は arc42 の 12 章で、章はフォルダではなく各文書の frontmatter `arc42:` が持つ。
+| フォルダ | 確定させる人 | 書くこと | 人が開くとき |
+|---|---|---|---|
+| `docs/person/` | 人 | 何をするか・しないか、決まり、未決。要件は [EARS](https://alistairmavin.com/ears/) 記法、決定の記録は [MADR](https://adr.github.io/madr/) 形式 | 確定の前に全部読む。変わったら、変わった行を読む |
+| `docs/ai/` | 評価する AI | どう作るか (方式・API・テーブル・ドメイン・シーケンス・テスト・タスク) と、作業の手引き | 読む必要はない (参照はしてよい) |
+| `docs/client/` | 人と顧客 | 顧客と合意する内容を、業務の言葉で (提出物の章・提案書) | 渡す前に全部読む |
 
-kind 47 種の置き場所・ID 接頭辞・行数上限は **[文書体系ガイド](templates/docs/ai/handbook/how-to/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+### 置き場所の決め方
+
+問いは 1 つ: **「AI がこれを勝手に変えたら、事業・お金・顧客との約束・使う人の体験・法令のどれかが変わるか」**。
+変わるなら `person/`、変わらないなら `ai/`、顧客に渡すものは `client/`。文書の種類 (kind) ごとの置き場所は表で決まっていて、違う場所に置くと `docs-check` が落ちる。
+
+```text
+AGENTS.md                      AI の入口 (person/ が上流、ai/ が持ち場)
+docs/
+├── person/
+│   ├── requirements/          要件
+│   ├── design/shared/         全体共通 (地図・機能一覧・解決戦略・非機能・権限・用語集 ほか)
+│   ├── design/<まとまり>/     業務のまとまりごと (地図・業務フロー・画面・機能ブリーフ)
+│   └── decisions/             決定台帳と、年ごとの ADR
+├── ai/
+│   ├── specs/                 shared/・<まとまり>/ (API・テーブル・ドメイン・シーケンス ほか)・tasks/
+│   └── handbook/              how-to/・explanation/・runbooks/
+└── client/                    delivery/<提出物名>/・proposals/<年>/
+```
+
+参照の向きも決まっている。破ると `docs-check` が落ちる。
+
+- `person/` が指してよいのは `person/` だけ。`ai/` は `person/` と `ai/`。`client/` は 3 つとも
+- `ai/specs/` の文書は、`depends_on` をたどると `person/` の文書に届く (人の決まりに根を持たない作り方を置かない)
+- 承認済みの ADR は、`person/` の決まりの行のどれかが `ADR-NNNN` の形で引く (どの決まりにも効かない決定を残さない)
+
+背骨は arc42 の 12 章で、章はフォルダではなく各文書の frontmatter `arc42:` が持つ。
+kind 47 種の置き場所・ID の接頭辞・行数の上限は **[文書体系ガイド](templates/docs/ai/handbook/how-to/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
 地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/ai/handbook/how-to/03-human-review.md)**、
 足した理由は **[人間レビュー層を足した理由](docs/explanation/02-human-review-layer.md)** にある。
 
+### 人の文書の書き方
+
+人は一度に多くを保てない。読む量が増えると、読まずに承認するようになる。だから人の文書は、決める内容だけを、決まった型で短く書く。
+
+```mermaid
+flowchart LR
+  T["結論<br/>3 行まで"] --> D["図<br/>流れと範囲"] --> R["決まりの表<br/>1 行 1 文・状態つき"] --> Q["決めてほしいこと<br/>問いと選択肢"]
+```
+
+決まりの表は、最初の列が ID、最後の列が `状態`。
+
+| ID | 決まり | 状態 |
+|---|---|---|
+| BF-113 | 確定のときに同じ時間帯が既に埋まっていたら、予約は成立させず、別の時間帯を選んでもらう | 決定 |
+| BF-114 | 利用日の前日 18 時を過ぎたキャンセルは、料金の 50% をもらう | 仮 |
+| BF-115 | 無断で来なかった利用者の、次の予約の扱い | 未決 |
+
+- `決定` は人が承認した決まり。`仮` は AI が置いた値で、人の承認を待っている。`未決` はまだ決まっていない。`廃` は使わなくなった ID (行は消さず、番号も使い直さない)
+- `仮` と `未決` の行は、`docs-graph` が決定台帳 (`docs/person/decisions/01-decisions.md`) の一覧に集める。これが、人の「決めを待つ行」の一覧になる
+- 検出の方法・API・テーブルの定義のような作り方は書かない。`ai/` の文書に書き、その行が `<文書の id>/BF-113` の形で決まりを引く
+- 量の上限: 1 本 100 行 (要件と地図は 150 行)。まとまりごとの合計 15,000 字、全体共通 30,000 字 (超えると警告)
+- 人の目に見えない書き込み (HTML コメント) は書けない。自動で作る区間は、索引の 3 種だけ
+
+これらは `template-check` が検査する。型に合わない文書は CI で落ちる。
+
+### 変更から承認まで
+
+```mermaid
+flowchart LR
+  E["変更を作る"] --> S{"igeta approval-scope<br/>人の承認が要るパスに触れたか"}
+  S -->|"ai (触れていない)"| V["評価する AI が確かめる"] --> M1["取り込む"]
+  S -->|"human (触れた)"| HA["人が、変わった行を読んで承認する"] --> M2["取り込む"]
+  S -->|"検査できない"| X["取り込まずに、人へ渡す"]
+```
+
+人の承認が要るパスは固定で、ファイルの中身による例外は無い (大文字と小文字は区別しない)。
+
+| パス | 理由 |
+|---|---|
+| `docs/person/**`・`docs/client/**` | 人が確定させる文書 |
+| `.github/**`・`CODEOWNERS`・`docs/CODEOWNERS` | 保護と CI を決めるファイル |
+| `.igeta.json`・`.igeta-version` | 検査の設定と、使う Igeta の版 |
+| どの階層の `AGENTS.md`・`CLAUDE.md`、`.claude/**` | AI への指示と権限 |
+| `.igeta.json` の `humanPaths` | repo ごとに足す分 (例: `["src/core/**", ".mcp.json"]`) |
+
+`igeta approval-scope` は、変更が上のパスに触れたかを、パスだけで見分ける。構成と `humanPaths` は**宛先のブランチの先端**から読むので、変更の中で設定を書き換えても、見分けは変わらない。
+終了コードは `ai` = 0・`human` = 1・検査できない = 2。手元では `--base origin/<宛先>`、CI では `--ci` を付ける。
+
+```yaml
+# .github/workflows/docs.yml の例 (pull_request で動かす)
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0            # 宛先との枝分かれの点を読むため
+  - uses: actions/setup-node@v4
+    with:
+      node-version: '22'
+  - run: npm ci
+  - run: npm run docs:check
+  - name: 文書の型を検査する (宛先で 廃 だった行を消していないかも見る)
+    env:
+      BASE_REF: ${{ github.base_ref }}
+    run: npx igeta template-check --require-kind --require-human-review --base "origin/$BASE_REF"
+  - name: 人の承認が要る変更かを表示する
+    run: |
+      set +e
+      npx igeta approval-scope --ci
+      code=$?
+      if [ "$code" = "2" ]; then exit 1; fi   # 検査できないときだけ落とす
+      exit 0
+```
+
+**承認の強制は GitHub の設定で行う。** Igeta のコマンドや npm scripts は門にならない (変更の作者が、門のコードや設定を書き換えて自分を通せる)。
+`init` は、上のパスを人の持ち主に割り当てる `.github/CODEOWNERS` を置く。既定ブランチの保護で次の 4 つを設定し、`npx igeta doctor` で確かめる。
+
+1. PR を必須にする
+2. CODEOWNERS の持ち主のレビューを必須にする
+3. 新しい push で承認を取り消す
+4. 管理者にも適用し、迂回の許可を置かない (`doctor` は、この版では 1〜3 と CODEOWNERS の誤りだけを見る)
+
+**この版が保証しないこと**:
+
+- 変更の作者が、CI の定義や npm scripts を書き換えて検査を外すこと (作者に抜けられない門は、次の版で設計する)。PR の作者の内容を、特権のある CI (`pull_request_target`) で読む構成は勧めない
+- 保護を置けない契約の repo (`doctor` が違反を出し続ける)
+- AI が人と同じ GitHub アカウントで PR を作る運用 (作者は自分の PR を承認できない。AI 用のアカウントを分ける)
+- 持ち主が実在し、書き込み権限を持つか。ファイルを移したときに、GitHub がどちらのパスで持ち主を決めるか
+- 上の表に無い、AI への指示や実行に効くファイル (`.mcp.json`・`.devcontainer/` など。使う repo が `humanPaths` に足す)
+- 人の決定を `ai/` に書いてしまう誤り (機械では見分けられない。評価する AI と人が見る)
+
 ## はじめかた
 
-Node.js 22 以上が必要。**ファイルをコピーしない**。`init` が置くのは配線 (npm script と `.igeta-version`) だけで、検査の実体は Igeta パッケージ側に残る。
+Node.js 22 以上が必要。**検査の実体と手引きはコピーしない** (Igeta パッケージ側に残り、`.igeta-version` で版を固定する)。`init` が置くのは次の 4 つ。
+
+| 置くもの | 中身 |
+|---|---|
+| 検査の配線 | `.igeta-version`・npm scripts (`docs:graph`・`docs:check`・`docs:template-check`・`scaffold`)・markdownlint の設定 |
+| docs の骨格 | `docs/README.md` (入口の 3 行と索引)・全体の地図・要件定義書・決定台帳 (どれも `docs/person/` の下) |
+| AI の入口 | `AGENTS.md` (読む順・人の承認・手引きの場所・検査) |
+| 承認の割り当て | `.github/CODEOWNERS` (人の承認が要るパスを、`--owner` の持ち主に割り当てる) |
 
 ```bash
-# 1. 検査配線と docs 骨格を入れる (既存ファイルは上書きしない)
-npx github:SakakitaniJunya/Igeta#v0.2.1 init
+# 1. 置く (既存のファイルは上書きしない)。--owner は、人の承認が要るパスの持ち主 (@user・@org/team・メールアドレス)
+npx github:SakakitaniJunya/Igeta#v0.5.0 init --owner @your-name
 npm install
 
-# 2. 書きたい文書と同じパスの雛形を置く (templates/docs/<X> → docs/<X>)
-mkdir -p docs/person/requirements
-cp node_modules/igeta/templates/docs/person/requirements/01-requirements.md docs/person/requirements/
-
-# 3. 検査する
+# 2. 検査する (置いた直後は違反 0 件)
+npm run docs:check
 npm run docs:template-check
+
+# 3. 書きたい文書と同じパスの雛形を置いて書き、索引を作り直す (templates/docs/<X> → docs/<X>)
+cp node_modules/igeta/templates/docs/person/design/shared/01-function-list.md docs/person/design/shared/
 npm run docs:graph
 ```
+
+置いた後に、GitHub で既定ブランチの保護を設定し、`npx igeta doctor` で確かめる (上の「変更から承認まで」)。
+
+- `AGENTS.md` と `.github/CODEOWNERS` が既にある repo では、足りない分だけを足す (CODEOWNERS は先頭に足すので、既にある割り当ては変わらない)
+- `docs/` に既に文書がある repo では、`init` は何も書かずに止まる。旧い構成 (`docs/product`・`docs/design` など) の repo を 3 フォルダへ移すコマンドは 0.6.0 で入る。それまで、旧い構成の検査はいままでのまま動き、警告を 1 件出す
 
 版の固定は `.igeta-version` (semver 1 行)。`npx igeta check` が追従遅れを検出し、`npx igeta upgrade --to <ver>` で書き換える。
 
@@ -117,9 +261,9 @@ npm run docs:graph
 
 | コマンド | 検査内容 | 落ちる条件 |
 |---|---|---|
-| `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 / 行数上限超過 (`line_limit` を持つ kind のみ) |
+| `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 / 行数上限超過 (`line_limit` を持つ kind のみ)。**新しい構成の `docs/person/**`・`docs/client/**` では加えて (人の文書の型)**: 決まりの表 (最後の列が `状態`) の行の最初のセルが ID の形でない・列の数が見出しと違う・状態が `決定`・`仮`・`未決`・`廃` 以外 / 型の検査が要る kind に、自分の接頭辞の決まりの行が無い / 図が要る kind に mermaid の図が無い / 100 行 (要件は 150 行) 超 / HTML コメント、決まった 3 種以外の生成区間 / `廃` の ID の使い直し。`--base <宛先>` を付けると、宛先で `廃` だった行を消した変更も違反。まとまりの合計字数の超過は警告 |
 | `npm run docs:template-check -- --require-human-review` | 人間レビュー層 (既定 OFF・段階導入・**試験中**、既知の取りこぼしは人間レビュー層の手引き §7) | `kind: requirements` が地図からリンクされていない / まとまりの地図が地図からリンクされていない / `feature-brief` がまとまりの地図からリンクされていない / 決定の帰属主張に `DEC-nnn` が無いか台帳に無い / 「仮置き」に `OPEN-nnn` が無いか台帳に無い / 他ファイルの ID を修飾形式 `<doc-id>/PREFIX-nnn` で書いていない |
-| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い / `docs/common/` が残っている (v3 の構成)。**新しい構成 (`docs/person`・`ai`・`client` のどれかがある repo) では加えて**: kind から導く置き場所と実際のパスの食い違い / フォルダ名のまとまりと `context` の食い違い / `docs/` 直下の 3 フォルダに属さない文書 / `ai/` の文書の未決の節 / 1 フォルダ 16 本以上 / `AGENTS.md` の欠落 / `.github/CODEOWNERS` の欠落、または人の承認が要る側 (`docs/person/` と `docs/client/` の配下全体・`.github/`・`.igeta.json`・`AGENTS.md`・`package.json`) を守っていない (GitHub と同じく最後に当たる行を見て、その行にオーナーが無い。`docs/person/*` は直下のファイルにしか当たらない)。旧い構成の repo は、移行を促す警告 1 件が出るだけ |
+| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い / `docs/common/` が残っている (v3 の構成)。**新しい構成 (`docs/person`・`ai`・`client` のどれかがある repo) では加えて**: kind から導く置き場所と実際のパスの食い違い / フォルダ名のまとまりと `context` の食い違い / `docs/` 直下の 3 フォルダに属さないもの (`.igeta.json` の `nonDocPaths` を除く) / 参照の向きの違反 (`person/` が `ai/`・`client/` を指す、`ai/` が `client/` を指す) / `ai/specs/` の文書が `depends_on` をたどっても `person/` に届かない / 承認済みの ADR を、`person/` のどの決まりの行も `ADR-NNNN` で引いていない / `ai/` の文書の未決の節 / 1 フォルダ 16 本以上 / `AGENTS.md` の欠落 / `.github/CODEOWNERS` の欠落、または人の承認が要るパス (「変更から承認まで」の表。`humanPaths` に当たる、いまあるファイルを含む) に持ち主が付いていない (GitHub と同じく最後に当たる行を見る。`docs/person/*` は直下のファイルにしか当たらない)。旧い構成の repo は、移行を促す警告 1 件が出るだけ |
 | `npx igeta context-boundary-check` | まとまり (context) の境界 (既定 OFF、[詳細](docs/explanation/07-context-boundaries.md)) | `context: A` の文書が `context: B` (A と違い shared でも B の `context-contract` でもない) の文書を depends_on・本文リンク・修飾 ID で直接参照している |
 | `npx igeta context-size [<context>]` | まとまりの量の上限 (既定 OFF、`.igeta.json` の `contextSizeLimit` 未設定なら無制限) | 指定したまとまり (省略時は全部一覧) の「自分の文書 + 参照している隣の `context-contract`」の総行数が上限を超えている |
 | `npx igeta context-files <context>` | (生成) | AI が読むべきファイル一覧を 1 行 1 パスで出す (既定は共有文書のうち `map`/`glossary`/自分の地図だけ、`--with-shared` で全部、`--json` で JSON 配列) |
@@ -137,10 +281,12 @@ npm run docs:graph
 | `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `docs/ai/specs/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
 | `npm run docs:analyze` | 整合レポート (読み取り専用) | 網羅の穴・タスクが存在しない ID を参照しているダングリング参照・未決 OPEN・曖昧語・ID のローカル採番の重複。ダングリング参照だけ落ちる |
 | `npm run docs:fix-ids` | (生成・既定 dry-run) | 定義元が 1 件に一意な裸の ID 参照だけを修飾 ID に書き換える。`--write` を付けるまで書き込まない |
+| `npx igeta approval-scope (--ci \| --base <ref>)` | 人の承認が要る変更か (上の「変更から承認まで」) | 変更が人の承認が要るパスに触れると `human` (終了コード 1)、触れなければ `ai` (0)。宛先が決まらない・宛先が旧い構成・merge が衝突するときは検査不能 (2) で、`ai` として扱わない |
+| `npx igeta doctor` | GitHub の保護 (`gh` が要る) | 既定ブランチで、PR が必須・CODEOWNERS の持ち主のレビューが必須・新しい push で承認を取り消す・CODEOWNERS の誤りが 0 件、のどれかが欠けている。読めなければ検査不能 |
 | `npx igeta agreement-check` | 顧客との合意 | 承認した版から変わった章・正本を、再合意が要るものと通知のみに分けて出す。`export --record-agreement` で提出を記録し、`agreement-approve` で承認を記録する ([詳細](docs/explanation/08-agreement-ledger.md)) |
 | `npx igeta discrepancy-add <dir> --location "<path>[#<anchor>]" --category <cat>` | (生成、[詳細](docs/explanation/05-coverage-and-learning.md)) | 評価で見つかった食い違いを `<dir>/discrepancies.log.jsonl` に 1 行追記。category は閉集合の外・location のファイルが実在しないと違反 |
 | `npx igeta discrepancy-report` | 食い違いの集計 (既定 OFF・手動) | category ごとの件数と事前捕捉率を出す。違反ではなく集計情報なので、ログが壊れているときだけ検査不能 |
-| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト (536 件) |
+| `npm run test:scripts` | スクリプト自身 | 検査コードのテスト |
 
 いずれも `npx igeta <command>` で直接呼べる。終了コードは **0 = 適合 / 1 = 違反 / 2 = 検査不能** の 3 値。
 
@@ -169,8 +315,10 @@ Igeta/
 ├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
 ├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
-│   ├── checks/             検査 6 種。Check を実装し Violation を返すだけで、exit も print もしない
-│   ├── generators/         コード雛形の展開・レビューシートの生成
+│   ├── checks/             検査。Check を実装し Violation を返すだけで、exit も print もしない
+│   ├── gate/               人の承認が要る変更かの見分け (approval-scope) と、GitHub の保護の点検 (doctor)
+│   ├── generators/         コード雛形の展開・索引とレビューシートの生成・init が置くファイルの作り手
+│   ├── export/             先方提出用 PDF の書き出し
 │   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ
 └── .github/workflows/      CI

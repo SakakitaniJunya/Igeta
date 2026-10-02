@@ -96,7 +96,7 @@ CLAUDE.md <持ち主>
 | 確認 | 結果 |
 |---|---|
 | 要件・ADR との対応 | audience-directories/REQ-104 = I1〜I4 / ADR-0005 決定 2 = I12、決定 4 = I3・I11・I13 / ADR-0008 決定 1 = I8・I14、決定 7 = I9 / ADR-0009 決定 4 = TST-101 |
-| いまの実装との差 | `init` は旧い入口の docs/README.md だけを置き、人の文書・`AGENTS.md`・CODEOWNERS を置かない。`TaxonomyGuideSync.test.ts` は手引きを見ていない。`AgentsEntrypointCheck` の対象は前の設計のまま (`package.json` を含む)。`domain-drift` は探し先を 1 つしか取れない。決定台帳は ID が 0 件だと違反になる |
+| いまの実装との差 | 0.5.0 で実装済み。次の版に回したもの: CODEOWNERS の対象の定義 (`AgentsEntrypointCheck`) と承認の見分けの表 (`ApprovalScope`) の一本化 / 既に持ち主が付くパスの行を足さないこと・`package.json` の script が違う値のとき・`docs/dependencies.md` だけの repo の扱いを、表の行にすること / repo 直下か `docs/` の CODEOWNERS を、GitHub の読む順で読むこと |
 | 機械で確かめないもの | 持ち主が実在し、書き込み権限を持つか (この版は誰も確かめない。`doctor` は GitHub が返す CODEOWNERS の誤りが 0 件かだけを見る) / `AGENTS.md` の指示に AI が従うか |
 
 ## 4. テストデータ (任意)

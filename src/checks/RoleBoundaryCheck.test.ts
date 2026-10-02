@@ -1,6 +1,7 @@
 // node --test dist/checks/RoleBoundaryCheck.test.js
 // 確定させる人 (person / ai / client) の境界の検査。一時ディレクトリに 3 フォルダの構成を作り、
 // 正しい構成が通ること、違反がそれぞれ検出されること、旧い構成では警告だけが出ることを確かめる。
+// docs/ 直下と nonDocPaths (テスト仕様 04 の G9) の行は、`[TST-nnn]` で始まる名前の it が持つ。
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -9,6 +10,8 @@ import assert from 'node:assert/strict';
 
 import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
+import { DocGraphCheck } from './DocGraphCheck.js';
+import { DocsCheck } from './DocsCheck.js';
 import {
   LEGACY_LAYOUT_MESSAGE,
   LEGACY_LAYOUT_VIOLATION_FROM_MAJOR,
@@ -289,19 +292,98 @@ describe('RoleBoundaryCheck: 新しい構成 (v4)', () => {
   });
 
   describe('docs/ 直下と docs/common/', () => {
-    it('docs/ 直下の文書 (README.md・dependencies.md 以外) と、3 フォルダの外のフォルダの文書は落ちる', () => {
-      write(root, 'docs/00-map.md', doc('map'));
-      write(root, 'docs/adr/0001-x.md', doc('adr'));
-      write(root, 'docs/design/basic/01-function-list.md', doc('function-list'));
-      write(root, 'docs/notes.md', '# メモ\n');
-      const result = run(root);
-      assert.deepEqual(result.files, [
-        'docs/00-map.md',
-        'docs/adr/0001-x.md',
-        'docs/design/basic/01-function-list.md',
-        'docs/notes.md',
-      ]);
-      assert.match(messageOf(result, 'docs/00-map.md'), /person・ai・client のどれにも属さない/);
+    it('[TST-308] docs/ 直下の文書・文書でないファイル・フォルダ、nonDocPaths の下の kind を書いた文書、docs/person/** に当たる nonDocPaths は、どれも違反', () => {
+      const cases: ReadonlyArray<{
+        readonly name: string;
+        readonly prepare: (root: string) => void;
+        /** 違反の file (設定の違反は file が無いので空) */
+        readonly files: readonly string[];
+        readonly message: RegExp;
+      }> = [
+        {
+          name: 'docs/ 直下の文書・文書でないファイル・フォルダ (README.md・dependencies.md 以外)',
+          prepare: (target) => {
+            write(target, 'docs/notes.txt', 'メモ\n');
+            write(target, 'docs/assets/logo.png', 'PNG');
+            write(target, 'docs/00-map.md', doc('map'));
+            write(target, 'docs/notes.md', '# メモ\n');
+            write(target, 'docs/adr/0001-x.md', doc('adr'));
+            write(target, 'docs/design/basic/01-function-list.md', doc('function-list'));
+          },
+          files: ['docs/00-map.md', 'docs/adr', 'docs/assets', 'docs/design', 'docs/notes.md', 'docs/notes.txt'],
+          message: /person・ai・client のどれにも属さない/,
+        },
+        {
+          name: '中身の一部しか nonDocPaths に当たらないフォルダ',
+          prepare: (target) => {
+            write(target, '.igeta.json', JSON.stringify({ nonDocPaths: ['docs/assets/*.gif'] }));
+            write(target, 'docs/assets/a.gif', 'GIF');
+            write(target, 'docs/assets/b.png', 'PNG');
+          },
+          files: ['docs/assets'],
+          message: /docs\/assets\/b\.png が nonDocPaths に当たらない/,
+        },
+        {
+          name: 'nonDocPaths の下の kind を書いた文書 (kind の無い文書・Igeta の表に無い kind は通る)',
+          prepare: (target) => {
+            write(target, '.igeta.json', JSON.stringify({ nonDocPaths: ['docs/legacy/**'] }));
+            write(target, 'docs/legacy/old.md', doc('requirements'));
+            write(target, 'docs/legacy/notes.md', '# メモ\n');
+            write(target, 'docs/legacy/vendor.md', doc('tutorial'));
+          },
+          files: ['docs/legacy/old.md'],
+          message: /nonDocPaths の下に、Igeta の kind \(requirements\) を書いた文書がある/,
+        },
+        {
+          name: 'docs/person/** に当たる nonDocPaths (設定の違反)',
+          prepare: (target) => write(target, '.igeta.json', JSON.stringify({ nonDocPaths: ['docs/person/**'] })),
+          files: [''],
+          message: /nonDocPaths が .*docs\/person.* の配下に当たる/,
+        },
+      ];
+      for (const { name, prepare, files, message } of cases) {
+        const target = makeRoot();
+        writeValidTree(target);
+        prepare(target);
+        const result = run(target);
+        assert.deepEqual(result.files, files, name);
+        assert.ok(result.violations.every((violation) => violation.severity === 'violation'), name);
+        assert.match(result.violations[0]?.message ?? '', message, name);
+      }
+      // kind を書いた文書の違反は、kind の行を指す (doc() は 1 行目が ---、2 行目が kind)
+      const target = makeRoot();
+      writeValidTree(target);
+      write(target, '.igeta.json', JSON.stringify({ nonDocPaths: ['docs/legacy/**'] }));
+      write(target, 'docs/legacy/old.md', doc('requirements'));
+      assert.equal(run(target).violations[0]?.line, 2);
+    });
+
+    it('[TST-108] nonDocPaths に当たる docs/demos/a.gif と、中身が全部当たるフォルダは、docs-check の違反にならない', async () => {
+      const cases: ReadonlyArray<{ readonly nonDocPaths: readonly string[]; readonly files: readonly string[] }> = [
+        { nonDocPaths: ['docs/demos/**'], files: ['docs/demos/a.gif'] },
+        // フォルダ自体には当たらないが、中身が全部当たる
+        { nonDocPaths: ['docs/images/*.png'], files: ['docs/images/a.png', 'docs/images/b.png'] },
+      ];
+      for (const { nonDocPaths, files } of cases) {
+        const target = makeRoot();
+        write(target, 'docs/person/requirements/01-requirements.md', '---\nid: requirements\nkind: requirements\narc42: 1\n---\n\n# 要件\n');
+        write(target, 'docs/ai/handbook/how-to/01-setup.md', '---\nid: setup\nkind: guide\n---\n\n# 手引き\n');
+        write(target, 'AGENTS.md', '# AGENTS.md\n\n決まりは docs/person/、作り方は docs/ai/ を読む。\n');
+        write(
+          target,
+          '.github/CODEOWNERS',
+          ['docs/person/ @owners', 'docs/client/ @owners', '/.github/ @owners', '/.igeta.json @owners', '/AGENTS.md @owners', '/package.json @owners', ''].join('\n'),
+        );
+        write(target, '.igeta.json', JSON.stringify({ nonDocPaths }));
+        for (const file of files) write(target, file, 'binary');
+        // 索引は、新しい木では 2 回書いて収束する
+        const graph = new DocGraphCheck({ write: true });
+        await graph.run({ targetRoot: target, igetaRoot: IGETA_ROOT });
+        await graph.run({ targetRoot: target, igetaRoot: IGETA_ROOT });
+        const docsCheck = new DocsCheck();
+        assert.deepEqual(await docsCheck.run({ targetRoot: target, igetaRoot: IGETA_ROOT }), [], nonDocPaths.join(','));
+        assert.deepEqual(docsCheck.warnings, [], nonDocPaths.join(','));
+      }
     });
 
     it('docs/common/ が残っていると 1 件の違反になり、中の文書を 1 本ずつは数えない', () => {
@@ -443,7 +525,7 @@ describe('RoleBoundaryCheck: 旧い構成 (legacy)', () => {
     const result = run(root, igetaRootWithVersion(`${LEGACY_LAYOUT_VIOLATION_FROM_MAJOR - 1}.9.9`));
     assert.deepEqual(result.violations, []);
     assert.deepEqual(result.warnings, [LEGACY_LAYOUT_MESSAGE]);
-    assert.equal(LEGACY_LAYOUT_MESSAGE, '旧い構成です。`igeta docs-migrate` を実行してください');
+    assert.equal(LEGACY_LAYOUT_MESSAGE, '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)');
   });
 
   it('検査のたびに警告を 1 件出す (同じ検査を 2 回走らせても 2 件にならない)', () => {

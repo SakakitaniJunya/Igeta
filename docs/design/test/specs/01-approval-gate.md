@@ -80,7 +80,7 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | 確認 | 結果 |
 |---|---|
 | ADR-0008 との対応 | 決定 1・3 = R1〜R6 / 決定 6 = R7 / 決定 4 (人のフォルダの生成物は人の文書だけから作る) は test-doc-graph/TST-306 / 決定 7 (AI は `仮` で起案) は機械で強制せず、`AGENTS.md` の雛形に書く (test-init-scaffold/TST-105) / CODEOWNERS の割り当ての点検は 06 の I14 |
-| いまの実装との差 | R1: 現物は (a) だけで、`--ci` でも作業ツリーと未追跡を含める → (b) を足し、`--ci` は commit だけ。決定 1 の表のうち `.github/**`・`CLAUDE.md`・`.claude/**`・`.igeta-version`・3 か所の CODEOWNERS・下位の `AGENTS.md` が現物の規則に無い → 足す / R2: 現物は構成と `humanPaths` を作業ツリーのファイルから読む → 宛先の先端の内容 (文字列) から読む / R4: 設定が壊れているとき 2 を返すのは現物どおり。状態の文字と merge の条件は未対応 / R7: 現物は承認の数と持ち主のレビューだけを読み、欠けても警告で終了コード 0 → 4 項目を見て違反は 1 |
+| いまの実装との差 | 0.5.0 で実装済み。次の版に回したもの: 強制の門 (ADR-0008 決定 5) / `doctor` の残りの項目 (管理者の迂回・必須の検査・既定ブランチ以外の保護) / `doctor` が 60 秒で `gh` を止めるときの信号を `SIGKILL` にすること |
 | 消す実装 | `src/gate/ManifestChange.ts`・`ReadmeIndexException.ts` と、その呼び出し・テスト (`ManifestChange.test.ts`・`ReadmeIndexException.test.ts`・`ApprovalScopeManifest.test.ts`・`ApprovalScopeReadme.test.ts`)。中身で見分ける処理は持たない |
 | この版が保証しないもの | ADR-0008 の「限界」の一覧が正本 (ここには写さない)。見分けに固有のものは 3 つ: `--ci` は `origin` を宛先の repo と見る (fork の head を取り込んだ作業場では使わない) / GitHub の merge が、R1 (b) と同じ再配置をするかは確かめていない / `humanPaths` に ASCII 以外の文字を書いたときの文字の正規化 (NFC と NFD) は見ない |
 

@@ -5,7 +5,9 @@
 //   - kind から導く置き場所と、実際のパスが食い違う (要件定義書 02 §7 の表のどのパターンにも当たらない)。
 //     kind が無い・表に無い kind も、置き場所を判定できないので違反
 //   - フォルダ名のまとまりと frontmatter の context が食い違う (context 無記入は shared)
-//   - docs/ 直下に、person・ai・client のどれにも属さない文書がある
+//   - docs/ 直下に、3 フォルダ・生成索引 2 本 (README.md・dependencies.md)・`.igeta.json` の nonDocPaths のどれにも
+//     属さないものがある (文書でないファイルとフォルダを含む。中身が全部 nonDocPaths に当たるフォルダは違反にしない)
+//   - nonDocPaths の下に、frontmatter へ Igeta の kind を書いた文書がある (kind を書いた文書は免除できない。ADR-0003 決定 6)
 //   - docs/common/ が残っている (v3 の構成)
 //   - ai/ の文書の見出しに、未決を表す語を含む節がある (未決は person の「決めてほしいこと」に集める)
 // 旧い構成 (person・ai・client が 1 つも無い) の repo では違反を出さず、「移行してください」という警告を 1 件だけ
@@ -14,26 +16,30 @@
 // repo は、docs/common/ の残存 (違反 1 件) に加えて、旧い構成としての扱いを受ける (ADR-0005 決定 1 の表の 2 行とも当たる)。
 //
 // docs/ 直下の生成索引 (README.md・dependencies.md) と各フォルダの README.md は対象外。
-// `.igeta.json` の nonDocPaths (ADR-0003 決定 6) は読まない: IgetaConfig が持たないため、docs/ 直下の
-// 3 フォルダに属さない文書は、nonDocPaths が空のものとして全部違反にする。
+// `.igeta.json` の nonDocPaths (ADR-0003 決定 6) は、新しい構成の repo でだけ読む。読めない・3 フォルダの配下に当たる
+// 設定は、置き場所を判定できないので、その違反だけを返す。旧い構成の repo では読まない。
+// Spec: docs/design/test/specs/04-doc-graph.md の G9。
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import { readContext } from '../core/Context.js';
 import { isDirectory, listDocFiles } from '../core/DocFiles.js';
 import type { Frontmatter } from '../core/Frontmatter.js';
 import { parseFrontmatter, scalar } from '../core/Frontmatter.js';
+import { loadIgetaConfig } from '../core/IgetaConfig.js';
 import { classifyLines } from '../core/LineClassifier.js';
 import type { Violation } from '../core/Report.js';
-import { detectLayout, isGeneratedIndex, matchPlacement, placementOf, roleOfPath } from '../core/Role.js';
+import { detectLayout, isGeneratedIndex, matchPlacement, placementOf, ROLES, roleOfPath } from '../core/Role.js';
 import type { SemVer } from '../core/Version.js';
 import { readIgetaVersion } from '../core/Version.js';
+import { matchesGlob } from '../gate/PathGlob.js';
 
 /** 旧い構成を、警告から違反に上げる Igeta のメジャー版 (ADR-0005 決定 1) */
 export const LEGACY_LAYOUT_VIOLATION_FROM_MAJOR = 1;
 
-export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。`igeta docs-migrate` を実行してください';
+// 移行コマンド (docs-migrate) が入るまでの文。入ったら「`igeta docs-migrate` を実行してください」に戻す (docs/design/tasks/01-v4-rollout.md の T200)
+export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)';
 
 /**
  * ai/ の文書の見出しに置かない語 (ADR-0002 条件 11)。TBD・TODO は、他の英単語の一部 (Mastodon など) と
@@ -70,22 +76,22 @@ export class RoleBoundaryCheck implements Check {
       : [];
     if (layout !== 'v4') return [...common, ...this.#legacy(ctx)];
 
-    const violations: Violation[] = [...common];
+    // nonDocPaths を読む (G9)。読めない・3 フォルダの配下に当たる設定は、置き場所を判定できないので、その違反だけを返す
+    const loaded = loadIgetaConfig(ctx.targetRoot);
+    if ('violation' in loaded) return [...common, loaded.violation];
+    const { nonDocPaths } = loaded.config;
+    const isNonDoc = (repoPath: string): boolean => nonDocPaths.some((glob) => matchesGlob(repoPath, glob));
+
+    const violations: Violation[] = [...common, ...checkDocsTopLevel(docsDir, ctx.targetRoot, isNonDoc)];
     for (const rel of listDocFiles(docsDir)) {
       if (isGeneratedIndex(rel)) continue;
       const abs = join(docsDir, rel);
       const file = relative(ctx.targetRoot, abs);
       const role = roleOfPath(rel);
       if (role === null) {
-        // docs/common/ の文書は、フォルダの違反 1 件にまとめる
-        if (!rel.startsWith('common/')) {
-          violations.push({
-            severity: 'violation',
-            message: 'docs/ 直下の person・ai・client のどれにも属さない文書 (置き場所の表のパスへ移す)',
-            file,
-            line: 1,
-          });
-        }
+        // 3 フォルダの外の文書は、docs/ 直下の検査 (docs/common/ はフォルダの違反 1 件) が見る。
+        // nonDocPaths の下の文書は、kind を書いていれば違反 (kind を書いた文書は免除できない)
+        if (isNonDoc(`docs/${rel}`)) violations.push(...checkNonDocKind(abs, file));
         continue;
       }
       const lines = readFileSync(abs, 'utf8').split(/\r?\n/);
@@ -142,6 +148,75 @@ function checkPlacement(rel: string, file: string, meta: Frontmatter | null): Vi
   return fail(
     `フォルダ名のまとまり (${matched.context}) と frontmatter の context (${declared}) が食い違う (context 無記入は shared)`,
   );
+}
+
+/** 文書の走査 (core/DocFiles.ts の listDocFiles) と同じく、点で始まる名前と node_modules は見ない */
+const isSkippedName = (name: string): boolean => name.startsWith('.') || name === 'node_modules';
+
+/** フォルダの下のファイル (フォルダは辿り、フォルダ自体は数えない) を repo 直下からのパス (区切りは `/`) で返す */
+function listFilesUnder(dirAbs: string, repoPath: string): readonly string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dirAbs, { withFileTypes: true })) {
+    if (isSkippedName(entry.name)) continue;
+    if (entry.isDirectory()) found.push(...listFilesUnder(join(dirAbs, entry.name), `${repoPath}/${entry.name}`));
+    else found.push(`${repoPath}/${entry.name}`);
+  }
+  return found;
+}
+
+const TOP_LEVEL_HINT = '3 フォルダのどれかへ移すか、.igeta.json の nonDocPaths に足す';
+
+/**
+ * docs/ 直下に置いてよいのは、3 フォルダ・生成索引 2 本 (README.md・dependencies.md)・nonDocPaths に当たるものだけ (G9)。
+ * 文書でないファイルとフォルダも違反にする。中身が全部 nonDocPaths に当たるフォルダは違反にしない (中身が無いフォルダは、
+ * 当たる中身が無いので違反)。docs/common/ は、フォルダの違反 1 件を別に出す。
+ */
+function checkDocsTopLevel(docsDir: string, targetRoot: string, isNonDoc: (repoPath: string) => boolean): Violation[] {
+  const violations: Violation[] = [];
+  for (const entry of readdirSync(docsDir, { withFileTypes: true })) {
+    const name = entry.name;
+    if (isSkippedName(name)) continue;
+    const allowed = entry.isDirectory() ? name === 'common' || ROLES.some((role) => role === name) : isGeneratedIndex(name);
+    if (allowed || isNonDoc(`docs/${name}`)) continue;
+    const file = relative(targetRoot, join(docsDir, name));
+    if (!entry.isDirectory()) {
+      violations.push(
+        name.endsWith('.md')
+          ? { severity: 'violation', message: 'docs/ 直下の person・ai・client のどれにも属さない文書 (置き場所の表のパスへ移す)', file, line: 1 }
+          : { severity: 'violation', message: `docs/ 直下の person・ai・client のどれにも属さないファイル (${TOP_LEVEL_HINT})`, file },
+      );
+      continue;
+    }
+    const contents = listFilesUnder(join(docsDir, name), `docs/${name}`);
+    const outside = contents.find((path) => !isNonDoc(path));
+    if (contents.length > 0 && outside === undefined) continue;
+    violations.push({
+      severity: 'violation',
+      message:
+        outside === undefined
+          ? 'docs/ 直下の person・ai・client のどれにも属さないフォルダ (中身が無い。消すか、.igeta.json の nonDocPaths に足す)'
+          : `docs/ 直下の person・ai・client のどれにも属さないフォルダ (中の ${outside} が nonDocPaths に当たらない。${TOP_LEVEL_HINT})`,
+      file,
+    });
+  }
+  return violations;
+}
+
+/** nonDocPaths の下の文書が、frontmatter に Igeta の kind (置き場所の表にある kind) を書いていれば違反 (ADR-0003 決定 6) */
+function checkNonDocKind(abs: string, file: string): Violation[] {
+  const lines = readFileSync(abs, 'utf8').split(/\r?\n/);
+  const meta = parseFrontmatter(lines);
+  const kind = meta === null ? undefined : scalar(meta.data, 'kind');
+  if (meta === null || kind === undefined || placementOf(kind) === undefined) return [];
+  const at = lines.findIndex((text, index) => index > 0 && index < meta.bodyStart && /^kind:/.test(text));
+  return [
+    {
+      severity: 'violation',
+      message: `nonDocPaths の下に、Igeta の kind (${kind}) を書いた文書がある (kind を書いた文書は免除できない。kind を消すか、置き場所の表のパスへ移して nonDocPaths から外す)`,
+      file,
+      line: at === -1 ? 1 : at + 1,
+    },
+  ];
 }
 
 /** ai/ の文書の、見出しに未決の語を含む節を検査する (条件 11)。コードフェンス・コメント・生成区間の中は見ない */

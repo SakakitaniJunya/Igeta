@@ -3,9 +3,12 @@
 //
 // 引数を省略したら全部のまとまりを一覧する。まとまりの地図が 1 枚も無い案件では対象が空になるだけで
 // 何も落ちない (既存案件を赤くしない)。
+//
+// 新しい構成 (docs/person・ai・client のどれかがある) は、context-files と同じ範囲 (core/ContextGraph.ts の readingSet) を数える
+// (docs/design/test/specs/04-doc-graph.md の B6)。
 
 import { join } from 'node:path';
-import { extractReferences, buildContextGraph } from '../core/ContextGraph.js';
+import { extractReferences, buildContextGraph, hasContextFolder, listContextFolders, readingSet } from '../core/ContextGraph.js';
 import type { ContextDoc, ContextGraph } from '../core/ContextGraph.js';
 import { SHARED_CONTEXT } from '../core/Context.js';
 import { loadIgetaConfig } from '../core/IgetaConfig.js';
@@ -50,8 +53,8 @@ function referencedContracts(graph: ContextGraph, targetRoot: string, own: reado
 
 function buildEntry(graph: ContextGraph, targetRoot: string, context: string, limit: number | null): ContextSizeEntry {
   const own = docsInContext(graph, context);
-  const contracts = referencedContracts(graph, targetRoot, own, context);
-  const files = [...own, ...contracts]
+  const range = graph.v4 ? readingSet(graph, targetRoot, context) : [...own, ...referencedContracts(graph, targetRoot, own, context)];
+  const files = range
     .map((doc): ContextSizeFile => ({ relPath: doc.relPath, lines: countLines(doc.lines) }))
     .sort((a, b) => a.relPath.localeCompare(b.relPath));
   const totalLines = files.reduce((sum, f) => sum + f.lines, 0);
@@ -81,7 +84,9 @@ export class ContextSizeModule {
     if (graph === null) return { entries: [], violations: [{ severity: 'cannot-check', message: `docs が無い: ${docsDir}` }] };
 
     const limit = configResult.config.contextSizeLimit;
-    const knownContexts = [...new Set(graph.docs.map((doc) => doc.context))].filter((c) => c !== SHARED_CONTEXT).sort();
+    const knownContexts = graph.v4
+      ? listContextFolders(docsDir)
+      : [...new Set(graph.docs.map((doc) => doc.context))].filter((c) => c !== SHARED_CONTEXT).sort();
 
     if (context === undefined) {
       const entries = knownContexts.map((c) => buildEntry(graph, this.#options.targetRoot, c, limit));
@@ -91,7 +96,7 @@ export class ContextSizeModule {
       return { entries, violations };
     }
 
-    if (!knownContexts.includes(context)) {
+    if (!(graph.v4 ? hasContextFolder(docsDir, context) : knownContexts.includes(context))) {
       return { entries: [], violations: [{ severity: 'cannot-check', message: `まとまりが存在しない: ${context}` }] };
     }
     const entry = buildEntry(graph, this.#options.targetRoot, context, limit);
