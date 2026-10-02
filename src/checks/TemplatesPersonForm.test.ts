@@ -1,24 +1,22 @@
 // node --test dist/checks/TemplatesPersonForm.test.js
-// person・client の雛形が、人の型を満たすこと (ADR-0002 条件 5〜7・10、docs/explanation/09-reader-granularity.md §3)。
-//   結論 (TL;DR 3 行まで) → 図 (図が要る kind) → 決まりの表 (行頭が自分の ID の行は、列の数が見出しと同じで、最後の列が 状態) →
-//   決めてほしいこと → 関連 (上流は文書、下流の欄は「(生成索引が出す)」)。
-//   HTML コメント (指示) を書かない。生成器が管理する区間 (AUTOGEN の dir-index・adr-index・tentative-index) だけが例外。
-// 型の検査が ○ の kind (src/core/Role.ts の formCheck が full) は、状態・決めてほしいこと・行数・図まで見る。
+// person・client の雛形が、人の型のうち、本物の検査 (PersonFormCheck) が見ない規則を満たすこと
+// (docs/explanation/09-reader-granularity.md §3): 結論 (TL;DR) は 3 行まで・ID を書かない / 図は最初の表より前 /
+// 決めてほしいことの表と節の並び / 関連の下流の欄 / frontmatter に行末コメントを書かない / line_limit の宣言。
+// PersonFormCheck が見る規則 (HTML コメント・生成区間・状態の値と列・図の有無・行数) は、雛形を実際の置き場所に置いて
+// 本物の検査を回す TemplatesInstantiation.test.ts が見る。
 // テストは規則ごとに 1 本。全部の雛形を回し、規則に外れた雛形を全部出す。
 import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
+import { parseFrontmatter, scalar } from '../core/Frontmatter.js';
 import type { FrontmatterData } from '../core/Frontmatter.js';
 import { classifyLines } from '../core/LineClassifier.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import { placementOf } from '../core/Role.js';
 
 const TEMPLATES_DIR = join(IGETA_ROOT, 'templates', 'docs');
-const STATES: ReadonlySet<string> = new Set(['決定', '仮', '未決', '廃']);
-const GENERATED_REGIONS: ReadonlySet<string> = new Set(['dir-index', 'adr-index', 'tentative-index']);
 const QUESTION_HEADER = ['問い', '対象 ID', '選択肢', '決まらないと止まること'];
 
 interface Doc {
@@ -90,12 +88,6 @@ function h2sOf(doc: Doc): readonly { readonly text: string; readonly line: numbe
   });
 }
 
-const prefixesOf = (doc: Doc): readonly string[] => {
-  const list = stringList(doc.data, 'id_prefixes');
-  const single = scalar(doc.data, 'id_prefix');
-  return list.length > 0 ? list : single === undefined ? [] : [single];
-};
-
 const isQuestionTable = (table: Table): boolean => table.header.join('|') === QUESTION_HEADER.join('|');
 const firstDiagramLine = (doc: Doc): number => doc.lines.findIndex((line, index) => index >= doc.bodyStart && /^```mermaid\s*$/.test(line)) + 1;
 
@@ -104,21 +96,14 @@ function problems(docs: readonly Doc[], rule: (doc: Doc) => readonly string[]): 
   return docs.flatMap((doc) => rule(doc).map((problem) => `${doc.relPath}: ${problem}`));
 }
 
-describe('person・client の雛形: 人の型 (ADR-0002 条件 5〜7・10)', () => {
-  it('指示の HTML コメントと frontmatter の行末コメントを書かない。生成器が管理する区間 (AUTOGEN) だけが例外', () => {
+describe('person・client の雛形: 人の型のうち、本物の検査が見ない規則 (ADR-0002 条件 5〜7・10)', () => {
+  it('frontmatter に行末コメント (# …) を書かない。描画では見えない書き込み口になる。指示は文書体系ガイドに置く', () => {
     assert.deepEqual(
-      problems([...personDocs, ...clientDocs], (doc) => {
-        const kinds = classifyLines(doc.lines);
-        return doc.lines.flatMap((line, index) => {
-          const found: string[] = [];
-          if (kinds[index] === 'html-comment') found.push(`${index + 1} 行目に HTML コメントがある: ${line.trim()}`);
-          const marker = /<!--\s*AUTOGEN:([a-z-]+):(?:start|end)/.exec(line)?.[1];
-          if (marker !== undefined && !GENERATED_REGIONS.has(marker)) found.push(`${index + 1} 行目は生成器が管理する区間ではない: ${marker}`);
-          // frontmatter の行末コメント (# …) も、描画では見えない書き込み口になる。指示は文書体系ガイドに置く
-          if (index > 0 && index < doc.bodyStart - 1 && /(^|\s)#(\s|$)/.test(line)) found.push(`${index + 1} 行目の frontmatter にコメントがある: ${line.trim()}`);
-          return found;
-        });
-      }),
+      problems([...personDocs, ...clientDocs], (doc) =>
+        doc.lines.flatMap((line, index) =>
+          index > 0 && index < doc.bodyStart - 1 && /(^|\s)#(\s|$)/.test(line) ? [`${index + 1} 行目の frontmatter にコメントがある: ${line.trim()}`] : [],
+        ),
+      ),
       [],
     );
   });
@@ -146,15 +131,14 @@ describe('person・client の雛形: 人の型 (ADR-0002 条件 5〜7・10)', ()
     );
   });
 
-  it('図が要る kind (地図・まとまりの地図・業務フロー・画面・解決戦略・現行構成) は、図 (Mermaid) が最初の表より前にある', () => {
+  it('図が要る kind (地図・まとまりの地図・業務フロー・画面・解決戦略・現行構成) は、図 (Mermaid) が最初の表より前にある (図の有無は PersonFormCheck が見る)', () => {
     const diagramDocs = personKindDocs.filter((doc) => doc.kind !== undefined && placementOf(doc.kind)?.needsDiagram === true);
     assert.ok(diagramDocs.length > 0, '図が要る kind の雛形が見つからない');
     assert.deepEqual(
       problems(diagramDocs, (doc) => {
         const diagram = firstDiagramLine(doc);
         const firstTable = tablesOf(doc)[0];
-        if (diagram === 0) return ['図が無い'];
-        return firstTable !== undefined && diagram > firstTable.line ? [`図 (${diagram} 行目) が最初の表 (${firstTable.line} 行目) より後ろにある`] : [];
+        return diagram !== 0 && firstTable !== undefined && diagram > firstTable.line ? [`図 (${diagram} 行目) が最初の表 (${firstTable.line} 行目) より後ろにある`] : [];
       }),
       [],
     );
@@ -174,32 +158,9 @@ describe('person・client の雛形: 人の型 (ADR-0002 条件 5〜7・10)', ()
   });
 });
 
-describe('person の雛形のうち、型の検査が ○ の kind: 状態・決めてほしいこと・行数', () => {
-  it('決まりの表が 1 つ以上あり、行頭が自分の ID の行は、列の数が見出しと同じで、最後の列が 状態 で、値が 決定・仮・未決・廃', () => {
-    assert.ok(fullDocs.length > 0, '型の検査が ○ の雛形が見つからない');
-    assert.deepEqual(
-      problems(fullDocs, (doc) => {
-        const prefixes = prefixesOf(doc);
-        if (prefixes.length === 0) return ['id_prefix が無い'];
-        const idRow = (row: readonly string[]): boolean => prefixes.some((prefix) => new RegExp(`^${prefix}-\\d{3}$`).test(row[0] ?? ''));
-        const decisionTables = tablesOf(doc).filter((table) => table.rows.some(idRow));
-        if (decisionTables.length === 0) return ['行頭が自分の ID の表が無い'];
-        return decisionTables.flatMap((table) => [
-          ...(table.header[table.header.length - 1] === '状態' ? [] : [`${table.line} 行目の表の最後の列が 状態 ではない`]),
-          ...table.rows.filter(idRow).flatMap((row) => {
-            const state = row[row.length - 1] ?? '';
-            return [
-              ...(row.length === table.header.length ? [] : [`${row[0]} の列の数が見出しと違う (見出し ${table.header.length} 列、行 ${row.length} 列)`]),
-              ...(STATES.has(state) ? [] : [`${row[0]} の状態が 決定・仮・未決・廃 ではない: ${state}`]),
-            ];
-          }),
-        ]);
-      }),
-      [],
-    );
-  });
-
+describe('person の雛形のうち、型の検査が ○ の kind: 決めてほしいこと・line_limit', () => {
   it('決めてほしいこと (| 問い | 対象 ID | 選択肢 | 決まらないと止まること |) の表が 1 つあり、その節の次が関連で、関連が最後の節', () => {
+    assert.ok(fullDocs.length > 0, '型の検査が ○ の雛形が見つからない');
     assert.deepEqual(
       problems(fullDocs, (doc) => {
         const h2s = h2sOf(doc);
@@ -214,16 +175,11 @@ describe('person の雛形のうち、型の検査が ○ の kind: 状態・決
     );
   });
 
-  it('line_limit は 100 (requirements は 150) で、雛形がその行数に収まる', () => {
+  it('line_limit は 100 (requirements は 150) を宣言している (行数そのものは PersonFormCheck が見る)', () => {
     assert.deepEqual(
       problems(fullDocs, (doc) => {
         const limit = doc.kind === 'requirements' ? 150 : 100;
-        const kinds = classifyLines(doc.lines);
-        const total = doc.lines.length - (doc.lines[doc.lines.length - 1] === '' ? 1 : 0) - kinds.filter((kind) => kind === 'autogen').length;
-        return [
-          ...(scalar(doc.data, 'line_limit') === String(limit) ? [] : [`line_limit が ${limit} ではない`]),
-          ...(total <= limit ? [] : [`${total} 行 (上限 ${limit})`]),
-        ];
+        return scalar(doc.data, 'line_limit') === String(limit) ? [] : [`line_limit が ${limit} ではない`];
       }),
       [],
     );

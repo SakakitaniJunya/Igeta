@@ -236,7 +236,7 @@ describe('loadIgetaConfig: nonDocPaths (ADR-0003 決定 6)', () => {
       'docs/{legacy,client}/**',
       'docs/Person/**', // 大文字小文字だけを変えても、大文字小文字を区別しないファイルシステムでは同じ場所
       'DOCS/AI/specs/**',
-      'docs', // 手前のディレクトリを指すと、配下の 3 フォルダも外れる
+      'docs', // 手前のフォルダを指すと、配下の 3 フォルダも外れる
       '*',
     ];
     for (const glob of hitting) {

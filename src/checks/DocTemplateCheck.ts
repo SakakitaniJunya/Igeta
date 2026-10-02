@@ -25,7 +25,7 @@ import { classifyLines, hasLiveMatch, hasLiveOccurrence } from '../core/LineClas
 import type { Violation } from '../core/Report.js';
 import { LEGACY_TEMPLATE_RULES } from '../core/LegacyTemplateRules.js';
 import { legacyKindOfPath } from '../core/LegacyTemplatePaths.js';
-import { detectLayout, kindOfPath, roleOfPath } from '../core/Role.js';
+import { detectLayout, kindOfPath, placementOf, roleOfPath } from '../core/Role.js';
 import { PersonFormCheck } from './PersonFormCheck.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
@@ -52,8 +52,8 @@ export interface DocTemplateOptions {
    */
   readonly decisionAttributionPatterns?: readonly RegExp[];
   /**
-   * 新しい構成 (v4) の人の文書の検査 (PersonFormCheck) が、廃の行を比べる起点 (git の ref。CI では merge-base)。
-   * 無ければ、同じ文書の中だけを見る。
+   * 新しい構成 (v4) の人の文書の検査 (PersonFormCheck) が、廃の行を比べる起点の宛先のブランチ (変更を入れる先)。
+   * HEAD との枝分かれの点を起点にする。無ければ、同じ文書の中だけを見る。
    */
   readonly base?: string;
 }
@@ -244,12 +244,16 @@ function kindFromPath(docRelPath: string): string | null {
 }
 
 /**
- * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。旧い構成の文書は、必須節・行数上限・ID の接頭辞と形式を、
- * 雛形を新しい構成の木へ移す前の値 (core/LegacyTemplateRules.ts) にする。旧い構成の repo は、移すまでの間も既存の検査が
- * 通る (REQ-106)。
+ * 文書の検査に使う雛形。新しい構成の文書は、雛形そのもの。ただし、型の検査が ○ の kind の人の文書は、行数の違反を
+ * PersonFormCheck が 1 件だけ出す (テスト仕様 03 の P6) ので、雛形の line_limit による検査は当てない (宣言は雛形に残る)。
+ * 旧い構成の文書は、必須節・行数上限・ID の接頭辞と形式を、雛形を新しい構成の木へ移す前の値 (core/LegacyTemplateRules.ts)
+ * にする。旧い構成の repo は、移すまでの間も既存の検査が通る (REQ-106)。
  */
 function templateFor(template: TemplateEntry, docRelPath: string): TemplateEntry {
-  if (roleOfPath(docRelPath.split(sep).join('/')) !== null) return template;
+  const role = roleOfPath(docRelPath.split(sep).join('/'));
+  if (role !== null) {
+    return role === 'person' && placementOf(template.kind)?.formCheck === 'full' ? { ...template, lineLimit: null } : template;
+  }
   const legacy = LEGACY_TEMPLATE_RULES.get(template.kind);
   return legacy === undefined
     ? template
