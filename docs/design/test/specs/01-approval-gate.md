@@ -33,13 +33,13 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 
 | # | 規則 |
 |---|---|
-| R1 | `approval-scope` は、枝分かれの点から変わった全部のパス (`git diff --name-status --no-renames -z --ignore-submodules=none`。移動は削除と追加の 2 行) を、ADR-0008 決定 1 の表と `humanPaths` に当てる。1 つでも当たれば `human`、当たらなければ `ai`。ファイルの中身は見ない。`--base` のときは、作業ツリーの変更と未追跡のファイルも含める |
-| R2 | 構成 (新しい構成か) と `humanPaths` は、**宛先の先端**のツリー (`git ls-tree`・`git show <宛先>:.igeta.json`) から読む。作業ツリーと枝分かれの点の値は使わない (変更の作者が選べるものを信頼しない) |
+| R1 | `approval-scope` は、次の 2 つの差分のパスの和集合 (`git diff --name-status --no-renames -z --ignore-submodules=none`。移動は削除と追加の 2 行) を、ADR-0008 決定 1 の表と `humanPaths` に当てる: (a) 枝分かれの点から HEAD まで (b) 宛先の先端から、宛先の先端と HEAD を merge した結果 (`git merge-tree --write-tree`) まで。(b) は、宛先でファイルが移された後に古い枝が旧いパスを編集する場合に、移した先のパスを拾う。1 つでも当たれば `human`、当たらなければ `ai`。ファイルの中身は見ない。`--base` のときだけ、作業ツリーの変更と未追跡のファイルも含める |
+| R2 | 構成 (新しい構成か) と `humanPaths` は、**宛先の先端**のツリー (`git ls-tree`・`git show <宛先>:.igeta.json`) から読む。作業ツリーのファイルは開かず、枝分かれの点の値も使わない (変更の作者が選べるものを信頼しない) |
 | R3 | `--ci` と `--base <ref>` のどちらか 1 つが必須で、同時には指定できない |
-| R4 | 次のどれかなら検査不能 (終了コード 2) で、`ai` を返さない: 宛先が決まらない (環境変数が無い・ref が無い・共通の祖先が無い・ref の名前が不正) / 宛先が旧い構成 / git の repo でない・`--root` が repo の最上位でない / 宛先の `.igeta.json` が読めない (壊れている・glob が不正) / 差分に知らない状態の文字がある |
+| R4 | 次のどれかなら検査不能 (終了コード 2) で、`ai` を返さない: 宛先が決まらない (環境変数が無い・ref が無い・共通の祖先が無い・ref の名前が不正) / 宛先が旧い構成 / git の repo でない・`--root` が repo の最上位でない / 宛先の `.igeta.json` が読めない (壊れている・glob が不正) / 差分の状態の文字が A・M・D・T 以外 / merge が衝突する・git が `merge-tree --write-tree` を持たない |
 | R5 | パスの照合は大文字と小文字を区別しない。`X/**` は `X` そのもの (ファイル・symlink・submodule) にも当たる。`**/AGENTS.md` は repo 直下にも当たる。名前の続き (`docs/personal/`) には当たらない |
 | R6 | 終了コード: `ai` = 0 / `human` = 1 / 検査不能 = 2。標準出力の 1 行目は `human` か `ai`、続けて理由のパスを 1 行ずつ (`humanPaths` で当たったものは、その glob を添える) |
-| R7 | `doctor` は、GitHub から既定ブランチの保護 (従来の保護と ruleset) を読み、次の 3 つを 1 つずつ出す: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す。3 つともそろえば適合 (0)、1 つでも欠ければ違反 (1)。GitHub が「この契約では使えない」と返したときも違反 (1)。`gh` が無い・権限が無くて読めないときは検査不能 (2)。管理者の迂回と必須の検査は、この版では確かめないことを出力に書く |
+| R7 | `doctor` は、GitHub から既定ブランチの保護 (従来の保護と ruleset) を読み、次の 4 つを 1 つずつ出す: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す / GitHub が返す CODEOWNERS の誤りが 0 件。4 つともそろえば適合 (0)、1 つでも欠ければ違反 (1)。GitHub が「この契約では使えない」と返したときも違反 (1)。`gh` が無い・権限が無くて読めないときは検査不能 (2)。確かめないこと (持ち主が実在し書き込み権限を持つか・管理者の迂回・必須の検査・既定ブランチ以外の保護) を、適合のときも出力に書く |
 
 ## 1. テストケース一覧
 
@@ -50,8 +50,8 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | TST-103 | 結合 | 同上 | 同上 | 決定 1 のファイルを 1 つずつ変える (`.github/workflows/x.yml`・`.github/actions/a/action.yml`・`.github/CODEOWNERS`・`CODEOWNERS`・`docs/CODEOWNERS`・`.igeta.json`・`.igeta-version`・`AGENTS.md`・`docs/ai/AGENTS.md`・`CLAUDE.md`・`.claude/settings.json`) | どれも `human` | R1・R5 |
 | TST-104 | 結合 | 同上 | 宛先の `.igeta.json` に `humanPaths: ["src/core/**"]` | `src/core/a.ts` を変える | `human`・理由に glob | R1・R2・R6 |
 | TST-105 | 結合 | 同上 | 枝を切った後で、宛先に `humanPaths: ["src/core/**"]` が足された | 古い枝で `src/core/a.ts` を変え、`--ci` | `human` (宛先の先端の設定で見る) | R2 |
-| TST-106 | 結合 | 手元 | 新しい構成 | `docs/person/new.md` を作り `git add` しない / 追跡済みの人の文書を書き換えて commit しない | `--base` でどちらも `human` | R1 |
-| TST-107 | 単体 | doctor | 3 つがそろった設定の応答 (従来の保護の形と ruleset の形) | 判定する | どちらも適合・0。出力に 3 つの項目と「確かめないこと」の行 | R7 |
+| TST-106 | 結合 | 手元と CI | 新しい構成 | `docs/person/new.md` を作り `git add` しない / 追跡済みの人の文書を書き換えて commit しない | `--base` ではどちらも `human`。`--ci` は commit の内容だけを見る (`ai`) | R1 |
+| TST-107 | 単体 | doctor | 4 つがそろった設定の応答 (従来の保護の形と ruleset の形) | 判定する | どちらも適合・0。出力に 4 つの項目と「確かめないこと」の 4 点 | R7 |
 
 ## 2. 否定テスト (必須)
 
@@ -67,8 +67,10 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | TST-308 | git の外 | git の repo でないフォルダ / `--root` が repo の最上位でない | 検査不能・2 |
 | TST-309 | 名前だけのフォルダ | `docs/personal/x.md`・`docs/clients/x.md` を変える | `ai` |
 | TST-310 | フォルダを差し替える | `docs/person` を symlink か submodule に置き換える | `human` |
-| TST-311 | 設定が壊れている | 宛先の `.igeta.json` が JSON でない / `humanPaths` の glob が不正 | 検査不能・2 |
-| TST-312 | doctor: 設定の欠け | 保護も ruleset も無い / 持ち主のレビューが任意 / 新しい push で承認を取り消さない、の 3 通り。GitHub が「この契約では使えない」と返す場合 | どれも違反・1 |
+| TST-311 | 設定が壊れている | 宛先の `.igeta.json` が JSON でない / `humanPaths` の glob が不正 / git の差分の出力に状態の文字 `U` が混ざる (出力を差し替える単体テスト) | 検査不能・2 |
+| TST-312 | doctor: 設定の欠け | 保護も ruleset も無い / 持ち主のレビューが任意 / 新しい push で承認を取り消さない / GitHub が CODEOWNERS の誤りを 1 件返す、の 4 通り。GitHub が「この契約では使えない」と返す場合 | どれも違反・1 |
+| TST-314 | 宛先で移された文書 | 宛先で `docs/ai/x.md` が `docs/person/x.md` へ移された後、その前に切った枝が `docs/ai/x.md` を編集する | `human` (merge した結果の差分に `docs/person/x.md` が出る) |
+| TST-315 | merge できない | 宛先と HEAD が同じ行を別々に変えていて衝突する | 検査不能・2 |
 | TST-313 | doctor: 読めない | `gh` が無い / 権限が無くて設定を読めない | 検査不能・2 (成功にしない) |
 
 ## 3. トレーサビリティ
@@ -76,9 +78,9 @@ relates_to: [adr-0002-role-boundary-invariants, test-init-scaffold]
 | 確認 | 結果 |
 |---|---|
 | ADR-0008 との対応 | 決定 1・3 = R1〜R6 / 決定 6 = R7 / 決定 4 (人のフォルダの生成物は人の文書だけから作る) は test-doc-graph/TST-306 / 決定 7 (AI は `仮` で起案) は機械で強制せず、`AGENTS.md` の雛形に書く (test-init-scaffold/TST-105) / CODEOWNERS の割り当ての点検は 06 の I14 |
-| いまの実装との差 | R2: 現物は構成と `humanPaths` を作業ツリーから読む → 宛先の先端から読む / R4: 設定が壊れているとき 2 を返すのは現物どおり。知らない状態の文字は未対応 / R7: 現物は承認の数と持ち主のレビューだけを読み、欠けても警告で終了コード 0 → 3 項目を見て違反は 1 |
+| いまの実装との差 | R1: 現物は (a) だけで、`--ci` でも作業ツリーと未追跡を含める → (b) を足し、`--ci` は commit だけ。決定 1 の表のうち `.github/**`・`CLAUDE.md`・`.claude/**`・`.igeta-version`・3 か所の CODEOWNERS・下位の `AGENTS.md` が現物の規則に無い → 足す / R2: 現物は構成と `humanPaths` を作業ツリーのファイルから読む → 宛先の先端の内容 (文字列) から読む / R4: 設定が壊れているとき 2 を返すのは現物どおり。状態の文字と merge の条件は未対応 / R7: 現物は承認の数と持ち主のレビューだけを読み、欠けても警告で終了コード 0 → 4 項目を見て違反は 1 |
 | 消す実装 | `src/gate/ManifestChange.ts`・`ReadmeIndexException.ts` と、その呼び出し・テスト (`ManifestChange.test.ts`・`ReadmeIndexException.test.ts`・`ApprovalScopeManifest.test.ts`・`ApprovalScopeReadme.test.ts`)。中身で見分ける処理は持たない |
-| この版が保証しないもの | 変更の作者が CI の定義や npm scripts を書き換えて検査を外すこと / GitHub の保護を置けない契約の repo / 人と AI が同じアカウントを使う運用 / 移動のときに GitHub がどちらのパスで持ち主を決めるか。強制の門 (信頼できる版の Igeta で検査する workflow・持ち主の確かめ・`doctor` の残りの項目) は次の版で、安全面の評価の指摘を issue に残す (ADR-0008 決定 5) |
+| この版が保証しないもの | ADR-0008 の「限界」の一覧が正本 (ここには写さない)。見分けに固有のものは 3 つ: `--ci` は `origin` を宛先の repo と見る (fork の head を取り込んだ作業場では使わない) / GitHub の merge が、R1 (b) と同じ再配置をするかは確かめていない / `humanPaths` に ASCII 以外の文字を書いたときの文字の正規化 (NFC と NFD) は見ない |
 
 ## 4. テストデータ (任意)
 

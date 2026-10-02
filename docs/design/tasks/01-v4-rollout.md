@@ -34,8 +34,8 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 ## Phase 2 Foundational
 
 - [ ] T010 [audience-directories/REQ-104] 雛形の再編 (branch `feat/v4-templates`) を、コードレビューの指摘の直しの後に統合する (`templates/docs/**`・`src/core/LegacyTemplate*.ts`・`src/checks/DocTemplateCheck.ts`)
-- [ ] T011 [P] [audience-directories/REQ-101] 見分け: テスト仕様 01 の全部。中身で見分ける処理とそのテストを消し、設定を宛先の先端から読み、`doctor` を 3 項目にする (`src/gate/**`・`src/cli/commands/DoctorCommand.ts`)
-- [ ] T012 [P] [audience-directories/REQ-105] 行の移動の付け替えと状態の列の載せ替えを、この版から外す (書く側・台帳を読む側・そのテスト。ADR-0006 決定 7) (`src/generators/{SourceMoveModule,FingerprintRebaseModule}.ts`・`src/core/{AgreementLedger,FingerprintRebase}.ts`・`src/checks/AgreementCheck.ts`)
+- [ ] T011 [P] [audience-directories/REQ-101] 見分け: テスト仕様 01 の全部。中身で見分ける処理とそのテストを消し、設定を宛先の先端の内容から読み (作業ツリーのファイルを開かない)、`doctor` を 4 項目にする (`src/gate/**`・`src/cli/commands/DoctorCommand.ts`・`src/core/IgetaConfig.ts`)
+- [ ] T012 [P] [audience-directories/REQ-105] 行の移動の付け替えと状態の列の載せ替えを、この版から外す (ADR-0006 決定 7)。書く側 (`SourceMoveModule` の全部・`stateColumnRows`・`decideStateColumnRebase`) と、台帳を読む側 (`source-move` の行の受け付け・`sourceRedirects`・`followRedirect`) と、そのテストと、解説 08 の記述。受入: `source-move` の行を手で足した台帳は検査不能になる (`src/generators/{SourceMoveModule,FingerprintRebaseModule}.ts`・`src/core/{AgreementLedger,FingerprintRebase}.ts`・`src/checks/AgreementCheck.ts`・`docs/explanation/08-agreement-ledger.md`)
 - [ ] T013 [audience-directories/REQ-103] 人の文書の型 (branch `feat/v4-person`) を T010 の後に統合し、テスト仕様 03 に合わせる。`DocTemplateCheck.ts` は T010 と重なるので、重なりをここで解く (`src/checks/{PersonFormCheck,DocTemplateCheck}.ts`・`src/core/{DecisionRows,MarkdownTable,GitRef}.ts`・`src/cli/commands/checkCommands.ts`)
 - [ ] T014 [audience-directories/REQ-103] 文書のつながり: テスト仕様 04 の全部 (`src/checks/{DocGraphCheck,RoleBoundaryCheck,ContextBoundaryCheck}.ts`・`src/core/ContextGraph.ts`・`src/generators/{ContextFilesModule,ContextSizeModule}.ts`)
 - [ ] T015 [P] [audience-directories/REQ-002] 変わった行の一覧: テスト仕様 05 の全部 (`src/generators/ReviewSheetModule.ts`・`src/cli/commands/ReviewSheetCommand.ts`)
@@ -44,7 +44,7 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 
 ### US-1 新しい repo を最初から 3 フォルダで起こす
 
-- [ ] T100 [audience-directories/REQ-104] `init`・門のファイルの作り手・入口の 3 行・手引きの突き合わせ: テスト仕様 06 の全部 (`src/cli/commands/{InitCommand,ScaffoldCommand}.ts`・`src/generators/GateFilesModule.ts`・`src/core/Audience.ts`・`src/checks/AgentsEntrypointCheck.ts`・`templates/docs/README.md`)
+- [ ] T100 [audience-directories/REQ-104] `init`・承認の割り当てのファイルの作り手・入口の 3 行・手引きの突き合わせ: テスト仕様 06 の全部 (`src/cli/commands/{InitCommand,ScaffoldCommand}.ts`・`src/generators/ApprovalFilesModule.ts`・`src/core/Audience.ts`・`src/checks/AgentsEntrypointCheck.ts`・`templates/docs/README.md`)
 
 ### US-2 既存の repo を移す
 
@@ -55,7 +55,7 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 - [ ] T300 [audience-directories/REQ-105] Igeta 自身に `docs-migrate` を適用する (移す段。完了条件を満たすこと) (`docs/**`・`AGENTS.md`・`.github/CODEOWNERS`)
 - [ ] T301 [audience-directories/REQ-002] 要件 2 本・解決戦略・地図を人の型へ書き直し、ADR-0001〜0010 を決まりの行から `ADR-NNNN` の形で引く。ADR の本文から `ai/` の文書へのリンクを外す (`docs/person/**`)
 - [ ] T302 [audience-directories/REQ-101] Igeta 自身の `humanPaths` を、検査として実行されるものの全部 (`src/**`・`templates/**`・`package.json`・ロックファイル・`tsconfig.json`) と解説 03〜09 にする (`.igeta.json`)
-- [ ] T303 [audience-directories/REQ-001] README に「文書モデル」の節を書く。Mermaid の図 3 枚 (3 フォルダと確定させる人 / 人の文書の型 / 変更から承認までの流れ) と、4 つの小節 (置き場所の決め方 / 人の文書の書き方 / 移行の手順 / GitHub の保護の設定と、この版が保証しないこと)。`igeta mermaid-check` と `docs:lint` が通る (`README.md`)
+- [ ] T303 [audience-directories/REQ-001] README に「文書モデル」の節を書く。Mermaid の図 3 枚 (3 フォルダと確定させる人 / 人の文書の型 / 変更から承認までの流れ) と、4 つの小節 (置き場所の決め方 / 人の文書の書き方 / 移行の手順 / GitHub の保護の設定と、この版が保証しないこと)。PR の作者の内容を特権のある CI (`pull_request_target`) で読む構成は勧めない。`igeta mermaid-check` と `docs:lint` が通る (`README.md`)
 
 ## Polish
 
@@ -71,7 +71,7 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 | T010 | T013 | 2 つの branch が `DocTemplateCheck.ts` を別々に書き換えている。雛形を先に入れ、人の文書の型を後から重ねる |
 | T013 | T014 | ADR の索引の置き場所 (`DocGraphCheck.ts`) の変更が `feat/v4-person` にある |
 | T010・T013・T014 | T100 | `init` の受入 (置いた直後に全部の検査が通る) は、雛形・人の文書の型・索引の検査を使う |
-| T100・T013・T014 | T200 | 門のファイルの作り手と入口の 3 行は T100。書き直す段の作業の列は T013・T014 の検査が出す |
+| T100・T013・T014 | T200 | 承認の割り当てのファイルの作り手と入口の 3 行は T100。書き直す段の作業の列は T013・T014 の検査が出す |
 | T200 | T300 | Igeta 自身の移行は `docs-migrate` で行う |
 | T300 | T301 → T302 → T303 | 同じ `docs/**` と repo 直下を触るので、順に行う |
 | T300〜T303 | T900 → T901 | 全体のレビューは、Igeta 自身が新しい構成になってから行う |
