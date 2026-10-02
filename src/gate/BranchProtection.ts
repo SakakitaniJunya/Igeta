@@ -4,7 +4,8 @@
 // 読むのは既定ブランチの保護 (従来のブランチ保護と ruleset) と、GitHub が返す CODEOWNERS の誤りだけで、次の 4 つを
 // 1 つずつ点検する: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す /
 // CODEOWNERS の誤りが 0 件。従来の保護と ruleset は同じブランチに重なって効くので、どちらかが満たしていれば満たす。
-// 欠けていれば違反、gh が無い・権限が無くて読めなければ検査不能 (黙って成功にしない)。確かめないことは NOT_CHECKED。
+// 欠けていれば違反、gh が無い・権限が無くて読めない・60 秒で終わらなければ検査不能 (黙って成功にしない)。確かめないことは
+// NOT_CHECKED。
 
 import { spawnSync } from 'node:child_process';
 
@@ -15,11 +16,17 @@ export type GhResult =
 
 export type GhRunner = (args: readonly string[], cwd: string) => GhResult;
 
-export function runGh(args: readonly string[], cwd: string): GhResult {
-  const result = spawnSync('gh', [...args], { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+/** gh が応答しないまま、点検が止まり続けないための時間切れ (R7)。 */
+const GH_TIMEOUT_MS = 60_000;
+
+/** gh を実行する。timeoutMs を過ぎても終わらなければ打ち切って not-run にする (テストが短い時間に差し替える)。 */
+export function runGh(args: readonly string[], cwd: string, timeoutMs: number = GH_TIMEOUT_MS): GhResult {
+  const result = spawnSync('gh', [...args], { cwd, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
   if (result.error !== undefined) {
     const code = (result.error as NodeJS.ErrnoException).code;
-    return { kind: 'not-run', reason: code === 'ENOENT' ? 'gh が見つからない (PATH に無い)' : `gh を実行できない: ${result.error.message}` };
+    if (code === 'ENOENT') return { kind: 'not-run', reason: 'gh が見つからない (PATH に無い)' };
+    if (code === 'ETIMEDOUT') return { kind: 'not-run', reason: `gh が ${timeoutMs / 1000} 秒以内に終わらなかった` };
+    return { kind: 'not-run', reason: `gh を実行できない: ${result.error.message}` };
   }
   if (result.status === null) return { kind: 'not-run', reason: `gh が signal ${String(result.signal)} で終わった` };
   return { kind: 'exited', status: result.status, stdout: result.stdout, stderr: result.stderr };

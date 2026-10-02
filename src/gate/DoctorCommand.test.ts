@@ -1,11 +1,14 @@
 // node --test dist/gate/DoctorCommand.test.js
 // igeta doctor: GitHub の保護の設定の点検。テスト仕様 01 (docs/design/test/specs/01-approval-gate.md) の表の行に 1 本ずつ対応する。
 // 本物の GitHub は呼ばない。gh の応答は、記録した (または GitHub の API の説明どおりの) JSON を使う。
+import { chmodSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { Cli } from '../cli/Cli.js';
 import { DoctorCommand } from '../cli/commands/DoctorCommand.js';
 import { IGETA_ROOT } from '../core/Paths.js';
+import { runGh } from './BranchProtection.js';
 import type { GhResult, GhRunner } from './BranchProtection.js';
 import { tempDir } from './ApprovalScopeFixture.js';
 
@@ -167,7 +170,7 @@ describe('igeta doctor: GitHub の保護の点検', () => {
     }
   });
 
-  it('[TST-313] gh が無い・権限が無くて設定を読めないと、検査不能・2 (成功にしない)', async () => {
+  it('[TST-313] gh が無い・権限が無くて設定を読めない・時間内に終わらないと、検査不能・2 (成功にしない)', async () => {
     // gh が PATH に無い: 実際の gh の呼び出し (差し替えない) で確かめる
     process.env['PATH'] = tempDir('igeta-doctor-no-gh-');
     const missing = await doctor();
@@ -181,5 +184,18 @@ describe('igeta doctor: GitHub の保護の点検', () => {
     assert.equal(noPermission.code, 2, noPermission.stderr.join(' | '));
     assert.match(noPermission.stderr.join('\n'), /CANNOT-CHECK .*Must have admin rights/);
     assert.ok(!noPermission.stdout.some((line) => line.startsWith('OK ')), 'OK を出さない');
+
+    // gh が時間内に終わらない: 応答しない偽の gh を PATH に置く。時間切れ (既定は 60 秒) は、待たずに済むよう短い時間に差し替える
+    const bin = tempDir('igeta-doctor-slow-gh-');
+    writeFileSync(join(bin, 'gh'), '#!/bin/sh\nexec sleep 5\n');
+    chmodSync(join(bin, 'gh'), 0o755);
+    process.env['PATH'] = `${bin}:/usr/bin:/bin`;
+    const started = Date.now();
+    const slow = await doctor((args, cwd) => runGh(args, cwd, 300));
+    process.env['PATH'] = savedPath ?? '';
+    assert.equal(slow.code, 2);
+    assert.deepEqual(slow.stdout, []);
+    assert.match(slow.stderr.join('\n'), /^CANNOT-CHECK .*gh が 0\.3 秒以内に終わらなかった/);
+    assert.ok(Date.now() - started < 4000, '時間切れで待ちを打ち切る');
   });
 });
