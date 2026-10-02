@@ -217,10 +217,35 @@ describe('AgreementLedger: 基準・付け替え・対応表', () => {
   it('sourceRedirects: 指定した位置より後の source-move だけを、記録順に畳む', () => {
     const events: AgreementEvent[] = [moveRow('a/REQ-1', 'x/REQ-1'), exportRow('1.0'), moveRow('b/REQ-2', 'y/REQ-2'), moveRow('y/REQ-2', 'z/REQ-2')];
     const redirects = sourceRedirects(events, 1);
-    assert.equal(redirects.get('a/REQ-1'), undefined, '基準より前の付け替えは効かない');
+    assert.equal(followRedirect(redirects, 'a/REQ-1'), 'a/REQ-1', '基準より前の付け替えは効かない');
     assert.equal(followRedirect(redirects, 'b/REQ-2'), 'z/REQ-2', '2 回動かした行は、最後の居場所までたどる');
     assert.equal(followRedirect(redirects, 'nothing/REQ-9'), 'nothing/REQ-9', '付け替えが無ければそのまま');
     assert.equal(followRedirect(sourceRedirects(events, -1), 'a/REQ-1'), 'x/REQ-1', '位置 -1 は全部');
+  });
+
+  it('sourceRedirects: A → B のあとに別の行が C → A と入っても、元の A の行は B にある (後から A に入った行へは付け替えない)', () => {
+    const redirects = sourceRedirects([moveRow('a/REQ-1', 'b/REQ-1'), moveRow('c/REQ-1', 'a/REQ-1')], -1);
+    assert.equal(followRedirect(redirects, 'a/REQ-1'), 'b/REQ-1', '元の A の行は B へ動いたまま');
+    assert.equal(followRedirect(redirects, 'c/REQ-1'), 'a/REQ-1', '元の C の行は A にある');
+    assert.equal(followRedirect(redirects, 'b/REQ-1'), 'b/REQ-1', '付け替えの元になっていない id はそのまま');
+  });
+
+  it('sourceRedirects: 行の入れ替え (A → T、B → A、T → B) は、2 行とも相手のいた場所へ届く', () => {
+    const swap: AgreementEvent[] = [moveRow('a/REQ-1', 't/REQ-1'), moveRow('b/REQ-1', 'a/REQ-1'), moveRow('t/REQ-1', 'b/REQ-1')];
+    const redirects = sourceRedirects(swap, -1);
+    assert.equal(followRedirect(redirects, 'a/REQ-1'), 'b/REQ-1');
+    assert.equal(followRedirect(redirects, 'b/REQ-1'), 'a/REQ-1');
+    // 途中までなら、途中の居場所 (記録の順に当てる)
+    assert.equal(followRedirect(sourceRedirects(swap.slice(0, 2), -1), 'a/REQ-1'), 't/REQ-1');
+    assert.equal(followRedirect(sourceRedirects(swap.slice(0, 2), -1), 'b/REQ-1'), 'a/REQ-1');
+  });
+
+  it('sourceRedirects: 連鎖 (A → B → C) と、間に別の行の付け替えが挟まる場合も、id ごとに今の居場所を求める', () => {
+    const events: AgreementEvent[] = [moveRow('a/REQ-1', 'b/REQ-1'), moveRow('x/REQ-9', 'y/REQ-9'), moveRow('b/REQ-1', 'c/REQ-1'), moveRow('c/REQ-1', 'd/REQ-1')];
+    const redirects = sourceRedirects(events, -1);
+    assert.equal(followRedirect(redirects, 'a/REQ-1'), 'd/REQ-1');
+    assert.equal(followRedirect(redirects, 'x/REQ-9'), 'y/REQ-9');
+    assert.equal(followRedirect(redirects, 'y/REQ-9'), 'y/REQ-9');
   });
 
   it('sourceRedirects: 元の場所へ戻した行も、対応が輪にならない (後の行が勝つ)', () => {
