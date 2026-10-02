@@ -10,7 +10,8 @@
 // P4 ○ の kind (core/Role.ts の formCheck): 自分の接頭辞の決まりの行が 1 つ以上ある。その接頭辞の ID を最初のセルに持つ
 //    行が、決まりの表でない表にあれば違反
 // P5 図が要る kind: ```mermaid のコードフェンスが 1 つ以上ある
-// P6 ○ の kind は 100 行 (requirements は 150 行)。他の kind の上限は、雛形の line_limit を DocTemplateCheck が見る
+// P6 ○ の kind は 100 行 (requirements は 150 行)。行数の違反は、この検査が 1 件だけ出す (DocTemplateCheck は、新しい構成の
+//    ○ の kind の人の文書に、雛形の line_limit による検査を当てない)
 // P7 まとまり (person/design/<c>/) の本文の合計 15,000 字、全体共通 (要件 + design/shared/) の合計 30,000 字を超えたら警告。
 //    Igeta の版が SIZE_LIMIT_VIOLATION_FROM_MAJOR 以上なら違反 (検査の強さは構成の実在と Igeta の版だけで決まり、利用 repo の
 //    設定では変えられない。ADR-0005。RoleBoundaryCheck の旧い構成の切替と同じ作り)。版を読めなければ検査不能
@@ -177,7 +178,7 @@ export class PersonFormCheck implements Check {
         }
       }
       const limit = kind === 'requirements' ? REQUIREMENTS_LINE_LIMIT : PERSON_LINE_LIMIT;
-      const total = countLines(doc.lines, doc.kinds);
+      const total = countLines(doc.lines);
       if (total > limit) {
         add(1, `人の文書の行数上限 (${limit}) を超えている: ${total} 行 (作り方の詳細は ai/ の文書へ移し、人が決める行だけを残す)`);
       }
@@ -386,12 +387,9 @@ function checkOwnRows(tables: readonly MarkdownTable[], prefixes: readonly strin
   }
 }
 
-/** 行数。frontmatter も数える。末尾の改行 1 つと AUTOGEN 区間は数えない (DocTemplateCheck の行数上限と同じ数え方) */
-function countLines(lines: readonly string[], kinds: readonly LineKind[]): number {
-  let total = lines.length;
-  if (lines[lines.length - 1] === '') total -= 1;
-  for (const kind of kinds) if (kind === 'autogen') total -= 1;
-  return total;
+/** 行数 (P6)。frontmatter も数える。末尾の改行 1 つは数えない */
+function countLines(lines: readonly string[]): number {
+  return lines[lines.length - 1] === '' ? lines.length - 1 : lines.length;
 }
 
 /** Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例と、画像のリンクは数えない */

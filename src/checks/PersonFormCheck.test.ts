@@ -14,6 +14,7 @@ import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
 import { PLACEMENTS } from '../core/Role.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
+import { DocTemplateCheck } from './DocTemplateCheck.js';
 import type { PersonFormTemplate } from './PersonFormCheck.js';
 import { PersonFormCheck } from './PersonFormCheck.js';
 
@@ -445,9 +446,19 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     assertOnly(runWith(map, titled('map', 'map', ['![地図](./map.png)', ''])), map, 1, /^図が 1 枚も無い \(kind: map/, '図だけの kind (地図)');
   });
 
-  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 → 違反', () => {
-    assertOnly(runWith(BOOKING, padTo(booking([...MERMAID, ...decisions('BF')]), 101)), BOOKING, 1, /^人の文書の行数上限 \(100\) を超えている: 101 行/, '○ の kind');
-    assertOnly(runWith(REQUIREMENTS, padTo(formLines(docOf('requirements')), 151)), REQUIREMENTS, 1, /^人の文書の行数上限 \(150\) を超えている: 151 行/, 'requirements');
+  it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 → 違反。template-check の全体で、行数の違反は 1 件だけ', () => {
+    const long = padTo(booking([...MERMAID, ...decisions('BF')]), 101);
+    const longRequirements = padTo(formLines(docOf('requirements')), 151);
+    assertOnly(runWith(BOOKING, long), BOOKING, 1, /^人の文書の行数上限 \(100\) を超えている: 101 行/, '○ の kind');
+    assertOnly(runWith(REQUIREMENTS, longRequirements), REQUIREMENTS, 1, /^人の文書の行数上限 \(150\) を超えている: 151 行/, 'requirements');
+
+    // 雛形の line_limit (業務フローは 100・要件は 150) による検査も含む template-check の全体で、文書ごとに行数の違反は 1 件
+    const root = makeRoot();
+    writeValidTree(root);
+    write(root, `docs/${BOOKING}`, long);
+    write(root, `docs/${REQUIREMENTS}`, longRequirements);
+    const lineViolations = new DocTemplateCheck().run({ targetRoot: root, igetaRoot: IGETA_ROOT }).filter((violation) => violation.message.includes('行数上限'));
+    assert.deepEqual(lineViolations.map((violation) => posix(violation.file)).sort(), [`docs/${BOOKING}`, `docs/${REQUIREMENTS}`].sort());
   });
 
   it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント / インラインコードの中に書いたコメントの始まりの記号 → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
