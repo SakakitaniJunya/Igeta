@@ -182,6 +182,15 @@ describe('ADR-0008 決定 1 の表: パスで決まる判定', () => {
     assert.equal(result.reasons.find((r) => r.path === 'src/checks/Check.ts')?.rule, 'humanPaths: src/checks/**');
   });
 
+  it('humanPaths は足すことだけができる: 同じ PR で設定から外して、守られていたパスを変えても、.igeta.json の変更として human', async () => {
+    const result = await change((repo) => {
+      append(repo, 'src/checks/Check.ts'); // humanPaths の src/checks/** が守るパス
+      repo.write('.igeta.json', `${JSON.stringify({ humanPaths: GATE_GLOBS.filter((glob) => glob !== 'src/checks/**') })}\n`); // その glob を外す
+    });
+    assert.equal(result.verdict, 'human');
+    assert.deepEqual(result.reasons, [{ path: '.igeta.json', rule: '門を決めるファイル' }]); // 外した後の設定では src/checks/ は守られていない
+  });
+
   it('humanPaths を設定していない repo では src/checks/ の変更も ai', async () => {
     const result = await change((repo) => append(repo, 'src/checks/Check.ts'), without('.igeta.json'));
     assert.equal(result.verdict, 'ai');
@@ -331,6 +340,21 @@ describe('検査不能: ai を返さない場合', () => {
       append(repo, 'src/index.ts');
       repo.commit();
       assert.match(cannotCheckMessage(await judge(repo)), /\.igeta\.json を使えないので判定できない/, name);
+    }
+  });
+
+  it('git が PATH に無いと検査不能 (git を動かせないのに ai を返さない)', async () => {
+    const repo = TestRepo.create(BASE);
+    repo.branch();
+    append(repo, 'docs/person/requirements/01-requirements.md');
+    repo.commit();
+    const saved = process.env['PATH'];
+    process.env['PATH'] = tempDir('igeta-approval-scope-nogit-bin-');
+    try {
+      assert.match(cannotCheckMessage(await judge(repo)), /^git を実行できない: .*ENOENT/);
+    } finally {
+      if (saved === undefined) delete process.env['PATH'];
+      else process.env['PATH'] = saved;
     }
   });
 
