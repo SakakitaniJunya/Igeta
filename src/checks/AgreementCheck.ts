@@ -14,13 +14,13 @@
 
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import type { RebasedFingerprint } from '../core/AgreementLedger.js';
 import {
   CHAPTER_FINGERPRINT_TARGET,
   exportNormalizationVersion,
   findBaseline,
   findLedgerDirs,
   followRedirect,
+  matchesRecorded,
   readLedger,
   rebaseKey,
   rebaseTable,
@@ -65,22 +65,6 @@ function sectionHeadingAt(doc: SourceDoc, line: number): string | null {
 }
 
 const stripNumber = (heading: string): string => heading.replace(LEADING_NUMBER_RE, '');
-
-/**
- * 保存値と一致するか。一致 = 基準の行の版で今の本文を計算して保存値と同じ、または直近の fingerprint-rebase が
- * その保存値に対応づけた値と、その表の版で計算した今の本文が同じ。表の版の実装が無ければ確かめられない。
- */
-function matchesRecorded(
-  stored: string,
-  storedVersion: number,
-  compute: (version: number) => string,
-  rebased: RebasedFingerprint | undefined,
-): boolean | 'unverifiable' {
-  if (compute(storedVersion) === stored) return true;
-  if (rebased === undefined) return false;
-  if (!isImplementedNormalizationVersion(rebased.toVersion)) return 'unverifiable';
-  return compute(rebased.toVersion) === rebased.to;
-}
 
 function matchesRule(rules: readonly ReagreementRule[], doc: SourceDoc, heading: string | null): boolean {
   return rules.some((rule) => {

@@ -7,13 +7,20 @@ import assert from 'node:assert/strict';
 import { AgreementCheck } from '../checks/AgreementCheck.js';
 import { ProvenanceCheck } from '../checks/ProvenanceCheck.js';
 import { ledgerPathFor } from '../core/AgreementLedger.js';
+import { ExitCode } from '../core/ExitCode.js';
 import { Report } from '../core/Report.js';
 import { sidecarPathFor } from '../core/ProvenanceSidecar.js';
+import { buildSourceIndex } from '../core/SourceResolver.js';
+import { parseManifest } from '../export/Manifest.js';
+import { approveAgreement } from './AgreementApproveModule.js';
+import { appendAgreementRecord, prepareAgreementRecord } from './AgreementRecordModule.js';
 import { rebaseFingerprints } from './FingerprintRebaseModule.js';
+import { accept } from './ProvenanceAcceptModule.js';
+import { capture } from './ProvenanceCaptureModule.js';
 import { moveSourceRows } from './SourceMoveModule.js';
 import type { SourceMove } from './SourceMoveModule.js';
 import {
-  ANCHOR_ROW, ANCHOR_SECTION, ROW_101, ROW_102, ROW_FROM, SECTION_FROM, SUBMISSION,
+  ANCHOR_ROW, ANCHOR_SECTION, CHAPTER, MANIFEST, ROW_101, ROW_102, ROW_FROM, SECTION_FROM, SUBMISSION,
   cleanupWorkspaces, makeLegacyRepo, parseLedgerLines, readEntries, readLedgerBytes, relocate, reservationDoc, write,
 } from './rebaseFixture.test-support.js';
 import type { LegacyRepo } from './rebaseFixture.test-support.js';
@@ -44,11 +51,11 @@ function runAgreement(root: string): { report: Report; warnings: readonly string
   return { report, warnings: check.warnings };
 }
 
-/** 分割した後の文書 (id reservation-flow-2)。 */
-function splitDoc(options: { row?: string; section?: string } = {}): string {
+/** 分割した後の文書 (id reservation-flow-2)。kind を変えると、再合意の規則 (既定は requirements) の外の文書になる。 */
+function splitDoc(options: { row?: string; section?: string; kind?: string } = {}): string {
   const row = options.row ?? ROW_101;
   return [
-    '---', 'id: reservation-flow-2', 'kind: requirements', 'status: fixed', 'depends_on: []', '---', '',
+    '---', 'id: reservation-flow-2', `kind: ${options.kind ?? 'requirements'}`, 'status: fixed', 'depends_on: []', '---', '',
     '# 要件 (分割)', '',
     '## 1. 機能要件 (続き)', '',
     '| ID | 要件 | 備考 |', '|---|---|---|',
@@ -313,5 +320,120 @@ describe('指されていない行の移動', () => {
     assert.match(result.kept[0]?.detail ?? '', /指す由来も台帳も無い/);
     assert.equal(readFileSync(sidecarPathFor(repo.chapterPath), 'utf8'), sidecarBytes);
     assert.equal(readLedgerBytes(repo), ledgerBytes);
+  });
+});
+
+describe('source-move は、台帳自身の保存値が移した行と一致するときだけ書く (再合意を外す抜け道にしない)', () => {
+  const EDITED_ROW = ROW_101.replace('30 日前', '45 日前');
+  const NOT_COVERED = 'business-flow'; // 再合意の規則 (既定は requirements) に当たらない kind
+
+  /** 承認の後に行を書き換えた repo: 再合意が要る状態。由来は取り直して承認し直してある (由来の保存値は今の行と一致する)。 */
+  function editedAfterApproval(): LegacyRepo {
+    const repo = makeLegacyRepo();
+    write(repo.root, 'docs/requirements/reservation.md', reservationDoc({ row101: EDITED_ROW }));
+    const sourceIndex = buildSourceIndex(repo.root, repo.docsDir);
+    assert.equal(capture({ chapterAbsPath: repo.chapterPath, targetRoot: repo.root, anchor: ANCHOR_ROW, source: { kind: 'from', id: ROW_FROM }, by: 'agent:writer', sourceIndex }).kind, 'ok');
+    assert.deepEqual(accept({ targetRoot: repo.root, chapterAbsPath: repo.chapterPath, chapterRelPath: CHAPTER, target: { kind: 'anchor', anchor: ANCHOR_ROW }, by: 'reviewer@example.com', sourceIndex }).violations, []);
+    return repo;
+  }
+  const sourceMoves = (repo: { submissionDir: string }): Record<string, unknown>[] => parseLedgerLines(readLedgerBytes(repo)).filter((r) => r['event'] === 'source-move');
+
+  it('承認の後に書き換えて取り直した由来の行を、規則に当たらない文書へ移しても、台帳に書かず、再合意が要るまま (抜け道にならない)', () => {
+    const repo = editedAfterApproval();
+    const before = runAgreement(repo.root);
+    assert.equal(before.report.exitCode, ExitCode.Violation, '前提: 承認の後に行を変えたので、再合意が要る');
+    assert.match(before.report.format(), /再合意が要る.*reservation-flow\/REQ-101/);
+
+    write(repo.root, 'docs/requirements/reservation.md', reservationDoc().replace(`${ROW_101}\n`, ''));
+    write(repo.root, 'docs/requirements/reservation-flow-2.md', splitDoc({ row: EDITED_ROW, kind: NOT_COVERED }));
+    const ledgerBytes = readLedgerBytes(repo);
+    const result = move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+
+    assert.equal(readLedgerBytes(repo), ledgerBytes, '台帳の保存値と一致しないので、source-move を書かない');
+    assert.deepEqual(sourceMoves(repo), []);
+    assert.equal(result.moved.some((i) => i.file.endsWith('agreements.ledger.jsonl')), false);
+    assert.match(result.kept.filter((i) => i.file.endsWith('agreements.ledger.jsonl')).map((i) => i.detail).join('\n'), /台帳の保存値と一致しない/);
+    const after = runAgreement(repo.root);
+    assert.equal(after.report.exitCode, ExitCode.Violation, after.report.format());
+    assert.match(after.report.format(), /再合意が要る.*正本が無くなった.*reservation-flow\/REQ-101/);
+  });
+
+  it('対照: 規則に当たらない文書へ移した行でも、台帳の保存値と一致していれば (本文を変えていない) source-move を書き、再合意は要らない', () => {
+    const repo = makeLegacyRepo();
+    write(repo.root, 'docs/requirements/reservation.md', reservationDoc().replace(`${ROW_101}\n`, ''));
+    write(repo.root, 'docs/requirements/reservation-flow-2.md', splitDoc({ kind: NOT_COVERED }));
+    move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+    assert.equal(sourceMoves(repo).length, 1);
+    assert.equal(runAgreement(repo.root).report.exitCode, ExitCode.Ok);
+  });
+
+  it('基準の提出の保存値が一致しなければ書かない。基準が、一致する提出へ進んだあとで同じ移動を渡すと書く (基準の提出以降の全部が一致したときだけ)', () => {
+    const repo = editedAfterApproval();
+    // 書き換えた後の行を、版 1.1 として提出する (1.0 は承認済みの基準のまま。1.1 の保存値は今の行と一致する)
+    write(repo.root, `${SUBMISSION}/deliverable.json`, JSON.stringify({ ...JSON.parse(MANIFEST), version: '1.1' }));
+    const manifest = parseManifest(join(repo.root, `${SUBMISSION}/deliverable.json`));
+    const prepared = prepareAgreementRecord({ manifest, targetRoot: repo.root, docsDir: repo.docsDir });
+    assert.equal(prepared.kind, 'ok');
+    if (prepared.kind !== 'ok') return;
+    assert.equal(appendAgreementRecord(manifest, prepared.event), null);
+
+    write(repo.root, 'docs/requirements/reservation.md', reservationDoc().replace(`${ROW_101}\n`, ''));
+    write(repo.root, 'docs/requirements/reservation-flow-2.md', splitDoc({ row: EDITED_ROW, kind: NOT_COVERED }));
+    const ledgerBytes = readLedgerBytes(repo);
+    move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+    assert.equal(readLedgerBytes(repo), ledgerBytes, '基準 (1.0) の保存値が一致しないので、1.1 が一致していても書かない');
+    assert.equal(runAgreement(repo.root).report.exitCode, ExitCode.Violation);
+
+    // 1.1 を承認すると基準が 1.1 に進む。1.1 の保存値は一致するので、書ける
+    assert.equal(approveAgreement({ submissionDir: repo.submissionDir, version: '1.1', by: '発注側の責任者' }).kind, 'ok');
+    move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+    assert.equal(sourceMoves(repo).length, 1);
+    const approved = runAgreement(repo.root);
+    assert.equal(approved.report.exitCode, ExitCode.Ok, approved.report.format());
+  });
+
+  it('fingerprint-rebase の対応表を通しても、対応づけた値と移した行が一致しなければ書かない (載せ替え済みの台帳でも抜け道にならない)', () => {
+    const repo = makeLegacyRepo();
+    rebaseFingerprints({ targetRoot: repo.root, docsDir: repo.docsDir, dir: repo.docsDir, now: NOW });
+    write(repo.root, 'docs/requirements/reservation.md', reservationDoc({ row101: EDITED_ROW }));
+    const sourceIndex = buildSourceIndex(repo.root, repo.docsDir);
+    capture({ chapterAbsPath: repo.chapterPath, targetRoot: repo.root, anchor: ANCHOR_ROW, source: { kind: 'from', id: ROW_FROM }, by: 'agent:writer', sourceIndex });
+    accept({ targetRoot: repo.root, chapterAbsPath: repo.chapterPath, chapterRelPath: CHAPTER, target: { kind: 'anchor', anchor: ANCHOR_ROW }, by: 'reviewer@example.com', sourceIndex });
+    write(repo.root, 'docs/requirements/reservation.md', reservationDoc().replace(`${ROW_101}\n`, ''));
+    write(repo.root, 'docs/requirements/reservation-flow-2.md', splitDoc({ row: EDITED_ROW, kind: NOT_COVERED }));
+    const ledgerBytes = readLedgerBytes(repo);
+    move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+    assert.equal(readLedgerBytes(repo), ledgerBytes);
+    assert.equal(runAgreement(repo.root).report.exitCode, ExitCode.Violation);
+  });
+
+  it('保存値の版の実装が無い台帳 (この Igeta より新しい版) には、確かめられないので書かない', () => {
+    const repo = makeLegacyRepo();
+    const [exportLine, approveLine] = repo.ledgerLines;
+    writeFileSync(ledgerPathFor(repo.submissionDir), `${JSON.stringify({ ...JSON.parse(exportLine ?? ''), normalizationVersion: 99 })}\n${approveLine}\n`);
+    moveRowOut(repo);
+    const ledgerBytes = readLedgerBytes(repo);
+    const result = move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+    assert.equal(readLedgerBytes(repo), ledgerBytes);
+    assert.match(result.kept.filter((i) => i.file.endsWith('agreements.ledger.jsonl')).map((i) => i.detail).join('\n'), /版 99 の実装が無く確かめられない/);
+  });
+
+  it('台帳ごとに確かめる: 保存値が一致する台帳にだけ書き、一致しない台帳 (別の提出物) には書かない', () => {
+    const repo = makeLegacyRepo();
+    // 別の提出物 (別の台帳)。同じ行を指すが、その提出のときの行は今の行と違う
+    const otherDir = 'docs/delivery/second-document';
+    const exportLine = JSON.stringify({
+      event: 'export', version: '1.0', date: '2026-01-10', manifest: 'deliverable.json', omitSections: ['関連'],
+      chapters: [{ file: '01.md', chapterFingerprint: 'sha256:other', sources: [{ from: ROW_FROM, fingerprint: 'sha256:recorded-when-the-row-was-different' }] }],
+    });
+    const approveLine = JSON.stringify({ event: 'approve', targetVersion: '1.0', approvedBy: '別の発注側', approvedAt: '2026-01-12' });
+    const otherLedger = write(repo.root, `${otherDir}/agreements.ledger.jsonl`, `${exportLine}\n${approveLine}\n`);
+    const otherBefore = readFileSync(otherLedger, 'utf8');
+
+    moveRowOut(repo);
+    const result = move(repo, [{ from: ROW_FROM, to: NEW_ROW_FROM }]);
+    assert.equal(sourceMoves(repo).length, 1, '一致する提出物の台帳には書く');
+    assert.equal(readFileSync(otherLedger, 'utf8'), otherBefore, '一致しない台帳には書かない');
+    assert.match(result.kept.filter((i) => i.file === `${otherDir}/agreements.ledger.jsonl`).map((i) => i.detail).join('\n'), /台帳の保存値と一致しない/);
   });
 });

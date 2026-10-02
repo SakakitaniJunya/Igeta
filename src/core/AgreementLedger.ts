@@ -11,6 +11,7 @@
 
 import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isImplementedNormalizationVersion } from './Fingerprint.js';
 import type { Violation } from './Report.js';
 
 export const LEDGER_FILENAME = 'agreements.ledger.jsonl';
@@ -349,4 +350,22 @@ export function rebaseTable(events: readonly AgreementEvent[], afterIndex: numbe
     for (const entry of event.entries) table.set(rebaseKey(entry.file, entry.target, entry.from), { to: entry.to, toVersion: event.toVersion });
   }
   return table;
+}
+
+/**
+ * 台帳の保存値が、今の本文と一致するか (agreement-check の「変わっていない」の判定。行を移す側も同じ判定で確かめる)。
+ * 一致 = 提出の行の版 (storedVersion) で今の本文を計算した値が保存値と同じ、または直近の fingerprint-rebase が
+ * その保存値に対応づけた値 (rebased) と、その表の版で計算した今の本文が同じ。
+ * 表の版の実装が無ければ確かめられない ('unverifiable')。storedVersion の実装は呼び出し側が先に確かめる。
+ */
+export function matchesRecorded(
+  stored: string,
+  storedVersion: number,
+  compute: (version: number) => string,
+  rebased: RebasedFingerprint | undefined,
+): boolean | 'unverifiable' {
+  if (compute(storedVersion) === stored) return true;
+  if (rebased === undefined) return false;
+  if (!isImplementedNormalizationVersion(rebased.toVersion)) return 'unverifiable';
+  return compute(rebased.toVersion) === rebased.to;
 }
