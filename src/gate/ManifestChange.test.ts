@@ -75,6 +75,29 @@ describe('packageJsonGateChanges', () => {
     assert.deepEqual(packageJsonGateChanges(before, manifest({ overrides: { lodash: '4.17.21' } })), []);
   });
 
+  it('別名で入れた igeta (キーが違っても指定が igeta を指す) の追加・変更・キーの付け替えも igeta-dependency', () => {
+    const before = manifest();
+    const withAlias = (spec: string): string =>
+      manifest({ devDependencies: { igeta: 'github:SakakitaniJunya/Igeta#v0.4.0', typescript: '^5.9.3', 'igeta-old': spec } });
+    assert.deepEqual(packageJsonGateChanges(before, withAlias('github:SakakitaniJunya/Igeta#v0.1.0')), ['igeta-dependency']);
+    assert.deepEqual(packageJsonGateChanges(before, withAlias('npm:igeta@0.1.0')), ['igeta-dependency']);
+    assert.deepEqual(
+      packageJsonGateChanges(withAlias('github:SakakitaniJunya/Igeta#v0.1.0'), withAlias('github:SakakitaniJunya/Igeta#v0.2.0')),
+      ['igeta-dependency'],
+    );
+    // 同じ指定のまま、キーだけ付け替える
+    assert.deepEqual(
+      packageJsonGateChanges(before, manifest({ devDependencies: { 'my-igeta': 'github:SakakitaniJunya/Igeta#v0.4.0', typescript: '^5.9.3' } })),
+      ['igeta-dependency'],
+    );
+  });
+
+  it('名前に igeta を含むだけの別のパッケージ (eslint-plugin-igeta・igeta-foo) は igeta の依存ではない', () => {
+    const before = manifest();
+    const other = manifest({ devDependencies: { igeta: 'github:SakakitaniJunya/Igeta#v0.4.0', typescript: '^5.9.3', 'eslint-plugin-igeta': '^1.0.0', 'igeta-foo': '^2.0.0', my_igeta: '1' } });
+    assert.deepEqual(packageJsonGateChanges(before, other), []);
+  });
+
   it('scripts と igeta の依存が同時に変わったら両方を返す', () => {
     const after = manifest({ scripts: { build: 'echo' }, devDependencies: { typescript: '^5.9.3' } });
     assert.deepEqual(packageJsonGateChanges(manifest(), after), ['scripts', 'igeta-dependency']);

@@ -1,13 +1,17 @@
 // package.json とロックファイルの変更のうち、門を動かすものだけを見分ける (ADR-0008 決定 1)。
 // 他の依存だけが変わった package.json・lock は人の承認を要しない (`ai`)。
 //
-// - package.json: 前後で読んで比べる。`scripts` が変わった / `igeta` の依存が変わった
+// - package.json: 前後で読んで比べる。`scripts` が変わった / `igeta` の依存 (別名で入れたものも) が変わった
 // - ロックファイル: `igeta` の行 (その行と、その下にぶら下がる字下げの深い行) の組が変わった
 //
 // 比べるのは意味であって見た目ではない。キーの並び替えや字下げの整形だけの変更は変更とみなさない。
 
 /** 依存を書く欄。`igeta` の版を決めうるものを全部見る (どれかに書き替えて外し替えても門が動く)。 */
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const;
+
+// `igeta` が名前として出てくる箇所 (`igeta-foo`・`eslint-plugin-igeta`・`my_igeta` は別の名前)。大文字小文字は問わない
+// (git の依存は `.../Igeta.git#<sha>` と書く)。package.json の依存の項目と、ロックファイルの行の両方で使う
+const IGETA_NAME = /(?<![A-Za-z0-9_-])igeta(?![A-Za-z0-9_-])/i;
 
 export type PackageJsonChange = 'scripts' | 'igeta-dependency' | 'unreadable';
 
@@ -33,13 +37,24 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/**
+ * 欄の項目のうち igeta に関わるもの (キーか指定に igeta の名前が出るもの)。別名 (`"igeta-old": "github:…/Igeta#v0.1.0"`)
+ * で igeta の版を差し替えても拾う。
+ */
+function igetaEntries(section: unknown): JsonObject {
+  if (!isObject(section)) return {};
+  return Object.fromEntries(
+    Object.entries(section).filter(([key, value]) => IGETA_NAME.test(key) || IGETA_NAME.test(canonical(value))),
+  );
+}
+
 function igetaSpecs(manifest: JsonObject): string {
   const specs: Record<string, unknown> = {};
-  for (const field of DEPENDENCY_FIELDS) specs[field] = childOf(manifest[field], 'igeta');
+  for (const field of DEPENDENCY_FIELDS) specs[field] = igetaEntries(manifest[field]);
   // npm の overrides・yarn の resolutions・pnpm の overrides は、依存の欄に手を付けずに igeta の版を差し替えられる
-  specs['overrides'] = childOf(manifest['overrides'], 'igeta');
-  specs['resolutions'] = childOf(manifest['resolutions'], 'igeta');
-  specs['pnpm.overrides'] = childOf(childOf(manifest['pnpm'], 'overrides'), 'igeta');
+  specs['overrides'] = igetaEntries(manifest['overrides']);
+  specs['resolutions'] = igetaEntries(manifest['resolutions']);
+  specs['pnpm.overrides'] = igetaEntries(childOf(manifest['pnpm'], 'overrides'));
   return canonical(specs);
 }
 
@@ -79,10 +94,6 @@ export const TEXT_LOCKFILES: readonly string[] = [
 
 /** repo 直下のロックファイル (バイナリ)。行を読めないので、変わったら igeta の行が変わったか見分けられない。 */
 export const BINARY_LOCKFILES: readonly string[] = ['bun.lockb'];
-
-// `igeta` が名前として出てくる行 (`igeta-foo` や `my_igeta` は別の名前)。大文字小文字は問わない
-// (git の依存は `.../Igeta.git#<sha>` と書く)
-const IGETA_NAME = /(?<![A-Za-z0-9_-])igeta(?![A-Za-z0-9_-])/i;
 
 const indentOf = (line: string): number => line.length - line.trimStart().length;
 

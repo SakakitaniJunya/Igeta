@@ -33,8 +33,13 @@ describe('package.json: scripts と igeta の依存だけが門を動かす', ()
     );
   });
 
-  it('overrides で igeta の版を差し替えるのも human', async () => {
+  it('overrides で igeta の版を差し替えるのも、別名 (igeta-old) で別の版の igeta を入れるのも human', async () => {
     assert.equal((await pkg(packageJsonWith({ overrides: { igeta: 'github:evil/Igeta#v0.1.0' } }))).verdict, 'human');
+    const alias = await pkg(
+      packageJsonWith({ devDependencies: { igeta: 'github:SakakitaniJunya/Igeta#v0.4.0', typescript: '^5.9.3', 'igeta-old': 'github:SakakitaniJunya/Igeta#v0.1.0' } }),
+    );
+    assert.equal(alias.verdict, 'human');
+    assert.deepEqual(alias.reasons, [{ path: 'package.json', rule: 'package.json の igeta の依存が変わった' }]);
   });
 
   it('他の依存だけの変更は ai (追加・版の変更・削除)', async () => {
