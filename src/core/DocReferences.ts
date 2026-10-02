@@ -2,7 +2,9 @@
 // (docs/design/test/specs/04-doc-graph.md の G1〜G4) が使う。
 //
 // 参照は 4 種 (G2):
-//   (a) frontmatter の参照の項目: depends_on・relates_to・supersedes・superseded_by・canonical_for (行は項目の行)
+//   (a) frontmatter の参照の項目: depends_on・relates_to・supersedes・superseded_by・canonical_for (行は項目の行)。
+//       値は、行末のコメント (空白と `#` から後ろ) を除いて読む。索引を作るときの読み方 (DocGraphCheck の frontmatter の読み) と
+//       同じ規則で、`#` の後ろに空白が無くても捨てる。core/Frontmatter.ts は `#` の後ろに空白を要る別の規則なので、使わない
 //   (b) リンクと画像 `[…](行き先)`・`![…](行き先)`
 //   (c) 参照の形のリンクの定義 `[名前]: 行き先` (脚注の定義 `[^名前]:` は除く)
 //   (d) 修飾 ID `<doc-id>/接頭辞-nnn` の doc-id
@@ -25,15 +27,15 @@ export interface FrontmatterReference {
 }
 
 /**
- * frontmatter の参照の項目を、行番号つきで拾う。書き方は core/Frontmatter.ts と同じ: インラインの配列 `[a, b]`・
- * ブロックの配列 (`- a`)・1 つの値。行末の `# コメント` は値に含めない。bodyStart は frontmatter の次の行 (0 始まり)。
+ * frontmatter の参照の項目を、行番号つきで拾う。書き方は、インラインの配列 `[a, b]`・ブロックの配列 (字下げした `- a`)・
+ * 1 つの値。行末のコメント (空白と `#` から後ろ) は値に含めない。bodyStart は frontmatter の次の行 (0 始まり)。
  * frontmatter が無ければ (bodyStart が 0) 空。
  */
 export function scanFrontmatterReferences(lines: readonly string[], bodyStart: number): readonly FrontmatterReference[] {
   const references: FrontmatterReference[] = [];
   let blockKey: string | null = null;
   for (let i = 1; i < bodyStart - 1; i += 1) {
-    const raw = (lines[i] ?? '').replace(/\s+#\s.*$/, '');
+    const raw = (lines[i] ?? '').replace(/\s+#.*$/, '');
     const item = /^\s+-\s+(.*)$/.exec(raw);
     if (item !== null && blockKey !== null) {
       const id = unquote((item[1] ?? '').trim());

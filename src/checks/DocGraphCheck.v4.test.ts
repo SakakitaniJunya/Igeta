@@ -517,14 +517,21 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     assert.deepEqual(result.violations, [], result.detail);
   });
 
-  it('[TST-102] ai/specs/ の文書は、別の ai/specs/ の文書を経ても person/ に届く。depends_on に external: が混ざってもよい', async () => {
+  it('[TST-102] ai/specs/ の文書は、別の ai/specs/ の文書を経ても person/ に届く。depends_on に external: が混ざっても、行末にコメントがあってもよい', async () => {
     const root = makeRoot();
     writeBase(root);
-    write(root, 'docs/ai/specs/shared/01-crosscutting.md', doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: ['map'] }));
+    // 行末のコメント (空白と # から後ろ) は、`#` の後ろに空白が無くても値に含めない。配列の 1 行ずつの形も同じ
+    write(
+      root,
+      'docs/ai/specs/shared/01-crosscutting.md',
+      doc('crosscutting', 'crosscutting', { arc42: 8, dependsOn: ['map'] }).flatMap((line) => (line === 'depends_on: [map]' ? ['depends_on:', '  - map #メモ'] : [line])),
+    );
     write(
       root,
       'docs/ai/specs/reservation/api/01-reserve.md',
-      doc('reservation-api', 'api-spec', { arc42: 5, context: 'reservation', dependsOn: ['crosscutting', 'external:x'] }),
+      doc('reservation-api', 'api-spec', { arc42: 5, context: 'reservation', dependsOn: ['crosscutting', 'external:x'] }).map((line) =>
+        line.startsWith('depends_on:') ? `${line}  #メモ` : line,
+      ),
     );
     const result = await checkedAfterConverge(root);
     assert.deepEqual(result.violations, [], result.detail);
@@ -593,24 +600,36 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     assert.ok(violations.some((line) => line.includes('[direction]')) && violations.some((line) => line.includes('[reach]')), violations.join('\n'));
   });
 
-  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)', async () => {
+  it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても同じ', async () => {
     const { person, ai } = ROLE_DOCS;
-    const cases: ReadonlyArray<readonly [how: How, linePrefix: string]> = [
-      ['depends_on', 'depends_on:'],
-      ['relates_to', 'relates_to:'],
-      ['link', `[${ai.dst.id}](`],
-      ['definition', `[ref-${ai.dst.id}]: `],
-      ['qualified-id', `${ai.dst.id}/REQ-001`],
+    const dependsOnLine = `depends_on: [${ai.dst.id}]`;
+    const cases: ReadonlyArray<{ readonly name: string; readonly lines: readonly string[]; readonly linePrefix: string }> = [
+      { name: 'depends_on', lines: refDoc(person.src, [ai.dst], ['depends_on']), linePrefix: 'depends_on:' },
+      { name: 'relates_to', lines: refDoc(person.src, [ai.dst], ['relates_to']), linePrefix: 'relates_to:' },
+      { name: '本文のリンク', lines: refDoc(person.src, [ai.dst], ['link']), linePrefix: `[${ai.dst.id}](` },
+      { name: '参照の形の定義', lines: refDoc(person.src, [ai.dst], ['definition']), linePrefix: `[ref-${ai.dst.id}]: ` },
+      { name: '修飾 ID', lines: refDoc(person.src, [ai.dst], ['qualified-id']), linePrefix: `${ai.dst.id}/REQ-001` },
+      // 行末のコメントは、索引を作るときと同じく、空白と # から後ろを捨てる。# の後ろに空白が無くても同じ
+      {
+        name: 'depends_on の行末のコメント',
+        lines: refDoc(person.src, [ai.dst], ['depends_on']).map((line) => (line === dependsOnLine ? `${line}  #メモ` : line)),
+        linePrefix: 'depends_on:',
+      },
+      {
+        name: '配列の 1 行ずつの形と行末のコメント',
+        lines: refDoc(person.src, [ai.dst], ['depends_on']).flatMap((line) => (line === dependsOnLine ? ['depends_on:', `  - ${ai.dst.id} #メモ`] : [line])),
+        linePrefix: `  - ${ai.dst.id}`,
+      },
     ];
-    for (const [how, linePrefix] of cases) {
+    for (const { name, lines, linePrefix } of cases) {
       const root = makeRoot();
-      write(root, person.src.path, refDoc(person.src, [ai.dst], [how]));
+      write(root, person.src.path, lines);
       write(root, ai.dst.path, plainDoc(ai.dst));
       const found = tagged(await checkedAfterConverge(root), 'direction');
-      assert.equal(found.length, 1, how);
-      assert.equal(found[0]?.file, person.src.path, how);
-      assert.equal(found[0]?.line, lineOf(root, person.src.path, linePrefix), how);
-      assert.match(found[0]?.message ?? '', /person の文書が ai の文書を指している/, how);
+      assert.equal(found.length, 1, name);
+      assert.equal(found[0]?.file, person.src.path, name);
+      assert.equal(found[0]?.line, lineOf(root, person.src.path, linePrefix), name);
+      assert.match(found[0]?.message ?? '', /person の文書が ai の文書を指している/, name);
     }
   });
 
