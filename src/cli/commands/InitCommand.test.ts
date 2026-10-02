@@ -189,9 +189,7 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     );
   });
 
-  // 決定台帳の一覧 (tentative-index) に person/ の仮・未決の行を並べるのは、文書のつながり (テスト仕様 04 の G6・T014) の仕事。
-  // この版 (T014 を取り込む前) の生成器は、それを並べない。T014 を取り込んだら、todo を外す。
-  it('[TST-102] 決定台帳: 生成区間に要件の最初の行が `未決` で 1 行ある。DEC・OPEN の表は見出しだけ', { todo: 'T014 待ち: G6 (tentative-index が person/ の仮・未決の行を並べる)' }, async () => {
+  it('[TST-102] 決定台帳: 生成区間に要件の最初の行が `未決` で 1 行ある。DEC・OPEN の表は見出しだけ', async () => {
     const root = makeRoot();
     assert.equal((await runInit(root, ['--owner', OWNER])).code, ExitCode.Ok);
     const lines = read(root, 'docs/person/decisions/01-decisions.md').split('\n');
