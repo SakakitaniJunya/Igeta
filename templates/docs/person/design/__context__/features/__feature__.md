@@ -8,6 +8,7 @@ status: draft
 canonical: true
 owners: [product, eng]
 created: YYYY-MM-DD
+context: <context>
 line_limit: 150
 depends_on: [<自分の context-map の id>]
 relates_to: []

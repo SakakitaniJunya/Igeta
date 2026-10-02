@@ -98,7 +98,7 @@ REQ-102 の正本は Igeta の要件定義書 02 §7。この節はその転記 
 | 提出物 | `client/delivery/<提出物名>/` に `deliverable.json` と章を置く。名前は提出物ごと |
 | 連番 | ファイル名先頭の `NN-` は同じフォルダの中の読む順。検査は連番を種類の判定に使わない。ADR は 4 桁 |
 | 索引 | 各フォルダの `README.md` と `docs/dependencies.md` は `igeta docs-graph` が作る。手で書かない |
-| frontmatter | `id` は文書の間で一意の kebab-case (連番を除いたファイル名と揃える)。`status` は、要件・設計・地図・機能ブリーフが draft・review・fixed・superseded、ADR が proposed・accepted・amended・superseded・rejected、提案書が draft・submitted・accepted・rejected。fixed の要件・機能ブリーフは `OPEN-nnn` を参照できない (未決の関門)。`depends_on` は上流の id (最上流の要件は、ヒアリング記録を `external:<名前>` で書く)。`context` は、まとまりの地図・約束・ドメインで必須 |
+| frontmatter | `id` は文書の間で一意の kebab-case (連番を除いたファイル名と揃える)。`status` は、要件・設計・地図・機能ブリーフが draft・review・fixed・superseded、ADR が proposed・accepted・amended・superseded・rejected、提案書が draft・submitted・accepted・rejected。fixed の要件・機能ブリーフは `OPEN-nnn` を参照できない (未決の関門)。`depends_on` は上流の id (最上流の要件は、ヒアリング記録を `external:<名前>` で書く)。`context` は、まとまりのフォルダ (`<c>/`) の下の文書で必須で、フォルダ名と同じ名前 (`shared/` の下は無記入か `shared`)。食い違えば違反 |
 | 行数 | `line_limit` は雛形の値。読み切れない量になったら、地図は図を削って詳細への入口を増やし、機能ブリーフは機能を分割する |
 
 ## 4. person の文書の型

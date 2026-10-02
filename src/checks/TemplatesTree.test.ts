@@ -47,6 +47,12 @@ function listTemplates(): readonly Template[] {
 
 const templates = listTemplates();
 
+/** frontmatter の context の値 (無ければ undefined) */
+function contextOf(lines: readonly string[]): string | undefined {
+  const meta = parseFrontmatter(lines);
+  return meta === null ? undefined : scalar(meta.data, 'context');
+}
+
 describe('雛形の木: 要件定義書 02 §7 の置き場所と一致する', () => {
   it('雛形を持つ kind は 45 (47 kind から、雛形なしの 2 kind を除く) で、kind ごとに 1 枚', () => {
     const kinds = templates.map((template) => template.kind);
@@ -63,6 +69,14 @@ describe('雛形の木: 要件定義書 02 §7 の置き場所と一致する', 
       if (PINNED_GUIDE_KINDS.has(kind)) continue;
       const concrete = relPath.replace('__year__', '2026');
       assert.ok(matchPlacement(kind, concrete).ok, `${relPath}: kind ${kind} の置き場所ではない (${placement.patterns.join(' / ')})`);
+    }
+  });
+
+  it('まとまりのフォルダ (__context__) の下の雛形は、frontmatter に context を持つ (フォルダ名と同じ名前に替えて使う。ADR-0004 決定 1)', () => {
+    const underContext = templates.filter((template) => template.relPath.split('/').includes('__context__'));
+    assert.ok(underContext.length >= 12, `まとまりのフォルダの下の雛形が少ない (${underContext.length})`);
+    for (const template of underContext) {
+      assert.equal(contextOf(template.lines), '<context>', `${template.relPath}: frontmatter に context: <context> が無い`);
     }
   });
 

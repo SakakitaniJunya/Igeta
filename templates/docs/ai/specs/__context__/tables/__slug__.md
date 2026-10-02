@@ -9,6 +9,7 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
+context: <context>          # このまとまり自身の名前 (kebab)。フォルダ名と同じにする
 depends_on: [domain-model, api-spec, data-management]
 relates_to: [nonfunctional]
 ---

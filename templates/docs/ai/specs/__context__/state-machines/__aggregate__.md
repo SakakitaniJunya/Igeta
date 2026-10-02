@@ -9,6 +9,7 @@ status: draft
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
+context: <context>          # このまとまり自身の名前 (kebab)。フォルダ名と同じにする
 depends_on: [aggregate-map, business-flow]
 relates_to: [sequence-spec, test-spec, messages]
 ---
