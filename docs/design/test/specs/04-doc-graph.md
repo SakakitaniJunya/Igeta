@@ -42,7 +42,7 @@ relates_to: [adr-0008-human-approval-scope, test-person-form]
 | G6 | 仮・未決の一覧: 決定台帳の `tentative-index` 区間に、`person/` の決まりの行で状態が `仮`・`未決` のものを並べる。列は `対象 ID` (修飾 ID)・`状態`・`場所` (`[パス:行](台帳からの相対パス#L行)`)・`決まり` (2 番目のセル)。順は、docs/ からのパスの文字コード順、同じ文書の中は行の順。`ai/`・`client/` からは集めない。0 件なら `_該当なし_`。決定台帳の手書きの表 (DEC・OPEN) と「仮置き」の検査は変えない (OPEN の表は、まだどの文書の行にもなっていない論点に使う) |
 | G7 | 索引の行に読み手の表示と凡例を出さない (フォルダが示す)。`docs/person/`・`docs/ai/`・`docs/client/` の README.md を作るときの目的の行は、決まった文 (下の表)。docs/README.md の入口の 3 行は生成区間の外にあり、`docs-graph` は書き換えない |
 | G8 | G1・G3・G4 は検査 (`docs-check`) のときだけ違反にする。索引を書くとき (`docs-graph`) は警告に留め、索引を書く (違反があっても索引は再生成できる) |
-| G9 | 置き場所: `.igeta.json` の `nonDocPaths` に当たるパスは置き場所の判定から外す。docs/ 直下にある、3 フォルダ・生成索引 2 本・`nonDocPaths` 以外のもの (文書でないファイルとフォルダを含む) は違反。frontmatter に Igeta の kind を書いた文書が `nonDocPaths` の下にあれば違反 |
+| G9 | 置き場所: `.igeta.json` の `nonDocPaths` に当たるパスは置き場所の判定から外す。docs/ 直下にある、3 フォルダ・生成索引 2 本・`nonDocPaths` 以外のもの (文書でないファイルとフォルダを含む) は違反。中身が全部 `nonDocPaths` に当たるフォルダは違反にしない。frontmatter に Igeta の kind を書いた文書が `nonDocPaths` の下にあれば違反 |
 
 | フォルダ | README.md の目的の行 (G7) |
 |---|---|

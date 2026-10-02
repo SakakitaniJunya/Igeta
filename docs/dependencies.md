@@ -36,7 +36,7 @@ graph LR
   class adr-0006-provenance-migration-handling adr
   adr-0007-fingerprint-link-normalization["ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える (proposed)"]
   class adr-0007-fingerprint-link-normalization adr
-  adr-0008-human-approval-scope["ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定で行い、強制の門は次の版にする (proposed)"]
+  adr-0008-human-approval-scope["ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする (proposed)"]
   class adr-0008-human-approval-scope adr
   adr-0009-kind-placement["ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける (proposed)"]
   class adr-0009-kind-placement adr
@@ -197,7 +197,7 @@ graph LR
 - **adr-0005-enforcement-rollout-and-canonical-sync** _(proposed)_ — [ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く](adr/0005-enforcement-rollout-and-canonical-sync.md)
 - **adr-0006-provenance-migration-handling** _(proposed)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](adr/0006-provenance-migration-handling.md)
 - **adr-0007-fingerprint-link-normalization** _(proposed)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](adr/0007-fingerprint-link-normalization.md)
-- **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定で行い、強制の門は次の版にする](adr/0008-human-approval-scope.md)
+- **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする](adr/0008-human-approval-scope.md)
 - **adr-0009-kind-placement** _(proposed)_ — [ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける](adr/0009-kind-placement.md)
 - **adr-0010-value-ownership** _(proposed)_ — [ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く](adr/0010-value-ownership.md)
 

@@ -38,7 +38,7 @@ relates_to: [adr-0009-kind-placement, test-doc-graph]
 | I6 | docs/ の下に README.md 以外の文書 (`.md`) が 1 本でもある repo では、何も書かずに `docs-migrate` を案内して終わる (I7 より先に見る) |
 | I7 | 既にあるファイルは上書きしない。`AGENTS.md` と `.github/CODEOWNERS` は I8 のとおり足りない分だけ足し、`package.json` は足りない項目だけ足す。ほかのファイルが 1 つでも重なれば、何も書かずに終わる |
 | I8 | 承認の割り当てのファイル (`AGENTS.md` と CODEOWNERS) は、`init` と `docs-migrate` が同じ作り手 (`ApprovalFilesModule`) で置く。`AGENTS.md`: 無ければ雛形から作る。あって `docs/person`・`docs/ai` に触れていなければ、入口の節を末尾に足す。`.github/CODEOWNERS`: 無ければ下の内容で作る。あれば、ADR-0008 決定 1 のパスのうち持ち主が付かないものの行だけを**先頭に**足す (後ろの行が勝つので、既にある割り当てを変えない)。足した後も持ち主が付かないパスが残るなら、何も書かずに終わる。repo 直下か `docs/` に CODEOWNERS があるときも、何も書かずに終わる (`.github/` に作ると、GitHub はそちらだけを読み、既にあるファイルが読まれなくなる) |
-| I9 | `AGENTS.md` の雛形の節は 4 つで、見出しは「読む順」「人の承認」「手引きの場所」「検査」。読む順: `docs/person/` が上流、`docs/ai/` が持ち場、`docs/client/` は提出物。人の承認: 変更を取り込む前に `igeta approval-scope --base origin/<宛先のブランチ>` で確かめ、`human` か検査不能なら AI は取り込まずに人へ渡す。`person/` の新しい決まりは状態 `仮` で起案する。手引きの場所: `node_modules/igeta/templates/docs/ai/handbook/how-to/` の `01-document-taxonomy.md`・`03-human-review.md`・`04-provenance-workflow.md` を、リンクではなくコードスパンで書く |
+| I9 | `AGENTS.md` の雛形の節は 4 つで、見出しは「読む順」「人の承認」「手引きの場所」「検査」。読む順: `docs/person/` が上流、`docs/ai/` が持ち場、`docs/client/` は提出物。人の承認: 変更を取り込む前に、`git fetch origin` の後で `igeta approval-scope --base origin/<宛先のブランチ>` で確かめ、`human` か検査不能なら AI は取り込まずに人へ渡す。`person/` の新しい決まりは状態 `仮` で起案する。手引きの場所: `node_modules/igeta/templates/docs/ai/handbook/how-to/` の `01-document-taxonomy.md`・`03-human-review.md`・`04-provenance-workflow.md` を、リンクではなくコードスパンで書く |
 | I10 | npm scripts は `docs:graph`・`docs:check`・`docs:template-check` (`igeta template-check --require-kind --require-human-review`)・`scaffold`。終わりに次の手順を 3 行出す: `npm install && npm run docs:check` / GitHub の保護の設定と `igeta doctor` / AI への指示や実行に効くほかのファイル (`.mcp.json` など) を使うなら `.igeta.json` の `humanPaths` に足す |
 | I11 | 入口の 3 行の正本は `AUDIENCE_ENTRANCE` の 1 か所 (下の文)。`init` の docs/README.md と `templates/docs/README.md` は同じ文言 |
 | I12 | 文書体系の手引きの「kind の置き場所」の表は、要件定義書 02 §7 の表と 1 行ずつ同じ。`TaxonomyGuideSync.test.ts` が §7・手引き・`Role.ts` の 3 つを突き合わせる |
@@ -72,7 +72,7 @@ CLAUDE.md <持ち主>
 | TST-102 | 結合 | init | TST-101 の後 | 決定台帳を読む | 生成区間に、要件の最初の行が `未決` で 1 行ある。DEC・OPEN の表は見出しだけ | I3・I4 |
 | TST-103 | 結合 | CODEOWNERS | TST-101 の後 | `AgentsEntrypointCheck` を当てる | 決定 1 の代表のパスの全部に `@lead` が付く (下位の `docs/ai/AGENTS.md` を含む) | I8・I14 |
 | TST-104 | 結合 | 足りない分 | `AGENTS.md` (docs に触れない) と、`/docs/person/design/x/ @other` の 1 行だけの CODEOWNERS がある空の repo | `init --owner @lead` | `AGENTS.md` の末尾に入口の節が足される。CODEOWNERS の先頭に足りない行が足され、`docs/person/design/x/a.md` の持ち主は `@other` のまま | I7・I8 |
-| TST-105 | 単体 | AGENTS.md | `init` が置いた `AGENTS.md` | 見出しとコードスパンを読む | I9 の 4 つの見出しと、手引き 3 本のパスがコードスパンである。リンクは無い。「人の承認」の節に `origin/` と「人へ渡す」がある | I9 |
+| TST-105 | 単体 | AGENTS.md | `init` が置いた `AGENTS.md` | 見出しとコードスパンを読む | I9 の 4 つの見出しと、手引き 3 本のパスがコードスパンである。リンクは無い。「人の承認」の節に `git fetch origin`・`origin/`・「人へ渡す」がある | I9 |
 | TST-106 | 結合 | scripts | TST-101 の後 | `package.json` と標準出力を読む | I10 の 4 つの script と、次の手順の 3 行 | I10 |
 | TST-107 | 単体 | 入口 | `AUDIENCE_ENTRANCE`・`init` の docs/README.md・`templates/docs/README.md` | 3 行を比べる | 1 字も違わない | I11 |
 | TST-108 | 単体 | 手引き | 要件定義書 02 §7・文書体系の手引き・`Role.ts` | 47 kind の行を突き合わせる | 置き場所と型の検査の区分が全部同じ | I12 |
@@ -85,7 +85,7 @@ CLAUDE.md <持ち主>
 | TST-301 | 持ち主が無い | `init` (`--owner` なし) / `--owner lead` / `--owner @` / `--owner "@a b"` | 何も書かずに終わる (引数の誤り) |
 | TST-302 | 重なる | `.igeta-version` か `.markdownlint.yaml` か `docs/README.md` が既にある | `CONFLICT` を出し、1 ファイルも書かない |
 | TST-303 | 旧い docs がある | `docs/design/basic/01-function-list.md` がある repo | 書かずに `docs-migrate` を案内する |
-| TST-304 | 持ち主が付かない | `.github/CODEOWNERS` の最後の行が持ち主の無い `/docs/person/` / repo 直下に CODEOWNERS がある | どちらも何も書かずに終わる |
+| TST-304 | 持ち主が付かない | `.github/CODEOWNERS` の最後の行が持ち主の無い `/docs/person/` / repo 直下に CODEOWNERS がある / `docs/` に CODEOWNERS がある | どれも何も書かずに終わる |
 | TST-305 | 手引きがずれる | 手引きの表の 1 行の置き場所を書き換える / 1 行を消す | `TaxonomyGuideSync.test.ts` が落ちる |
 | TST-306 | 入口がずれる | `templates/docs/README.md` の入口の 1 字を変える | テストが落ちる |
 | TST-307 | 持ち主を外す | CODEOWNERS から `.igeta-version` の行を消す / `/docs/person/` を `/docs/person/*` に変える / `humanPaths: ["src/core/**"]` があり `src/core/a.ts` に当たる行が無い | `AgentsEntrypointCheck` がどれも違反にする |
