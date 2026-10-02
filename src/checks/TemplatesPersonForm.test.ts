@@ -1,6 +1,6 @@
 // node --test dist/checks/TemplatesPersonForm.test.js
 // person・client の雛形が、人の型を満たすこと (ADR-0002 条件 5〜7・10、docs/explanation/09-reader-granularity.md §3)。
-//   結論 (TL;DR 3 行まで) → 図 (図が要る kind) → 決まりの表 (行頭が自分の ID の行は最後の列が 状態) →
+//   結論 (TL;DR 3 行まで) → 図 (図が要る kind) → 決まりの表 (行頭が自分の ID の行は、列の数が見出しと同じで、最後の列が 状態) →
 //   決めてほしいこと → 関連 (上流は文書、下流の欄は「(生成索引が出す)」)。
 //   HTML コメント (指示) を書かない。生成器が管理する区間 (AUTOGEN の dir-index・adr-index・tentative-index) だけが例外。
 // 型の検査が ○ の kind (src/core/Role.ts の formCheck が full) は、状態・決めてほしいこと・行数・図まで見る。
@@ -175,7 +175,7 @@ describe('person・client の雛形: 人の型 (ADR-0002 条件 5〜7・10)', ()
 });
 
 describe('person の雛形のうち、型の検査が ○ の kind: 状態・決めてほしいこと・行数', () => {
-  it('決まりの表が 1 つ以上あり、行頭が自分の ID の行は、最後の列が 状態 で、値が 決定・仮・未決・廃', () => {
+  it('決まりの表が 1 つ以上あり、行頭が自分の ID の行は、列の数が見出しと同じで、最後の列が 状態 で、値が 決定・仮・未決・廃', () => {
     assert.ok(fullDocs.length > 0, '型の検査が ○ の雛形が見つからない');
     assert.deepEqual(
       problems(fullDocs, (doc) => {
@@ -188,7 +188,10 @@ describe('person の雛形のうち、型の検査が ○ の kind: 状態・決
           ...(table.header[table.header.length - 1] === '状態' ? [] : [`${table.line} 行目の表の最後の列が 状態 ではない`]),
           ...table.rows.filter(idRow).flatMap((row) => {
             const state = row[row.length - 1] ?? '';
-            return STATES.has(state) ? [] : [`${row[0]} の状態が 決定・仮・未決・廃 ではない: ${state}`];
+            return [
+              ...(row.length === table.header.length ? [] : [`${row[0]} の列の数が見出しと違う (見出し ${table.header.length} 列、行 ${row.length} 列)`]),
+              ...(STATES.has(state) ? [] : [`${row[0]} の状態が 決定・仮・未決・廃 ではない: ${state}`]),
+            ];
           }),
         ]);
       }),
