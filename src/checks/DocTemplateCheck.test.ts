@@ -415,6 +415,13 @@ describe('DocTemplateCheck', () => {
     assert.match(report.format(), /FN-nnn の ID が 1 件もない/);
   });
 
+  it('[TST-308] 旧い構成の決定台帳に DEC・OPEN の行が 0 件なら、いままでどおり違反 (新しい構成だけが 0 件でよい)', () => {
+    writeDoc(root, '01-decisions.md', decisionLogDoc({ decRows: '', openRows: '' }));
+    const { report } = check(root);
+    assert.equal(report.exitCode, ExitCode.Violation, report.format());
+    assert.match(report.format(), /DEC-nnn \/ OPEN-nnn の ID が 1 件もない/);
+  });
+
   it('depends_on が存在しない id を指したら違反', () => {
     writeDoc(root, 'design/basic/function-list.md', functionListDoc({ dependsOn: '[requirements]' }));
     const { report } = check(root);

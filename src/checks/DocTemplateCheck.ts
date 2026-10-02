@@ -123,6 +123,8 @@ interface TemplateEntry {
   /** frontmatter line_limit。未設定なら null (上限なし) */
   readonly lineLimit: number | null;
   readonly required: readonly string[];
+  /** ID の行が 1 件も無くてもよい (新しい構成の決定台帳。テスト仕様 06 の I4)。省略は、1 件以上が要る */
+  readonly idsOptional?: boolean;
 }
 
 /** kind 解決済みの doc。人間レビュー層の横断検査 (地図網羅・決定帰属・修飾 ID) はこの一覧を使う。 */
@@ -249,7 +251,10 @@ function kindFromPath(docRelPath: string): string | null {
  * 通る (REQ-106)。
  */
 function templateFor(template: TemplateEntry, docRelPath: string): TemplateEntry {
-  if (roleOfPath(docRelPath.split(sep).join('/')) !== null) return template;
+  if (roleOfPath(docRelPath.split(sep).join('/')) !== null) {
+    // 新しい構成の決定台帳は、DEC・OPEN の行が 0 件でもよい (`init` は行の無い台帳を置く)。旧い構成は 1 件以上が要るまま
+    return template.kind === 'decision-log' ? { ...template, idsOptional: true } : template;
+  }
   const legacy = LEGACY_TEMPLATE_RULES.get(template.kind);
   return legacy === undefined
     ? template
@@ -445,7 +450,7 @@ function checkIds(
       }
     }
   }
-  if (count === 0) {
+  if (count === 0 && template.idsOptional !== true) {
     const labels = template.idPrefixes.map((prefix) => (bare ? `${prefix}nnn` : `${prefix}-nnn`)).join(' / ');
     add(bodyStart + 1, `${labels} の ID が 1 件もない`);
   }
