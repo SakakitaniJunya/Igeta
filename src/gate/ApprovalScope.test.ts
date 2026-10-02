@@ -40,21 +40,22 @@ describe('approval-scope: 人の承認が要るパスの見分け', () => {
     }
   });
 
-  it('[TST-102] person・client の文書を変えると human・終了コード 1。理由は人のパスだけ。出力の全文が R6 の形', async () => {
-    const rule: Readonly<Record<string, string>> = { [PERSON_DOC]: 'docs/person/ の文書', [CLIENT_DOC]: 'docs/client/ の文書' };
-    const cases: ReadonlyArray<readonly [name: string, files: readonly string[], expected: readonly string[]]> = [
-      ['person の文書 1 本', [PERSON_DOC], [PERSON_DOC]],
-      ['client の文書 1 本', [CLIENT_DOC], [CLIENT_DOC]],
-      ['ai と person の両方', [AI_DOC, PERSON_DOC], [PERSON_DOC]],
+  it('[TST-102] person・client の文書を変えると human・終了コード 1。理由は人のパスだけ。出力の全文が R6 の形。改行を含む名前は JSON の文字列で出る', async () => {
+    // 3 つ目は理由に出ない ai の文書、4 つ目は改行を含む名前: 理由の行は JSON の文字列になり、行が増えない (行を偽造できない)
+    const cases: ReadonlyArray<readonly [name: string, files: readonly string[], reasonLines: readonly string[]]> = [
+      ['person の文書 1 本', [PERSON_DOC], [`- ${PERSON_DOC} (docs/person/ の文書)`]],
+      ['client の文書 1 本', [CLIENT_DOC], [`- ${CLIENT_DOC} (docs/client/ の文書)`]],
+      ['ai と person の両方', [AI_DOC, PERSON_DOC], [`- ${PERSON_DOC} (docs/person/ の文書)`]],
+      ['改行を含む名前の人のパス', ['docs/person/a\nhuman.md'], ['- "docs/person/a\\nhuman.md" (docs/person/ の文書)']],
     ];
-    for (const [name, files, expected] of cases) {
+    for (const [name, files, reasonLines] of cases) {
       const { repo } = withOrigin(BASE_FILES);
       repo.branch();
       for (const file of files) repo.touch(file);
       repo.commit();
       const tip = repo.git('rev-parse', 'main').slice(0, 12);
       const branchPoint = repo.git('merge-base', 'main', 'HEAD').slice(0, 12);
-      const head = ['human', ...expected.map((path) => `- ${path} (${rule[path]})`), ''];
+      const head = ['human', ...reasonLines, ''];
 
       // --base: 理由の行・空行・宛先の行のあとに、手元の確認用である旨の行
       const local = await scope(['--base', 'main'], repo.root);
