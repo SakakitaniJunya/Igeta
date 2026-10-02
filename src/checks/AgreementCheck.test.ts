@@ -8,12 +8,11 @@ import assert from 'node:assert/strict';
 import { AgreementCheck } from './AgreementCheck.js';
 import { LEDGER_FILENAME, ledgerPathFor, readLedger } from '../core/AgreementLedger.js';
 import { ExitCode } from '../core/ExitCode.js';
-import { computeFingerprint } from '../core/Fingerprint.js';
 import { Report } from '../core/Report.js';
 import { buildSourceIndex } from '../core/SourceResolver.js';
 import { parseManifest } from '../export/Manifest.js';
 import { approveAgreement } from '../generators/AgreementApproveModule.js';
-import { appendAgreementRecord, chapterFingerprint, prepareAgreementRecord } from '../generators/AgreementRecordModule.js';
+import { appendAgreementRecord, prepareAgreementRecord } from '../generators/AgreementRecordModule.js';
 import { rebaseFingerprints } from '../generators/FingerprintRebaseModule.js';
 import {
   ANCHOR_NO_SOURCE, ANCHOR_ROW, ANCHOR_SECTION, MANIFEST, POLICY_DOC, ROW_FROM, SECTION_FROM, SUBMISSION as LINKED_SUBMISSION, TERMS_DOC,
@@ -416,6 +415,22 @@ describe('AgreementCheck', () => {
     assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
   });
 
+  it('[ADR-0006 決定 7] 手で source-move の行を足した台帳は、検査不能にする (付け替えを辿らない)', () => {
+    const fx = approved();
+    // 行 REQ-101 を別の文書へ移した repo に、合わせて手で書いた行。辿れば Ok になる状態でも、辿らずに検査不能にする
+    write(fx.root, 'docs/requirements.md', requirements().replace(/\| REQ-101 \|.*\n/, ''));
+    write(fx.root, 'docs/requirements-2.md', [
+      '---', 'id: reservation-flow-2', 'kind: requirements', 'status: fixed', 'depends_on: []', '---', '',
+      '# 要件 (分割)', '', '| REQ-101 | 予約は 30 日前まで受け付ける |', '',
+    ].join('\n'));
+    appendFileSync(
+      ledgerPathFor(fx.submissionDir),
+      `${JSON.stringify({ event: 'source-move', date: '2026-10-03', movedBy: 'igeta', from: 'reservation-flow/REQ-101', to: 'reservation-flow-2/REQ-101' })}\n`,
+    );
+    const { report } = runCheck(fx);
+    assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
+  });
+
   it('検査不能: 承認が指す版の提出の記録が無い', () => {
     const fx = makeFixture();
     write(fx.root, `${SUBMISSION}/${LEDGER_FILENAME}`, `${JSON.stringify({ event: 'approve', targetVersion: '1.0', approvedBy: 'x', approvedAt: '2026-01-12' })}\n`);
@@ -452,7 +467,7 @@ describe('AgreementCheck', () => {
   });
 });
 
-describe('AgreementCheck: 指紋の正規化の版・載せ替えの対応表・付け替え', () => {
+describe('AgreementCheck: 指紋の正規化の版・載せ替えの対応表', () => {
   it('今の版 (v3) で提出した台帳の行は normalizationVersion: 3 を持つ。章・正本・提出物を動かしてリンクを書き換えても、再合意は要らない', () => {
     const root = makeLinkedRoot('igeta-agreement-v3-');
     write(root, 'docs/requirements/reservation.md', reservationDoc());
@@ -566,126 +581,5 @@ describe('AgreementCheck: 指紋の正規化の版・載せ替えの対応表・
       assert.equal(report.exitCode, ExitCode.CannotCheck, report.format());
       assert.match(report.format(), /対応表の正規化の版が確かめられない/);
     });
-  });
-
-  describe('source-move (由来の from の付け替え)', () => {
-    const moveLine = (from: string, to: string): string => JSON.stringify({ event: 'source-move', date: '2026-10-03', movedBy: 'igeta', from, to });
-    /** REQ-101 の行を別の文書 reservation-flow-2 へ移した repo (台帳は付け替えの行を持たない)。 */
-    const movedOut = (): { root: string; submissionDir: string; ledgerPath: string; legacy: string[] } => {
-      const repo = makeLegacyRepo();
-      write(repo.root, 'docs/requirements/reservation.md', reservationDoc().replace('| REQ-101 | 予約は 30 日前まで受け付ける ([用語集](../glossary/terms.md#予約)) | 備考 A |\n', ''));
-      write(repo.root, 'docs/requirements/reservation-flow-2.md', [
-        '---', 'id: reservation-flow-2', 'kind: requirements', 'status: fixed', 'depends_on: []', '---', '', '# 分割', '',
-        '| ID | 要件 | 備考 |', '|---|---|---|',
-        '| REQ-101 | 予約は 30 日前まで受け付ける ([用語集](../glossary/terms.md#予約)) | 備考 A |', '',
-      ].join('\n'));
-      return { root: repo.root, submissionDir: repo.submissionDir, ledgerPath: ledgerPathFor(repo.submissionDir), legacy: [...repo.ledgerLines] };
-    };
-    const run = (r: { root: string; submissionDir: string }): ReturnType<typeof runCheck> => runCheck({ root: r.root, submissionDir: r.submissionDir, manifestPath: '' });
-
-    it('付け替えの行を通して、移した後の行 (今の from) で照合する', () => {
-      const r = movedOut();
-      assert.equal(run(r).report.exitCode, ExitCode.Violation, '付け替えが無ければ「正本が無くなった」');
-      writeFileSync(r.ledgerPath, `${[...r.legacy, moveLine(ROW_FROM, 'reservation-flow-2/REQ-101')].join('\n')}\n`);
-      const { report } = run(r);
-      assert.equal(report.exitCode, ExitCode.Ok, report.format());
-    });
-
-    it('付け替えても、移した行の文字が台帳の指紋と違えば再合意が要る (付け替えは承認の代わりにならない)。メッセージに付け替えが見える', () => {
-      const r = movedOut();
-      write(r.root, 'docs/requirements/reservation-flow-2.md', readFileSync(join(r.root, 'docs/requirements/reservation-flow-2.md'), 'utf8').replace('30 日前', '45 日前'));
-      writeFileSync(r.ledgerPath, `${[...r.legacy, moveLine(ROW_FROM, 'reservation-flow-2/REQ-101')].join('\n')}\n`);
-      const { report } = run(r);
-      assert.equal(report.exitCode, ExitCode.Violation, report.format());
-      assert.match(report.format(), /再合意が要る.*reservation-flow\/REQ-101 → reservation-flow-2\/REQ-101 \(docs\/requirements\/reservation-flow-2\.md:\d+\)/);
-    });
-
-    it('基準より前に書かれた付け替えは効かない', () => {
-      const r = movedOut();
-      writeFileSync(r.ledgerPath, `${[moveLine(ROW_FROM, 'reservation-flow-2/REQ-101'), ...r.legacy].join('\n')}\n`);
-      assert.equal(run(r).report.exitCode, ExitCode.Violation);
-    });
-
-    it('付け替え先が解決できなければ、「正本が無くなった」(付け替え後の from を示す)', () => {
-      const r = movedOut();
-      writeFileSync(r.ledgerPath, `${[...r.legacy, moveLine(ROW_FROM, 'no-such-doc/REQ-101')].join('\n')}\n`);
-      const { report } = run(r);
-      assert.equal(report.exitCode, ExitCode.Violation, report.format());
-      assert.match(report.format(), /正本が無くなった.*reservation-flow\/REQ-101 → no-such-doc\/REQ-101/);
-    });
-
-    it('元の場所へ戻した行は、戻した後の付け替えが勝つ (輪にならない)', () => {
-      const r = movedOut();
-      // reservation-flow-2 へ移した後、reservation-flow へ戻した: 元の文書に行がある状態に戻す
-      const original = reservationDoc();
-      write(r.root, 'docs/requirements/reservation.md', original);
-      writeFileSync(r.ledgerPath, `${[...r.legacy, moveLine(ROW_FROM, 'reservation-flow-2/REQ-101'), moveLine('reservation-flow-2/REQ-101', ROW_FROM)].join('\n')}\n`);
-      assert.equal(run(r).report.exitCode, ExitCode.Ok, run(r).report.format());
-    });
-  });
-});
-
-describe('AgreementCheck: source-move の畳み方 (行の入れ替え・連鎖。台帳は v2 の時代の形を手で作る)', () => {
-  const ROW = (text: string): string => `| REQ-001 | ${text} |`;
-  const requirementsDoc = (id: string, rows: readonly string[]): string =>
-    ['---', `id: ${id}`, 'kind: requirements', 'status: fixed', 'depends_on: []', '---', '', '# 要件', '', ...rows, ''].join('\n');
-  const CHAPTER_FILE = 'docs/delivery/design-document/01.md';
-  const CHAPTER_BODY = ['---', 'id: chapter-x', 'kind: delivery-chapter', 'status: draft', 'depends_on: []', '---', '', '# 章', '', '## 1. 本文', '', '本文です。', ''].join('\n');
-  const move = (from: string, to: string): string => JSON.stringify({ event: 'source-move', date: '2026-10-03', movedBy: 'igeta', from, to });
-
-  /** 承認した提出の台帳を手で作る。sources は (from, 提出したときの行の本文)。moves は承認の後に追記した source-move。 */
-  function build(sources: readonly { from: string; at: string }[], moves: readonly string[]): { root: string; submissionDir: string } {
-    const root = makeLinkedRoot('igeta-agreement-moves-');
-    write(root, CHAPTER_FILE, CHAPTER_BODY);
-    const exportLine = JSON.stringify({
-      event: 'export', version: '1.0', date: '2026-01-10', manifest: 'deliverable.json', omitSections: ['関連'],
-      chapters: [{
-        file: '01.md',
-        chapterFingerprint: chapterFingerprint(CHAPTER_BODY, CHAPTER_FILE, ['関連'], 2),
-        sources: sources.map((s) => ({ from: s.from, fingerprint: computeFingerprint(s.at, 2) })),
-      }],
-    });
-    const approveLine = JSON.stringify({ event: 'approve', targetVersion: '1.0', approvedBy: '発注側', approvedAt: '2026-01-12' });
-    write(root, 'docs/delivery/design-document/agreements.ledger.jsonl', `${[exportLine, approveLine, ...moves].join('\n')}\n`);
-    return { root, submissionDir: join(root, 'docs/delivery/design-document') };
-  }
-  const run = (r: { root: string; submissionDir: string }): ReturnType<typeof runCheck> => runCheck({ root: r.root, submissionDir: r.submissionDir, manifestPath: '' });
-
-  it('A → B のあとに、別の行が C → A と入っても、変えていない 2 行に再合意を出さない', () => {
-    const x = ROW('予約は 30 日前まで受け付ける (X)');
-    const z = ROW('キャンセルは前日まで (Z)');
-    // 提出したとき: d1 に X、d3 に Z。そのあと X を d2 へ (d1 → d2)、Z を d1 へ (d3 → d1) 動かした
-    const fx = build([{ from: 'd1/REQ-001', at: x }, { from: 'd3/REQ-001', at: z }], [move('d1/REQ-001', 'd2/REQ-001'), move('d3/REQ-001', 'd1/REQ-001')]);
-    write(fx.root, 'docs/requirements/d1.md', requirementsDoc('d1', [z]));
-    write(fx.root, 'docs/requirements/d2.md', requirementsDoc('d2', [x]));
-    write(fx.root, 'docs/requirements/d3.md', requirementsDoc('d3', []));
-    const { report } = run(fx);
-    assert.equal(report.exitCode, ExitCode.Ok, report.format());
-  });
-
-  it('行の入れ替え (A → T、B → A、T → B) も、変えていない 2 行に再合意を出さない。1 行でも本文が変われば、その行だけに出す', () => {
-    const x = ROW('予約は 30 日前まで受け付ける (X)');
-    const y = ROW('キャンセルは前日まで (Y)');
-    const swap = [move('d1/REQ-001', 'tmp/REQ-001'), move('d2/REQ-001', 'd1/REQ-001'), move('tmp/REQ-001', 'd2/REQ-001')];
-    const same = build([{ from: 'd1/REQ-001', at: x }, { from: 'd2/REQ-001', at: y }], swap);
-    write(same.root, 'docs/requirements/d1.md', requirementsDoc('d1', [y]));
-    write(same.root, 'docs/requirements/d2.md', requirementsDoc('d2', [x]));
-    const ok = run(same);
-    assert.equal(ok.report.exitCode, ExitCode.Ok, ok.report.format());
-
-    const changed = build([{ from: 'd1/REQ-001', at: x }, { from: 'd2/REQ-001', at: y }], swap);
-    write(changed.root, 'docs/requirements/d1.md', requirementsDoc('d1', [y]));
-    write(changed.root, 'docs/requirements/d2.md', requirementsDoc('d2', [ROW('予約は 60 日前まで受け付ける (X を変えた)')]));
-    const violated = run(changed);
-    assert.equal(violated.report.exitCode, ExitCode.Violation, violated.report.format());
-    assert.match(violated.report.format(), /再合意が要る.*d1\/REQ-001 → d2\/REQ-001/);
-    assert.doesNotMatch(violated.report.format(), /d2\/REQ-001 → d1\/REQ-001/, '変えていない Y の行には出さない');
-  });
-
-  it('連鎖 (A → B → C) の行は、今の居場所の本文と比べる', () => {
-    const x = ROW('予約は 30 日前まで受け付ける (X)');
-    const fx = build([{ from: 'd1/REQ-001', at: x }], [move('d1/REQ-001', 'd2/REQ-001'), move('d2/REQ-001', 'd3/REQ-001')]);
-    write(fx.root, 'docs/requirements/d3.md', requirementsDoc('d3', [x]));
-    assert.equal(run(fx).report.exitCode, ExitCode.Ok);
   });
 });
