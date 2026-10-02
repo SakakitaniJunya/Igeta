@@ -1,8 +1,11 @@
 // node --test dist/gate/ApprovalScopeCommand.test.js
 // approval-scope の宛先の指定と、検査不能 (R3・R4)。テスト仕様 01 の表の行に 1 本ずつ対応する。
+import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { IGETA_ROOT } from '../core/Paths.js';
 import {
   BASE_FILES,
   TestRepo,
@@ -25,8 +28,39 @@ describe('approval-scope: 宛先の指定 (R3)', () => {
   });
 });
 
+describe('approval-scope: 配線 (R6)', () => {
+  it('[TST-108] build した dist/cli.js を実プロセスで回すと、approval-scope --ci の終了コードは 0・1・2。doctor が登録されている', () => {
+    const cli = join(IGETA_ROOT, 'dist', 'cli.js');
+    const igeta = (args: readonly string[], cwd: string, env: Readonly<Record<string, string>>) =>
+      spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
+    const { repo } = withOrigin(BASE_FILES);
+    repo.branch();
+
+    repo.touch('src/index.ts');
+    repo.commit('ai の変更');
+    const ai = igeta(['approval-scope', '--ci'], repo.root, { GITHUB_BASE_REF: 'main' });
+    assert.equal(ai.status, 0, ai.stderr);
+    assert.equal(ai.stdout.split('\n')[0], 'ai');
+
+    repo.touch('docs/person/requirements/01-requirements.md');
+    repo.commit('人の変更');
+    const human = igeta(['approval-scope', '--ci'], repo.root, { GITHUB_BASE_REF: 'main' });
+    assert.equal(human.status, 1, human.stderr);
+    assert.deepEqual(human.stdout.split('\n').slice(0, 2), ['human', '- docs/person/requirements/01-requirements.md (docs/person/ の文書)']);
+
+    const unresolved = igeta(['approval-scope', '--ci'], repo.root, { GITHUB_BASE_REF: '' });
+    assert.equal(unresolved.status, 2);
+    assert.equal(unresolved.stdout, '');
+    assert.match(unresolved.stderr, /^CANNOT-CHECK /);
+
+    const doctor = igeta(['doctor', '--help'], repo.root, {});
+    assert.equal(doctor.status, 0, doctor.stderr);
+    assert.match(doctor.stdout, /^igeta doctor — /);
+  });
+});
+
 describe('approval-scope: 検査不能 (R4)', () => {
-  it('[TST-306] --ci で宛先が決まらない (環境変数なし・origin/<名前> なし・共通の祖先なし・名前が - で始まる) と、検査不能', async () => {
+  it('[TST-306] --ci で宛先が決まらない (環境変数なし・origin/<名前> なし・共通の祖先なし・名前が - で始まる・名前が式や特別な名前) と、検査不能', async () => {
     const { repo, origin } = withOrigin(BASE_FILES);
     repo.branch();
     repo.touch('src/index.ts');
@@ -37,11 +71,11 @@ describe('approval-scope: 検査不能 (R4)', () => {
       /refs\/remotes\/origin\/release が無い/,
       'origin/<名前> なし',
     );
-    assertCannotCheck(
-      await scope(['--ci'], repo.root, { env: { GITHUB_BASE_REF: '-x' } }),
-      /ref として正しくない/,
-      '名前が - で始まる',
-    );
+    // 名前が - で始まる・式 (main~1・@{-1})・特別な名前 (HEAD)。origin/HEAD は宛先の既定ブランチを指すので、実在させて確かめる
+    repo.git('remote', 'set-head', 'origin', 'main');
+    for (const name of ['-x', 'main~1', '@{-1}', 'HEAD']) {
+      assertCannotCheck(await scope(['--ci'], repo.root, { env: { GITHUB_BASE_REF: name } }), /ref として正しくない/, `名前 ${name}`);
+    }
 
     // 浅い clone: HEAD の履歴と宛先の履歴が、手元ではつながらない
     repo.git('push', '-q', 'origin', 'feature');

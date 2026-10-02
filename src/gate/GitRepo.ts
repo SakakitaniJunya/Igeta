@@ -92,11 +92,14 @@ export class GitRepo {
   }
 
   /**
-   * name がブランチの名前として正しいか。環境変数から来た名前を、`main~5` のような式や、`-` で始まるオプションとして
-   * 読ませない (`-` で始まる名前は git のブランチ名にできない)。
+   * name がブランチの名前として正しいか。環境変数から来た名前を、式 (`main~1`・`@{-1}`)・特別な名前 (`HEAD`)・
+   * `-` で始まるオプションとして読ませない。2 つの検査を両方通ったものだけ:
+   * - `refs/heads/<name>` として正しい名前 (`--branch` だけだと、`@{-1}` は前のブランチの名前に展開されて通ってしまう)
+   * - ブランチの名前として使える名前 (`HEAD` は refs/heads/ の名前としては通るが、origin/HEAD は宛先の既定ブランチを指す)
    */
   isValidBranchName(name: string): boolean {
     if (name.startsWith('-')) return false;
+    if (this.#spawn(['check-ref-format', `refs/heads/${name}`]).status !== 0) return false;
     return this.#spawn(['check-ref-format', '--branch', name]).status === 0;
   }
 
