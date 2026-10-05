@@ -9,7 +9,7 @@ status: draft
 canonical: true
 owners: [product, eng]
 created: 2026-10-01
-depends_on: [audience-layers]
+depends_on: []
 relates_to: []
 ---
 
@@ -20,13 +20,15 @@ relates_to: []
 > - 優先順位 1 位は **生成索引への読み手表示** (REQ-101) のみ。Igeta 本体に効き、索引の再生成で全消費 repo に波及する
 > - kind→読み手対応の正本は 1 つ (REQ-102)
 > - やらない: `audience` フィールド新設 / 全読み手への由来・検査強制 / 新しい kind (REQ-401〜403)
+> - **2026-10-02 改訂**: 読み手の区分 (顧客 / 開発者 / AI / 共通) は、[要件定義書 — 確定させる人ごとのディレクトリ](./02-audience-directories.md)
+>   と ADR-0001 v4 で「確定させる人 (人 / AI / 顧客)」に改めた。REQ-101〜104 の表示・入口・ガイドは、実装時に新しい 3 区分へ替える (ADR-0005 決定 4)
 
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由](../explanation/03-audience-layers.md) — 読み手 3 種・kind→読み手対応の設計確定版 | — |
-| 下流 | 生成索引 (dir-index) / [消費 repo 雛形](../../templates/docs/README.md) / [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) | REQ-101〜104 |
+| 上流 (depends_on) | なし (要件は最上流) | — |
+| 下流 | 生成索引 (dir-index) / [消費 repo 雛形](../../templates/docs/README.md) / [文書体系ガイド](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) | REQ-101〜104 |
 
 ## 1. 業務要件
 
@@ -39,10 +41,10 @@ relates_to: []
 
 | ID | パターン | 要件文 | 対応業務 (REQ-0xx) | 受け入れ条件 |
 |---|---|---|---|---|
-| REQ-101 | Event | 索引生成 (dir-index) が走ったとき、システムは各文書の読み手 (顧客 / 開発者 / AI / 共通) を frontmatter `kind` から機械判定し、生成索引の当該文書の行に表示しなければならない | REQ-001 | 消費 repo で索引を再生成すると、kind を持つ全文書の行に読み手が出る。kind を直せば次回生成で表示が変わる。kind を持たない・解決できない文書も「共通」側に分類されて出る |
-| REQ-102 | Ubiquitous | システムは kind→読み手の対応を 1 か所の正本から導出しなければならない | REQ-001 | repo 内に対応の正本がちょうど 1 つ存在する (コード定数か表かは実装側が決める)。索引表示・ガイドの対応表はその正本を参照または転記し、対応を書き換える修正箇所が 1 か所である |
-| REQ-103 | Ubiquitous | 消費 repo が持つ docs/README.md は「読み手別の入口」として 3 行を持たなければならない。顧客 → delivery-chapter の提出物 / 開発者 → 全体の地図 → まとまりの地図 → review-sheet / AI → 自分のまとまりの正本 + 約束 | REQ-001 | 新規に起こした消費 repo の docs/README.md に 3 行が含まれ、各行が実在する kind・コマンドを指す。入口の文言は AUTOGEN 索引区間の外にあり、索引の再生成で消えない |
-| REQ-104 | Ubiquitous | 文書体系ガイド `templates/docs/guides/01-document-taxonomy.md` は「読み手 3 種」の節と kind→読み手対応表を持たなければならない | REQ-001 | ガイドに節と対応表があり、表の内容は REQ-102 の正本と一致する (正本を参照する形でもよい)。消費 repo へ scaffold した時点で節ごと入る |
+| REQ-101 | Event | 索引生成 (dir-index) が走ったとき、システムは各文書を確定させる人 (人 / AI / 顧客) を frontmatter `kind` から機械判定し、生成索引の当該文書の行に表示しなければならない | REQ-001 | 利用 repo で索引を再生成すると、kind を持つ全文書の行に区分が出る。kind を直せば次回生成で表示が変わる。kind を持たない文書は移行のときに一覧で止める (要件 02 REQ-103) |
+| REQ-102 | Ubiquitous | システムは kind → 確定させる人の対応を 1 か所の正本から導出しなければならない | REQ-001 | 対応の正本は要件定義書 02 §7。索引表示・ガイドの対応表・`Role.ts` はその転記で、一致をテストが確かめる |
+| REQ-103 | Ubiquitous | 利用 repo の docs/README.md は「入口」として 3 行を持たなければならない。人 → `person/` を確定前に全部読む / AI → `AGENTS.md` から `person/` と `ai/` / 顧客 → `client/` の提出物 | REQ-001 | 新しく起こした利用 repo の docs/README.md に 3 行が含まれ、各行が実在するフォルダを指す。入口の文言は AUTOGEN 索引区間の外にあり、索引の再生成で消えない |
+| REQ-104 | Ubiquitous | 文書体系ガイドは、確定させる人の 3 区分の節と kind → 置き場所の表を持たなければならない | REQ-001 | ガイドに節と表があり、表の内容は要件定義書 02 §7 と一致する。ガイドは利用 repo に写さず、版に固定した手引きを指す |
 
 **優先順位**: 1 位は REQ-101 のみ。REQ-102〜104 は同梱でよいが並列の 1 位は置かない (REQ-101 が効けば残りは表示の導線整備)。
 
@@ -51,16 +53,16 @@ relates_to: []
 | ID | 制約 | 根拠 | 影響範囲 |
 |---|---|---|---|
 | REQ-201 | 読み手の判定入力は frontmatter `kind` のみ。新しい frontmatter フィールドを足さない | [explanation/03 §2](../explanation/03-audience-layers.md) の却下案 (kind が区別を既に担う。区別用フィールドを 2 つ持たない) | 索引生成・検査・全消費 repo の frontmatter |
-| REQ-202 | 本書および改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/guides/01-document-taxonomy.md) 種類一覧の「上限」列 (requirements は 200 行) | 本書・templates/docs/** |
+| REQ-202 | 本書および改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) 種類一覧の「上限」列 (requirements は 200 行) | 本書・templates/docs/** |
 | REQ-203 | 読み手表示に関して検査を足す場合も、重い検査を既定 CI に入れない段階導入の方針を踏む | [explanation/03 §6](../explanation/03-audience-layers.md) | CI 既定経路 |
 
 ## 4. 前提
 
 | ID | 前提 | 未確認/確認済 | 崩れた場合の影響 |
 |---|---|---|---|
-| REQ-301 | 読み手 3 種と kind→読み手対応は explanation/03 §3 が確定版。本書はその機械化・可視化だけで、対応自体は再設計しない | 確認済 | 対応表の再設計からやり直し |
+| REQ-301 | (崩れた) 当初は「読み手 3 種と kind→読み手対応は確定版で再設計しない」としていた。ADR-0001 v4 で「確定させる人」で再設計した | 確認済 (崩れた) | 対応表の再設計 — 実施済み |
 | REQ-302 | 消費 repo の docs/README.md は `templates/docs/README.md` の系譜で、索引は `<!-- AUTOGEN:dir-index -->` 区間に生成され手書き禁止 | 確認済 | 入口 3 行を AUTOGEN 区間外に置く設計が別途要る |
-| REQ-303 | kind の解決は frontmatter 優先・置き場所由来で必ず判定できる (未登録 kind は template-check が落とす) | 確認済 | kind 未解決時の読み手の既定値 (「共通」側) を別途決める必要がある |
+| REQ-303 | kind の解決は frontmatter 優先・置き場所由来で必ず判定できる (未登録 kind は template-check が落とす) | 確認済 | kind の無い文書の扱いを別途決める必要がある (要件 02 で「移行のときに一覧で止める」に決めた) |
 
 ## 5. スコープ外
 

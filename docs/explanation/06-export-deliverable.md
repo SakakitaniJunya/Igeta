@@ -22,7 +22,7 @@ relates_to: [docs-index]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | `templates/docs/delivery/` (manifest と章の雛形) | — |
+| 上流 (depends_on) | `templates/docs/client/delivery/__deliverable__/` (manifest と章の雛形) | — |
 | 下流 | `src/export/` (実装) / `src/cli/commands/ExportCommand.ts` | — |
 
 ## 1. なぜ作ったか
@@ -71,7 +71,7 @@ symlink 越しにあるのは正常系として通す。
 **H2 見出しの文字列が一致した節**は、次の同じ階層以上 (h1/h2) の見出しか文書末尾までを丸ごと除き、
 **forbid 検査より前に**取り除く。除いた節の中身は forbid にも引っかからないし、PDF にも出ない。
 
-- 既定値は `["関連"]`。`templates/docs/delivery/__chapter__.md` の `## 関連` 節は既定でそのまま除かれる
+- 既定値は `["関連"]`。`templates/docs/client/delivery/__deliverable__/__chapter__.md` の `## 関連` 節は既定でそのまま除かれる
 - 明示すれば上書きできる。`[]` を渡すと何も除かない
 
 ### 3.2 AUTOGEN が閉じられていない章
@@ -101,7 +101,7 @@ igeta export path/to/deliverable.json          # PDF まで生成する。Chromi
 igeta export path/to/deliverable.json --html-only  # HTML だけ生成する。Chromium 不要
 ```
 
-雛形は `templates/docs/delivery/deliverable.json` と `templates/docs/delivery/__chapter__.md`
+雛形は `templates/docs/client/delivery/__deliverable__/deliverable.json` と `templates/docs/client/delivery/__deliverable__/__chapter__.md`
 (frontmatter `kind: delivery-chapter`。arc42 章を持たない対外文書で、必須節は「関連」のみ。
 `proposal` / `guide` と同列)。
 

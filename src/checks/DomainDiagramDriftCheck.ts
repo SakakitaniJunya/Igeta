@@ -1,6 +1,8 @@
 // docs/design/detail/domain/*.md の mermaid classDiagram と
 // <code_root>/domain 配下の TypeScript export を双方向で照合する。
 // 契約の正典は docs/adr/0003-modular-monolith-and-diagram-code-contract.md。
+// 図のディレクトリを渡さないとき、新しい構成 (docs/person・ai・client のどれかがある) の repo は
+// docs/ai/specs/*/domain/ の全部の図を見る (テスト仕様 06 の I13)。旧い構成はいままでの docs/design/detail/domain。
 //
 // 「未実装だから緑」は作らない (原則: サイレント縮退禁止)。実装が無い状態で
 // 図だけを検証したい場合は allowMissingCode を明示的に渡す。
@@ -8,6 +10,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
+import { detectLayout } from '../core/Role.js';
 
 const MERMAID_OPEN_RE = /^\s*```+\s*mermaid\s*$/;
 const FENCE_CLOSE_RE = /^\s*```+\s*$/;
@@ -48,7 +51,10 @@ interface DiagramOrigin {
 }
 
 export interface DomainDriftOptions {
-  /** 図のディレクトリ。未指定なら <targetRoot>/docs/design/detail/domain */
+  /**
+   * 図のディレクトリ。未指定なら、新しい構成 (docs/person・ai・client のどれかがある) は <targetRoot>/docs/ai/specs/<まとまり>/domain
+   * の全部、旧い構成は <targetRoot>/docs/design/detail/domain
+   */
   readonly docsDir?: string;
   /** code_root が未実装のとき、図側のみ検証して違反にしない */
   readonly allowMissingCode?: boolean;
@@ -56,6 +62,16 @@ export interface DomainDriftOptions {
 
 function isDirectory(path: string): boolean {
   return existsSync(path) && statSync(path).isDirectory();
+}
+
+/** 新しい構成の、まとまりごとのドメイン図のフォルダ (docs/ai/specs/<まとまり>/domain)。まとまりの名前の順 */
+function contextDomainDirs(docsRoot: string): readonly string[] {
+  const specs = join(docsRoot, 'ai', 'specs');
+  if (!isDirectory(specs)) return [];
+  return readdirSync(specs, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && isDirectory(join(specs, entry.name, 'domain')))
+    .map((entry) => join(specs, entry.name, 'domain'))
+    .sort();
 }
 
 function listMarkdown(dir: string): readonly string[] {
@@ -182,25 +198,34 @@ export class DomainDiagramDriftCheck implements Check {
 
   run(ctx: CheckContext): readonly Violation[] {
     const root = ctx.targetRoot;
-    const docsDir = this.#docsDir ?? join(root, 'docs', 'design', 'detail', 'domain');
+    const docsRoot = join(root, 'docs');
+    // 図のフォルダ。新しい構成で --docs を省くと、まとまりごとのフォルダの全部 (まとまりの名前の順)。1 つも無ければ、その探し先の型
+    const docsDirs =
+      this.#docsDir !== undefined
+        ? [this.#docsDir]
+        : detectLayout(docsRoot) === 'v4'
+          ? contextDomainDirs(docsRoot)
+          : [join(docsRoot, 'design', 'detail', 'domain')];
     const rel = (path: string): string => relative(root, path) || path;
+    const where =
+      docsDirs.length === 1 ? rel(docsDirs[0] ?? '') : join('docs', 'ai', 'specs', '*', 'domain');
 
-    if (!isDirectory(docsDir)) {
+    if (docsDirs.length === 0 || docsDirs.some((dir) => !isDirectory(dir))) {
       return [
         {
           severity: 'cannot-check',
-          file: rel(docsDir),
+          file: where,
           message:
             '図ディレクトリが存在しない (ドメイン図は図↔実装の契約上必須。未作成なら作成する)',
         },
       ];
     }
 
-    const markdownFiles = listMarkdown(docsDir).filter(
-      (file) => !file.endsWith('README.md') && !file.endsWith('index.md'),
-    );
+    const markdownFiles = docsDirs
+      .flatMap((dir) => listMarkdown(dir))
+      .filter((file) => !file.endsWith('README.md') && !file.endsWith('index.md'));
     if (markdownFiles.length === 0) {
-      return [{ severity: 'cannot-check', file: rel(docsDir), message: '図が 1 枚も無い' }];
+      return [{ severity: 'cannot-check', file: where, message: '図が 1 枚も無い' }];
     }
 
     const configErrors: Violation[] = [];

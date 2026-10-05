@@ -12,13 +12,14 @@
 // 前提とする周辺文書の代役 (kind: explanation。arc42 も id_prefix も要らない最小の kind)。
 import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { basename, dirname, join, posix } from 'node:path';
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import { ExitCode } from '../core/ExitCode.js';
 import { Report } from '../core/Report.js';
+import { placementOf } from '../core/Role.js';
 import { DocTemplateCheck } from './DocTemplateCheck.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
 
@@ -30,11 +31,16 @@ after(() => {
 });
 
 interface TemplateInfo {
-  /** templates/docs/ からの相対パス。docs/ 側でも同じ相対パスに置く */
+  /** templates/docs/ からの相対パス */
   readonly relPath: string;
+  /** 検査のために docs/ へ置く相対パス。同じパスに置くが、利用 repo に置かない kind (Igeta の手引き) は、どの kind の置き場所にも当たらない所へ置く */
+  readonly docsPath: string;
   readonly kind: string;
   readonly dependsOn: readonly string[];
 }
+
+/** 利用 repo には置かない kind (Igeta の手引き 3 本。要件定義書 02 §7) の、検査用の置き場所。ai/ の下で、kind の置き場所の型のどれにも当たらない */
+const PINNED_GUIDE_DIR = 'ai/handbook/_pinned';
 
 /** templates/docs/ にある kind 付きテンプレ全部を列挙する (件数を手で書くと追加のたびに落ちる) */
 function listTemplates(): TemplateInfo[] {
@@ -45,7 +51,13 @@ function listTemplates(): TemplateInfo[] {
     if (fm === null) continue;
     const kind = scalar(fm.data, 'kind');
     if (kind === undefined || kind === '') continue;
-    infos.push({ relPath: file, kind, dependsOn: stringList(fm.data, 'depends_on') });
+    const placeable = (placementOf(kind)?.patterns.length ?? 0) > 0;
+    infos.push({
+      relPath: file,
+      docsPath: placeable ? file : posix.join(PINNED_GUIDE_DIR, basename(file)),
+      kind,
+      dependsOn: stringList(fm.data, 'depends_on'),
+    });
   }
   return infos;
 }
@@ -80,8 +92,12 @@ function stubDoc(id: string): string {
   ].join('\n');
 }
 
+/** 全体の地図の置き場所 (docs/ からの相対)。kind: requirements の雛形の地図リンク要件を満たす代役を、ここに置く */
+const MAP_DIR = 'person/design/shared';
+
 /** kind: requirements の地図リンク要件を満たす最小の 00-map.md (テスト対象を「詳細への入口」からリンクする) */
 function stubMapDoc(requirementsRelPath: string): string {
+  const link = posix.relative(MAP_DIR, requirementsRelPath);
   return [
     '---',
     'id: map',
@@ -100,17 +116,23 @@ function stubMapDoc(requirementsRelPath: string): string {
     '',
     '> **TL;DR**: テスト用スタブ。',
     '',
+    // 地図は図が要る kind (人の文書の型)。図の中身は検査しない
+    '```mermaid',
+    'flowchart LR',
+    '  A[地図] --> B[対象]',
+    '```',
+    '',
     '## 関連',
     '',
     '| 区分 | 文書 | 対応 ID |',
     '|---|---|---|',
     '| 上流 (depends_on) | なし | — |',
-    `| 下流 | [対象](./${requirementsRelPath}) | — |`,
+    `| 下流 | [対象](${link}) | — |`,
     '',
     ...['1. 何を作るか', '2. 誰が使うか', '3. 主要フロー', '4. やらないこと', '5. 詳細への入口'].flatMap((s) => [
       `## ${s}`,
       '',
-      s === '5. 詳細への入口' ? `[対象](./${requirementsRelPath})` : 'x',
+      s === '5. 詳細への入口' ? `[対象](${link})` : 'x',
       '',
     ]),
   ].join('\n');
@@ -121,7 +143,7 @@ function buildIsolatedTree(info: TemplateInfo): string {
   const root = mkdtempSync(join(tmpdir(), 'igeta-tpl-conform-'));
   workspaces.push(root);
   const raw = readFileSync(join(TEMPLATES_DIR, info.relPath), 'utf8');
-  const target = join(root, 'docs', info.relPath);
+  const target = join(root, 'docs', info.docsPath);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, raw); // テンプレ本体は 1 バイトも書き換えない
 
@@ -132,7 +154,9 @@ function buildIsolatedTree(info: TemplateInfo): string {
     writeFileSync(stubPath, stubDoc(depId));
   }
   if (info.kind === 'requirements') {
-    writeFileSync(join(root, 'docs', '00-map.md'), stubMapDoc(info.relPath));
+    const mapPath = join(root, 'docs', MAP_DIR, '00-map.md');
+    mkdirSync(dirname(mapPath), { recursive: true });
+    writeFileSync(mapPath, stubMapDoc(info.docsPath));
   }
   return root;
 }
@@ -171,14 +195,16 @@ describe('テンプレ適合の CI 回帰 (b): docs-graph --write → docs-check
       writeFileSync(target, raw);
     };
     // 無編集の実テンプレをそのまま置く (00-map.md / 01-decisions.md は id が固定なので他と競合しない)。
-    copy('00-map.md');
-    copy('01-decisions.md');
+    copy('person/design/shared/00-map.md');
+    copy('person/decisions/01-decisions.md');
+    // 決定台帳のフォルダの README.md (ADR 索引の区間を持つ)。新しい repo には init が置く
+    copy('person/decisions/README.md');
     // 要件定義書は id: <kebab-slug> のままだと id が定まらないので、実プロジェクトが最初に必ずやる
     // 「id を付ける」だけを行う (本文の構成は実テンプレの必須節に合わせた最小の記入例で、他テンプレへの
     // リンクは持たない自己完結な内容にする — 03-nonfunctional 等の相互リンクは (a) 側で個別に検査済み)。
-    mkdirSync(join(root, 'docs', 'product'), { recursive: true });
+    mkdirSync(join(root, 'docs', 'person', 'requirements'), { recursive: true });
     writeFileSync(
-      join(root, 'docs', 'product', '01-requirements.md'),
+      join(root, 'docs', 'person', 'requirements', '01-requirements.md'),
       [
         '---',
         'id: requirements',
@@ -199,26 +225,19 @@ describe('テンプレ適合の CI 回帰 (b): docs-graph --write → docs-check
         '',
         '> **TL;DR**: テスト用の最小記入例。',
         '',
-        '## 関連',
-        '',
-        '| 区分 | 文書 | 対応 ID |',
-        '|---|---|---|',
-        '| 上流 (depends_on) | なし (最上流) | — |',
-        '| 下流 | なし | — |',
-        '',
         '## 1. 業務要件',
         '',
-        '| ID | 業務要件 | 現状の課題 | 受入基準 | 出典 |',
-        '|---|---|---|---|---|',
-        '| REQ-001 | 予約したい | 電話予約しかない | 予約が作成されること | ヒアリング |',
+        '| ID | 業務要件 | 現状の課題 | 受入基準 | 出典 | 状態 |',
+        '|---|---|---|---|---|---|',
+        '| REQ-001 | 予約したい | 電話予約しかない | 予約が作成されること | ヒアリング | 決定 |',
         '',
         '猶予は仮置きで30日とする (decisions/OPEN-001)。',
         '',
         '## 2. 機能要件',
         '',
-        '| ID | パターン | 要件文 | 対応業務 (REQ-0xx) | 受け入れ条件 |',
-        '|---|---|---|---|---|',
-        '| REQ-101 | Event | 予約が確定したとき、システムは通知を送らなければならない | REQ-001 | 通知が送られること |',
+        '| ID | パターン | 要件文 | 対応業務 (REQ-0xx) | 受け入れ条件 | 状態 |',
+        '|---|---|---|---|---|---|',
+        '| REQ-101 | Event | 予約が確定したとき、システムは通知を送らなければならない | REQ-001 | 通知が送られること | 決定 |',
         '',
         '## 3. 制約',
         '',
@@ -232,15 +251,21 @@ describe('テンプレ適合の CI 回帰 (b): docs-graph --write → docs-check
         '',
         'なし。',
         '',
+        '## 決めてほしいこと',
+        '',
+        '| 問い | 対象 ID | 選択肢 | 決まらないと止まること |',
+        '|---|---|---|---|',
+        '| 猶予の日数 | REQ-001 | 30 日 / 60 日 | 予約の変更の設計 |',
+        '',
+        '## 関連',
+        '',
+        '| 区分 | 文書 | 対応 ID |',
+        '|---|---|---|',
+        '| 上流 (depends_on) | なし (最上流) | — |',
+        '| 下流 | (生成索引が出す) | — |',
+        '',
       ].join('\n'),
     );
-    // 地図から要件定義書をリンクする (無編集の 00-map.md には無いので、テストの前提として 1 行足す)。
-    const mapContent = readFileSync(join(root, 'docs', '00-map.md'), 'utf8').replace(
-      '## 5. 詳細への入口\n\nx',
-      '## 5. 詳細への入口\n\n[要件定義書](./product/01-requirements.md)',
-    );
-    writeFileSync(join(root, 'docs', '00-map.md'), mapContent);
-
     // 新規ツリーは write 1 回目で README 索引が増えるため、不動点になるまで 2 回かける
     // (既存の「新規ツリーは write 2 回で不動点になる」と同じ、docs-graph 自体の既知の仕様)。
     for (let i = 0; i < 2; i += 1) {

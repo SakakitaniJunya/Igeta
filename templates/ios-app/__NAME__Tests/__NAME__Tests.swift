@@ -11,7 +11,7 @@ final class __NAME__Tests: XCTestCase {
     // MARK: - テストの書き方 (抽出系ロジックの例)
     //
     // View や Model からテスト可能な純粋関数・型へロジックを抽出し、
-    // 設計書 (docs/design/basic/flows 等) の振る舞い単位でテストを書く。
+    // 設計書 (docs/person/design/<まとまり>/flows 等) の振る舞い単位でテストを書く。
     //
     // 例: URL 文字列を正規化するロジックを `SharedURLParser` に抽出した場合
     //

@@ -1,7 +1,8 @@
 // kind → 読み手の対応の正本 (docs/product/01-requirements.md REQ-102)。
 // 対応の設計確定版は docs/explanation/03-audience-layers.md §3「kind ごとの読み手」。
-// templates/docs/guides/01-document-taxonomy.md「読み手 3 種」の対応表はこの定数の転記 ——
-// kind を足す・読み手を変えるときはここだけを直し、ガイド側を写し直す。
+// 旧い構成 (person・ai・client が無い repo) の索引の読み手の判定。旧い版の文書体系ガイドにあった「読み手 3 種」の
+// 対応表は、この定数の転記だった。新しい構成のガイド (templates/docs/ai/handbook/how-to/01-document-taxonomy.md) は、
+// 確定させる人 (要件定義書 02 §7) で説明していて、この対応表を持たない。
 //
 // 「対象外」(双方が読む解説・手引き) と、表に載らない kind は索引では「共通」と出す
 // (要件定義の未確定事項 #2 はこれで確定)。判定入力は frontmatter `kind` のみで、
@@ -76,13 +77,13 @@ export function audienceOfKind(kind: string | undefined): Audience {
 }
 
 /**
- * 読み手別の入口 3 行 (docs/README.md に置く案内。AUTOGEN 索引区間の外、REQ-103)。
- * 消費 repo の docs/README.md は 2 経路で生まれる (templates/docs/README.md のコピーと
- * `igeta init` が置く stub)。どちらにもこの文言を使う —— テンプレ側は転記なので、
- * 直すときはここを直してテンプレを写し直す。
+ * 入口の 3 行 (docs/README.md に置く案内。AUTOGEN 索引区間の外)。正本はここ 1 か所 (テスト仕様 06 の I11)。
+ * 消費 repo の docs/README.md は 2 経路で生まれる (templates/docs/README.md のコピーと `igeta init` が置く README)。
+ * `init` はこの定数から作り、テンプレ側は転記 —— 直すときはここを直してテンプレを写し直す
+ * (InitCommand.test.ts の [TST-107] が、3 つの一致を見る)。
  */
 export const AUDIENCE_ENTRANCE: readonly string[] = [
-  '- **顧客** (非エンジニア): 提出物の章 (`kind: delivery-chapter` / `delivery/`) を `igeta export` で束ねた PDF だけを読む',
-  '- **開発者**: 全体の地図 (`00-map.md`) → まとまりの地図 (`kind: context-map` / `contexts/maps/`) → `igeta review-sheet` で今回の変更のレビューシートを読む',
-  '- **AI**: 自分のまとまりの正本と隣のまとまりの約束 (`kind: context-contract` / `contexts/contracts/`) だけを読む。対象の一覧は `igeta context-files` で得る',
+  '- **人が決める** — `person/`: 全体の地図 (`person/design/shared/00-map.md`) から読む。決めを待つ行は決定台帳 (`person/decisions/01-decisions.md`)、変わった行は `igeta review-sheet --diff` で読む',
+  '- **AI が使う** — `ai/`: 入口は repo 直下の `AGENTS.md`。読む範囲は `igeta context-files <まとまり>` で得る',
+  '- **顧客に渡す** — `client/`: 提出物の章を `igeta export` で束ねた PDF を渡す',
 ];

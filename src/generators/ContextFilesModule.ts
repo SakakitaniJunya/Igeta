@@ -5,9 +5,13 @@
 // 共有文書が多いと短縮にならないので、既定では共有のうち map / glossary / 自分のまとまりの地図
 // (自分の文書に含まれるので既に入っている) だけを出し、--with-shared で shared 文書全部を出す。
 // この絞り込みは設計書 (07-context-boundaries.md §6) には無い実装判断 — docs に追記した。
+//
+// 新しい構成 (docs/person・ai・client のどれかがある) は、読む範囲をフォルダで決める (ADR-0004 決定 3 の 5・
+// docs/design/test/specs/04-doc-graph.md の B6): person/requirements/・person/design/shared/・person/design/<c>/・
+// ai/specs/shared/・ai/specs/<c>/ と、自分のまとまりの文書が参照する隣の contract.md。--with-shared は結果を変えない。
 
 import { join } from 'node:path';
-import { extractReferences, buildContextGraph } from '../core/ContextGraph.js';
+import { extractReferences, buildContextGraph, hasContextFolder, readingSet } from '../core/ContextGraph.js';
 import { SHARED_CONTEXT } from '../core/Context.js';
 import type { Violation } from '../core/Report.js';
 
@@ -36,6 +40,13 @@ export class ContextFilesModule {
     const graph = buildContextGraph(this.#options.targetRoot, docsDir);
     if (graph === null) {
       return { files: [], error: { severity: 'cannot-check', message: `docs が無い: ${docsDir}` } };
+    }
+
+    if (graph.v4) {
+      if (!hasContextFolder(docsDir, context)) {
+        return { files: [], error: { severity: 'cannot-check', message: `まとまりが存在しない: ${context}` } };
+      }
+      return { files: readingSet(graph, this.#options.targetRoot, context).map((doc) => doc.relPath).sort(), error: null };
     }
 
     const own = graph.docs.filter((doc) => doc.context === context);

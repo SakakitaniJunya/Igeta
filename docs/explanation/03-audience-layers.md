@@ -13,12 +13,11 @@ relates_to: [provenance-and-agreement, coverage-and-learning, context-boundaries
 
 # 読み手別 (顧客・開発者・AI) の入口と、規模で深さを変える理由
 
-> **TL;DR**: 読み手は**顧客・開発者・AI** の 3 種。顧客 (非エンジニア) が読むのは**提出物の PDF だけ**
-> (地図もレビューシートも読まない)。開発者の入口は**全体の地図 → まとまりの地図
-> ([別紙](./07-context-boundaries.md)) → 今回の変更のレビューシート** (既存 `review-sheet`)。
-> AI は自分のまとまりの正本 + 隣のまとまりの約束の 1 枚だけを読む (07)。
-> **重い仕組み (由来・鮮度・網羅・合意台帳) は提出物の章 (kind `delivery-chapter`) だけに課す**。
-> - 前回案 (`audience` フィールド・全読み手への由来強制) は外部の批判 (§2、出所つき) を踏まえて撤回した
+> **TL;DR**: 読み手は**人 (発注側・開発者)・AI・顧客** の 3 種。人は**確定する前に `person/` の文書を全部読んで決める**。
+> AI は `person/` の決まりを上流として読み、作り方を `ai/` に書く。顧客は**提出物の PDF だけ**を読む。
+> 置き場所は「確定させる人」で分ける (ADR-0001 v4)。**重い仕組み (由来・鮮度・網羅・合意台帳) は提出物の章
+> (kind `delivery-chapter`) だけに課す**。
+> - 本書の §3・§5 は 2026-10-02 に ADR-0001 v4 へ合わせて改めた (旧: 「AI が正本を読み、開発者は地図だけを読む」)
 > - **規模で深さを変える**: 小さい変更に文書を足さない、を決まりとして書く (§4)
 
 ## 関連
@@ -49,23 +48,14 @@ relates_to: [provenance-and-agreement, coverage-and-learning, context-boundaries
 
 ## 3. 読み手 3 種
 
-| 読み手 | 読む目的 | 入口 | 1 回に読む量の上限 | 書かないもの | 誰が書くか | 検査 |
-|---|---|---|---|---|---|---|
-| **AI** | 実装・詳細な要件理解 | 自分のまとまりの正本 (要件定義書・基本設計・詳細設計) + 隣のまとまりの約束の 1 枚。`context-files` で一覧を得る ([別紙](./07-context-boundaries.md)) | `context-files` が返す範囲だけ (まとまりの外は読まない) | 顧客向けの言い回し・他まとまりの内部実装 | AI (人がレビュー) | 既存 `template-check` + `context-boundary-check` (07) |
-| **開発者** | 何を作るか理解・コードレビュー | 全体の地図 → まとまりの地図 → 今回の変更のレビューシート (`review-sheet`)。機能ブリーフは必要な機能だけ | 150 行 (全体地図) + 150 行 (まとまりの地図) + レビューシートの展開分 | 由来・鮮度・合意台帳 (顧客向けだけの仕組み、§4/§6) | AI が起こし人が直す | 既存 `template-check --require-human-review` + `context-boundary-check` |
-| **顧客** (非エンジニア) | 合意・検収 | **提出物の章 (`delivery-chapter`) を束ねた PDF** (`igeta export`)。地図もレビューシートも読まない | PDF 1 冊 (章 1 枚の目安は [別紙](./04-provenance-and-agreement.md)) | 社内 ID・「仮置き」・未決の生記述・社内の文書管理事情 | AI が機能ブリーフ・業務フローから起こし、人が承認 | 由来・鮮度・網羅・合意台帳 ([別紙](./04-provenance-and-agreement.md)/[別紙](./05-coverage-and-learning.md)) — この読み手だけに課す |
+| 読み手 | 読む目的 | 読むもの | 量の上限 | 書かないもの | 検査 |
+|---|---|---|---|---|---|
+| **人** (発注側・開発者) | 決める・承認する | `person/` の自分のまとまりと全体共通を、確定前に全部。変わったら変わった行だけ (`review-sheet --diff`) | ADR-0002 の条件 7・8 | 作り方の詳細、`ai/` の ID | `PersonFormCheck` (ADR-0002) |
+| **AI** | 実装する | `context-files` が返す範囲 (`person/` の要件・全体共通・自分のまとまり + `ai/specs/` の全体共通・自分のまとまり + 隣の約束) | `context-files` の範囲だけ | 顧客向けの言い回し、他のまとまりの内部 | 既存 `template-check` + `context-boundary-check` |
+| **顧客** (非エンジニア) | 合意・検収 | **提出物の章 (`delivery-chapter`) を束ねた PDF** (`igeta export`) | PDF 1 冊 (章の目安は [別紙](./04-provenance-and-agreement.md)) | 社内 ID・「仮」・未決の生記述 | 由来・鮮度・網羅・合意台帳 — この読み手だけに課す |
 
-`review-sheet` は既存コマンド (変更の対象 ID から関連ファイルを展開する)。今回新設するのはまとまりの地図だけで、
-レビューの単位そのものは変えない。
-
-### kind ごとの読み手
-
-| 読み手 | 対象 kind |
-|---|---|
-| AI (正本) | `requirements` / `function-list` / `solution-strategy` / `domain-*` / `aggregate-map` / `module-spec` / `screen-spec` / `api-spec` / `table-spec` / `business-flow` / `sequence-spec` / `state-machine` / `job` / `infra-design` / `crosscutting` / `code-definitions` / `messages` / `permission-matrix` / `i18n` / `data-management` / `secrets-management` / `nonfunctional` / `test-plan` / `test-spec` / `risks-tech-debt` / `glossary` / `as-is-overview` / `external-integration` / `operations` / `migration-plan` / `adr` / `tasks` |
-| 開発者 | `map` / `context-map` / `context-contract` / `decision-log` / `feature-brief` |
-| 顧客 | `delivery-chapter` |
-| 対象外 (双方が読む解説・手引き) | `explanation` / `guide` / `runbook` / `proposal` / `document-taxonomy` / `human-review` / `index` |
+kind ごとの置き場所 (47 種) は要件定義書 02 §7 が正本。人が決める kind (要件・業務の決まり・
+画面・品質・権限・データの扱いなど) は `person/`、作り方の kind と手引きは `ai/`、提出物と提案書は `client/`。
 
 ## 4. 規模で深さを変える
 
@@ -83,20 +73,17 @@ gets the depth it needs.」) と OpenSpec (<https://github.com/Fission-AI/OpenSp
 
 ```mermaid
 flowchart LR
-  M[正本] -->|context-files で範囲を絞る| AI[AI]
-  M --> Map0[全体の地図]
-  Map0 --> Map1[まとまりの地図]
-  Map1 --> RS[review-sheet で変更を展開]
-  RS --> Dev[開発者]
-  M -->|由来を記録して要約| Ch[delivery-chapter<br/>提出物の章]
+  P[person/ 人が決める決まり] -->|全部読んで承認| H[人]
+  P -->|上流として読む| AI[AI]
+  AI -->|作り方を書く| A[ai/ 作り方]
+  P -->|由来を記録して要約| Ch[client/ 提出物の章]
+  A -->|由来| Ch
   Ch -->|igeta export --record-agreement| PDF[提出物の PDF]
   PDF --> Cli[顧客]
   PDF --> L[合意の台帳]
-  L --> Appr[承認済み版]
-  M --> M2[正本の変更]
-  M2 -->|由来の指紋が変わる| Q[要確認]
-  Q -->|accept| Ch
-  Q --> Appr
+  P --> P2[決まりの変更]
+  P2 -->|変わった行だけ| H
+  P2 -->|由来の指紋が変わる| Q[要確認] -->|accept| Ch
 ```
 
 ## 6. 段階導入・既定の強さ
@@ -115,7 +102,7 @@ flowchart LR
 
 ## 8. 下流の TODO
 
-- `templates/docs/guides/03-human-review.md` の読む順を、§3 の「地図 → まとまりの地図 → review-sheet」の 2 段に合わせて直す (本設計では文面は変えない。次の実装の対象)
+- `templates/docs/ai/handbook/how-to/03-human-review.md` の読む順を、§3 の「地図 → まとまりの地図 → review-sheet」の 2 段に合わせて直す (本設計では文面は変えない。次の実装の対象)
 
 ## 9. 残った論点
 

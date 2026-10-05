@@ -1,0 +1,120 @@
+---
+id: audience-directories
+title: 要件定義書 — 確定させる人ごとのディレクトリ (docs/ の物理分割)
+type: product
+kind: requirements
+arc42: 1
+id_prefix: REQ
+status: draft
+canonical: true
+owners: [product, eng]
+created: 2026-10-01
+depends_on: [requirements]
+relates_to: []
+---
+
+# 要件定義書 — 確定させる人ごとのディレクトリ (docs/ の物理分割)
+
+> **TL;DR**: docs/ を開いた人が、どれが人の読んで決める文書で、どれが AI の使う文書かを、フォルダだけで判別できない、を解く。
+> docs/ 直下を、確定させる人ごとのディレクトリ (`person`/`ai`/`client`) に分け、kind → 置き場所の対応を正本 1 つに置き、
+> 置き場所の違反を検査で落とす。人の側の文書は、人が全部読んで決められる型と量に保つ
+> - やらない: `audience` フィールドの新設 / 新しい kind / 読み手別の生成物語 (前版のスコープ外を継続)
+
+## 関連
+
+| 区分 | 文書 | 対応 ID |
+|---|---|---|
+| 上流 (depends_on) | [要件定義書](./01-requirements.md) — 読み手表示 (索引・入口・ガイド) | REQ-101〜104 |
+| 下流 | ADR-0001〜0010 | REQ-101〜106 |
+
+## 1. 業務要件
+
+| ID | 業務要件 | 現状の課題 | 受入基準 (満たしたと判定できる観測可能な事実) | 出典 |
+|---|---|---|---|---|
+| REQ-001 | docs/ を開いた人が、文書を 1 本も開く前に、フォルダだけで「人が読んで決める文書」と「AI が使う文書」と「顧客に渡す文書」を判別できる | v0.4.0 の読み手の表示は索引を経由したときだけ見える。フォルダは文書の種類で分かれていて、人が決める業務の決まりや画面が AI 側の場所にある | REQ-101〜106 をすべて満たす | CEO 指摘 (原文): 「どれが人間が読むもので、AIがどれかわかりません」「フォルダで大きく三つに分けちゃえばいいのに。docs」 |
+| REQ-002 | 人が、自分の決める文書を 1 つのフォルダから全部たどれ、全部読める量に収まっている | 人の決める内容と作り方が 1 本に混ざり、基本設計をそのまま人の側へ移すと約 31 万字で読みきれない | `person/` の文書が ADR-0002 の型と量の条件を満たす | CEO 指摘 (2026-10-02): 「読みきれるボリュームなの？」ほか |
+
+## 2. 機能要件
+
+| ID | パターン | 要件文 | 対応業務 (REQ-0xx) | 受け入れ条件 |
+|---|---|---|---|---|
+| REQ-101 | Ubiquitous | システムは docs/ 直下を、`person`・`ai`・`client` の 3 ディレクトリと生成索引の 2 本だけに制限しなければならない | REQ-001 | 新しい構成の repo で、docs/ 直下に他のディレクトリや文書があると検査が落ちる (ADR-0005 決定 1) |
+| REQ-102 | Ubiquitous | システムは kind → 置き場所の対応を 1 か所の正本から導出しなければならない | REQ-001 | 対応の正本は本書 §7 の 1 か所。`src/core/Role.ts` の表がガイドの表と一致し、`ARC42_BY_KIND` の全 kind を含む (ADR-0002 条件 1、ADR-0005 決定 2) |
+| REQ-103 | Unwanted | 文書の kind・`context` から導く置き場所と、実際の置き場所が食い違う場合、システムは検査で違反として検出しなければならない | REQ-001 | 食い違う文書を置くと検査が落ちる。kind の無い文書は移行のときに一覧で止める (ADR-0003 決定 4) |
+| REQ-104 | Event | `igeta init` / scaffold で repo を起こしたとき、システムは 3 ディレクトリの構成の docs を生成しなければならない | REQ-001 | 生成直後の repo で全検査が通り、索引が新しいパスを指す |
+| REQ-105 | Event | 旧い構成の repo を移行するとき、システムは文書の移動と相対パスの書き換えを適用まで機械的に行わなければならない | REQ-002 | 移す段の完了条件 (リンク・置き場所・索引・由来と合意の状態・文書の集合) を満たし、残る違反が書き直す段の作業の列として出る。書き直す段の後に全検査が通る (ADR-0003・ADR-0006) |
+| REQ-106 | State | 旧い構成の repo が残っている間、システムは既存の検査を動かし、移行を促す警告を出さなければならない | REQ-001 | 旧い構成の repo で既存の検査が通り、毎回警告が出る。次のメジャー版で違反になる (ADR-0005 決定 1) |
+
+## 3. 制約
+
+| ID | 制約 | 根拠 | 影響範囲 |
+|---|---|---|---|
+| REQ-201 | 置き場所の判定に使う入力は frontmatter の `kind` と `context` だけ。`audience` などの新しいフィールドを足さない | [要件定義書](./01-requirements.md) REQ-201 | 検査・索引・全利用 repo の frontmatter |
+| REQ-202 | 新しい kind を足さない。区別は置き場所で担う | 同 REQ-403 | kind の登録 (テンプレ・検査) |
+| REQ-203 | ディレクトリ名は ASCII 小文字。日本語の表示名 (人 / AI / 顧客) は表示にだけ使う | URL・glob にそのまま使える形にする | 正本・テンプレ・入口の文言 |
+| REQ-204 | 本書と改める雛形・ガイドは、kind ごとの TL;DR と行数上限を守る | [文書体系ガイド](../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) | 本書・templates/docs/** |
+| REQ-205 | 検査の強さは、構成の実在と Igeta の版だけで決め、利用 repo の設定では変えられない | CEO 指摘「直したらルールとして設定して」 | CI の既定の経路 |
+
+## 4. 前提
+
+| ID | 前提 | 未確認/確認済 | 崩れた場合の影響 |
+|---|---|---|---|
+| REQ-301 | (崩れた) 当初は「kind → 読み手の対応は確定済みで再設計しない」としていた。人が決める内容が AI 側にあると分かり、ADR-0001 v4 で「確定させる人」で再設計した | 確認済 (崩れた) | 対応表の再設計 — 実施済み |
+| REQ-302 | 文書の発見・分類は frontmatter (kind・arc42・depends_on) から行い、パスに依存しない | 確認済 (コード調査) | 移動の影響の見積もりが変わる |
+| REQ-303 | 移動で壊れるのは相対パスの参照だけ。depends_on・relates_to・由来の `from` は id で解決する。ただし本文のリンクの書き換えは由来の指紋を変える (ADR-0007 で対処) | 確認済 (コード調査) | 移行で由来が一斉に要確認になる |
+| REQ-304 | kind の推論 (`kindFromPath`) はディレクトリの完全一致。まとまりのフォルダには、まとまりの 1 段だけワイルドカードにしたパスの型が要る | 確認済 | 置き場所の検査が誤判定する |
+| REQ-305 | 新旧の構成の repo が移行期間中に併存する | 確認済 | REQ-106 が不要になる |
+
+## 5. スコープ外
+
+| ID | スコープ外の内容 | 理由 | 再検討する条件 |
+|---|---|---|---|
+| REQ-401 | frontmatter `audience` フィールドの新設 | kind と置き場所が区別を担う | kind と置き場所で判定できない区分が出たとき |
+| REQ-402 | 新しい kind の追加 (`data-management` は予約済みの kind に雛形を作るだけ) | 既存の kind で足りる | 表に載らない文書の種類が生まれたとき |
+| REQ-403 | 読み手別の「生成物語」 | 本版は物理分割と型・量に絞る | 3 ディレクトリが利用 repo に効いた後 |
+| REQ-404 | 凍結予定の大きな社内 repo の移行 | 工数をかける理由が無い | 凍結が解除されたとき |
+
+## 6. 当初の未確定事項 (確定済み)
+
+| # | 論点 | 確定内容 | ADR |
+|---|---|---|---|
+| 1 | 「共通」の置き場所 | 作らない。確定させる人で 3 つに分ける (`common/` は v3 で撤回) | ADR-0001 |
+| 2 | ディレクトリの名前 | `person`・`ai`・`client` (小文字)。AI の入口は repo 直下の `AGENTS.md` | ADR-0001 |
+| 3 | 移行手段の形 | `igeta docs-migrate` が適用まで行う。移行は「移す」と「書き直す」の 2 段を 1 本の PR で | ADR-0003 |
+| 4 | 旧い構成の検出の強さ | 警告 → 次のメジャー版で違反。フラグは置かない | ADR-0005 |
+| 5 | docs/ 直下の固定ファイル | 生成索引の 2 本だけ。地図は `person/design/shared/00-map.md`、決定台帳は `person/decisions/01-decisions.md` | ADR-0004 |
+| 6 | ディレクトリの中の構造 | まとまりごとのフォルダ。日付の記録は年。1 フォルダ 15 本で違反 | ADR-0004 |
+| 7 | Igeta 自身の移行 | 行う。Igeta 自身 → 利用 repo 2 つの順 | ADR-0003 |
+
+## 7. kind の置き場所 (正本)
+
+kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009。文書体系ガイドと `src/core/Role.ts` はこの表の転記で、
+`TaxonomyGuideSync.test.ts` が 3 つを突き合わせる。`<c>` はまとまりの名前 (`shared` を含む)。ただし同じ階層の固定のフォルダの名前 (`ai/specs/` の下の `tasks`) には当たらず、context-contract の `<c>` は `shared` も除く (全体共通はどのまとまりからも引けるので、約束を持たない)。
+型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査し、(図) の kind は図も要る。図 = 図だけを検査。— = 検査しない。
+
+| 確定させる人 | kind | 置き場所 | 型の検査 |
+|---|---|---|---|
+| person | map / context-map | `person/design/shared/00-map.md` / `person/design/<c>/00-map.md` | 図 |
+| person | requirements | `person/requirements/01-requirements.md`・`person/requirements/NN-slug.md` | ○ |
+| person | function-list / solution-strategy (図) / nonfunctional / permission-matrix / data-management / as-is-overview (図) / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
+| person | business-flow (図) / screen-spec (図) / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
+| person | glossary | `person/design/shared/NN-glossary.md` | — |
+| person | adr / decision-log | `person/decisions/<year>/NNNN-slug.md` / `person/decisions/01-decisions.md` | — |
+| ai | crosscutting / code-definitions / messages / i18n / infra-design / secrets-management / external-integration / test-plan / domain-overview / aggregate-map | `ai/specs/shared/NN-*.md` (固定番号) | — |
+| ai | context-contract | `ai/specs/<c>/contract.md` | — |
+| ai | api-spec / table-spec / domain-model / sequence-spec / state-machine / module-spec / job / test-spec | `ai/specs/<c>/{api,tables,domain,sequences,state-machines,modules,jobs,tests}/NN-slug.md` | — |
+| ai | tasks | `ai/specs/tasks/NN-slug.md` | — |
+| ai | guide / explanation / runbook / implementation-order | `ai/handbook/{how-to,explanation,runbooks}/NN-slug.md` (implementation-order は `how-to/02-implementation-order.md`) | — |
+| ai | document-taxonomy / human-review / provenance-workflow | 利用 repo には置かない。`AGENTS.md` と docs/README.md から、版に固定した Igeta の手引きを指す | — |
+| client | delivery-chapter / proposal | `client/delivery/<提出物名>/` / `client/proposals/<year>/NN-slug.md` | — |
+
+計 47 kind (person 18・ai 27・client 2) で、`ARC42_BY_KIND` の全件。`tutorial` (予約済み) は 47 の外で、登録するときは `ai/handbook/` に置く。
+
+| 決まり | 内容 |
+|---|---|
+| 置ける場所 | 上の表のパスと、生成索引 (docs/ 直下の 2 本、各フォルダの README.md) だけ |
+| 15 本の対象外 | `person/decisions/<year>/`・`client/proposals/<year>/`・`client/delivery/<提出物名>/` |
+| `person/design/<c>/` と `ai/specs/<c>/` の下が 15 本を超えた | まとまりを分ける合図。下位フォルダは足さない |
+| `person/design/shared/` の固定の文書が 100 行を超えた | 行を、属するまとまりの `person/design/<c>/NN-<kind>.md` へ移す (行の移動の扱いは ADR-0006 決定 7) |
+| `person/requirements/01-requirements.md` が 150 行を超えた | まとまりごとに `person/requirements/NN-<c>.md` へ分ける (同上) |
+| `ai/specs/tasks/`・`ai/handbook/` の 3 フォルダが 15 本を超えた | まとまりの下位フォルダ (`shared` を含む) へ全部移す。`shared` が 15 本を超えたら違反のまま |

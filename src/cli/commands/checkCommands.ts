@@ -1,5 +1,6 @@
 import type { Check } from '../../core/Check.js';
 import { DocGraphCheck } from '../../checks/DocGraphCheck.js';
+import { DocsCheck } from '../../checks/DocsCheck.js';
 import { DocTemplateCheck } from '../../checks/DocTemplateCheck.js';
 import { DomainDiagramDriftCheck } from '../../checks/DomainDiagramDriftCheck.js';
 import { SecretScanCheck } from '../../checks/SecretScanCheck.js';
@@ -18,11 +19,11 @@ export class DocsGraphCommand extends CheckCommand {
 
 export class DocsCheckCommand extends CheckCommand {
   readonly name = 'docs-check';
-  readonly summary = '索引と参照の整合性を検査する (書き出さない)';
+  readonly summary = '索引と参照の整合性、新しい構成 (person・ai・client) の置き場所・本数・AI の入口を検査する (書き出さない)';
   override readonly usage = ['  --root <dir>   対象リポジトリ (既定: カレントディレクトリ)'];
 
   protected createCheck(): Check {
-    return new DocGraphCheck();
+    return new DocsCheck();
   }
 }
 
@@ -35,10 +36,13 @@ export class TemplateCheckCommand extends CheckCommand {
     '  --templates <dir>       テンプレ置き場 (既定: Igeta 自身の templates/docs)',
     '  --require-kind          kind 未設定の doc を違反として扱う',
     '  --require-human-review  地図の網羅・決定の帰属・仮置きの OPEN 参照・修飾 ID を検査する',
+    '  --base <宛先>           新しい構成 (person・ai・client) の repo で、変更を入れる先のブランチ。HEAD との枝分かれの点で',
+    '                          廃だった行が、いまも廃のままあることを確かめる。省略すると、同じ文書の中で廃の ID が',
+    '                          使い直されていないことだけを見る',
   ];
 
   protected override readonly argSpec = {
-    valueOptions: ['docs', 'templates'],
+    valueOptions: ['docs', 'templates', 'base'],
     boolOptions: ['require-kind', 'require-human-review'],
   };
 
@@ -48,6 +52,7 @@ export class TemplateCheckCommand extends CheckCommand {
       templatesDir: args.get('templates'),
       requireKind: args.has('require-kind'),
       requireHumanReview: args.has('require-human-review'),
+      base: args.get('base'),
     });
   }
 }
@@ -57,7 +62,8 @@ export class DomainDriftCommand extends CheckCommand {
   readonly summary = 'ドメイン図と実装の乖離を検査する';
   override readonly usage = [
     '  --root <dir>            対象リポジトリ (既定: カレントディレクトリ)',
-    '  --docs <dir>            図のディレクトリ (既定: <root>/docs/design/detail/domain)',
+    '  --docs <dir>            図のディレクトリ (既定: 新しい構成は <root>/docs/ai/specs/<まとまり>/domain の全部、',
+    '                          旧い構成は <root>/docs/design/detail/domain)',
     '  --allow-missing-code    code_root 未実装なら図側のみ検証する',
   ];
 
