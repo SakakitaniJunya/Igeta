@@ -9,7 +9,7 @@
 //    決定・仮・未決・廃。person/ のどの kind の文書にも当てる
 // P4 ○ の kind (core/Role.ts の formCheck): 自分の接頭辞の決まりの行が 1 つ以上ある。その接頭辞の ID を最初のセルに持つ
 //    行が、決まりの表でない表にあれば違反
-// P5 図が要る kind: ```mermaid のコードフェンスが 1 つ以上ある
+// P5 図が要る kind の図は、テスト仕様 08 の D1〜D5 が持つ (許す図種の閉じた図が冒頭域にある。40 行超は警告)
 // P6 ○ の kind は 100 行 (requirements は 150 行)。行数の違反は、この検査が 1 件だけ出す (DocTemplateCheck は、新しい構成の
 //    ○ の kind の人の文書に、雛形の line_limit による検査を当てない)
 // P7 まとまり (person/design/<c>/) の本文の合計 15,000 字、全体共通 (要件 + design/shared/) の合計 30,000 字を超えたら警告。
@@ -37,6 +37,8 @@ import type { LineKind } from '../core/LineClassifier.js';
 import { classifyLines } from '../core/LineClassifier.js';
 import type { MarkdownTable } from '../core/MarkdownTable.js';
 import { findTables } from '../core/MarkdownTable.js';
+import type { MermaidBlock } from '../core/MermaidBlocks.js';
+import { extractMermaidBlocks } from '../core/MermaidBlocks.js';
 import type { Violation } from '../core/Report.js';
 import { detectLayout, isGeneratedIndex, kindOfPath, placementOf, roleOfPath } from '../core/Role.js';
 import type { SemVer } from '../core/Version.js';
@@ -55,6 +57,9 @@ export const SIZE_LIMIT_VIOLATION_FROM_MAJOR = 1;
 
 /** 生成器が管理する AUTOGEN 区間の名前 (P9) */
 const AUTOGEN_NAMES: readonly string[] = ['dir-index', 'adr-index', 'tentative-index'];
+
+/** D4: 数える図の bodyLines がこれを超えたら警告 */
+const DIAGRAM_BODY_LINE_WARNING = 40;
 
 /** 全体共通の本文を数える場所 (要件 + design/shared/)。まとまりの名前と取り違えない記号 */
 const GLOBAL_GROUP = '';
@@ -184,10 +189,42 @@ export class PersonFormCheck implements Check {
         add(1, `人の文書の行数上限 (${limit}) を超えている: ${total} 行 (作り方の詳細は ai/ の文書へ移し、人が決める行だけを残す)`);
       }
     }
-    if (placement.needsDiagram && countMermaidDiagrams(doc.lines, doc.bodyStart) === 0) {
-      add(1, `図が 1 枚も無い (kind: ${kind} は Mermaid の図 (\`\`\`mermaid) が 1 枚以上要る)`);
-    }
+    if (placement.diagrams.length > 0) violations.push(...this.#checkDiagram(doc, kind, placement.diagrams));
     return violations;
+  }
+
+  /** 図が要る kind の図 (テスト仕様 08 の D1〜D4)。D2 図種と閉じ方と中身、D3 位置、D4 の量 (警告) */
+  #checkDiagram(doc: PersonDoc, kind: string, allowed: readonly string[]): readonly Violation[] {
+    const blocks = extractMermaidBlocks(doc.lines, doc.bodyStart);
+    const counting = blocks.filter((block) => block.closed && block.type !== null && block.contentLines > 0);
+    const valid = counting.filter((block) => allowed.includes(block.type ?? ''));
+    const violation = (line: number, message: string): Violation => ({ severity: 'violation', message, file: doc.file, line });
+    if (valid.length === 0) return [violation(1, noDiagramMessage(kind, allowed, blocks))];
+
+    for (const block of valid) {
+      if (block.bodyLines > DIAGRAM_BODY_LINE_WARNING) {
+        this.#warnings.push(
+          `${doc.file}:${block.startLine} の図が ${block.bodyLines} 行で、${DIAGRAM_BODY_LINE_WARNING} 行を超えている (人が一目で読める量に分ける)`,
+        );
+      }
+    }
+
+    // D3: 最初の数える図は冒頭域 (最初の表の見出しと 2 つ目の `##` の早い方の手前) で始まる
+    const first = valid[0];
+    if (first === undefined) return [];
+    const tableLine = findTables(doc.lines, doc.kinds, doc.bodyStart)[0]?.headerLine ?? Infinity;
+    let sections = 0;
+    let secondSectionLine = Infinity;
+    for (let i = doc.bodyStart; i < doc.lines.length; i += 1) {
+      if (doc.kinds[i] === 'body' && /^ {0,3}##(\s|$)/.test(doc.lines[i] ?? '') && ++sections === 2) {
+        secondSectionLine = i + 1;
+        break;
+      }
+    }
+    if (first.startLine >= Math.min(tableLine, secondSectionLine)) {
+      return [violation(first.startLine, `図が冒頭にない (kind: ${kind} は TL;DR の次の節で、最初の表と 2 つ目の ## 見出しより前に図を置く)`)];
+    }
+    return [];
   }
 
   /** まとまりごと・全体共通の本文の合計字数 (P7)。上限を超えたら警告。Igeta の版が切替の版以上なら違反 */
@@ -402,26 +439,19 @@ function countLines(lines: readonly string[]): number {
   return lines[lines.length - 1] === '' ? lines.length - 1 : lines.length;
 }
 
-/**
- * Mermaid の図 (```mermaid のコードフェンス) の数。ほかのコードフェンスの中にある例と、画像のリンクは数えない。
- * フェンスの前の字下げは、空白 3 つまで (タブで字下げした行は、描画ではコードブロックで、フェンスではない)
- */
-function countMermaidDiagrams(lines: readonly string[], bodyStart: number): number {
-  let count = 0;
-  let open: { readonly marker: string; readonly length: number } | null = null;
-  for (let i = bodyStart; i < lines.length; i += 1) {
-    const fence = /^[ ]{0,3}(`{3,}|~{3,})(.*)$/.exec(lines[i] ?? '');
-    if (fence === null) continue;
-    const run = fence[1] ?? '';
-    const info = (fence[2] ?? '').trim();
-    if (open === null) {
-      open = { marker: run.charAt(0), length: run.length };
-      if (/^mermaid(\s|$)/.test(info)) count += 1;
-    } else if (run.charAt(0) === open.marker && run.length >= open.length && info === '') {
-      open = null;
+/** 図が足りないときの理由 (D2)。図ごとの理由を並べる。図が 1 枚も無ければ「図が無い」 */
+function noDiagramMessage(kind: string, allowed: readonly string[], blocks: readonly MermaidBlock[]): string {
+  const need = `kind: ${kind} は ${allowed.join('・')} のどれかの図が 1 枚以上要る`;
+  if (blocks.length === 0) return `図が無い (${need})`;
+  const reasons = blocks.map((block) => {
+    if (!block.closed) return `${block.startLine} 行目の図が閉じていない`;
+    if (block.type === null) {
+      return block.noTypeLine ? `${block.startLine} 行目の図に中身が無い` : `${block.startLine} 行目の図の図種を読めない (綴り・閉じない設定や指示を確かめる)`;
     }
-  }
-  return count;
+    if (!allowed.includes(block.type)) return `${block.startLine} 行目の図種 ${block.type} は kind ${kind} では許されない (許すのは ${allowed.join('・')})`;
+    return `${block.startLine} 行目の図に中身が無い`;
+  });
+  return `${need}: ${reasons.join(' / ')}`;
 }
 
 // ---------------------------------------------------------------------------

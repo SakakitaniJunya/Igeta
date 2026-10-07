@@ -82,10 +82,27 @@ describe('ROLE_OF_KIND (要件定義書 02 §7 のコード側の表)', () => {
     }
   });
 
-  it('図が要る kind は ADR-0002 条件 6 の 6 つ、型の検査が 図 の kind は map と context-map だけ', () => {
+  it('[TST-108 / spec 08] 図が要る kind は ADR-0011 の 16 種、型の検査が 図 の kind は map と context-map だけ (spec 08 §8)', () => {
     assert.deepEqual(
-      kindsWhere((kind) => placementOf(kind)?.needsDiagram === true),
-      ['as-is-overview', 'business-flow', 'context-map', 'map', 'screen-spec', 'solution-strategy'],
+      kindsWhere((kind) => placementOf(kind)!.diagrams.length > 0),
+      [
+        'as-is-overview',
+        'business-flow',
+        'context-map',
+        'data-management',
+        'decision-log',
+        'function-list',
+        'glossary',
+        'map',
+        'migration-plan',
+        'nonfunctional',
+        'operations',
+        'permission-matrix',
+        'requirements',
+        'risks-tech-debt',
+        'screen-spec',
+        'solution-strategy',
+      ],
     );
     assert.deepEqual(
       kindsWhere((kind) => placementOf(kind)?.formCheck === 'diagram'),

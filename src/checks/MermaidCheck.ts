@@ -12,10 +12,9 @@ import { chromium } from 'playwright-core';
 import { findChromiumExecutable, PLAYWRIGHT_INSTALL_HINT } from '../export/Chromium.js';
 import { MERMAID_RUNNER_SCRIPT, readMermaidRuntime, waitForMermaidRender } from '../export/MermaidRuntime.js';
 import { restrictToOwnHtml } from '../export/PdfRenderer.js';
+import { extractMermaidBlocks } from '../core/MermaidBlocks.js';
 import type { Violation } from '../core/Report.js';
 
-const MERMAID_OPEN_RE = /^\s*```+\s*mermaid\s*$/;
-const FENCE_CLOSE_RE = /^\s*```+\s*$/;
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage']);
 
 function isDir(path: string): boolean {
@@ -37,38 +36,6 @@ function listMarkdown(dir: string): string[] {
   };
   walk(dir);
   return found;
-}
-
-interface RawMermaidBlock {
-  readonly line: number;
-  readonly code: string;
-}
-
-/** ```mermaid フェンスの中身を、開始行 (1 始まり) 付きで返す。閉じられていないフェンスは無視する (docs-check 等、他検査の責務)。 */
-function extractMermaidBlocks(content: string): readonly RawMermaidBlock[] {
-  const lines = content.split(/\r?\n/);
-  const blocks: RawMermaidBlock[] = [];
-  let inFence = false;
-  let current: string[] = [];
-  let startLine = 0;
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i] ?? '';
-    if (!inFence) {
-      if (MERMAID_OPEN_RE.test(line)) {
-        inFence = true;
-        current = [];
-        startLine = i + 1;
-      }
-      continue;
-    }
-    if (FENCE_CLOSE_RE.test(line)) {
-      inFence = false;
-      blocks.push({ line: startLine, code: current.join('\n') });
-      continue;
-    }
-    current.push(line);
-  }
-  return blocks;
 }
 
 interface LocatedBlock {
@@ -108,7 +75,10 @@ export async function checkMermaidRendering(options: MermaidCheckOptions): Promi
       return { violations: [{ severity: 'cannot-check', message: `ファイルが無い: ${relPath}` }] };
     }
     const content = readFileSync(file, 'utf8');
-    for (const block of extractMermaidBlocks(content)) blocks.push({ relPath, line: block.line, code: block.code });
+    // 図の取り出しは PersonFormCheck と同じ関数 (spec 08 D5)。閉じない図の指摘は PersonFormCheck (D2) の役目
+    for (const block of extractMermaidBlocks(content.split(/\r?\n/), 0)) {
+      if (block.closed && block.code !== undefined) blocks.push({ relPath, line: block.startLine, code: block.code });
+    }
   }
   if (blocks.length === 0) return { violations: [] }; // 図が 1 つも無ければ Chromium すら要らない
 

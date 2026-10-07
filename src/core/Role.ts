@@ -28,14 +28,16 @@ export const ROLES: readonly Role[] = ['person', 'ai', 'client'];
 /** 型の検査の区分。表の ○ (full) / 図 (diagram) / — (none) */
 export type FormCheck = 'full' | 'diagram' | 'none';
 
+export type DiagramKind = 'flowchart' | 'mindmap' | 'quadrantChart' | 'gantt' | 'timeline' | 'sequenceDiagram' | 'stateDiagram';
+
 export interface Placement {
   readonly kind: string;
   readonly role: Role;
   /** 置ける場所。docs/ からの相対パスの glob。空なら利用 repo には置かない kind */
   readonly patterns: readonly string[];
   readonly formCheck: FormCheck;
-  /** 表の (図) と、型の検査が 図 の kind。図が 1 枚以上要る */
-  readonly needsDiagram: boolean;
+  /** kind が許す図種。空なら図を要しない (adr・feature-brief など) */
+  readonly diagrams: readonly DiagramKind[];
 }
 
 const place = (
@@ -43,12 +45,12 @@ const place = (
   role: Role,
   patterns: readonly string[],
   formCheck: FormCheck,
-  needsDiagram = false,
-): Placement => ({ kind, role, patterns, formCheck, needsDiagram });
+  diagrams: readonly DiagramKind[] = [],
+): Placement => ({ kind, role, patterns, formCheck, diagrams });
 
 /** `person/design/shared/` の固定番号の文書。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける */
-const personSharedFixed = (kind: string, needsDiagram = false): Placement =>
-  place(kind, 'person', ['person/design/shared/*.md', `person/design/<c>/NN-${kind}.md`], 'full', needsDiagram);
+const personSharedFixed = (kind: string, diagrams: readonly DiagramKind[] = []): Placement =>
+  place(kind, 'person', ['person/design/shared/*.md', `person/design/<c>/NN-${kind}.md`], 'full', diagrams);
 
 const aiShared = (kind: string): Placement => place(kind, 'ai', ['ai/specs/shared/*.md'], 'none');
 
@@ -58,28 +60,28 @@ const aiPerContext = (kind: string, dir: string): Placement =>
 /** 15 本を超えたら、まとまりの下位フォルダ (`shared` を含む) へ全部移す (§7 の「決まり」の最終行) */
 const splittable = (dir: string): readonly string[] => [`${dir}/*.md`, `${dir}/<c>/*.md`];
 
-/** §7 の表の行の順。人 (18) → AI (27) → 顧客 (2) の計 47 kind */
+/** §7 の表の行の順。人 (18) → AI (27) → 顧客 (2) の計 47 kind。図種は要件 02 §8 の正本 */
 export const PLACEMENTS: readonly Placement[] = [
   // person: 確定する前に人が全部読んで承認する
-  place('map', 'person', ['person/design/shared/00-map.md'], 'diagram', true),
-  place('context-map', 'person', ['person/design/<c>/00-map.md'], 'diagram', true),
+  place('map', 'person', ['person/design/shared/00-map.md'], 'diagram', ['flowchart', 'mindmap']),
+  place('context-map', 'person', ['person/design/<c>/00-map.md'], 'diagram', ['flowchart']),
   // 01-requirements.md が本体。150 行を超えたら NN-<まとまり>.md へ分ける
-  place('requirements', 'person', ['person/requirements/01-requirements.md', 'person/requirements/*.md'], 'full'),
-  personSharedFixed('function-list'),
-  personSharedFixed('solution-strategy', true),
-  personSharedFixed('nonfunctional'),
-  personSharedFixed('permission-matrix'),
-  personSharedFixed('data-management'),
-  personSharedFixed('as-is-overview', true),
-  personSharedFixed('risks-tech-debt'),
-  personSharedFixed('operations'),
-  personSharedFixed('migration-plan'),
-  place('business-flow', 'person', ['person/design/<c>/flows/*.md'], 'full', true),
-  place('screen-spec', 'person', ['person/design/<c>/screens/*.md'], 'full', true),
-  place('feature-brief', 'person', ['person/design/<c>/features/*.md'], 'none'),
-  place('glossary', 'person', ['person/design/shared/NN-glossary.md'], 'none'),
-  place('adr', 'person', ['person/decisions/<year>/*.md'], 'none'),
-  place('decision-log', 'person', ['person/decisions/01-decisions.md'], 'none'),
+  place('requirements', 'person', ['person/requirements/01-requirements.md', 'person/requirements/*.md'], 'full', ['flowchart']),
+  personSharedFixed('function-list', ['mindmap', 'flowchart']),
+  personSharedFixed('solution-strategy', ['flowchart']),
+  personSharedFixed('nonfunctional', ['quadrantChart', 'mindmap']),
+  personSharedFixed('permission-matrix', ['flowchart']),
+  personSharedFixed('data-management', ['flowchart']),
+  personSharedFixed('as-is-overview', ['flowchart']),
+  personSharedFixed('risks-tech-debt', ['quadrantChart']),
+  personSharedFixed('operations', ['flowchart']),
+  personSharedFixed('migration-plan', ['flowchart', 'gantt', 'timeline']),
+  place('business-flow', 'person', ['person/design/<c>/flows/*.md'], 'full', ['flowchart', 'sequenceDiagram']),
+  place('screen-spec', 'person', ['person/design/<c>/screens/*.md'], 'full', ['flowchart', 'stateDiagram']),
+  place('feature-brief', 'person', ['person/design/<c>/features/*.md'], 'none', []),
+  place('glossary', 'person', ['person/design/shared/NN-glossary.md'], 'none', ['flowchart', 'mindmap']),
+  place('adr', 'person', ['person/decisions/<year>/*.md'], 'none', []),
+  place('decision-log', 'person', ['person/decisions/01-decisions.md'], 'none', ['flowchart', 'timeline']),
 
   // ai: AI が書き、評価する AI が確定させる
   aiShared('crosscutting'),
