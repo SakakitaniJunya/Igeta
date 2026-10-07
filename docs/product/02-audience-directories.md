@@ -25,7 +25,7 @@ relates_to: []
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [要件定義書](./01-requirements.md) — 読み手表示 (索引・入口・ガイド) | REQ-101〜104 |
-| 下流 | ADR-0001〜0010 | REQ-101〜106 |
+| 下流 | ADR-0001〜0011 | REQ-101〜107 |
 
 ## 1. 業務要件
 
@@ -33,6 +33,7 @@ relates_to: []
 |---|---|---|---|---|
 | REQ-001 | docs/ を開いた人が、文書を 1 本も開く前に、フォルダだけで「人が読んで決める文書」と「AI が使う文書」と「顧客に渡す文書」を判別できる | v0.4.0 の読み手の表示は索引を経由したときだけ見える。フォルダは文書の種類で分かれていて、人が決める業務の決まりや画面が AI 側の場所にある | REQ-101〜106 をすべて満たす | CEO 指摘 (原文): 「どれが人間が読むもので、AIがどれかわかりません」「フォルダで大きく三つに分けちゃえばいいのに。docs」 |
 | REQ-002 | 人が、自分の決める文書を 1 つのフォルダから全部たどれ、全部読める量に収まっている | 人の決める内容と作り方が 1 本に混ざり、基本設計をそのまま人の側へ移すと約 31 万字で読みきれない | `person/` の文書が ADR-0002 の型と量の条件を満たす | CEO 指摘 (2026-10-02): 「読みきれるボリュームなの？」ほか |
+| REQ-003 | 人が読んで承認する文書は、表を読む前に、図で範囲・関係・順序・置き場所が見える | v0.5.0 の person の雛形 19 本のうち、図があるのは 6 本。残りは表だけ | REQ-107 を満たす | CEO 指摘 (原文 2026-10-08): 「人間のものは視覚的に」 |
 
 ## 2. 機能要件
 
@@ -44,6 +45,7 @@ relates_to: []
 | REQ-104 | Event | `igeta init` / scaffold で repo を起こしたとき、システムは 3 ディレクトリの構成の docs を生成しなければならない | REQ-001 | 生成直後の repo で全検査が通り、索引が新しいパスを指す |
 | REQ-105 | Event | 旧い構成の repo を移行するとき、システムは文書の移動と相対パスの書き換えを適用まで機械的に行わなければならない | REQ-002 | 移す段の完了条件 (リンク・置き場所・索引・由来と合意の状態・文書の集合) を満たし、残る違反が書き直す段の作業の列として出る。書き直す段の後に全検査が通る (ADR-0003・ADR-0006) |
 | REQ-106 | State | 旧い構成の repo が残っている間、システムは既存の検査を動かし、移行を促す警告を出さなければならない | REQ-001 | 旧い構成の repo で既存の検査が通り、毎回警告が出る。次のメジャー版で違反になる (ADR-0005 決定 1) |
+| REQ-107 | Ubiquitous | システムは、§8 に挙げた kind の人の文書に、その kind の許す図種の Mermaid の図を、TL;DR の次の節 (最初の表より前) に 1 枚以上持たせなければならない | REQ-003 | §8 の kind の文書で、図が無い・空・別図種・閉じていない・冒頭域の外のどれかなら検査が落ちる。雛形 16 本が自分の検査を通る (ADR-0011、テスト仕様 08) |
 
 ## 3. 制約
 
@@ -90,14 +92,14 @@ relates_to: []
 
 kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009。文書体系ガイドと `src/core/Role.ts` はこの表の転記で、
 `TaxonomyGuideSync.test.ts` が 3 つを突き合わせる。`<c>` はまとまりの名前 (`shared` を含む)。ただし同じ階層の固定のフォルダの名前 (`ai/specs/` の下の `tasks`) には当たらず、context-contract の `<c>` は `shared` も除く (全体共通はどのまとまりからも引けるので、約束を持たない)。
-型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査し、(図) の kind は図も要る。図 = 図だけを検査。— = 検査しない。
+型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査する。図 = 図だけを検査。— = 検査しない。図が要る kind と図種は、この列と別に §8 が決める。
 
 | 確定させる人 | kind | 置き場所 | 型の検査 |
 |---|---|---|---|
 | person | map / context-map | `person/design/shared/00-map.md` / `person/design/<c>/00-map.md` | 図 |
 | person | requirements | `person/requirements/01-requirements.md`・`person/requirements/NN-slug.md` | ○ |
-| person | function-list / solution-strategy (図) / nonfunctional / permission-matrix / data-management / as-is-overview (図) / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
-| person | business-flow (図) / screen-spec (図) / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
+| person | function-list / solution-strategy / nonfunctional / permission-matrix / data-management / as-is-overview / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
+| person | business-flow / screen-spec / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
 | person | glossary | `person/design/shared/NN-glossary.md` | — |
 | person | adr / decision-log | `person/decisions/<year>/NNNN-slug.md` / `person/decisions/01-decisions.md` | — |
 | ai | crosscutting / code-definitions / messages / i18n / infra-design / secrets-management / external-integration / test-plan / domain-overview / aggregate-map | `ai/specs/shared/NN-*.md` (固定番号) | — |
@@ -118,3 +120,28 @@ kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009�
 | `person/design/shared/` の固定の文書が 100 行を超えた | 行を、属するまとまりの `person/design/<c>/NN-<kind>.md` へ移す (行の移動の扱いは ADR-0006 決定 7) |
 | `person/requirements/01-requirements.md` が 150 行を超えた | まとまりごとに `person/requirements/NN-<c>.md` へ分ける (同上) |
 | `ai/specs/tasks/`・`ai/handbook/` の 3 フォルダが 15 本を超えた | まとまりの下位フォルダ (`shared` を含む) へ全部移す。`shared` が 15 本を超えたら違反のまま |
+
+## 8. 人の文書の冒頭の図 (正本)
+
+図が要る kind と図種の正本 (REQ-107、記録は ADR-0011)。`Role.ts` と雛形はこの表の転記。図は TL;DR の次の節、最初の表より前に置く。
+図に書くのは名前・ID・関係で、値は行が持つ (例外は ADR-0011 決定 4)。表は消さない。図種は図の先頭の語 (`graph` = flowchart)。
+
+| kind | 許す図種 | 図で一目で分かること |
+|---|---|---|
+| map | flowchart / mindmap | 何を作る仕組みか、主要な流れ |
+| context-map | flowchart | このまとまりと隣のまとまりのやり取り |
+| requirements | flowchart | この案件の範囲内と範囲外 |
+| function-list | mindmap / flowchart | 機能がどのまとまり・段階に分かれるか |
+| solution-strategy / as-is-overview | flowchart | 部品と置き場所 (DB は筒。向きは TB) |
+| nonfunctional | quadrantChart / mindmap | どの指標が厳しく、費用に効くか |
+| permission-matrix | flowchart | ロールと、触れてよいデータ範囲 |
+| data-management | flowchart | データが置かれる国・環境と、消える時期 |
+| risks-tech-debt | quadrantChart | 確率 × 影響で、どのリスクを先に見るか |
+| operations | flowchart | 障害の検知から復旧までの連絡の流れ |
+| migration-plan | flowchart / gantt / timeline | 切り替えの段階・関門・切戻し |
+| business-flow | flowchart / sequenceDiagram | 業務の流れと、誰がやるか |
+| screen-spec | flowchart / stateDiagram | 画面の行き来 |
+| glossary | flowchart / mindmap | 混同しやすい語の関係 |
+| decision-log | flowchart / timeline | 未決が何を止め、決定が何に効くか |
+
+図が要らない kind: adr・feature-brief (ADR-0011 決定 2)。

@@ -26,5 +26,6 @@ owners: [eng]
 | [0008](0008-human-approval-scope.md) | ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする | proposed | — | — |
 | [0009](0009-kind-placement.md) | ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける | proposed | — | — |
 | [0010](0010-value-ownership.md) | ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く | proposed | — | — |
+| [0011](0011-person-diagram-first.md) | ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る | proposed | — | — |
 
 <!-- AUTOGEN:adr-index:end -->
