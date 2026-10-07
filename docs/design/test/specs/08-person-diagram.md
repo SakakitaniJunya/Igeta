@@ -51,7 +51,7 @@ relates_to: [test-person-form, audience-directories]
 
 | 項目 | 内容 |
 |---|---|
-| 図の取り出し (D5) | `core/MermaidBlocks.ts` の関数が、行の配列と本文の開始行から、図を出現順に `{ startLine (1 始まり。開きのフェンスの行), closed, type (正規化後。読めなければ null), contentLines (「中身」の判定用の行数。図種の行・空行・`%%`・設定・指示を除く), bodyLines (図種の行と空行を除いた行数。`%%` の行・設定・指示を含む。D4 が使う), code (閉じた図だけ。フェンスの中身) }` の配列で返す |
+| 図の取り出し (D5) | `core/MermaidBlocks.ts` の関数が、行の配列と本文の開始行から、図を出現順に `` { startLine (1 始まり。開きのフェンスの行), closed, type (正規化後。読めなければ null), contentLines (「中身」の判定用の行数。図種の行・空行・`%%`・設定・指示を除く), bodyLines (図種の行と空行を除いた行数。`%%` の行・設定・指示を含む。D4 が使う), code (閉じた図だけ。フェンスの中身) } `` の配列で返す |
 | 使う側 | PersonFormCheck は closed・type・contentLines で数える図を決め (D2・D3)、bodyLines で量を見る (D4)。MermaidCheck は closed の図の startLine と code だけを使う (閉じない図の指摘は D2 が受け持つ。MermaidCheck の旧い開き・閉じの正規表現は、この関数に置き換わる) |
 | §8 の表の読み方 | 1 行の 1 列目に ` / ` 区切りで kind が 1 つ以上、2 列目に ` / ` 区切りで図種が 1 つ以上。行の図種は、その行の全 kind に共通 (`solution-strategy / as-is-overview` は 2 kind が同じ図種)。図種は §8 に出る 7 種 (flowchart・mindmap・quadrantChart・gantt・timeline・sequenceDiagram・stateDiagram) |
 | `Role.ts` | `needsDiagram: boolean` を `diagrams: readonly 図種[]` に替える (空 = 図を要しない。`needsDiagram` は `diagrams.length > 0` で導く)。型の検査の区分 (○・図・—) は変えない。要件 02 §7 から `(図)` の印を外した (ガイドの §7 の写しの `(図)` 印も外す) ので、突き合わせは §7 の図の項目をやめて §8 を読む |
@@ -100,7 +100,7 @@ relates_to: [test-person-form, audience-directories]
 | 雛形 (`templates/docs/person/…`) | 図種 | 図の中身 (雛形の例) | 表の扱い |
 |---|---|---|---|
 | design/shared/00-map | flowchart LR | 開始 → 主要な手順 → 完了。いまの図を「何を作るか」の前の第 1 節へ | 役割・入口の表は補足 |
-| design/__context__/00-map | flowchart LR | このまとまり →「渡すもの」→ 隣のまとまり。第 1 節へ (概要は第 2 節) | 含む機能・隣接の表は補足 |
+| `design/__context__/00-map` | flowchart LR | このまとまり →「渡すもの」→ 隣のまとまり。第 1 節へ (概要は第 2 節) | 含む機能・隣接の表は補足 |
 | requirements/01-requirements | flowchart TB | 範囲内 (業務要件 → 機能要件) と範囲外 (スコープ外) の 2 つの囲み、利用者・外部。ID は書かない | 5 表とも残す |
 | design/shared/01-function-list | mindmap | 根 = システム、枝 = まとまり、葉 = 段階 (Stage 1・2…)。機能名と FN は書かない | 一覧が値の持ち主。カバレッジ確認も残す |
 | design/shared/02-solution-strategy | flowchart TB | 既存の 1.1・1.2 を、置き場所の囲み (端末・実行基盤・外部) の中の部品に直す。DB は `[( )]`。線は「使う」だけ | 5 表とも残す |
@@ -113,8 +113,8 @@ relates_to: [test-person-form, audience-directories]
 | design/shared/09-migration-plan | flowchart LR | 先行 (MIG-101) → 条件 (MIG-201・202) → 本番 (MIG-102)、本番 → 切戻し (MIG-301)。日付は書かない | 6 表とも残す。日付で見せるときだけ gantt |
 | design/shared/10-glossary | flowchart LR | 語を箱、関係を線の名前に (「1 つの会議室は複数の枠を持つ」) | 用語・使い分けの表は残す |
 | decisions/01-decisions | flowchart LR | 箱 = 文書。未決を持つ文書は「未決あり」へ破線、決定だけの文書は「決定済み」へ実線。ID は書かない | 「影響する文書」の列は残す。AUTOGEN 区間は動かさない |
-| design/__context__/flows/__flow__・screens/__screen-group__ | flowchart (変更なし) | いまの図が第 1 節にある | 変更なし |
-| decisions/__year__/NNNN-__slug__・features/__feature__ | 図なし | 変更なし (ADR-0011 決定 2) | 変更なし |
+| `design/__context__/flows/__flow__・screens/__screen-group__` | flowchart (変更なし) | いまの図が第 1 節にある | 変更なし |
+| `decisions/__year__/NNNN-__slug__・features/__feature__` | 図なし | 変更なし (ADR-0011 決定 2) | 変更なし |
 
 ## 4. トレーサビリティ
 
