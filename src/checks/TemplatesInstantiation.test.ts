@@ -15,10 +15,13 @@ import assert from 'node:assert/strict';
 
 import { parseFrontmatter, scalar } from '../core/Frontmatter.js';
 import { IGETA_ROOT } from '../core/Paths.js';
-import { placementOf } from '../core/Role.js';
+import { extractMermaidBlocks } from '../core/MermaidBlocks.js';
+import { PLACEMENTS, placementOf } from '../core/Role.js';
+import { findChromiumExecutable } from '../export/Chromium.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
 import { DocTemplateCheck } from './DocTemplateCheck.js';
 import { FolderSizeCheck } from './FolderSizeCheck.js';
+import { checkMermaidRendering } from './MermaidCheck.js';
 import { RoleBoundaryCheck } from './RoleBoundaryCheck.js';
 
 const TEMPLATES_DIR = join(IGETA_ROOT, 'templates', 'docs');
@@ -98,3 +101,46 @@ describe('雛形の全部を実際の置き場所に置いたとき、新しい�
   });
 });
 
+
+describe('雛形 16 本の図 (テスト仕様 08 の TST-101・TST-314)', () => {
+  /** 置いた person の雛形のうち、図が要る kind の文書 (絶対パス) と、その kind */
+  function placedDiagramDocs(root: string): ReadonlyArray<{ readonly file: string; readonly kind: string }> {
+    return globSync('docs/person/**/*.md', { cwd: root })
+      .filter((rel) => basename(rel) !== 'README.md')
+      .map((rel) => {
+        const file = join(root, rel);
+        const meta = parseFrontmatter(readFileSync(file, 'utf8').split(/\r?\n/));
+        return { file, kind: (meta === null ? undefined : scalar(meta.data, 'kind')) ?? '' };
+      })
+      .filter(({ kind }) => (placementOf(kind)?.diagrams.length ?? 0) > 0);
+  }
+
+  it('[TST-101 / spec 08] 雛形 16 本を置き場所の通りに置くと、図の違反が 0 件。16 kind の全部が許す図種の図を持つ。adr・feature-brief は図が無くても 0 件', () => {
+    const root = instantiate();
+    const docs = placedDiagramDocs(root);
+    const diagramKinds = PLACEMENTS.filter((placement) => placement.diagrams.length > 0).map((placement) => placement.kind).sort();
+    assert.deepEqual(docs.map(({ kind }) => kind).sort(), diagramKinds, '図が要る 16 kind の雛形が 1 本ずつ置かれている');
+    assert.equal(docs.length, 16);
+    for (const { file, kind } of docs) {
+      const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+      const types = extractMermaidBlocks(lines, 0).filter((block) => block.closed && block.contentLines > 0).map((block) => block.type ?? '');
+      assert.ok(types.some((type) => placementOf(kind)?.diagrams.some((allowed) => allowed === type)), `${kind}: 許す図種の図が無い (${types.join(', ')})`);
+    }
+    const templateCheck = new DocTemplateCheck({ requireKind: true });
+    const violations = templateCheck.run({ targetRoot: root, igetaRoot: IGETA_ROOT }).filter((violation) => /図/.test(violation.message));
+    assert.deepEqual(violations, []);
+    assert.deepEqual(templateCheck.warnings, [], '図が 40 行を超える雛形が無い');
+  });
+
+  it('[TST-314 / spec 08] 雛形 16 本の図を checkMermaidRendering に渡すと、描画失敗が 0 件 (Chromium が無い環境は skip と明示)', async (t) => {
+    if (findChromiumExecutable() === null) {
+      t.skip('Chromium が見つからないので、雛形の図の描画は確かめていない (npx playwright install chromium で走る)');
+      return;
+    }
+    const root = instantiate();
+    const files = placedDiagramDocs(root).map(({ file }) => file);
+    assert.equal(files.length, 16);
+    const { violations } = await checkMermaidRendering({ targetRoot: root, files });
+    assert.deepEqual(violations, []);
+  });
+});
