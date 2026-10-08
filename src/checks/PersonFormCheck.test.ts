@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { TemplateCheckCommand } from '../cli/commands/checkCommands.js';
 import { IGETA_ROOT } from '../core/Paths.js';
 import type { Violation } from '../core/Report.js';
-import { PLACEMENTS } from '../core/Role.js';
+import { PLACEMENTS, placementOf } from '../core/Role.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
 import { DocTemplateCheck } from './DocTemplateCheck.js';
 import type { PersonFormTemplate } from './PersonFormCheck.js';
@@ -62,6 +62,15 @@ const rowsOf = (prefix: string): string[] => ROWS.map(([n, text, state]) => row(
 const decisions = (prefix: string): string[] => table(...rowsOf(prefix));
 
 const MERMAID: readonly string[] = ['```mermaid', 'flowchart LR', '  A[予約] --> B[確定]', '```', ''];
+const MINDMAP: readonly string[] = ['```mermaid', 'mindmap', '  root((予約))', '    確定', '```', ''];
+const QUADRANT: readonly string[] = ['```mermaid', 'quadrantChart', '  x-axis 低 --> 高', '  y-axis 低 --> 高', '  RSK-101: [0.85, 0.5]', '```', ''];
+
+/** kind が許す図種 (要件定義書 02 §8) の図。flowchart を許せば flowchart、無ければ mindmap か quadrantChart */
+function figureOf(kind: string): readonly string[] {
+  const allowed = placementOf(kind)?.diagrams ?? [];
+  if (allowed.includes('flowchart')) return MERMAID;
+  return allowed.includes('mindmap') ? MINDMAP : QUADRANT;
+}
 
 /** frontmatter (kind が無い文書も作れる) と題名の次から、本文の行 */
 function titled(id: string, kind: string | null, body: readonly string[], extra: readonly string[] = []): string[] {
@@ -100,24 +109,23 @@ interface FormDoc {
   readonly prefix: string;
   readonly path: string;
   readonly context?: string;
-  readonly diagram?: true;
 }
 
 const FORM_DOCS: readonly FormDoc[] = [
   { id: 'requirements', kind: 'requirements', prefix: 'REQ', path: 'person/requirements/01-requirements.md' },
   { id: 'function-list', kind: 'function-list', prefix: 'FN', path: 'person/design/shared/01-function-list.md' },
-  { id: 'solution-strategy', kind: 'solution-strategy', prefix: 'SS', path: 'person/design/shared/02-solution-strategy.md', diagram: true },
+  { id: 'solution-strategy', kind: 'solution-strategy', prefix: 'SS', path: 'person/design/shared/02-solution-strategy.md' },
   { id: 'nonfunctional', kind: 'nonfunctional', prefix: 'NFR', path: 'person/design/shared/03-nonfunctional.md' },
   { id: 'permission-matrix', kind: 'permission-matrix', prefix: 'PRM', path: 'person/design/shared/04-permission-matrix.md' },
   { id: 'data-management', kind: 'data-management', prefix: 'DM', path: 'person/design/shared/05-data-management.md' },
-  { id: 'as-is-overview', kind: 'as-is-overview', prefix: 'ARC', path: 'person/design/shared/06-as-is-overview.md', diagram: true },
+  { id: 'as-is-overview', kind: 'as-is-overview', prefix: 'ARC', path: 'person/design/shared/06-as-is-overview.md' },
   { id: 'risks-tech-debt', kind: 'risks-tech-debt', prefix: 'RSK', path: 'person/design/shared/07-risks-tech-debt.md' },
   { id: 'operations', kind: 'operations', prefix: 'OPS', path: 'person/design/shared/08-operations.md' },
   { id: 'migration-plan', kind: 'migration-plan', prefix: 'MIG', path: 'person/design/shared/09-migration-plan.md' },
   // 日本語のファイル名。廃の行の起点の読み出し (TST-106・311・313) が、git ls-tree の出力の日本語のパスを読めることも、これで固める
-  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-予約.md', context: 'reservation', diagram: true },
-  { id: 'payment-refund', kind: 'business-flow', prefix: 'BF', path: 'person/design/payment/flows/01-refund.md', context: 'payment', diagram: true },
-  { id: 'reservation-top', kind: 'screen-spec', prefix: 'SCR', path: 'person/design/reservation/screens/01-top.md', context: 'reservation', diagram: true },
+  { id: 'reservation-booking', kind: 'business-flow', prefix: 'BF', path: 'person/design/reservation/flows/01-予約.md', context: 'reservation' },
+  { id: 'payment-refund', kind: 'business-flow', prefix: 'BF', path: 'person/design/payment/flows/01-refund.md', context: 'payment' },
+  { id: 'reservation-top', kind: 'screen-spec', prefix: 'SCR', path: 'person/design/reservation/screens/01-top.md', context: 'reservation' },
 ];
 
 /** DocTemplateCheck が雛形から渡す ID の接頭辞 */
@@ -128,12 +136,14 @@ const BOOKING = docOf('reservation-booking').path;
 const REFUND = docOf('payment-refund').path;
 const TOP = docOf('reservation-top').path;
 const REQUIREMENTS = docOf('requirements').path;
+/** 用語集 (図が要る kind。最初の表より前に図を置く) */
+const glossary = (body: readonly string[]): string[] => titled('glossary', 'glossary', [...MERMAID, ...body]);
 const GLOSSARY = 'person/design/shared/10-glossary.md';
 const PAYMENT_README = 'person/design/payment/README.md';
 const LEDGER = 'person/decisions/01-decisions.md';
 const CHAPTER = 'client/delivery/spec-v1/01-overview.md';
 
-function formLines(doc: FormDoc, body: readonly string[] = [...(doc.diagram === true ? MERMAID : []), ...decisions(doc.prefix)]): string[] {
+function formLines(doc: FormDoc, body: readonly string[] = [...figureOf(doc.kind), ...decisions(doc.prefix)]): string[] {
   return titled(doc.id, doc.kind, body, doc.context === undefined ? [] : [`context: ${doc.context}`]);
 }
 const booking = (body: readonly string[]): string[] => formLines(docOf('reservation-booking'), body);
@@ -148,10 +158,10 @@ function writeOtherDocs(root: string): void {
   write(root, 'docs/person/design/shared/00-map.md', titled('map', 'map', MERMAID));
   write(root, 'docs/person/design/reservation/00-map.md', titled('reservation-map', 'context-map', MERMAID, ['context: reservation']));
   write(root, 'docs/person/design/payment/00-map.md', titled('payment-map', 'context-map', MERMAID, ['context: payment']));
-  write(root, `docs/${GLOSSARY}`, titled('glossary', 'glossary', ['| 用語 | 意味 |', '|---|---|', '| 予約 | 席を押さえること |', '']));
+  write(root, `docs/${GLOSSARY}`, glossary(['| 用語 | 意味 |', '|---|---|', '| 予約 | 席を押さえること |', '']));
   write(root, 'docs/person/design/payment/features/01-refund.md', titled('payment-refund-brief', 'feature-brief', ['返金の機能ブリーフ。'], ['context: payment']));
   write(root, 'docs/person/decisions/2026/0001-use-postgres.md', titled('adr-0001-use-postgres', 'adr', ['## Decision', '', 'PostgreSQL を使う。']));
-  write(root, `docs/${LEDGER}`, titled('decisions', 'decision-log', ['| ID | 日付 | 決定 |', '|---|---|---|', '| DEC-001 | 2026-10-01 | 採用 |', '']));
+  write(root, `docs/${LEDGER}`, titled('decisions', 'decision-log', [...MERMAID, '| ID | 日付 | 決定 |', '|---|---|---|', '| DEC-001 | 2026-10-01 | 採用 |', '']));
   write(root, 'docs/ai/specs/reservation/api/01-reserve.md', [
     ...titled('reservation-api', 'api-spec', ['<!-- ai/ の文書のコメントは書いてよい -->', '', '| API-001 | 予約する | 仮 |', ''], ['context: reservation']),
     '<!-- AUTOGEN:api-index:start — generated from packages/api-contract -->',
@@ -172,7 +182,7 @@ function writeGeneratedDocs(root: string): void {
     '> このディレクトリの目的: 決定の記録。', '', marker('adr-index', 'start'), '| # | タイトル |', marker('adr-index', 'end'), '', ...DIR_INDEX,
   ]));
   write(root, `docs/${LEDGER}`, [
-    ...titled('decisions', 'decision-log', ['## 仮・未決の一覧', '']),
+    ...titled('decisions', 'decision-log', [...MERMAID, '## 仮・未決の一覧', '']),
     marker('tentative-index', 'start'), '_該当なし_', marker('tentative-index', 'end'),
   ]);
 }
@@ -269,7 +279,7 @@ describe('テスト仕様 03 §1 テストケース一覧', () => {
     const checked = runWith(flow, titled('extra', null, body, ['context: reservation'])).violations;
     assert.deepEqual(checked.map((violation) => posix(violation.file)), Array<string>(2).fill(`docs/${flow}`));
     assert.ok(checked.some((violation) => /^決まりの行が 1 つも無い .*BF-nnn/.test(violation.message)));
-    assert.ok(checked.some((violation) => /^図が 1 枚も無い \(kind: business-flow/.test(violation.message)));
+    assert.ok(checked.some((violation) => /^図が無い \(kind: business-flow/.test(violation.message)));
     // kind が screen-spec: 置き場所の型 (business-flow) と別の kind を指すので、型の検査をしない (置き場所の検査が違反にする)
     assert.deepEqual(runWith(flow, titled('extra', 'screen-spec', body, ['context: reservation'])).violations, []);
   });
@@ -288,7 +298,8 @@ describe('テスト仕様 03 §1 テストケース一覧', () => {
     ];
     // 要件の文書の本文の字数 (frontmatter を除く)。全体共通の残りを、上限ちょうどになるように用意する
     const requirements = formLines(docOf('requirements'));
-    const requirementsChars = requirements.slice(requirements.lastIndexOf('---') + 1).reduce((sum, line) => sum + [...line].length, 0);
+    // 図 (コードフェンス) の字は数えない
+    const requirementsChars = formLines(docOf('requirements'), decisions('REQ')).slice(requirements.lastIndexOf('---') + 1).reduce((sum, line) => sum + [...line].length, 0);
     /** まとまり 3 つと全体共通が、どれも上限ちょうど。reservation は半角と全角、payment はサロゲートペアの字。extra は 1 字だけ足す */
     function writeAtLimits(root: string, extra: { reservation?: string; global?: string } = {}): void {
       write(root, 'docs/person/design/reservation/features/01-a.md', doc('a', 'feature-brief', 'reservation', fill('a', 7_500)));
@@ -296,7 +307,7 @@ describe('テスト仕様 03 §1 テストケース一覧', () => {
       write(root, 'docs/person/design/payment/features/01-c.md', doc('c', 'feature-brief', 'payment', fill('𠮷', 15_000)));
       write(root, 'docs/person/design/billing/features/01-d.md', doc('d', 'feature-brief', 'billing', fill('あ', 100)));
       write(root, `docs/${REQUIREMENTS}`, requirements);
-      write(root, 'docs/person/design/shared/10-glossary.md', doc('g', 'glossary', null, [...fill('あ', 30_000 - requirementsChars), ...(extra.global === undefined ? [] : [extra.global])]));
+      write(root, 'docs/person/design/shared/10-glossary.md', doc('g', 'glossary', null, [...MERMAID, ...fill('あ', 30_000 - requirementsChars), ...(extra.global === undefined ? [] : [extra.global])]));
     }
 
     for (const version of ['0.9.9', '1.0.0']) {
@@ -417,7 +428,7 @@ describe('テスト仕様 03 §2 否定テスト', () => {
     const targets: ReadonlyArray<{ name: string; path: string; id: string; build: (hidden: string) => string[] }> = [
       { name: '自分の接頭辞', path: BOOKING, id: 'BF-130', build: (hidden) => booking([...MERMAID, ...table(...rowsOf('BF'), hidden)]) },
       { name: '別の接頭辞', path: BOOKING, id: 'REQ-130', build: (hidden) => booking([...MERMAID, ...table(...rowsOf('BF'), hidden)]) },
-      { name: '用語集の決まりの表', path: GLOSSARY, id: 'GL-130', build: (hidden) => titled('glossary', 'glossary', table(hidden)) },
+      { name: '用語集の決まりの表', path: GLOSSARY, id: 'GL-130', build: (hidden) => glossary(table(hidden)) },
     ];
     for (const { name, path, id, build } of targets) {
       for (const state of ['確定', '', '決定 (仮)']) {
@@ -443,10 +454,10 @@ describe('テスト仕様 03 §2 否定テスト', () => {
       ['タブで字下げした mermaid のフェンスだけ', ['\t```mermaid', '\tflowchart LR', '\t  A[予約] --> B[確定]', '\t```', '']],
     ];
     for (const [name, picture] of cases) {
-      assertOnly(runWith(BOOKING, booking([...picture, ...decisions('BF')])), BOOKING, 1, /^図が 1 枚も無い \(kind: business-flow/, name);
+      assertOnly(runWith(BOOKING, booking([...picture, ...decisions('BF')])), BOOKING, 1, /^図が無い \(kind: business-flow/, name);
     }
     const map = 'person/design/shared/00-map.md';
-    assertOnly(runWith(map, titled('map', 'map', ['![地図](./map.png)', ''])), map, 1, /^図が 1 枚も無い \(kind: map/, '図だけの kind (地図)');
+    assertOnly(runWith(map, titled('map', 'map', ['![地図](./map.png)', ''])), map, 1, /^図が無い \(kind: map/, '図だけの kind (地図)');
   });
 
   it('[TST-307] ○ の kind が 101 行 / requirements が 151 行 / ○ でない kind (地図) が雛形の line_limit を 1 行超える → 違反。template-check の全体で、行数の違反は 1 件だけ', () => {
@@ -477,30 +488,30 @@ describe('テスト仕様 03 §2 否定テスト', () => {
   it('[TST-308] 1 行のコメント / 複数行のコメント / 生成区間の中のコメント / 提出物の章のコメント / インラインコードの中に書いたコメントの始まりの記号 → どれも違反 (コメントごとに 1 件)。コードフェンスの中の例は通す', () => {
     /** [名前, 文書, 行, コメントの始まりの行] */
     const cases: ReadonlyArray<readonly [string, string, string[], (line: string) => boolean]> = [
-      ['1 行', GLOSSARY, titled('glossary', 'glossary', ['用語。', '<!-- 人には見えない指示 -->', '']), (line) => line.includes('人には見えない指示')],
-      ['行の途中', GLOSSARY, titled('glossary', 'glossary', ['用語。<!-- 行の途中 -->', '']), (line) => line.includes('行の途中')],
-      ['複数行', GLOSSARY, titled('glossary', 'glossary', ['用語。', '<!--', '複数行の', 'コメント', '-->', '']), (line) => line === '<!--'],
+      ['1 行', GLOSSARY, glossary(['用語。', '<!-- 人には見えない指示 -->', '']), (line) => line.includes('人には見えない指示')],
+      ['行の途中', GLOSSARY, glossary(['用語。<!-- 行の途中 -->', '']), (line) => line.includes('行の途中')],
+      ['複数行', GLOSSARY, glossary(['用語。', '<!--', '複数行の', 'コメント', '-->', '']), (line) => line === '<!--'],
       [
         '生成区間の中',
         LEDGER,
-        [...titled('decisions', 'decision-log', ['## 仮・未決の一覧', '']), marker('tentative-index', 'start'), '<!-- 区間の中に隠した指示 -->', marker('tentative-index', 'end')],
+        [...titled('decisions', 'decision-log', [...MERMAID, '## 仮・未決の一覧', '']), marker('tentative-index', 'start'), '<!-- 区間の中に隠した指示 -->', marker('tentative-index', 'end')],
         (line) => line.includes('区間の中に隠した指示'),
       ],
       ['提出物の章', CHAPTER, titled('delivery-overview', 'delivery-chapter', ['顧客に渡す章。', '<!-- 提出物のコメント -->']), (line) => line.includes('提出物のコメント')],
-      ['インラインコードの中', GLOSSARY, titled('glossary', 'glossary', ['用語。`<!--` と書く例。', '']), (line) => line.includes('`<!--`')],
+      ['インラインコードの中', GLOSSARY, glossary(['用語。`<!--` と書く例。', '']), (line) => line.includes('`<!--`')],
     ];
     for (const [name, path, lines, isComment] of cases) {
       assertOnly(runWith(path, lines), path, lineOf(lines, isComment), /^HTML コメントを書かない/, name);
     }
-    assert.deepEqual(runWith(GLOSSARY, titled('glossary', 'glossary', ['```html', '<!-- 例 -->', '```', ''])).violations, [], 'コードフェンスの中の例');
+    assert.deepEqual(runWith(GLOSSARY, glossary(['```html', '<!-- 例 -->', '```', ''])).violations, [], 'コードフェンスの中の例');
   });
 
   it('[TST-309] 生成区間: 管理外の名前 / 決まった文書以外に置く / 同じ区間が 2 つ / 閉じていない / 入れ子 / 終わりだけ / 始まりと終わりの名前が違う / 印の後ろに文を足す / 読めない印 / 印が 1 行で閉じない → どれも違反', () => {
     const paymentReadme = (...body: string[]): string[] => readme('payment-index', ['> このディレクトリの目的: 決済。', '', ...body]);
     const notExact = /^AUTOGEN の印が、生成器が書く文字列と一致しない/;
     const cases: ReadonlyArray<readonly [string, string, string[], RegExp]> = [
-      ['管理外の名前', GLOSSARY, titled('glossary', 'glossary', [marker('api-index', 'start'), marker('api-index', 'end'), '']), /^管理外の AUTOGEN 区間: api-index/],
-      ['決まった文書以外 (dir-index を README.md でない文書に)', GLOSSARY, titled('glossary', 'glossary', [...DIR_INDEX, '']), /AUTOGEN:dir-index の区間は、この文書には置けない/],
+      ['管理外の名前', GLOSSARY, glossary([marker('api-index', 'start'), marker('api-index', 'end'), '']), /^管理外の AUTOGEN 区間: api-index/],
+      ['決まった文書以外 (dir-index を README.md でない文書に)', GLOSSARY, glossary([...DIR_INDEX, '']), /AUTOGEN:dir-index の区間は、この文書には置けない/],
       ['決まった文書以外 (adr-index)', PAYMENT_README, paymentReadme(marker('adr-index', 'start'), marker('adr-index', 'end')), /AUTOGEN:adr-index の区間は、この文書には置けない/],
       ['決まった文書以外 (tentative-index)', BOOKING, booking([...MERMAID, ...decisions('BF'), marker('tentative-index', 'start'), marker('tentative-index', 'end')]), /AUTOGEN:tentative-index の区間は、この文書には置けない/],
       ['同じ区間が 2 つ', PAYMENT_README, paymentReadme(...DIR_INDEX, ...DIR_INDEX), /AUTOGEN:dir-index の区間が 2 つある/],
@@ -608,7 +619,7 @@ describe('テスト仕様 03 §2 否定テスト (廃の行・検査不能)', ()
     git(orphanRepo, 'checkout', '-q', 'dest');
     // 起点の文書に frontmatter の id が無い (廃の行を照らせない)
     const idless = 'person/design/shared/11-notes.md';
-    const withIdless = makeRepo((root) => write(root, `docs/${idless}`, ['---', 'title: id の無い文書', 'kind: glossary', '---', '', '# 用語']));
+    const withIdless = makeRepo((root) => write(root, `docs/${idless}`, ['---', 'title: id の無い文書', 'kind: glossary', '---', '', '# 用語', '', ...MERMAID]));
     const notRepo = makeRoot();
     writeValidTree(notRepo);
     const elsewhere = makeRoot();

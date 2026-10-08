@@ -9,7 +9,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-01
 depends_on: [adr-0001-document-role-directories]
-relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
+relates_to: [adr-0009-kind-placement, adr-0010-value-ownership, adr-0011-person-diagram-first]
 ---
 
 # ADR-0002: 確定させる人の境界を守る不変条件と機械検査の対応
@@ -49,7 +49,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 | 3 | 依存は上流へ: `ai` → `person`、`client` → `person`・`ai`。`person` は `ai`・`client` を指さない | `DocGraphCheck` 拡張 (frontmatter の参照の項目・本文リンク・修飾 ID) | 違反 |
 | 4 | `ai/specs/` の文書は `depends_on` を辿ると `person/` に届く | `DocGraphCheck` 拡張 | 違反 |
 | 5 | ○ の kind: 決まりの表が 1 つ以上あり、行頭が自分の ID の行は `状態` (決定・仮・未決・廃) を持つ | `PersonFormCheck` | 違反 |
-| 6 | 図が要る kind (map・context-map・business-flow・screen-spec・solution-strategy・as-is-overview) に図が 1 枚以上 | `PersonFormCheck` | 違反 |
+| 6 | 図が要る 16 kind (要件 02 §8) は、冒頭に許す図種の図が 1 枚以上 (ADR-0011 で改め) | `PersonFormCheck` | 違反 |
 | 7 | ○ の kind は 1 本 100 行まで (requirements は 150 行)。他の kind は雛形の行数上限 | `PersonFormCheck` | 違反 |
 | 8 | まとまりの合計 15,000 字、全体共通 (要件 + `design/shared/`) 30,000 字まで | `PersonFormCheck` (検査の出力と `review-sheet` に出す) | 警告 → 下の測定の後のメジャー版で違反 |
 | 9 | `廃` の行は消さず、状態を戻さず、番号を使い直さない。廃の行は移動先を書かない (ai の行が元の ID を引く) | `PersonFormCheck` が CI の比べる起点 (merge-base) と比べる | 違反 |

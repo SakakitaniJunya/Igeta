@@ -59,14 +59,14 @@ docs/
 ## 2. kind の置き場所 (正本は Igeta の要件定義書 02 §7)
 
 REQ-102 の正本は Igeta の要件定義書 02 §7。この節はその転記 (正本・この節・`src/core/Role.ts` の表は `TaxonomyGuideSync.test.ts` が突き合わせる)。`<c>` はまとまりの名前 (`shared` を含む)。
-型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査し、(図) の kind は図も要る。図 = 図だけを検査。— = 検査しない。
+型の検査: ○ = 状態の列・決まりの表・行数 (100 行。requirements は 150 行) を検査する。図 = 図だけを検査。— = 検査しない。図が要る kind と図種は、この列と別に要件定義書 02 §8 が決める (この手引きの §4)。
 
 | 確定させる人 | kind | 置き場所 | 型の検査 |
 |---|---|---|---|
 | person | map / context-map | `person/design/shared/00-map.md` / `person/design/<c>/00-map.md` | 図 |
 | person | requirements | `person/requirements/01-requirements.md`・`person/requirements/NN-slug.md` | ○ |
-| person | function-list / solution-strategy (図) / nonfunctional / permission-matrix / data-management / as-is-overview (図) / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
-| person | business-flow (図) / screen-spec (図) / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
+| person | function-list / solution-strategy / nonfunctional / permission-matrix / data-management / as-is-overview / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
+| person | business-flow / screen-spec / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
 | person | glossary | `person/design/shared/NN-glossary.md` | — |
 | person | adr / decision-log | `person/decisions/<year>/NNNN-slug.md` / `person/decisions/01-decisions.md` | — |
 | ai | crosscutting / code-definitions / messages / i18n / infra-design / secrets-management / external-integration / test-plan / domain-overview / aggregate-map | `ai/specs/shared/NN-*.md` (固定番号) | — |
@@ -106,7 +106,7 @@ REQ-102 の正本は Igeta の要件定義書 02 §7。この節はその転記 
 確定する前に人が全部読む文書は、次の順に書く。作り方の詳細と `ai/` の ID は書かない。
 
 1. **結論**: `> **TL;DR**:` から 3 行まで。ID は書かない
-2. **図**: 図が要る kind (地図・まとまりの地図・業務フロー・画面・解決戦略・現行構成) は Mermaid 1 枚以上
+2. **図**: 図が要る 16 kind は、kind ごとに許す図種の Mermaid を TL;DR の次の節に 1 枚以上 (正本は要件 02 §8。adr・feature-brief は要らない)
 3. **決まりの表**: 行頭が自分の ID の行は、最後の列が `状態`。値は `決定`・`仮` (AI が置いた値。人の承認待ち)・`未決`・`廃` (使わなくなった ID。消さず、番号を再利用しない)
 4. **決めてほしいこと**: `| 問い | 対象 ID | 選択肢 | 決まらないと止まること |`
 5. **関連**: 上流は文書。下流の欄は `(生成索引が出す)` と書き、`ai/`・`client/` の文書を指さない
@@ -123,11 +123,11 @@ REQ-102 の正本は Igeta の要件定義書 02 §7。この節はその転記 
 | `context-map` | まとまり 1 つの概要・含む機能・隣のまとまりの約束への入口 | — | — | 150 |
 | `requirements` | 業務要件・機能要件 (EARS)・制約・前提・スコープ外。全設計書の上流 | §1 | REQ | 150 |
 | `function-list` | 機能の一覧と、要件・画面との対応 | §1 | FN | 100 |
-| `solution-strategy` | 技術選定・分割方針・費用の上限・使う外部サービス・組織的な決定 (任意)・構成の図 (C4 L1・L2) | §4 | SS | 100 |
+| `solution-strategy` | 技術選定・分割方針・費用の上限・使う外部サービス・組織的な決定 (任意)・構成の図 (部品と置き場所) | §4 | SS | 100 |
 | `nonfunctional` | 性能・可用性・セキュリティ・監視の閾値・対応する言語など、人が決める水準 | §10 | NFR | 100 |
 | `permission-matrix` | ロール・ロール × 機能・データ範囲 | §8 | PRM | 100 |
 | `data-management` | 持つデータの区分・個人情報・保持期間・越境・削除の求め・環境ごとの扱い | §8 | DM | 100 |
-| `as-is-overview` | 稼働中の構成の図 (C4 L1・L2) と外部システム | §3 | ARC | 100 |
+| `as-is-overview` | 稼働中の構成の図 (部品と置き場所) と外部システム | §3 | ARC | 100 |
 | `risks-tech-debt` | リスクと技術的負債 (台帳の正本は課題管理) | §11 | RSK | 100 |
 | `operations` | 運用の方針 (連絡・定期作業・復旧の目標) | §7 | OPS | 100 |
 | `migration-plan` | 移行とリリースの段階・リリースしてよい条件・切戻しの条件 | §7 | MIG | 100 |

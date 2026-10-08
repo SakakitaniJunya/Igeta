@@ -2,8 +2,10 @@
 // 置き場所の正本 (要件定義書 02 §7 の表) と、コード側の表 (Role.ts の ROLE_OF_KIND)、文書体系の手引きの「kind の置き場所」の
 // 表の突き合わせ (ADR-0005 決定 2、ADR-0009、テスト仕様 06 の I12)。表を直したのに転記を直し忘れた (逆も) と、ここで落ちる。
 //
-// §7 とコードで突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 図が要る kind / 置き場所のフォルダと
+// §7 とコードで突き合わせる項目: kind の集合 / 確定させる人 / 型の検査の区分 / 置き場所のフォルダと
 // ファイル名 / 「15 本の対象外」/ 1 フォルダの上限 / 区分ごとの kind の数。
+// 図が要る kind と図種は §8 (テスト仕様 08 の TST-108・315) とコードの diagrams を突き合わせ、手引き §4・解説 09 §3 の「16 kind」の
+// 書き方が §8 の kind 数と合うことも見る。
 // 文書体系の手引き (templates/docs/ai/handbook/how-to/01-document-taxonomy.md) の「kind の置き場所」の節は、§7 の転記なので、
 // 表の行 (kind の表と「決まり」の表) が 1 行ずつ同じことを見る。
 //
@@ -21,7 +23,7 @@ import { listDocFiles } from './DocFiles.js';
 import { parseFrontmatter, scalar } from './Frontmatter.js';
 import { IGETA_ROOT } from './Paths.js';
 import { FOLDER_SIZE_EXEMPT_DIRS, ROLE_OF_KIND, ROLES } from './Role.js';
-import type { FormCheck } from './Role.js';
+import type { DiagramKind, FormCheck } from './Role.js';
 
 /** 置き場所の正本の文書の id。場所ではなく id で探す (Igeta 自身の docs/ を移しても、このテストは動く。REQ-302) */
 const REQUIREMENTS_ID = 'audience-directories';
@@ -43,8 +45,6 @@ const FORM_OF_MARK: ReadonlyMap<string, FormCheck> = new Map([
 
 interface KindEntry {
   readonly kind: string;
-  /** kind の後ろに `(図)` が付いている */
-  readonly diagramMark: boolean;
 }
 
 interface KindRow {
@@ -95,9 +95,9 @@ function tablesOf(lines: readonly string[]): readonly Table[] {
 function parseKindCell(cell: string): KindEntry[] | null {
   const entries: KindEntry[] = [];
   for (const part of cell.split('/')) {
-    const matched = /^([a-z][a-z0-9-]*)(\s*\(図\))?$/.exec(part.trim());
+    const matched = /^([a-z][a-z0-9-]*)$/.exec(part.trim());
     if (matched === null) return null;
-    entries.push({ kind: matched[1] ?? '', diagramMark: matched[2] !== undefined });
+    entries.push({ kind: matched[1] ?? '' });
   }
   return entries;
 }
@@ -212,14 +212,6 @@ function diffAgainstRoleTable(markdown: string): string[] {
       });
     }
 
-    // 図が要る kind: 表の (図) と、型の検査が 図 の kind
-    row.kinds.forEach(({ kind, diagramMark }, index) => {
-      const form = forms.length === 1 ? forms[0] : forms[index];
-      const expected = diagramMark || form === 'diagram';
-      const actual = ROLE_OF_KIND.get(kind)?.needsDiagram;
-      if (actual !== undefined && actual !== expected) diffs.push(`${kind}: 図が要るかが違う (表 ${String(expected)} / コード ${String(actual)})`);
-    });
-
     // 置き場所のフォルダ。行ぜんぶの集合が一致すること。kind とフォルダが同じ数なら、同じ順に対応すること
     const dirs = tableDirs(row.placeCell);
     const rowDirs = new Set(dirs);
@@ -262,6 +254,91 @@ function diffAgainstRoleTable(markdown: string): string[] {
       diffs.push(`15 本の対象外のフォルダが違う (表 ${show(exemptDirs)} / コード ${show(FOLDER_SIZE_EXEMPT_DIRS)})`);
     }
   }
+  return diffs;
+}
+
+/** 「## N.」の節の行 (見出しの次から、次の `## ` の手前まで)。節が無ければ null */
+function sectionLines(markdown: string, number: number): readonly string[] | null {
+  const lines = markdown.split(/\r?\n/);
+  const start = lines.findIndex((line) => new RegExp(`^##\\s+${number}\\.\\s`).test(line));
+  if (start === -1) return null;
+  const next = lines.findIndex((line, index) => index > start && /^##\s/.test(line));
+  return lines.slice(start + 1, next === -1 ? undefined : next);
+}
+
+/** 要件定義書 02 §8 の読み取り結果: 行ごとの kind と図種、図が要らない kind */
+interface DiagramTable {
+  readonly rows: readonly { readonly kinds: readonly string[]; readonly diagrams: readonly string[] }[];
+  readonly noDiagramKinds: readonly string[];
+}
+
+function readDiagramTable(markdown: string): DiagramTable | string {
+  const lines = sectionLines(markdown, 8);
+  if (lines === null) return '「## 8.」の節が無い';
+  const table = tablesOf(lines).find((candidate) => candidate.header[0] === 'kind');
+  if (table === undefined) return '§8 に kind と図種の表が無い';
+  const rows: { kinds: string[]; diagrams: string[] }[] = [];
+  for (const cells of table.rows) {
+    const kinds = (cells[0] ?? '').split('/').map((kind) => kind.trim());
+    const diagrams = (cells[1] ?? '').split('/').map((diagram) => diagram.trim());
+    if (kinds.some((kind) => !/^[a-z][a-z0-9-]*$/.test(kind)) || diagrams.some((diagram) => !/^[A-Za-z]+$/.test(diagram))) {
+      return `§8 の表の行が読めない: ${cells.join(' | ')}`;
+    }
+    rows.push({ kinds, diagrams });
+  }
+  const none = /^図が要らない kind: (.+?)(?:\s*\(|。|$)/m.exec(lines.join('\n'));
+  if (none === null) return '§8 に「図が要らない kind: …」の行が無い';
+  return { rows, noDiagramKinds: (none[1] ?? '').split('・').map((kind) => kind.trim()) };
+}
+
+type DiagramsOfKind = ReadonlyMap<string, readonly DiagramKind[]>;
+
+const codeDiagrams: DiagramsOfKind = new Map([...ROLE_OF_KIND.entries()].map(([kind, placement]) => [kind, placement.diagrams]));
+
+/** 要件定義書 02 §8 と、コード (Role.ts の diagrams) の食い違い。1 行に kind が複数ある行は、全部の kind が同じ図種 */
+function diffAgainstDiagramTable(markdown: string, code: DiagramsOfKind = codeDiagrams): string[] {
+  const table = readDiagramTable(markdown);
+  if (typeof table === 'string') return [table];
+  const diffs: string[] = [];
+  const inTable = new Set<string>();
+  for (const row of table.rows) {
+    for (const kind of row.kinds) {
+      if (inTable.has(kind)) diffs.push(`§8 の kind が重複している: ${kind}`);
+      inTable.add(kind);
+      const actual = code.get(kind);
+      if (actual === undefined) {
+        diffs.push(`§8 にあって ROLE_OF_KIND に無い kind: ${kind}`);
+      } else if (!sameSet(new Set(row.diagrams), new Set(actual))) {
+        diffs.push(`${kind}: 許す図種が違う (§8 ${show(row.diagrams)} / コード ${show(actual)})`);
+      }
+    }
+  }
+  for (const [kind, diagrams] of code) {
+    if (inTable.has(kind)) continue;
+    // §8 は person の kind の表。ai・client の kind は、図種を持たなければよい
+    if (ROLE_OF_KIND.get(kind)?.role === 'person' && !table.noDiagramKinds.includes(kind)) diffs.push(`${kind}: §8 の表にも「図が要らない kind」にも無い`);
+    if (diagrams.length > 0) diffs.push(`${kind}: §8 では図が要らないが、コードは図種を持つ ${show(diagrams)}`);
+  }
+  for (const kind of table.noDiagramKinds) if (inTable.has(kind)) diffs.push(`${kind}: §8 の表と「図が要らない kind」の両方にある`);
+  if (!sameSet(new Set(table.noDiagramKinds), new Set(['adr', 'feature-brief']))) {
+    diffs.push(`図が要らない kind は adr・feature-brief の 2 つ (§8: ${show(table.noDiagramKinds)})`);
+  }
+  return diffs;
+}
+
+/** 手引き §4・解説 09 §3 の「図」の項は、「16 kind・要件 02 §8」と書き、kind の列挙を持たない (§8 の kind 数と合う) */
+function diffDiagramProse(label: string, text: string, sectionNumber: number, requirementsText: string): string[] {
+  const table = readDiagramTable(requirementsText);
+  if (typeof table === 'string') return [table];
+  const count = table.rows.reduce((sum, row) => sum + row.kinds.length, 0);
+  const line = (sectionLines(text, sectionNumber) ?? []).find((candidate) => candidate.includes('**図**'));
+  if (line === undefined) return [`${label}: 「図」の項が無い`];
+  const diffs: string[] = [];
+  const written = /(\d+) kind/.exec(line);
+  if (written === null || Number(written[1]) !== count) diffs.push(`${label}: 「${count} kind」と書く (書いてある: ${written?.[0] ?? 'なし'})`);
+  if (!line.includes('§8')) diffs.push(`${label}: 正本が要件 02 §8 だと書く`);
+  const listed = table.rows.flatMap((row) => row.kinds).filter((kind) => line.includes(kind));
+  if (listed.length > 0) diffs.push(`${label}: 図が要る kind を列挙しない (書いてある: ${listed.join('・')})`);
   return diffs;
 }
 
@@ -310,10 +387,29 @@ function mutate(from: string, to: string): string {
   return `${requirements.slice(0, at)}${to}${requirements.slice(at + from.length)}`;
 }
 
+/** 要件定義書の §8 の中の文字列を 1 か所だけ書き換える */
+function mutateDiagrams(from: string, to: string): string {
+  const section = requirements.search(/^##\s+8\.\s/m);
+  const at = section === -1 ? -1 : requirements.indexOf(from, section);
+  assert.notEqual(at, -1, `要件定義書 02 の §8 に見つからない: ${from}`);
+  return `${requirements.slice(0, at)}${to}${requirements.slice(at + from.length)}`;
+}
+
 describe('TaxonomyGuideSync: 要件定義書 02 §7 と ROLE_OF_KIND', () => {
   it('[TST-108] §7・手引き・ROLE_OF_KIND の 3 つで、47 kind の置き場所と型の検査の区分が全部同じ (§7 とコードは項目ごと、手引きは表の行が 1 行ずつ同じ)', () => {
     assert.deepEqual(diffAgainstRoleTable(requirements), []);
     assert.deepEqual(diffGuideAgainstRequirements(guide, requirements), []);
+  });
+
+  it('[TST-108 / spec 08] §8・Role.ts の diagrams・手引き §4・解説 09 §3 で、16 kind の図種が一致し、図が要らない kind は adr・feature-brief の 2 つで、本文の「16」が §8 の kind 数と合う', () => {
+    assert.deepEqual(diffAgainstDiagramTable(requirements), []);
+    const explanation = readFileSync(join(IGETA_ROOT, 'docs', 'explanation', '09-reader-granularity.md'), 'utf8');
+    assert.deepEqual(diffDiagramProse('手引き §4', guide, 4, requirements), []);
+    assert.deepEqual(diffDiagramProse('解説 09 §3', explanation, 3, requirements), []);
+    const table = readDiagramTable(requirements);
+    assert.ok(typeof table !== 'string');
+    assert.equal(table.rows.flatMap((row) => row.kinds).length, 16);
+    assert.deepEqual(table.noDiagramKinds, ['adr', 'feature-brief']);
   });
 
   it('表の kind の集合は ARC42_BY_KIND と一致する (REQ-102)', () => {
@@ -331,9 +427,9 @@ describe('TaxonomyGuideSync: 要件定義書 02 §7 と ROLE_OF_KIND', () => {
     );
     assert.equal(rows.length, 1);
     assert.deepEqual(parseKindCell(rows[0]?.[1] ?? ''), [
-      { kind: 'business-flow', diagramMark: true },
-      { kind: 'screen-spec', diagramMark: true },
-      { kind: 'feature-brief', diagramMark: false },
+      { kind: 'business-flow' },
+      { kind: 'screen-spec' },
+      { kind: 'feature-brief' },
     ]);
     assert.equal(rows[0]?.[3], '○ / ○ / —');
     assert.deepEqual(tableDirs(rows[0]?.[2] ?? ''), [
@@ -357,7 +453,7 @@ describe('TaxonomyGuideSync: 表を書き換えると、食い違いを見つけ
     assert.ok(found(mutate('| ai | tasks |', '| ai | tasks / glossary |'), '表の kind が重複している: glossary'));
   });
 
-  it('型の検査の区分・(図) の付け外し', () => {
+  it('型の検査の区分の書き換え', () => {
     assert.ok(found(mutate('| ○ / ○ / — |', '| ○ / — / — |'), 'screen-spec: 型の検査の区分が違う'));
     assert.ok(
       found(
@@ -365,8 +461,6 @@ describe('TaxonomyGuideSync: 表を書き換えると、食い違いを見つけ
         'glossary: 型の検査の区分が違う',
       ),
     );
-    assert.ok(found(mutate('screen-spec (図)', 'screen-spec'), 'screen-spec: 図が要るかが違う'));
-    assert.ok(found(mutate('as-is-overview (図)', 'as-is-overview'), 'as-is-overview: 図が要るかが違う'));
   });
 
   it('置き場所のフォルダの取り違え・並べ替え・追加', () => {
@@ -391,6 +485,24 @@ describe('TaxonomyGuideSync: 表を書き換えると、食い違いを見つけ
     assert.ok(found(mutate('`client/proposals/<year>/`', ''), '15 本の対象外のフォルダが違う'));
     assert.ok(found(mutate('15 本の対象外', '16 本の対象外'), '1 フォルダの上限が違う'));
     assert.ok(found(mutate('計 47 kind (person 18・ai 27・client 2)', '計 47 kind (person 17・ai 28・client 2)'), 'kind の数が違う'));
+  });
+
+  it('[TST-315 / spec 08] §8 の食い違い: 1 行の図種を変える / 複数 kind の行の片方の kind を消す / Role.ts の diagrams を 1 つ変える / 旧い列挙を戻す / 本文の「16」を変える', () => {
+    const diagrams = (markdown: string, code?: DiagramsOfKind): string[] => diffAgainstDiagramTable(markdown, code);
+    assert.ok(diagrams(mutateDiagrams('| risks-tech-debt | quadrantChart |', '| risks-tech-debt | flowchart |')).some((diff) => diff.includes('risks-tech-debt: 許す図種が違う')));
+    assert.ok(diagrams(mutateDiagrams('| solution-strategy / as-is-overview |', '| solution-strategy |')).some((diff) => diff.includes('as-is-overview: §8 の表にも')));
+    const changed = new Map(codeDiagrams);
+    changed.set('operations', ['sequenceDiagram']);
+    assert.ok(diagrams(requirements, changed).some((diff) => diff.includes('operations: 許す図種が違う')));
+    assert.ok(diagrams(mutateDiagrams('図が要らない kind: adr・feature-brief', '図が要らない kind: adr')).some((diff) => diff.includes('図が要らない kind は adr・feature-brief')));
+
+    const guideProse = (text: string): string[] => diffDiagramProse('手引き §4', text, 4, requirements);
+    const explanation = readFileSync(join(IGETA_ROOT, 'docs', 'explanation', '09-reader-granularity.md'), 'utf8');
+    const explanationProse = (text: string): string[] => diffDiagramProse('解説 09 §3', text, 3, requirements);
+    assert.ok(guideProse(guide.replace('図が要る 16 kind', '図が要る 15 kind')).some((diff) => diff.includes('「16 kind」と書く')));
+    assert.ok(guideProse(guide.replace('図が要る 16 kind', '図が要る map・context-map・business-flow・screen-spec・solution-strategy・as-is-overview の 6 kind')).length > 0);
+    assert.ok(explanationProse(explanation.replace('16 kind は', '17 kind は')).some((diff) => diff.includes('「16 kind」と書く')));
+    assert.ok(explanationProse(explanation.replace('16 kind は', 'map・business-flow は')).length > 0);
   });
 
   it('[TST-305] 手引きがずれる: 手引きの表の 1 行の置き場所を書き換える / 1 行を消すと、§7 との突き合わせが食い違いを見つける', () => {

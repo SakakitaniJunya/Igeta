@@ -131,8 +131,8 @@ describe('person・client の雛形: 人の型のうち、本物の検査が見�
     );
   });
 
-  it('図が要る kind (地図・まとまりの地図・業務フロー・画面・解決戦略・現行構成) は、図 (Mermaid) が最初の表より前にある (図の有無は PersonFormCheck が見る)', () => {
-    const diagramDocs = personKindDocs.filter((doc) => doc.kind !== undefined && placementOf(doc.kind)?.needsDiagram === true);
+  it('図が要る kind は、図 (Mermaid) が冒頭域にある (spec 08 の diagrams 配列が空でない kind。図の有無・位置は PersonFormCheck が見る)', () => {
+    const diagramDocs = personKindDocs.filter((doc) => doc.kind !== undefined && (placementOf(doc.kind)?.diagrams.length ?? 0) > 0);
     assert.ok(diagramDocs.length > 0, '図が要る kind の雛形が見つからない');
     assert.deepEqual(
       problems(diagramDocs, (doc) => {

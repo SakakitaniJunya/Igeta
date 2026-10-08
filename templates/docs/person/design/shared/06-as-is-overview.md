@@ -22,20 +22,19 @@ relates_to: []
 
 ## 1. 構成の図 (実測日: YYYY-MM-DD)
 
-### 1.1 利用者と外部システム (C4 L1)
-
 ```mermaid
 flowchart TB
-  user["利用者"] --> sys["本システム"]
-  sys --> ext["外部システム"]
-```
-
-### 1.2 コンテナ (C4 L2)
-
-```mermaid
-flowchart TB
-  web["画面 (web)"] --> api["API"]
-  api --> db[("データベース")]
+  subgraph device["端末"]
+    web["画面 (web)"]
+  end
+  subgraph platform["実行基盤"]
+    api["API"] --> db[("データベース")]
+  end
+  subgraph outer["外部"]
+    ext["外部システム"]
+  end
+  web --> api
+  api --> ext
 ```
 
 ## 2. 外部システムと契約
