@@ -75,8 +75,8 @@ module.exports = {
     {
       name: 'platform-only-from-infra-and-entry',
       severity: 'error',
-      comment: 'platform (署名・トークンの検証・Firestore の生成) は infrastructure / エントリ / テストからだけ使う。',
-      from: { path: '^src/', pathNot: ['^src/modules/[^/]+/(infrastructure|presentation)/', '^src/index\\.ts$', '\\.spec\\.ts$'] },
+      comment: 'platform (署名・トークンの検証・Firestore の生成) は platform 自身・infrastructure / エントリ / テストからだけ使う。入口 (src/presentation/) には index.ts が包んで渡す。',
+      from: { path: '^src/', pathNot: ['^src/platform/', '^src/modules/[^/]+/(infrastructure|presentation)/', '^src/index\\.ts$', '\\.spec\\.ts$'] },
       to: { path: '^src/platform/' },
     },
     {
