@@ -8,6 +8,8 @@
 | `api-module/` | `your-repo/apps/api/` | `npm run scaffold:module -- --context <name> --aggregate <Name>` |
 | `api-shared-kernel/` | `your-repo/apps/api/` | 初回のみ `--include-kernel` を付ける |
 | `web-feature/` | `your-repo/apps/web/` | `npm run scaffold:module -- --kind web --feature <name>` |
+| `backend/` | `your-repo/apps/<アプリ>/backend/` | 手でコピー。Hono + Firestore のモジュラーモノリス (`base/` を最初に 1 回、`module/`・`presentation/` を足すたび)。手順は `backend/README.md` |
+| `frontend/` | `your-repo/apps/<アプリ>/frontend/admin/` | 手でコピー。React + Vite + TypeScript の管理画面を Vertical Slice Architecture で (`base/` を最初に 1 回、`feature/` を足すたび)。手順は `frontend/README.md` |
 | `store-screenshots/` | `your-repo/` ルート | 手でコピー。フォルダ構成がコピー先と同じ (`store-screenshots/`・`scripts/`・`Makefile.screenshots`・`app-side/<方式>/`)。iOS/Android ストア提出用スクショの撮影→額装パイプライン |
 | `ios-app/` | `your-repo/` のアプリ用ディレクトリ | 手でコピー。`__NAME__` / `__BUNDLE_PREFIX__` を置換して `xcodegen generate` (手順は `ios-app/README.md`)。xcodegen + SwiftUI + SwiftData + Share Extension + XCTest の雛形 |
 
