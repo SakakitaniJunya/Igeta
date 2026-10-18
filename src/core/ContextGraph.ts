@@ -1,5 +1,5 @@
 // まとまり (context) 単位の文書グラフを作る共通ロジック。
-// Spec: docs/explanation/07-context-boundaries.md §4〜§6
+// Spec: docs/ai/handbook/explanation/07-context-boundaries.md §4〜§6
 // context-boundary-check / context-size / context-files の 3 コマンドがこれを共有する。
 //
 // 参照の抜き出しは depends_on・本文の相対リンク・修飾 ID (<doc-id>/PREFIX-nnn) の 3 種類。
@@ -8,7 +8,7 @@
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) では、まとまりを置き場所の型の階層から導き (B1)、決定の記録・AI の手引き・
 // 顧客への提出物を検査から外し (B2)、context-files・context-size が読む範囲をフォルダで決める (B6)。
-// Spec: docs/design/test/specs/04-doc-graph.md の B1〜B6。旧い構成の読み方は、いままでと変えない。
+// Spec: docs/ai/specs/shared/tests/04-doc-graph.md の B1〜B6。旧い構成の読み方は、いままでと変えない。
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';

@@ -1,5 +1,5 @@
 // agreement-approve: 提出した版への承認を合意台帳に追記する。
-// Spec: docs/explanation/08-agreement-ledger.md §3
+// Spec: docs/ai/handbook/explanation/08-agreement-ledger.md §3
 //
 // 台帳は「承認した」という記録を残すだけで、合意の成立そのもの (口頭・メール等) は記録の外にある。
 

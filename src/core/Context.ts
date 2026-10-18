@@ -1,5 +1,5 @@
 // frontmatter `context: <kebab>` (業務のまとまり) を読む共通ロジック。
-// Spec: docs/explanation/07-context-boundaries.md §1
+// Spec: docs/ai/handbook/explanation/07-context-boundaries.md §1
 //
 // 無記入は `shared` (共有) — 既存文書が全部 context 未記入のまま境界検査に引っかからないようにする。
 // `delivery-chapter` は対象外 (由来層が別途管理し、複数 context を要約するのが前提のため)。frontmatter に

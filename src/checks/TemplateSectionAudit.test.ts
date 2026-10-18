@@ -1,5 +1,5 @@
 // node --test dist/checks/TemplateSectionAudit.test.js
-// 雛形の節の監査 (docs/explanation/12-template-section-audit.md。ADR-0010 の受入条件) の表 A が、ai の雛形の全部の節を
+// 雛形の節の監査 (docs/ai/handbook/explanation/12-template-section-audit.md。ADR-0010 の受入条件) の表 A が、ai の雛形の全部の節を
 // 1 回ずつ載せていて、答えが全部「変わらない」(「変わる」は 0 件) であること。
 // 監査の文書は、場所ではなく id で探す (Igeta 自身の docs/ を移しても、このテストは動く。REQ-302)。
 import { globSync, readFileSync } from 'node:fs';

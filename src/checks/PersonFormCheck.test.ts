@@ -1,5 +1,5 @@
 // node --test dist/checks/PersonFormCheck.test.js
-// テスト仕様 03 (docs/design/test/specs/03-person-form.md) の表の行ごとに 1 本。名前の先頭が行の ID。
+// テスト仕様 03 (docs/ai/specs/shared/tests/03-person-form.md) の表の行ごとに 1 本。名前の先頭が行の ID。
 // 1 つの行に複数の場合があるときは、配列を回す 1 本にする。一時ディレクトリに 3 区分・複数のまとまりの docs を作り、
 // 廃の行は本物の git repo で、宛先のブランチと HEAD の枝分かれの点と比べる。
 import { execFileSync } from 'node:child_process';

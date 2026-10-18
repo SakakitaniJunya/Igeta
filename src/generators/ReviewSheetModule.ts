@@ -5,7 +5,7 @@ import { parseFrontmatter, scalar, stringList } from '../core/Frontmatter.js';
 import { classifyLines } from '../core/LineClassifier.js';
 
 /**
- * レビューシート生成。人間レビュー層 (docs/00-map.md・docs/01-decisions.md) を前提に、
+ * レビューシート生成。人間レビュー層 (docs/person/design/shared/00-map.md・docs/person/decisions/01-decisions.md) を前提に、
  * 指定した修飾 ID (<doc-id>/REQ-nnn) の要件文・受入条件・関連 DEC/OPEN・下流の設計書を
  * 1 枚の Markdown に展開する。レビューする人はこれを見ながら PR の差分を読む。
  *

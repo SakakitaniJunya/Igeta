@@ -1,5 +1,5 @@
 // node --test dist/checks/PersonDiagram.test.js
-// テスト仕様 08 (docs/design/test/specs/08-person-diagram.md) の表の行ごとに 1 本。名前に TST の番号を入れる。
+// テスト仕様 08 (docs/ai/specs/shared/tests/08-person-diagram.md) の表の行ごとに 1 本。名前に TST の番号を入れる。
 // TST-101 (雛形 16 本)・TST-314 (雛形の描画) は TemplatesPersonForm.test.ts、TST-108・315 は TaxonomyGuideSync.test.ts が持つ。
 // 一時ディレクトリに新しい構成の docs を作り、PersonFormCheck の図の規則 (D1〜D4) と、MermaidBlocks (D5) を確かめる。
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';

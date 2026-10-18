@@ -1,5 +1,5 @@
 // node --test dist/gate/DoctorCommand.test.js
-// igeta doctor: GitHub の保護の設定の点検。テスト仕様 01 (docs/design/test/specs/01-approval-gate.md) の表の行に 1 本ずつ対応する。
+// igeta doctor: GitHub の保護の設定の点検。テスト仕様 01 (docs/ai/specs/shared/tests/01-approval-gate.md) の表の行に 1 本ずつ対応する。
 // 本物の GitHub は呼ばない。gh の応答は、記録した (または GitHub の API の説明どおりの) JSON を使う。
 import { chmodSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

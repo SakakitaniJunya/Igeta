@@ -342,7 +342,7 @@ export const ARC42_BY_KIND: ReadonlyMap<string, number | null> = new Map<string,
   ['map', null],
   ['decision-log', null],
   ['human-review', null],
-  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  // まとまり (業務コンテキスト) の境界。docs/ai/handbook/explanation/07-context-boundaries.md
   ['context-map', null],
   ['context-contract', null],
   // 由来 (provenance) の手引き。01-document-taxonomy 等と同じく固定名の単独文書で、
@@ -998,7 +998,7 @@ export class DocTemplateCheck implements Check {
       }
     }
 
-    // ①-2 地図の網羅 (2 段、docs/explanation/07-context-boundaries.md §8): まとまりの地図が
+    // ①-2 地図の網羅 (2 段、docs/ai/handbook/explanation/07-context-boundaries.md §8): まとまりの地図が
     // 1 枚も無い案件では何も起きない (既存案件を赤くしない)。
     // (a) 全体の地図が、存在する全部のまとまりの地図をリンクしているか
     // (b) まとまりの地図が、自分のまとまりの feature-brief 全部へリンクしているか

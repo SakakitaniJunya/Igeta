@@ -1,5 +1,5 @@
 // mermaid の早期検査 (mermaid-check)。既定 OFF。
-// Spec: docs/explanation/05-coverage-and-learning.md §8 手順 4 (`mermaid-unrenderable` を評価より前に倒す)
+// Spec: docs/ai/handbook/explanation/05-coverage-and-learning.md §8 手順 4 (`mermaid-unrenderable` を評価より前に倒す)
 //
 // PDF 出力 (export) と同じ描画確認 (export/MermaidRuntime.ts) を、docs の任意の文書に対して
 // 単独で実行する。export の manifest・章 (delivery-chapter) の縛りは無く、docs 内の全 .md

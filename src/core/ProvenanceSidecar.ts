@@ -1,5 +1,5 @@
 // 由来 sidecar (`<basename>.provenance.json`) の形と読み書き。
-// Spec: docs/explanation/04-provenance-and-agreement.md §4
+// Spec: docs/ai/handbook/explanation/04-provenance-and-agreement.md §4
 //
 // normalizationVersion は設計の JSON 例ではファイル直下 1 個だが、実装ではエントリごとに持つ
 // (`needs-recompute` が「このエントリを計算した版」対「今の版」の比較である以上、ファイル単位

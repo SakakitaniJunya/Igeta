@@ -1,5 +1,5 @@
 // provenance-check: 由来の鮮度を検査する。既定 OFF。
-// Spec: docs/explanation/04-provenance-and-agreement.md §5、05-coverage-and-learning.md §8 手順 3
+// Spec: docs/ai/handbook/explanation/04-provenance-and-agreement.md §5、05-coverage-and-learning.md §8 手順 3
 //
 // 状態の判定順 (設計に優先順位の明文はないため実装で決めた。判定できない状態を先に切り、
 // 「なぜその状態か」が 1 つに決まるようにする):

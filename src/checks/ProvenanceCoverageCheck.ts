@@ -1,5 +1,5 @@
 // provenance-coverage: 順方向の網羅。既定 OFF。
-// Spec: docs/explanation/05-coverage-and-learning.md §1
+// Spec: docs/ai/handbook/explanation/05-coverage-and-learning.md §1
 //
 // delivery-chapter を H2 節単位の塊に分解し (「関連」節は除く)、全塊が sidecar にエントリ
 // (from あり、または from: null + reason) を持つことを検査する。

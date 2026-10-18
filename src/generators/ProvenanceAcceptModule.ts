@@ -1,5 +1,5 @@
 // provenance-accept: 別の主体が由来を承認する。指紋を今の値に更新して記録する。
-// Spec: docs/explanation/04-provenance-and-agreement.md §4〜§5
+// Spec: docs/ai/handbook/explanation/04-provenance-and-agreement.md §4〜§5
 //
 // self-approved (capturedBy と by が同じ) や、対象の塊・正本が今解決できないエントリは
 // per-entry の問題として扱う (Violation/CannotCheck を積んで skip)。--all のとき、1 件が

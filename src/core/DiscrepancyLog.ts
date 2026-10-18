@@ -1,5 +1,5 @@
 // 食い違いの記録 (`discrepancies.log.jsonl`) の形と読み書き。追記のみ。
-// Spec: docs/explanation/05-coverage-and-learning.md §3
+// Spec: docs/ai/handbook/explanation/05-coverage-and-learning.md §3
 //
 // 置き場所は「提出物のディレクトリ」直下。案件の情報は案件の repo にだけ置き、
 // Igeta 本体へは汎化した規則だけを昇格させる (category だけを機械が読む)。

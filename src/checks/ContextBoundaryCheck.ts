@@ -1,5 +1,5 @@
 // まとまり (context) の境界検査。既定 OFF。
-// Spec: docs/explanation/07-context-boundaries.md §4
+// Spec: docs/ai/handbook/explanation/07-context-boundaries.md §4
 //
 // context: A の文書が context: B の文書 (A と違い、shared でもない) を depends_on・本文リンク・
 // 修飾 ID で直接参照していたら違反にする。通すのは次の 3 種:
@@ -14,7 +14,7 @@
 //      丸ごと免れると、境界検査そのものが機能しなくなる (code-reviewer round 1 non-blocking 2)
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) の repo は、上の規則ではなく、置き場所の型のまとまりの階層から
-// 導いたまとまりで検査する (#runV4。docs/design/test/specs/04-doc-graph.md の B1〜B5・ADR-0004 決定 3)。
+// 導いたまとまりで検査する (#runV4。docs/ai/specs/shared/tests/04-doc-graph.md の B1〜B5・ADR-0004 決定 3)。
 //   - shared の文書は、どのまとまりからも引いてよい。shared の文書が特定のまとまりを引けるのは、kind が
 //     map・function-list・permission-matrix・domain-overview・aggregate-map のときだけ (コードに固定する)
 //   - 特定のまとまり A から別のまとまり B へは、B の約束 (context-contract) と、地図から地図 (context-map → context-map) だけ

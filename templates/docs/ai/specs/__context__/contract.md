@@ -17,7 +17,7 @@ relates_to: []
   読み手: 他まとまりの開発者・AI。他まとまりに見せてよいもの (API・イベント・持っているデータ・
   用語) だけを書く 1 枚。書かないもの: 内部実装・内部だけで使う REQ・未確定の値の詳細。
   context-boundary-check はこの文書への参照だけを「境界を越えてよい参照」として通す。
-  Spec: docs/explanation/07-context-boundaries.md §3
+  Spec: docs/ai/handbook/explanation/07-context-boundaries.md §3
 -->
 
 # まとまりの約束 — <まとまり名>
