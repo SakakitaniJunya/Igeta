@@ -15,7 +15,7 @@ pub enum TransitionError {
     NotFound,
     /// domain の遷移が拒んだ (不変条件違反)。
     Domain(DomainError),
-    /// 保存先の失敗。
+    /// 保存先の失敗、または保存済みデータが規則外 (AppError がそのまま応答になる)。
     Store(AppError),
 }
 

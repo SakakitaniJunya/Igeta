@@ -46,7 +46,7 @@ templates/backend/rust/                             = apps/<app>/backend/
         mod.rs                                      `routes(deps) -> Router`
         routes.rs                                   経路の表。verify layer → 本文を Value のまま module の公開面へ
         verify.rs                                   トークン・署名の検証 (trait Verifier を注入) → claims
-        routes_test.rs                              (展開後のみ) 401・413・不正な JSON は 400・値の受け渡し・余計な query が付いても渡る (verify と module は偽物)
+        routes_test.rs                              (展開後のみ) 401・413・不正な JSON は 400・値の受け渡し・余計な query が付いても渡る・nest しても Verifier に前置き付きの絶対 URL (verify と module は偽物)
     modules/
       mod.rs                                        再 export。展開後に `pub mod <context>;` を足す場所
       __context__/                                  1 単位
@@ -94,7 +94,7 @@ templates/backend/rust/                             = apps/<app>/backend/
     architecture.rs                                 層の向きの規則 (下)。これだけが `tests/` にある
 ```
 
-単体テストの中身 (同じファイルの末尾): `read_body.rs` は上限超過・空・不正な JSON、`to_response.rs` は status・header・204、`catch_panic.rs` は panic が 500 `INTERNAL_ERROR`、`verify.rs` は通る・落ちて 401、`controller.rs` は全 `AppErrorKind` の status と code、`schemas.rs` は型違い・必須欠け・余計な項目 (query は未知の項目を無視)、`list.rs`/`create.rs`/`close.rs` は偽の repository で結果、`__aggregate__.rs`/`name.rs`/`errors.rs` は境界値と遷移、`app_error.rs`/`doc_id.rs`/`env.rs`/`api_response.rs` は表で直接。
+単体テストの中身 (同じファイルの末尾): `read_body.rs` は上限超過・空・不正な JSON、`to_response.rs` は status・header・204、`catch_panic.rs` は panic が 500 `INTERNAL_ERROR`、`verify.rs` は通る・落ちて 401・Verifier の kind が status になる (unavailable は 503)、`controller.rs` は全 `AppErrorKind` の status と code、`schemas.rs` は型違い・必須欠け・余計な項目 (query は未知の項目を無視)、`list.rs`/`create.rs`/`close.rs` は偽の repository で結果、`__aggregate__.rs`/`name.rs`/`errors.rs` は境界値と遷移、`app_error.rs`/`doc_id.rs`/`env.rs`/`api_response.rs` は表で直接。
 
 ## 層の決まり (`tests/architecture.rs` が落とす 16 本)
 

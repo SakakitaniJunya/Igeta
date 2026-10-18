@@ -3,9 +3,8 @@
 
 use firestore::FirestoreDb;
 
-use super::firestore_tx::{COLLECTION, Listed__Aggregate__Doc, __Aggregate__Doc, store_error, transition_in_tx};
+use super::firestore_tx::{COLLECTION, Listed__Aggregate__Doc, Stored__Aggregate__Doc, __Aggregate__Doc, store_error, transition_in_tx};
 use crate::modules::__context__::domain::{DomainError, TransitionError, __Aggregate__, __Aggregate__Repository, __Aggregate__Status};
-use crate::shared::domain::app_error::AppError;
 use crate::shared::domain::doc_id::{assert_valid_doc_id_segment, is_valid_doc_id_segment};
 use crate::shared::domain::result::AppResult;
 
@@ -26,7 +25,7 @@ impl __Aggregate__Repository for Firestore__Aggregate__Repository {
         if !is_valid_doc_id_segment(id) {
             return Ok(None);
         }
-        let doc: Option<__Aggregate__Doc> = self
+        let doc: Option<Stored__Aggregate__Doc> = self
             .db
             .fluent()
             .select()
@@ -35,7 +34,7 @@ impl __Aggregate__Repository for Firestore__Aggregate__Repository {
             .one(id)
             .await
             .map_err(store_error)?;
-        doc.map(|doc| doc.into_domain(id)).transpose().map_err(|e| AppError::unprocessable(e.to_string()))
+        doc.map(|doc| doc.into_domain(id)).transpose()
     }
 
     async fn list(&self, status: Option<__Aggregate__Status>, limit: usize) -> AppResult<Vec<__Aggregate__>> {
@@ -55,8 +54,7 @@ impl __Aggregate__Repository for Firestore__Aggregate__Repository {
             .map_err(store_error)?;
         rows.into_iter()
             .map(|row| {
-                let doc = __Aggregate__Doc { name: row.name, status: row.status };
-                doc.into_domain(&row.id).map_err(|e| AppError::unprocessable(e.to_string()))
+                Stored__Aggregate__Doc { name: row.name, status: row.status }.into_domain(&row.id)
             })
             .collect()
     }

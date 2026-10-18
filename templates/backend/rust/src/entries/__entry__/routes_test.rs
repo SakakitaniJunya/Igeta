@@ -151,3 +151,27 @@ async fn close_passes_the_path_id() {
     assert_eq!(status, 200);
     assert_eq!(calls.lock().unwrap().as_slice(), [("close".to_string(), json!("a-1"))]);
 }
+
+struct RecordingVerifier(Arc<Mutex<Vec<String>>>);
+
+impl Verifier for RecordingVerifier {
+    async fn verify(&self, request: VerifyRequest<'_>) -> AppResult<Claims> {
+        self.0.lock().unwrap().push(request.url.to_string());
+        Ok(Claims { subject: "user-1".to_string() })
+    }
+}
+
+#[tokio::test]
+async fn a_nested_entry_gives_the_verifier_the_absolute_url_with_the_prefix() {
+    let urls = Arc::new(Mutex::new(Vec::new()));
+    let inner = routes(RoutesDeps { verify: RecordingVerifier(Arc::clone(&urls)), __context__: FakeModule(Calls::default()) });
+    let router = Router::new().nest("/proxy", inner);
+    let request = Request::builder()
+        .uri("/proxy/__aggregates__?status=open")
+        .header("host", "api.example.com")
+        .body(Body::empty())
+        .unwrap();
+    let (status, _) = send(router, request).await;
+    assert_eq!(status, 200);
+    assert_eq!(urls.lock().unwrap().as_slice(), ["http://api.example.com/proxy/__aggregates__?status=open"]);
+}
