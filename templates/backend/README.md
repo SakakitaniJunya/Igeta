@@ -1,52 +1,36 @@
-# backend — Hono + Firestore のモジュラーモノリスの雛形
+# backend — 変種の入口 (Hono / NestJS / Rust)
 
-HTTP の入口は Hono、データは Firestore (`@google-cloud/firestore`)。コンテキストごとに `src/modules/<context>/` を 4 層 (domain・application・infrastructure・presentation) で切る。
+> **TL;DR**: backend の雛形は 3 変種。どれも `templates/backend/<変種>/` = `apps/<app>/backend/` の鏡で、同じ木 (`entries/`・`modules/<context>/` の 4 層・`shared/`) と同じ意味を、それぞれの言語の流儀で写す。DB は Firestore。選ぶ変種のフォルダの README を読む。
+> - 土台 (印の無いファイル) は最初に 1 回、1 単位 (印の付いたフォルダ) は足すたびに展開する。利用 repo 側の `templates/` は 1 単位だけでよい
 
-使い方: 置きたい場所へフォルダごとコピーし、ファイル名と中身のプレースホルダを置き換える。例として入れた中身 (「閉じる」操作・名称と状態の列) は、作るものに合わせて書き換える。
+## 変種
 
-## 雛形
+| 変種 | フォルダ | 言語・枠 | 層の向きの検査 |
+|---|---|---|---|
+| Hono | [`hono/`](hono/README.md) | TypeScript + Hono + zod | dependency-cruiser 18 本 |
+| NestJS | [`nestjs/`](nestjs/README.md) | TypeScript + NestJS + zod | dependency-cruiser 19 本 |
+| Rust | [`rust/`](rust/README.md) | Rust + axum + serde | `tests/architecture.rs` (cargo test) 16 本 |
 
-| 雛形 | コピー先 | いつ |
-|---|---|---|
-| `base/` | `apps/<アプリ>/backend/` | 最初に 1 回。共有カーネル (`Result`・`AppError`・`TransactionScope`・doc ID の検査)・応答の形・Hono への変換・本文の読み取り・Firestore の生成・tsconfig・vitest・dependency-cruiser・package.json |
-| `module/__context__/` | `apps/<アプリ>/backend/src/modules/<context>/` | コンテキストを足すたび。4 層と公開面 (`index.ts`) とテスト |
-| `presentation/__entry__/` | `apps/<アプリ>/backend/src/presentation/<入口>/` | 入口を足すたび。Hono のルート・検証のミドルウェア・テスト |
+## 共通の木と意味
 
-エントリ (`src/index.ts`) はアプリごとに書く。`new Hono()` に `app.route('<前置き>', create<入口>Routes(deps))` で入口を付け、`@hono/node-server` の `serve` で立てる。
+| 場所 | 役割 |
+|---|---|
+| `entries/` | 入口 = 経路・認証 (トークン・署名・HMAC)・本文の上限・CORS。**検証は持たない**。本文は JSON 構文まで見て、型の無い値のまま module の公開面へ渡す |
+| `entries/http/` (土台) | 応答の形から、そのフレームワークの応答への変換 |
+| `entries/__entry__/` (1 単位) | 経路の表 + 検証 (verify) + そのテスト |
+| `modules/<context>/` (1 単位) | 業務の単位。公開面 (`index.ts` / `mod.rs`) だけが外に見える。他の module と入口は公開面だけを通す |
+| `presentation/` | controller + 形の検証 (型・必須・余計な項目) → 400 `VALIDATION_FAILED` + `details` (項目名の配列)。HTTP フレームワークを知らない |
+| `application/` | usecase。domain の結果 (`Result`) を返す。HTTP の型を返さない |
+| `domain/` | 集約・値オブジェクト (意味の検証)・port。外部の crate / npm を使わない |
+| `infrastructure/` | Firestore の repository と Tx。SDK はここだけ |
+| `shared/{domain,infrastructure,presentation,test-support}` | `Result`・`AppError`・doc id・Tx の port / 環境変数と Firestore の生成 / 応答の形 `HttpResponse`・`ok`・`fail`・`apiError` / テストの道具。`shared/application/` は要る時に作る |
 
-## プレースホルダ
+## 共通の API の形
 
-| 書き方 | 形 | 例 |
-|---|---|---|
-| `__context__` / `__Context__` / `__contextVar__` | ケバブ / パスカル / キャメル | `stock-item` / `StockItem` / `stockItem` |
-| `__aggregate__` / `__Aggregate__` | ケバブ / パスカル | `location` / `Location` |
-| `__entry__` / `__Entry__` | ケバブ / パスカル | `proxy` / `Proxy` |
-| `__app__` | ケバブ | パッケージ名の頭 |
-| `__emulatorProject__` | 文字列 | Firestore エミュレータのプロジェクト ID (`demo-` で始める) |
+資源 `{id, name, status: 'open'|'closed'}`。操作は list (`GET /__aggregates__?status=`)・create (`POST /__aggregates__`、201)・close (`POST /__aggregates__/:id/close`)。成功 `{ok:true,item}` / `{ok:true,items,truncated}`、失敗 `{ok:false,error:{code,message,details?}}`。
 
-ケバブの形は、ファイル名・URL・文字列にだけ使う。変数名にはパスカルかキャメルを使う。
+## 共通の決まり
 
-## 層の決まり (`base/.dependency-cruiser.cjs` が落とす)
-
-- `domain/` は他の層も npm も知らない。テストは `__tests__/` に置く
-- `application/` は domain と `shared/kernel` だけ。失敗は投げずに `Result` で返す
-- `@google-cloud/firestore` は `infrastructure/`・`platform/`・組み立ての場所 (`modules/<x>/index.ts`) だけ
-- モジュールの `presentation/` (コントローラ) は Hono を知らない。値を受け取り `HttpResponse` を返す
-- Hono は `src/presentation/` と `src/index.ts` だけ。platform の検証関数は index.ts が包んでルートに渡す
-- 他のコンテキストは `modules/<x>/index.ts` だけを通して使う
-
-npm のパッケージは `node_modules/<名前>/...` に解決されるので、パッケージのルールは `(^|/)node_modules/` から書く (`^hono` と書くと一致せず、ルールが効かない)。
-
-## テスト — 雛形のファイルには、対になるテストが必ずある
-
-| 書くもの | テスト | 確かめ方 |
-|---|---|---|
-| 集約・値オブジェクト・ドメインエラー | `__tests__/<集約>.spec.ts` | 偽物なしで直接 |
-| ユースケース | `application/<操作>.usecase.spec.ts` | port をメモリ上の偽物にする |
-| リポジトリ (Firestore) | `__tests__/<集約>.emulator.spec.ts` | Firestore エミュレータ (`test:emulator` のときだけ) |
-| 公開面 (index.ts の組み立て) | `__tests__/<context>-module.emulator.spec.ts` | 本物の部品を組んでエミュレータ越しに |
-| コントローラ | `presentation/<集約>.controller.spec.ts` | ユースケースを偽物にし、状態と本文の対応だけ |
-| Hono のルート | `<入口>.routes.spec.ts` | `app.request()`。モジュールの公開面は偽物 |
-| 検証ミドルウェア | `verify-<入口>.middleware.spec.ts` | 小さな Hono のアプリに掛ける |
-
-port (型だけのファイル) にはテストを書かない。
+- 土台は印を持たない (`package.json` / `Cargo.toml` の name は `backend`、emulator の project は `demo-igeta`)
+- 雛形のファイルには対のテストが隣にある。例外は型だけ・test-support・起動の 1 ファイル
+- 層の決まりは変種ごとの検査が落とす。名前と意味は 3 変種で揃えてある
