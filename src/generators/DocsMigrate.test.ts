@@ -72,8 +72,14 @@ describe('docs-migrate (テスト仕様 07)', () => {
     assert.deepEqual(emptyDirs.map((entry) => entry.name), []);
   });
 
-  it('TST-103 2 回目の実行は何も変えない', async () => {
-    const root = makeGitRepo(OLD_LAYOUT);
+  it('TST-103 2 回目の実行は何も変えない (角括弧の humanPaths が、持ち主の付いたファイルに当たっても 2 回目で止まらない)', async () => {
+    // 角括弧の glob は CODEOWNERS に写せないので、当たるファイルには 1 件ずつ行が要る (既存の行で足りている)
+    const root = makeGitRepo({
+      ...OLD_LAYOUT,
+      '.igeta.json': JSON.stringify({ humanPaths: ['src/[a-c]*.ts'] }),
+      '.github/CODEOWNERS': '/src/alpha.ts @lead\n',
+      'src/alpha.ts': 'export const alpha = 1;\n',
+    });
     assert.equal((await runMigrate(root, OWNER)).code, 0);
     commitAll(root);
     const after1 = snapshot(root);
