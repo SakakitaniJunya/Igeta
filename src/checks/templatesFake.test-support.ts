@@ -7,6 +7,7 @@ export interface Call {
   readonly args: readonly string[];
   readonly cwd: string | undefined;
   readonly env: Readonly<Record<string, string>> | undefined;
+  readonly timeoutMs: number | undefined;
 }
 
 export type Handler = (call: Call) => Partial<RunResult> | undefined;
@@ -23,7 +24,7 @@ export class FakeRunner implements CommandRunner {
   }
 
   run(command: string, args: readonly string[], options: RunOptions = {}): Promise<RunResult> {
-    const call: Call = { command, args, cwd: options.cwd, env: options.env };
+    const call: Call = { command, args, cwd: options.cwd, env: options.env, timeoutMs: options.timeoutMs };
     this.calls.push(call);
     return Promise.resolve({ ...OK, ...this.#handler(call) });
   }

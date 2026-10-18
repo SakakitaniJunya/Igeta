@@ -16,7 +16,7 @@
 
 - 展開: `igeta expand templates/backend/<変種>/src/modules/__context__ --app <app> --context <kebab> --aggregate <kebab>` (入口は `src/entries/__entry__` に `--entry <kebab>` も渡す)。展開先は path から決まる (変種の段を落として `apps/<app>/backend/…`)。既存は上書きせず、1 件でも違反なら 1 ファイルも書かない
 - 登録: 展開後に足す行は、土台の `@igeta:register-*` の目印の上に足す。目印は消さない。行の内容は変種の README の「置き場の規則」
-- 検査: `igeta check-templates [--variant hono|nestjs|rust|frontend] [--require-emulator]`。変種ごとに土台と固定名 (`sample`・`item`・`probe`) の 1 単位を一時 dir に展開・登録し、`npm ci` (rust は `cargo build --locked`) → 型 → テスト → 層の規則 → build を通す。Java・cargo と Docker のどちらかが無ければ exit 2 (検査不能)
+- 検査: `igeta check-templates [--variant hono|nestjs|rust|frontend] [--require-emulator]`。変種ごとに土台とハイフン入りの固定名 (`stock-item`・`order-line`・`admin-api`。印の形の取り違えを捕まえる) の 1 単位を一時 dir に展開・登録し、`npm ci` (rust は `cargo build --locked`) → 型 → テスト → 層の規則 → build を通す。Java・cargo と Docker のどちらかが無ければ exit 2 (検査不能)
 - 変種を足すとき: 土台に目印を置き、`src/generators/TemplateRegistration.ts` の登録の表と `src/checks/templatesSteps.ts` の手順表に 1 変種分を足す。目印が 1 つだけあることは `npm test` が見る
 
 ## 共通の木と意味

@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { basename, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
-import type { ExpandNames, TemplateVariant, UnitKind } from '../generators/TemplateExpandModule.js';
-import { TemplateExpandModule } from '../generators/TemplateExpandModule.js';
+import type { ExpandNames, TemplateVariant } from '../generators/TemplateExpandModule.js';
+import { sideOf, TemplateExpandModule, templateBaseDir, UNITS } from '../generators/TemplateExpandModule.js';
 import { insertAtMarker, registrationFor } from '../generators/TemplateRegistration.js';
 import type { CommandRunner, RunResult } from './CommandRunner.js';
 import { DOCKER_FIREBASE_JSON, firebaseJsonPath, planSteps, RUST_IMAGE, VITEST_RESULT_FILE } from './templatesSteps.js';
@@ -19,7 +19,14 @@ import { summarizeVitestJson } from './templatesVitest.js';
 export const ALL_VARIANTS: readonly TemplateVariant[] = ['hono', 'nestjs', 'rust', 'frontend'];
 
 /** 固定の名前 (雛形の印はこれで埋まる) */
-export const FIXED_NAMES: ExpandNames = { context: 'sample', aggregate: 'item', aggregates: 'items', entry: 'probe', feature: 'samples' };
+// ハイフンを含む名前にして、ケバブ・キャメル・パスカル・スネークの印の取り違えを検査で捕まえる
+export const FIXED_NAMES: ExpandNames = {
+  context: 'stock-item',
+  aggregate: 'order-line',
+  aggregates: 'order-lines',
+  entry: 'admin-api',
+  feature: 'order-lines',
+};
 export const FIXED_APP = 'probe-app';
 
 const COPY_EXCLUDE = new Set(['node_modules', 'dist', 'target']);
@@ -31,6 +38,8 @@ export interface TemplatesCheckOptions {
   /** 作業 dir。省略すると OS の一時 dir に作り、全部成功したら消す。指定した dir は消さない */
   readonly workDir?: string | undefined;
   readonly runner: CommandRunner;
+  /** 1 手順あたりの上限 (ミリ秒)。超えたら子プロセスを止めて違反にする */
+  readonly stepTimeoutMs: number;
   /** 進捗の出力 */
   readonly log: (line: string) => void;
 }
@@ -39,20 +48,6 @@ const violation = (message: string): Violation => ({ severity: 'violation', mess
 const cannotCheck = (message: string): Violation => ({ severity: 'cannot-check', message });
 
 const tail = (output: string): string => output.trimEnd().split('\n').slice(-TAIL_LINES).join('\n');
-
-const baseSide = (variant: TemplateVariant): string => (variant === 'frontend' ? 'frontend/admin' : 'backend');
-
-export const templateBaseDir = (igetaRoot: string, variant: TemplateVariant): string =>
-  variant === 'frontend' ? join(igetaRoot, 'templates/frontend/admin') : join(igetaRoot, 'templates/backend', variant);
-
-/** 展開する 1 単位 (印の付いたフォルダ) */
-const unitsOf = (variant: TemplateVariant): ReadonlyArray<{ readonly kind: UnitKind; readonly path: string }> =>
-  variant === 'frontend'
-    ? [{ kind: 'feature', path: 'src/features/__feature__' }]
-    : [
-        { kind: 'module', path: 'src/modules/__context__' },
-        { kind: 'entry', path: 'src/entries/__entry__' },
-      ];
 
 export class TemplatesCheck implements Check {
   readonly name = 'templates-check';
@@ -82,7 +77,7 @@ export class TemplatesCheck implements Check {
     const { runner, log, requireEmulator } = this.#options;
     const tag = `[${variant}]`;
     const variantDir = join(root, variant);
-    const appDir = join(variantDir, 'apps', FIXED_APP, baseSide(variant));
+    const appDir = join(variantDir, 'apps', FIXED_APP, sideOf(variant));
     rmSync(variantDir, { recursive: true, force: true });
 
     // 1. 前提の道具。無ければ検査不能 (黙って飛ばさない)
@@ -106,7 +101,7 @@ export class TemplatesCheck implements Check {
     // 2. 土台を写し、1 単位を固定名で展開し、登録の行を目印の位置に足す
     log(`${tag} 土台を写して 1 単位を展開する`);
     const baseDir = templateBaseDir(ctx.igetaRoot, variant);
-    const units = unitsOf(variant);
+    const units = UNITS.filter((unit) => unit.side === sideOf(variant));
     // 土台 = 印の付いた 1 単位・README.md・node_modules・dist・target を除いたもの
     const unitDirs = new Set(units.map((unit) => join(baseDir, unit.path)));
     cpSync(baseDir, appDir, {
@@ -115,7 +110,7 @@ export class TemplatesCheck implements Check {
     });
     const expand = new TemplateExpandModule({ targetRoot: variantDir, igetaRoot: ctx.igetaRoot });
     for (const unit of units) {
-      const plan = expand.prepare({ templatePath: join(templateBaseDir(ctx.igetaRoot, variant), unit.path), app: FIXED_APP, names: FIXED_NAMES });
+      const plan = expand.prepare({ templatePath: join(baseDir, unit.path), app: FIXED_APP, names: FIXED_NAMES });
       if (plan.missingNames.length > 0) {
         return [violation(`${tag} ${unit.path}: 展開に必要な名前が固定名に無い: ${plan.missingNames.join(', ')}`)];
       }
@@ -160,13 +155,16 @@ export class TemplatesCheck implements Check {
     log(`${tag} -- ${step.name}`);
     const result: RunResult = await runner.run(step.command, step.args, {
       cwd: step.cwd,
+      timeoutMs: this.#options.stepTimeoutMs,
       ...(step.env === undefined ? {} : { env: step.env }),
     });
     if (result.missing) {
       return { violations: [cannotCheck(`${tag} ${step.name}: コマンド ${step.command} が見つからない`)], stop: true };
     }
     const violations: Violation[] = [];
-    if (result.status !== 0) {
+    if (result.timedOut === true) {
+      violations.push(violation(`${tag} ${step.name} が ${Math.round(this.#options.stepTimeoutMs / 60000)} 分の上限で打ち切られた\n${tail(result.output)}`));
+    } else if (result.status !== 0) {
       violations.push(violation(`${tag} ${step.name} が落ちた (exit ${result.status ?? 'シグナル'})\n${tail(result.output)}`));
     }
     for (const expected of step.expectFiles ?? []) {
