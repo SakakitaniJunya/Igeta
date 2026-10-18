@@ -8,7 +8,11 @@
 | `api-module/` | `your-repo/apps/api/` | `npm run scaffold:module -- --context <name> --aggregate <Name>` |
 | `api-shared-kernel/` | `your-repo/apps/api/` | 初回のみ `--include-kernel` を付ける |
 | `web-feature/` | `your-repo/apps/web/` | `npm run scaffold:module -- --kind web --feature <name>` |
+| `backend/<変種>/` | `your-repo/apps/<アプリ>/backend/` | 手でコピー。変種は `hono/`・`nestjs/`・`rust/` の 3 つ (Firestore の 4 層モジュラーモノリス)。**鏡**: `templates/backend/<変種>/` の中の path = `apps/<アプリ>/backend/` の中の path。土台 (印の無いファイル) は最初に 1 回、1 単位 (印の付いた `src/entries/__entry__/`・`src/modules/__context__/`) は足すたび。手順は `backend/README.md` から変種の README へ |
+| `frontend/` | `your-repo/apps/<アプリ>/frontend/admin/` | 手でコピー。**鏡**: `templates/frontend/admin/` の中の path = `apps/<アプリ>/frontend/admin/` の中の path。React + Vite + TypeScript の管理画面 (4 層)。土台は最初に 1 回、1 単位 (印の付いた `src/features/__feature__/`) は足すたび。手順は `frontend/README.md` |
 | `store-screenshots/` | `your-repo/` ルート | 手でコピー。フォルダ構成がコピー先と同じ (`store-screenshots/`・`scripts/`・`Makefile.screenshots`・`app-side/<方式>/`)。iOS/Android ストア提出用スクショの撮影→額装パイプライン |
 | `ios-app/` | `your-repo/` のアプリ用ディレクトリ | 手でコピー。`__NAME__` / `__BUNDLE_PREFIX__` を置換して `xcodegen generate` (手順は `ios-app/README.md`)。xcodegen + SwiftUI + SwiftData + Share Extension + XCTest の雛形 |
+
+`backend/`・`frontend/` の 1 単位は全部で 3 つ (`src/entries/__entry__/`・`src/modules/__context__/`・`src/features/__feature__/`)。Igeta には土台も置く (実アプリが無く、雛形だけで組み立てて検査するため)。**利用 repo 側の `templates/` に置くのは 1 単位 3 つだけでよい** (土台はそのアプリ自身)。
 
 `docs/ai/handbook/how-to/` の `01-document-taxonomy.md` (文書体系)・`03-human-review.md` (人間レビュー層)・`04-provenance-workflow.md` (由来の手順) は **Igeta の版ごとに決まる手引きで、利用 repo にはコピーしない**。`AGENTS.md` と `docs/README.md` から、インストールした版のもの (`node_modules/igeta/templates/docs/ai/handbook/how-to/`) を指す。`02-implementation-order.md` (実装順序) は、着手順をプロジェクトが埋める文書なので、利用 repo の `docs/ai/handbook/how-to/` にコピーして使う。Igeta ルートの `docs/` は雛形ではなく、Igeta 自身の背景。

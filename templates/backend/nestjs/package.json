@@ -1,0 +1,38 @@
+{
+  "name": "backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-igeta 'vitest run'",
+    "check:deps": "depcruise --config .dependency-cruiser.cjs src",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.11.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/supertest": "^6.0.0",
+    "dependency-cruiser": "^16.10.0",
+    "firebase-tools": "^13.29.0",
+    "supertest": "^7.0.0",
+    "tsc-alias": "^1.8.10",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
