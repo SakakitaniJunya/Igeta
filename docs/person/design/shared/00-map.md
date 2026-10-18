@@ -17,6 +17,15 @@ relates_to: [requirements]
 > - 文書の種類・配置・読み手は文書体系ガイドが正典、索引・依存グラフは frontmatter から生成する
 > - 重い仕組み (由来・鮮度・合意台帳) は顧客提出物 (`delivery-chapter`) だけに課す
 
+## 主要フロー
+
+```mermaid
+flowchart LR
+  A[テンプレをコピー] --> B[設計書を書く]
+  B --> C[docs-graph で索引生成]
+  C --> D[docs-check / template-check で検査]
+```
+
 ## 関連
 
 | 区分 | 文書 | 対応 ID |
@@ -35,25 +44,15 @@ relates_to: [requirements]
 | 設計書を書く開発者・AI | テンプレの配置と kind で文書の置き場所と構造を決め、`docs:check` / `template-check` で壊れを検出する |
 | レビューする人 | この地図 → まとまりの地図 → `igeta review-sheet` の順で変更の範囲を把握する |
 
-## 3. 主要フロー
-
-```mermaid
-flowchart LR
-  A[テンプレをコピー] --> B[設計書を書く]
-  B --> C[docs-graph で索引生成]
-  C --> D[docs-check / template-check で検査]
-```
-
-## 4. やらないこと
+## 3. やらないこと
 
 - 実装コード本体の生成 (`igeta scaffold` が出すのは docs 骨格と検査配線まで)
 - 全読み手への由来・網羅の強制 (レビューし切れない量を課さない。`delivery-chapter` だけに課す)
 
-## 5. 詳細への入口
+## 4. 詳細への入口
 
 | 知りたいこと | 文書 |
 |---|---|
 | いまの要件 | [要件定義書](../../requirements/01-requirements.md) / [読み手別ディレクトリ](../../requirements/02-audience-directories.md) |
 | 文書の種類・配置・読み手 | [文書体系ガイド](../../../../templates/docs/ai/handbook/how-to/01-document-taxonomy.md) |
 | 承認者 3 分割の設計 (docs/ の再構成) | [文書モデルの解決戦略](./02-solution-strategy.md) (ADR-0001〜0010 一覧あり) |
-| 採用した外部標準と理由 | [explanation/](../../../ai/handbook/explanation/README.md) |
