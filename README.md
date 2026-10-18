@@ -284,7 +284,9 @@ npm run docs:graph
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
-| `npm run scaffold` | (生成) | コード雛形を `apps/` へ展開。既存ファイルは上書きしない |
+| `npm run scaffold` | (生成) | NestJS + Prisma の `api-*` / `web-feature` 雛形を `apps/` へ展開。既存ファイルは上書きしない |
+| `npm run expand -- <templates の 1 単位の path> --app <name> --context … --aggregate …` | (生成) | `templates/backend/<変種>/` と `templates/frontend/admin/` の 1 単位 (印の付いたフォルダ) を、鏡の path (`apps/<app>/backend/`・`apps/<app>/frontend/admin/`) へ展開する。書く前に全部検査し、既存・置換後の同名・印の残りは 1 ファイルも書かず exit 1、名前の不足は exit 2。`--dry-run` あり |
+| `npm run check:templates -- [--variant hono\|nestjs\|rust\|frontend] [--require-emulator]` | 雛形の自己検査 | 変種ごとに一時 dir へ展開・登録し、`npm ci` → 型 → テスト → 層の規則 → build (rust は `cargo build/test --locked`、cargo が無ければ Docker) を通す。落ちた手順は 1 件 = exit 1、Java・cargo と Docker など前提の道具が無ければ exit 2。CI は `templates.yml` で、必須チェックにはしない (報告だけ) |
 | `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
 | `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `docs/ai/specs/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
 | `npm run docs:analyze` | 整合レポート (読み取り専用) | 網羅の穴・タスクが存在しない ID を参照しているダングリング参照・未決 OPEN・曖昧語・ID のローカル採番の重複。ダングリング参照だけ落ちる |
@@ -325,7 +327,7 @@ Igeta/
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
 │   ├── checks/             検査。Check を実装し Violation を返すだけで、exit も print もしない
 │   ├── gate/               人の承認が要る変更かの見分け (approval-scope) と、GitHub の保護の点検 (doctor)
-│   ├── generators/         コード雛形の展開・索引とレビューシートの生成・init が置くファイルの作り手
+│   ├── generators/         コード雛形の展開 (`ScaffoldModule`・`TemplateExpandModule`)・索引とレビューシートの生成・init が置くファイルの作り手
 │   ├── export/             先方提出用 PDF の書き出し
 │   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ

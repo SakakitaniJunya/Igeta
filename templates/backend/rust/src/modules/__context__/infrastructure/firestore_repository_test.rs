@@ -106,7 +106,7 @@ async fn transition_on_a_missing_item_is_not_found() {
     assert_eq!(result, Err(TransitionError::NotFound));
 }
 
-const COLLECTION: &str = "__aggregates__";
+const COLLECTION: &str = "__aggregatesPath__";
 
 /// repository を通さず、規則外の値をそのまま置く。
 async fn put_raw(id: &str, doc: Value) {
