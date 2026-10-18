@@ -9,7 +9,8 @@
 - `templates/backend/hono/` の中の path = `apps/<app>/backend/` の中の path。展開先を別に指定しない
 - 土台 = 印の無いファイル。**土台は印を持たない**ので、`package.json` の name は `backend`、emulator の project は `demo-igeta` の固定値。Igeta に土台も置くのは、実アプリが無い Igeta が雛形だけで組み立てて検査するためで、利用 repo が最初にコピーする骨格でもある
 - 1 単位 = 印の付いたフォルダ。印を渡した名前に置き換えた path へ展開する (`src/modules/__context__/` に `stock-item` なら `apps/<app>/backend/src/modules/stock-item/`)
-- 土台の `src/index.ts` は module も entry も登録しない。展開したあと、コメントの 2 か所に 1 行ずつ足す (module を組む・入口を `app.route` で付ける)
+- 展開は `igeta expand templates/backend/hono/src/modules/__context__ --app <app> --context <kebab> --aggregate <kebab>` (入口は `src/entries/__entry__` に `--entry <kebab>` も渡す)。展開先は path から決まり、既存は上書きしない
+- 土台の `src/index.ts` は module も entry も登録しない。展開したあと、目印 `// @igeta:register-import`・`-module`・`-verify`・`-entry` の**上**に足す: module は import と `const <context> = create<Context>Module(db)`、入口は import と `app.route('/<前置き>', create<Entry>Routes({ verify, <context> }))`、verify はこのアプリが作る。**目印は消さない** (単位を足すたびに使う)。`igeta check-templates --variant hono` が登録後の形を型・テスト・層の規則・build まで検査する
 - 利用 repo 側の `templates/` には 1 単位 (`src/entries/__entry__/`・`src/modules/__context__/`) だけ置けばよい。土台はそのアプリ自身
 
 ## 印
@@ -29,12 +30,13 @@
 ```text
 templates/backend/hono/                             = apps/<app>/backend/
   package.json                                      name は backend。依存 (hono・firestore・zod) と scripts。build は tsc + tsc-alias
+  package-lock.json                                 依存の固定。`npm ci` で再現する (検査もこれで入れる)
   tsconfig.json                                     strict・noUncheckedIndexedAccess・paths `@/*`
   tsconfig.build.json                               build 用 (spec と test-support を除く)
   vitest.config.ts                                  alias `@/`。emulator を使うファイルは順に走らせる
   .dependency-cruiser.cjs                           層の決まり 18 本の正本
   src/
-    index.ts                                        組み立て: env → Firestore → healthz → notFound → onError → serve (spec 無し)
+    index.ts                                        組み立て: env → Firestore → healthz → notFound → onError → serve (spec 無し)。登録の目印 `@igeta:register-*` を 4 つ持つ
     entries/                                        入口 = 経路・認証・本文の上限・CORS。検証は持たない
       http/                                         土台: Hono への変換
         read-body.ts                                本文を上限つきで読み、JSON 構文まで見て unknown で返す
