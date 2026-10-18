@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { listFiles } from '../core/FileTree.js';
 import { toCamel, toPascal, toSnake } from '../core/Naming.js';
 import type { Violation } from '../core/Report.js';
 
@@ -22,7 +23,6 @@ export interface ExpandNames {
   readonly aggregates?: string | undefined;
   readonly entry?: string | undefined;
   readonly feature?: string | undefined;
-  readonly features?: string | undefined;
 }
 
 export interface ExpandRequest {
@@ -50,10 +50,17 @@ export interface ExpandPlan {
   readonly variant?: TemplateVariant;
 }
 
+/** 変種が展開される側 (apps/<app>/ の下の path) */
+export const sideOf = (variant: TemplateVariant): 'backend' | 'frontend/admin' => (variant === 'frontend' ? 'frontend/admin' : 'backend');
+
+/** 変種の雛形の根 (templates/backend/<変種> か templates/frontend/admin) */
+export const templateBaseDir = (igetaRoot: string, variant: TemplateVariant): string =>
+  variant === 'frontend' ? join(igetaRoot, 'templates/frontend/admin') : join(igetaRoot, 'templates/backend', variant);
+
 const VARIANTS: ReadonlySet<string> = new Set(['hono', 'nestjs', 'rust']);
 
 /** 展開できる 1 単位の path (side の根からの相対) */
-const UNITS: ReadonlyArray<{ readonly path: string; readonly kind: UnitKind; readonly side: 'backend' | 'frontend/admin' }> = [
+export const UNITS: ReadonlyArray<{ readonly path: string; readonly kind: UnitKind; readonly side: 'backend' | 'frontend/admin' }> = [
   { path: 'src/entries/__entry__', kind: 'entry', side: 'backend' },
   { path: 'src/modules/__context__', kind: 'module', side: 'backend' },
   { path: 'src/features/__feature__', kind: 'feature', side: 'frontend/admin' },
@@ -64,7 +71,7 @@ const NOT_MARKS = new Set(['__proto__', '__tests__', '__mocks__', '__snapshots__
 // 印の形: 小文字始まりの camel (`__aggregate__`) か、パスカル (`__Aggregate__`)。全大文字は印ではない。
 const MARK_RE = /__(?:[a-z][A-Za-z]*|[A-Z][a-z][A-Za-z]*)__/g;
 
-const MARK_GROUP: Readonly<Record<string, NameKey>> = {
+const MARK_GROUP: ReadonlyMap<string, NameKey> = new Map<string, NameKey>(Object.entries({
   __context__: 'context',
   __Context__: 'context',
   __contextVar__: 'context',
@@ -76,8 +83,7 @@ const MARK_GROUP: Readonly<Record<string, NameKey>> = {
   __Entry__: 'entry',
   __feature__: 'feature',
   __Feature__: 'feature',
-  __features__: 'feature',
-};
+} satisfies Record<string, NameKey>));
 
 const NAME_KEYS: readonly NameKey[] = ['context', 'aggregate', 'entry', 'feature'];
 
@@ -87,20 +93,6 @@ const violation = (message: string, file?: string): Violation =>
   file === undefined ? { severity: 'violation', message } : { severity: 'violation', message, file };
 
 const toPosix = (path: string): string => path.split(sep).join('/');
-
-function listFiles(root: string): string[] {
-  const files: string[] = [];
-  const walk = (dir: string): void => {
-    const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    for (const entry of entries) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.isFile()) files.push(full);
-    }
-  };
-  walk(root);
-  return files;
-}
 
 /**
  * 印 → 置換値の表。Rust は mod 名がスネークなので全ての印をスネークにするが、
@@ -129,7 +121,6 @@ export function buildReplacements(names: ExpandNames, snake: boolean): Map<strin
   if (feature !== undefined) {
     table.set('__feature__', form(feature));
     table.set('__Feature__', toPascal(feature));
-    table.set('__features__', form(names.features ?? `${feature}s`));
   }
   return table;
 }
@@ -207,7 +198,7 @@ export class TemplateExpandModule {
     if (!statSync(templateAbs, { throwIfNoEntry: false })?.isDirectory()) {
       return { violations: [violation(`雛形がフォルダではない: ${request.templatePath}`)], missingNames: [], entries: [] };
     }
-    const files = listFiles(templateAbs);
+    const files = listFiles(templateAbs).map((rel) => join(templateAbs, rel));
     if (files.length === 0) {
       return { violations: [violation(`雛形が空: ${request.templatePath}`)], missingNames: [], entries: [] };
     }
@@ -221,7 +212,7 @@ export class TemplateExpandModule {
     const required = new Set<NameKey>();
     const scan = (text: string): void => {
       for (const mark of found(text)) {
-        const key = MARK_GROUP[mark];
+        const key = MARK_GROUP.get(mark);
         if (key !== undefined) required.add(key);
       }
     };
@@ -255,7 +246,9 @@ export class TemplateExpandModule {
       if (existsSync(to)) violations.push(violation('展開先に既存がある (上書きしない)', rel));
       entries.push({ to, rel, body });
     }
-    for (const mark of found(destDir)) violations.push(violation(`置換されない印が展開先に残る: ${mark}`, toPosix(destDir)));
+    // 親フォルダ名の `__work__` などを印と誤検出しないよう、targetRoot からの相対だけを見る
+    const destRel = toPosix(relative(this.#targetRoot, destDir));
+    for (const mark of found(destRel)) violations.push(violation(`置換されない印が展開先に残る: ${mark}`, destRel));
 
     return { ...base, violations, missingNames: [], entries };
   }

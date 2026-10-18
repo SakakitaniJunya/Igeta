@@ -9,7 +9,7 @@ import { ArgParseError, parseArgs } from '../Args.js';
 import type { CommandContext } from '../Command.js';
 import { Command } from '../Command.js';
 
-const NAME_OPTIONS = ['context', 'aggregate', 'aggregates', 'entry', 'feature', 'features'] as const;
+const NAME_OPTIONS = ['context', 'aggregate', 'aggregates', 'entry', 'feature'] as const;
 
 export class ExpandCommand extends Command {
   readonly name = 'expand';
@@ -24,7 +24,6 @@ export class ExpandCommand extends Command {
     '  --aggregates <kebab>  複数形 (既定: aggregate に s を付ける)',
     '  --entry <kebab>       雛形が __entry__ を使うとき必須',
     '  --feature <kebab>     雛形が __feature__ を使うとき必須',
-    '  --features <kebab>    複数形 (既定: feature に s を付ける)',
     '  --root <dir>          展開先リポジトリ (既定: カレントディレクトリ)',
     '  --dry-run             書き込まずに展開先の一覧を出す',
     '  展開先は雛形の path から決まる。既存は上書きせず、1 件でも違反なら 1 ファイルも書かない。',
@@ -50,7 +49,6 @@ export class ExpandCommand extends Command {
       aggregates: args.get('aggregates'),
       entry: args.get('entry'),
       feature: args.get('feature'),
-      features: args.get('features'),
     };
 
     const expand = new TemplateExpandModule({ targetRoot: resolve(args.get('root') ?? ctx.cwd), igetaRoot: ctx.igetaRoot });
