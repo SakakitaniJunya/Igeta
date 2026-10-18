@@ -56,7 +56,7 @@ relates_to: []
 |---|---|---|---|
 | L0 地図 | `docs/00-map.md` (kind: `map`, 上限 150 行) | 人間の入口 | 実例 1: 図 1 枚 + 「詳細への入口」で量を吸収する |
 | L0 決定台帳 | `docs/01-decisions.md` (kind: `decision-log`) | 人間の入口 | 実例 2: `DEC-nnn` / `OPEN-nnn` を機械で検査し、帰属の主張と「仮置き」を台帳に強制する |
-| L0.5 機能ブリーフ | `docs/product/features/__feature__.md` (kind: `feature-brief`, 上限 150 行) | コードレビューする人 | 実例 1: 機能単位で WHAT/WHY・ユーザーストーリー・対象外・関わる REQ ID だけを 1 枚にし、要件文・受入条件は書かない (SoT は要件定義書のまま二重化しない) |
+| L0.5 機能ブリーフ | `docs/person/design/<まとまり>/features/__feature__.md` (kind: `feature-brief`, 上限 150 行) | コードレビューする人 | 実例 1: 機能単位で WHAT/WHY・ユーザーストーリー・対象外・関わる REQ ID だけを 1 枚にし、要件文・受入条件は書かない (SoT は要件定義書のまま二重化しない) |
 | 未決の関門 | `requirements`/`feature-brief` の `status: fixed` ゲート (`checkAcceptedGate`) | 人間の入口を守る仕組み | 実例 2: 「仮置き」(`OPEN-nnn`) が残ったまま「確定」を名乗れない。決定の取り違えを**確定前に**止める |
 | 整合レポート | `igeta analyze` (読み取り専用・非破壊) | 人間の入口 (穴を探す) | 実例 1: REQ→FN→タスクの網羅の穴・曖昧語・ID のローカル採番の重複を、45 枚を読まずに一覧する |
 | L1 要件 / L2 詳細設計 | 既存のまま | 実装者・AI | 変更しない (1 文書は読み切れる長さという原則は既に満たしている) |
