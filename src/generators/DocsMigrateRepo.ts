@@ -2,11 +2,12 @@
 // 作業ツリーの状態と追跡ファイルは git から、docs/ の中身はディスクから読む。何も書かない。
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { parseFrontmatter, scalar } from '../core/Frontmatter.js';
 import type { Frontmatter } from '../core/Frontmatter.js';
 import { matchesGlob } from '../gate/PathGlob.js';
+import { listRepoFiles } from '../checks/AgentsEntrypointCheck.js';
 
 /** git を 1 回呼ぶ。失敗は null (呼び出し側が止める理由にする) */
 export function gitOrNull(root: string, args: readonly string[]): string | null {
@@ -43,21 +44,17 @@ export function trackedFiles(root: string): string[] | null {
   return out.split('\0').filter((path) => path !== '');
 }
 
-const SKIP_NAME = (name: string): boolean => name.startsWith('.') || name === 'node_modules';
-
-/** dirAbs の下のファイルを、root からの相対パス (区切りは `/`) で返す。点で始まる名前と node_modules は辿らない */
+/**
+ * dirRel の下のファイルを、root からの相対パス (区切りは `/`) で返す。数え方は listRepoFiles (AgentsEntrypointCheck) と同じ
+ * (.git と node_modules だけを辿らない)。承認の持ち主の確かめと、文書の走査で同じファイルの集まりを見る。
+ */
 export function filesUnder(root: string, dirRel: string): string[] {
-  const found: string[] = [];
-  const walk = (rel: string): void => {
-    for (const entry of readdirSync(join(root, rel), { withFileTypes: true })) {
-      if (SKIP_NAME(entry.name)) continue;
-      const childRel = `${rel}/${entry.name}`;
-      if (entry.isDirectory()) walk(childRel);
-      else if (entry.isFile()) found.push(childRel);
-    }
-  };
-  if (existsSync(join(root, dirRel)) && statSync(join(root, dirRel)).isDirectory()) walk(dirRel);
-  return found.sort();
+  return listRepoFiles(root).filter((path) => path.startsWith(`${dirRel}/`));
+}
+
+/** 移行の対象の文書のうち、索引 (README.md と docs/dependencies.md) か。計画・測定・検査が同じ判定を使う */
+export function isIndexPath(path: string): boolean {
+  return basename(path) === 'README.md' || path === 'docs/dependencies.md';
 }
 
 export const isDirPath = (path: string): boolean => existsSync(path) && statSync(path).isDirectory();

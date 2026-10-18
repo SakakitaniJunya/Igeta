@@ -8,7 +8,7 @@ import { ArgParseError, parseArgs } from '../Args.js';
 import type { CommandContext } from '../Command.js';
 import { Command } from '../Command.js';
 import { planMigration } from '../../generators/DocsMigratePlan.js';
-import { applyPlan } from '../../generators/DocsMigrateApply.js';
+import { applyPlan, rollbackCommand } from '../../generators/DocsMigrateApply.js';
 import { completion, measure } from '../../generators/DocsMigrateVerify.js';
 import { splitReportLines } from '../../generators/DocsMigrateSplit.js';
 
@@ -53,7 +53,8 @@ export class DocsMigrateCommand extends Command {
 
     const before = await measure(root, ctx.igetaRoot);
     const applied = await applyPlan({ root, igetaRoot: ctx.igetaRoot, plan });
-    const rollback = `作業ツリーを戻す: git -C ${root} restore --staged --worktree -- docs AGENTS.md .github && git -C ${root} clean -fd -- docs AGENTS.md .github`;
+    // 戻す手順は、計画が実際に触った path から組み立てる (root README など、docs の外のリンクの書き換えも含む)
+    const rollback = `作業ツリーを戻す: ${rollbackCommand(root, plan.touched)}`;
     if (!applied.ok) {
       ctx.stderr(`ERROR docs-migrate: ${applied.failure ?? '適用に失敗'}`);
       ctx.stderr(rollback);

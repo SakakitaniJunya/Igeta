@@ -15,9 +15,9 @@ import { findLedgerDirs, readLedger } from '../core/AgreementLedger.js';
 import { DISCREPANCY_FILENAME, discrepancyLogPathFor, readDiscrepancyLog } from '../core/DiscrepancyLog.js';
 import { readSidecar, sidecarPathFor } from '../core/ProvenanceSidecar.js';
 import { HANDBOOK_BODY_HASHES, HANDBOOK_FILES, NEW_ENTRANCE, OLD_ENTRANCE, handbookBodyHash, handbookPathOf } from './DocsMigrateHandbook.js';
-import { applyLinkEdits, localTarget, relativeDest, scanLinkHits } from './DocsMigrateLinks.js';
+import { applyLinkEdits, autogenMask, localTarget, relativeDest, scanLinkHits } from './DocsMigrateLinks.js';
 import type { LinkHit } from './DocsMigrateLinks.js';
-import { dirtyProblem, filesUnder, gitRepoProblem, isDirPath, nonDocMatcher, readRepoDoc, trackedFiles } from './DocsMigrateRepo.js';
+import { dirtyProblem, filesUnder, gitRepoProblem, isDirPath, isIndexPath, nonDocMatcher, readRepoDoc, trackedFiles } from './DocsMigrateRepo.js';
 import type { RepoDoc } from './DocsMigrateRepo.js';
 import { isValidContextName, targetOf, yearOf } from './DocsMigrateTargets.js';
 
@@ -71,6 +71,8 @@ export interface Plan {
   readonly removedHandbooks: ReadonlyMap<string, string>;
   /** 消す文書の id (depends_on・relates_to から外した) */
   readonly removedIds: ReadonlySet<string>;
+  /** 計画が書き換える・移す・消す・作る path の全部 (旧と新)。巻き戻しはこの一覧から組み立てる */
+  readonly touched: readonly string[];
 }
 
 const OP_ORDER: readonly PlanOp[] = ['MOVE', 'DELETE', 'CREATE', 'APPEND', 'REWRITE', 'NOTICE'];
@@ -83,7 +85,6 @@ const OVERFLOW_DIRS: readonly string[] = [
 ];
 const PROVENANCE_NAMES: ReadonlySet<string> = new Set(['agreements.ledger.jsonl', DISCREPANCY_FILENAME, 'deliverable.json']);
 const isProvenanceArtifact = (path: string): boolean => path.endsWith('.provenance.json') || PROVENANCE_NAMES.has(basename(path));
-const isIndexPath = (path: string): boolean => basename(path) === 'README.md' || path === 'docs/dependencies.md';
 const isNonIdFile = (path: string): boolean => !path.endsWith('.md');
 
 /** 親のフォルダを、近いものから順に (docs/ は含めない) */
@@ -103,21 +104,14 @@ const relativeToRepo = (root: string, abs: string): string => abs.slice(root.len
 export function outsideGeneratedAndHeadings(lines: readonly string[]): string[] {
   const out: string[] = [];
   let inFrontmatter = lines[0]?.trim() === '---';
-  let inAutogen = false;
   let inComment = false;
+  const generated = autogenMask(lines);
   lines.forEach((raw, index) => {
     const line = raw.replace(/\r$/, '');
+    if (generated[index]) return;
     if (index === 0 && inFrontmatter) return;
     if (inFrontmatter) {
       if (line.trim() === '---') inFrontmatter = false;
-      return;
-    }
-    if (inAutogen) {
-      if (/<!--\s*AUTOGEN:[^>]*:end\s*-->/.test(line)) inAutogen = false;
-      return;
-    }
-    if (/<!--\s*AUTOGEN:[^>]*:start/.test(line) && !/:end\s*-->/.test(line)) {
-      inAutogen = true;
       return;
     }
     if (inComment) {
@@ -317,6 +311,13 @@ export function planMigration(req: MigrateRequest): Plan {
     entry.chapters.push(chapter);
     chapterFolders.set(folder, entry);
   }
+  // 提出物のフォルダの中の文書は章だけ。章以外は移す先が決まらないので、黙って引き抜かず止める
+  for (const [path, doc] of docs) {
+    const folder = [...chapterFolders.keys()].find((f) => f !== 'docs' && path.startsWith(`${f}/`));
+    if (folder !== undefined && doc.kind !== 'delivery-chapter') {
+      stop('S5', path, `提出物のフォルダ (${folder}) の中に章でない文書がある (kind: ${doc.kind ?? 'なし'})。章だけを置くか、フォルダから出す`);
+    }
+  }
   for (const [folder, entry] of chapterFolders) {
     if (folder === 'docs') {
       for (const chapter of entry.chapters) stop('S5', chapter.path, '提出物の章が docs/ 直下にある (章のあるフォルダを提出物として移す)');
@@ -360,9 +361,6 @@ export function planMigration(req: MigrateRequest): Plan {
           }
         }
       }
-    }
-    for (const chapter of entry.chapters) {
-      if (chapter.kind !== 'delivery-chapter') stop('S5', chapter.path, '提出物のフォルダに章以外の文書がある');
     }
     const newFolder = `docs/client/delivery/${name}`;
     if (newFolder !== folder) folderMoves.set(folder, newFolder);
@@ -597,6 +595,9 @@ export function planMigration(req: MigrateRequest): Plan {
     const dirs = [...new Set(under.map((key) => dirname(fileMap.get(key) ?? key)))];
     return dirs.length === 1 ? dirs[0] : undefined;
   };
+  // フォルダの中身が移るか (移し先が 1 つに決まらないフォルダへのリンクは止める)
+  const movesInside = (folder: string): boolean =>
+    !fileMap.has(folder) && [...fileMap].some(([key, to]) => key.startsWith(`${folder}/`) && to !== key);
   const removedDests = new Map<string, string>();
   for (const [path, kind] of handbookCopies) removedDests.set(path, handbookPathOf(kind) ?? '');
   const editedText = new Map<string, string>();
@@ -630,7 +631,11 @@ export function planMigration(req: MigrateRequest): Plan {
       // フォルダへのリンク (フォルダの中の文書が全部 1 つの新しいフォルダへ移るとき) は、その新しいフォルダへ向ける
       const redirected = readmeRedirect.get(target.path) ?? folderRedirect(target.path);
       if (redirected === undefined && deletes.has(target.path)) {
-        notice('リンク', `${path} のリンク先 ${target.path} は消す README で、移す先が 1 つに決まらない。手で直す`);
+        stop('S5', path, `消す README へのリンク (${target.path}) の移す先が 1 つに決まらない。リンクを外すか、移し先を決めてから実行する`);
+        return null;
+      }
+      if (redirected === undefined && movesInside(target.path)) {
+        stop('S5', path, `フォルダへのリンク (${target.path}) の移す先が 1 つに決まらない (中の文書が 1 つの新しいフォルダへ移らない・子フォルダを含む)。リンクを個々の文書へ向け直す`);
         return null;
       }
       const newTarget = redirected ?? newPathOf(target.path);
@@ -725,12 +730,24 @@ export function planMigration(req: MigrateRequest): Plan {
       newPathOf,
       removedHandbooks: new Map(),
       removedIds: new Set(),
+      touched: [],
     };
   }
+  const movedFiles = new Map([...fileMap].filter(([from, to]) => from !== to && !deletes.has(from)));
+  const touched = [
+    ...new Set([
+      ...movedFiles.keys(),
+      ...movedFiles.values(),
+      ...deletes.keys(),
+      ...edits.flatMap((edit) => [edit.oldPath, edit.newPath]),
+      ...creates.keys(),
+      ...approvals.map((write) => write.relPath),
+    ]),
+  ].sort();
   return {
     stops: [],
     lines,
-    moves: new Map([...fileMap].filter(([from, to]) => from !== to && !deletes.has(from))),
+    moves: movedFiles,
     deletes,
     edits,
     creates,
@@ -738,6 +755,7 @@ export function planMigration(req: MigrateRequest): Plan {
     newPathOf,
     removedHandbooks: new Map([...handbookCopies].map(([path, kind]) => [path, handbookPathOf(kind) ?? ''])),
     removedIds,
+    touched,
   };
 }
 

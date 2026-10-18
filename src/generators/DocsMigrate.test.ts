@@ -3,6 +3,7 @@
 // 持ち主は架空の @lead。案件名・個人情報は無い。
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 
@@ -209,6 +210,9 @@ describe('docs-migrate (テスト仕様 07)', () => {
   });
 
   it('TST-110 承認の割り当て: AGENTS.md と CODEOWNERS を作り、入口の 3 行を新しい 3 行に替える。AI の入口の検査が通る', async () => {
+    const withHuman = makeGitRepo({ ...OLD_LAYOUT, '.igeta.json': JSON.stringify({ humanPaths: ['src/**'] }) });
+    assert.equal((await runMigrate(withHuman, OWNER)).code, 0);
+    assert.ok(readFileSync(join(withHuman, '.github/CODEOWNERS'), 'utf8').includes('/src/ @lead'));
     const root = makeGitRepo(OLD_LAYOUT);
     const result = await runMigrate(root, OWNER);
     assert.equal(result.code, 0, result.err.join('\n'));
@@ -296,6 +300,31 @@ describe('docs-migrate (テスト仕様 07)', () => {
           gitOver(repo.root);
           return repo.root;
         },
+      },
+      {
+        code: 'S4',
+        args: OWNER,
+        build: () => makeGitRepo({ ...OLD_LAYOUT, '.igeta.json': JSON.stringify({ humanPaths: ['src/{a,b}*.ts'] }), 'src/a1.ts': 'export const a = 1;\n' }),
+      },
+      {
+        code: 'S5',
+        args: OWNER,
+        build: () => {
+          const repo = makeLegacyRepo();
+          write(repo.root, `${SUBMISSION}/extra.md`, doc({ id: 'extra-doc', kind: 'requirements', status: 'draft', depends_on: [] }, '# 章ではない文書\n'));
+          gitOver(repo.root);
+          return repo.root;
+        },
+      },
+      {
+        code: 'S5',
+        args: OWNER,
+        build: () => makeGitRepo({ ...OLD_LAYOUT, 'docs/product/06-index.md': doc({ id: 'links-adr', kind: 'requirements', status: 'draft', depends_on: [] }, '# 索引\n\n[ADR](../adr/README.md)\n') }),
+      },
+      {
+        code: 'S5',
+        args: OWNER,
+        build: () => makeGitRepo({ ...OLD_LAYOUT, 'docs/product/06-index.md': doc({ id: 'links-design', kind: 'requirements', status: 'draft', depends_on: [] }, '# 索引\n\n[設計](../design/)\n') }),
       },
       {
         code: 'S9',
@@ -400,9 +429,10 @@ describe('docs-migrate (テスト仕様 07)', () => {
     assert.ok(result.out.some((line) => line.startsWith('NOTICE 旧い path: docs/person/requirements/04-notes.md:')));
   });
 
-  it('TST-307 移した後に由来の指紋が変わる (リンクの行き先の書き換えで要確認に変わる) → 終了 1 で、戻す手順を出す', async () => {
+  it('TST-307 移した後に由来の指紋が変わる (リンクの行き先の書き換えで要確認に変わる) → 終了 1 で、戻す手順を出す。手順を走らせると作業ツリーが戻る', async () => {
     const row = '| REQ-101 | 予約は 30 日前まで [未あり](./missing.md) | 備考 A |';
     const base = {
+      'README.md': '# 入口\n\n[要件](docs/requirements/reservation.md)\n',
       'docs/requirements/reservation.md': reservationDoc({ row101: row }),
       'docs/requirements/policy.md': POLICY_DOC,
       'docs/glossary/terms.md': TERMS_DOC,
@@ -428,10 +458,19 @@ describe('docs-migrate (テスト仕様 07)', () => {
     };
     writeSidecar(join(root, CHAPTER), { sourceDoc: CHAPTER, entries: [entry] });
     commitAll(root);
+    const before = snapshot(root);
     const result = await runMigrate(root, OWNER);
     assert.equal(result.code, 1, result.out.join('\n'));
     assert.ok(result.err.some((line) => line.startsWith('FAIL C4')), result.err.join('\n'));
-    assert.ok(result.err.some((line) => line.includes('作業ツリーを戻す: git -C')));
+    const rollback = result.err.find((line) => line.startsWith('作業ツリーを戻す: '));
+    assert.ok(rollback !== undefined, result.err.join('\n'));
+    // root README (docs の外) も、作った AGENTS.md も、移した文書も戻す手順に入っている
+    assert.ok(rollback.includes("'README.md'"));
+    assert.ok(rollback.includes("'AGENTS.md'"));
+    const shell = spawnSync('sh', ['-c', rollback.slice('作業ツリーを戻す: '.length)], { encoding: 'utf8' });
+    assert.equal(shell.status, 0, shell.stderr);
+    assert.equal(git(root, ['status', '--short']).trim(), '');
+    assert.deepEqual(snapshot(root), before);
   });
 
   it('TST-308 1 つの画像を、別々のフォルダへ移る 2 本の文書が使う → S6 で止まる', async () => {
