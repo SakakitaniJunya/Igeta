@@ -33,6 +33,7 @@ jobs:
   node:
     name: ${{ matrix.variant }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +63,7 @@ jobs:
   rust:
     name: rust
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       # check-templates の作業 dir は毎回変わるので、target はここに固定してキャッシュする
       CARGO_TARGET_DIR: ${{ github.workspace }}/.igeta-rust-target

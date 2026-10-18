@@ -14,6 +14,7 @@ import { CheckTemplatesCommand } from '../cli/commands/CheckTemplatesCommand.js'
 import { Cli } from '../cli/Cli.js';
 import type { Handler } from './templatesFake.test-support.js';
 import { FakeRunner, isVitest, writeVitestResult } from './templatesFake.test-support.js';
+import { SpawnRunner } from './CommandRunner.js';
 import { FIXED_APP, TemplatesCheck } from './TemplatesCheck.js';
 
 const dirs: string[] = [];
@@ -53,6 +54,7 @@ async function check(
     variants,
     requireEmulator: over.requireEmulator ?? false,
     workDir: over.work,
+    stepTimeoutMs: 20 * 60_000,
     runner,
     log: (l) => log.push(l),
   });
@@ -85,20 +87,20 @@ describe('TemplatesCheck: 全部成功', () => {
       assert.ok(!existsSync(join(app, 'src/modules/__context__')) && !existsSync(join(app, 'src/entries/__entry__')));
       const text = (file: string): string => readFileSync(join(app, file), 'utf8');
       if (variant === 'hono') {
-        assert.match(text('src/index.ts'), /import \{ createSampleModule \} from '@\/modules\/sample\/index\.js';\n(import .*\n)*\/\/ @igeta:register-import/);
-        assert.match(text('src/index.ts'), /app\.route\('\/probe', createProbeRoutes\(\{ verify, sample \}\)\);\n\/\/ @igeta:register-entry/);
-        assert.ok(existsSync(join(app, 'src/modules/sample/domain/item.ts')));
+        assert.match(text('src/index.ts'), /import \{ createStockItemModule \} from '@\/modules\/stock-item\/index\.js';\n(import .*\n)*\/\/ @igeta:register-import/);
+        assert.match(text('src/index.ts'), /app\.route\('\/admin-api', createAdminApiRoutes\(\{ verify, stockItem \}\)\);\n\/\/ @igeta:register-entry/);
+        assert.ok(existsSync(join(app, 'src/modules/stock-item/domain/order-line.ts')));
       }
-      if (variant === 'nestjs') assert.match(text('src/app.module.ts'), / {4}ProbeEntryModule\.register\(\{ verify \}\),\n {4}\/\/ @igeta:register-entry/);
+      if (variant === 'nestjs') assert.match(text('src/app.module.ts'), / {4}AdminApiEntryModule\.register\(\{ verify \}\),\n {4}\/\/ @igeta:register-entry/);
       if (variant === 'rust') {
-        assert.match(text('src/entries/mod.rs'), /pub mod probe;\n\/\/ @igeta:register-mod/);
-        assert.match(text('src/modules/mod.rs'), /pub mod sample;\n\/\/ @igeta:register-mod/);
-        assert.match(text('src/main.rs'), /let sample = backend::modules::sample::create_module\(db\.clone\(\)\);\n {4}\/\/ @igeta:register-module/);
-        assert.match(text('src/entries/probe/routes.rs'), /\.route\("\/items", /);
+        assert.match(text('src/entries/mod.rs'), /pub mod admin_api;\n\/\/ @igeta:register-mod/);
+        assert.match(text('src/modules/mod.rs'), /pub mod stock_item;\n\/\/ @igeta:register-mod/);
+        assert.match(text('src/main.rs'), /let stock_item = backend::modules::stock_item::create_module\(db\.clone\(\)\);\n {4}\/\/ @igeta:register-module/);
+        assert.match(text('src/entries/admin_api/routes.rs'), /\.route\("\/order-lines", /);
       }
       if (variant === 'frontend') {
-        assert.match(text('src/app/routes.ts'), /\{ path: '\/samples', screen: SamplesScreen \},\n {2}\/\/ @igeta:register-route/);
-        assert.ok(existsSync(join(app, 'src/features/samples/index.ts')));
+        assert.match(text('src/app/routes.ts'), /\{ path: '\/order-lines', screen: OrderLinesScreen \},\n {2}\/\/ @igeta:register-route/);
+        assert.ok(existsSync(join(app, 'src/features/order-lines/index.ts')));
       }
     });
   }
@@ -240,6 +242,39 @@ describe('TemplatesCheck: 検査不能 (exit 2)', () => {
   });
 });
 
+describe('TemplatesCheck: ハイフン入りの固定名と上限', () => {
+  it('固定名はハイフンを含み、展開した木に ケバブ・キャメル・パスカル・スネークの各形が出る', async () => {
+    const work = tmp();
+    await check(['hono', 'rust'], new FakeRunner(allGood), { work });
+    const hono = readFileSync(join(appDirOf(work, 'hono'), 'src/modules/stock-item/index.ts'), 'utf8');
+    assert.match(hono, /createStockItemModule/);
+    assert.match(readFileSync(join(appDirOf(work, 'hono'), 'src/entries/admin-api/admin-api.routes.ts'), 'utf8'), /stockItem: StockItemModule|stockItem/);
+    const rust = join(appDirOf(work, 'rust'), 'src');
+    assert.ok(existsSync(join(rust, 'modules/stock_item/domain/order_line.rs')));
+    assert.match(readFileSync(join(rust, 'entries/admin_api/routes.rs'), 'utf8'), /\.route\("\/order-lines\/\{id\}\/close"/);
+    assert.match(readFileSync(join(rust, 'modules/stock_item/infrastructure/firestore_tx.rs'), 'utf8'), /COLLECTION: &str = "order-lines"/);
+  });
+
+  it('1 手順が上限で打ち切られたら、その手順名つきの違反 (検査は止めずに続ける)', async () => {
+    const runner = new FakeRunner((call) => (call.args.includes('check:deps') ? { status: null, timedOut: true, output: 'hang' } : allGood(call)));
+    const { report } = await check(['hono'], runner);
+    assert.equal(report.violations.length, 1);
+    assert.match(report.violations[0]?.message ?? '', /dependency-cruiser が 20 分の上限で打ち切られた/);
+    assert.equal(report.exitCode, ExitCode.Violation);
+    assert.ok(runner.calls.every((c) => c.timeoutMs === undefined || c.timeoutMs === 20 * 60_000));
+    assert.ok(runner.calls.some((c) => c.timeoutMs === 20 * 60_000));
+  });
+
+  it('SpawnRunner は上限を超えた子プロセスを止める', async () => {
+    const result = await new SpawnRunner().run(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { timeoutMs: 300 });
+    assert.equal(result.timedOut, true);
+    assert.notEqual(result.status, 0);
+    const ok = await new SpawnRunner().run(process.execPath, ['-e', 'console.log("hi")'], { timeoutMs: 20000 });
+    assert.equal(ok.status, 0);
+    assert.equal(ok.timedOut, undefined);
+  });
+});
+
 describe('check-templates の引数', () => {
   const run = async (argv: string[]): Promise<{ code: ExitCode; err: string[] }> => {
     const err: string[] = [];
@@ -253,7 +288,7 @@ describe('check-templates の引数', () => {
   };
 
   it('不明な変種・不明な引数・位置引数は exit 2 (検査を走らせない)', async () => {
-    for (const argv of [['--variant', 'django'], ['--variant', 'hono', '--keep'], ['hono'], ['--variant']]) {
+    for (const argv of [['--variant', 'django'], ['--variant', 'hono', '--keep'], ['hono'], ['--variant'], ['--root', '/x'], ['--step-timeout', '0'], ['--step-timeout', 'abc']]) {
       const { code } = await run(argv);
       assert.equal(code, ExitCode.CannotCheck, argv.join(' '));
     }
