@@ -54,7 +54,7 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 
 - [x] T300 [audience-directories/REQ-105] Igeta 自身に `docs-migrate` を適用する (移す段。完了条件を満たすこと) (`docs/**`・`AGENTS.md`・`.github/CODEOWNERS`)
 - [ ] T301 [audience-directories/REQ-002] 要件 2 本・解決戦略・地図を人の型へ書き直し、ADR-0001〜0010 を決まりの行から `ADR-NNNN` の形で引く。ADR の本文から `ai/` の文書へのリンクを外す (`docs/person/**`)
-- [ ] T302 [audience-directories/REQ-101] Igeta 自身の `humanPaths` を、検査として実行されるものの全部 (`src/**`・`templates/**`・`package.json`・ロックファイル・`tsconfig.json`) と解説 03〜09 にする (`.igeta.json`)
+- [x] T302 [audience-directories/REQ-101] Igeta 自身の `humanPaths` を、検査として実行されるものの全部 (`src/**`・`templates/**`・`package.json`・ロックファイル・`tsconfig.json`) と解説 03〜09 にする (`.igeta.json`)
 - [x] T303 [audience-directories/REQ-001] README に「文書モデル」の節を書く。Mermaid の図 3 枚 (3 フォルダと確定させる人 / 人の文書の型 / 変更から承認までの流れ) と、3 つの小節 (置き場所の決め方 / 人の文書の書き方 / GitHub の保護の設定と、この版が保証しないこと)。CI で `template-check --base` と `approval-scope --ci` を呼ぶ書き方を書き、PR の作者の内容を特権のある CI (`pull_request_target`) で読む構成は勧めない。旧い構成と v3 の構成の repo を移すコマンドは 0.6.0 から、と書く。`igeta mermaid-check README.md` と `docs:lint` が通る (`README.md`)
 - [ ] T304 [audience-directories/REQ-105] README に「既存の repo を移す」の小節 (移す段と書き直す段の手順) を足す (`README.md`)
 
