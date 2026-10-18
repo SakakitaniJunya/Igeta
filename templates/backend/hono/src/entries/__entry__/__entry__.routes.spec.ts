@@ -74,7 +74,7 @@ describe('create__Entry__Routes', () => {
     const response = await app.request(...post('{oops'));
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ ok: false, error: { code: 'INVALID_JSON' } });
+    expect(await response.json()).toMatchObject({ ok: false, error: { code: 'MALFORMED_REQUEST' } });
     expect(module.create__Aggregate__).not.toHaveBeenCalled();
   });
 

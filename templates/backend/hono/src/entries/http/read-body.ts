@@ -22,7 +22,7 @@ export async function readBody(request: Request, limit?: number): Promise<Buffer
   return Buffer.concat(chunks);
 }
 
-/** 本文が空なら undefined。JSON として読めなければ INVALID_JSON。 */
+/** 本文が空なら undefined。JSON として読めなければ INVALID_JSON (印)。入口はこれを 400 MALFORMED_REQUEST にする。 */
 export function parseJsonBody(raw: Buffer): unknown {
   if (raw.length === 0) return undefined;
   try {

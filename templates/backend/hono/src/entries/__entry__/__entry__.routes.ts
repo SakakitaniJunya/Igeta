@@ -27,7 +27,7 @@ async function readJson(c: Context<__Entry__Env>): Promise<Parsed> {
   const raw = await readBody(c.req.raw, BODY_LIMIT_BYTES);
   if (raw === undefined) return { ok: false, response: toResponse(c, apiError(413, 'PAYLOAD_TOO_LARGE', 'request body is too large')) };
   const body = parseJsonBody(raw);
-  if (body === INVALID_JSON) return { ok: false, response: toResponse(c, apiError(400, 'INVALID_JSON', 'request body is not valid JSON')) };
+  if (body === INVALID_JSON) return { ok: false, response: toResponse(c, apiError(400, 'MALFORMED_REQUEST', 'request body is malformed JSON')) };
   return { ok: true, body };
 }
 

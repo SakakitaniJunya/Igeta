@@ -160,5 +160,5 @@ npm の規則は `(^|/)node_modules/<名前>` から書く (`^hono` と書くと
 | 成功 | `{ok:true,item}` / `{ok:true,items,truncated}` |
 | 失敗 | `{ok:false,error:{code,message,details?}}` (形は `shared/presentation/api-response.ts` だけが作る) |
 | 経路の例 | `GET /__aggregates__?status=` (上限は定数、query の形は zod) / `POST /__aggregates__` `{name}` (201) / `POST /__aggregates__/:id/close` (200) |
-| code と status | `VALIDATION_FAILED` 400 / `UNAUTHORIZED` 401 / `NOT_FOUND` 404 / 競合は 409 / `UNPROCESSABLE` 422 / `UNAVAILABLE` 503 |
+| 失敗コード | 3 変種共通の表は [`../README.md`](../README.md)。入口の 400 は `MALFORMED_REQUEST`、413 は `PAYLOAD_TOO_LARGE` |
 | 認証 | `verify` は利用 repo の `src/index.ts` が作って `create__Entry__Routes` に渡す。`routes.spec` は偽の verify |

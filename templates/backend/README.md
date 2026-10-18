@@ -29,6 +29,20 @@
 
 資源 `{id, name, status: 'open'|'closed'}`。操作は list (`GET /__aggregates__?status=`)・create (`POST /__aggregates__`、201)・close (`POST /__aggregates__/:id/close`)。成功 `{ok:true,item}` / `{ok:true,items,truncated}`、失敗 `{ok:false,error:{code,message,details?}}`。
 
+失敗コード (3 変種で同じ文字列)。kind の行は Hono の `shared/presentation/api-response.ts` の表と一致させてある。
+
+| 段 | 条件 | status | code |
+|---|---|---|---|
+| 入口 | 本文が上限超過 | 413 | `PAYLOAD_TOO_LARGE` |
+| 入口 | JSON の構文が壊れている・URL が壊れている | 400 | `MALFORMED_REQUEST` |
+| 形 | zod / serde の検証に落ちた | 400 | `VALIDATION_FAILED` (`details` = 項目名の配列) |
+| 意味 | kind `invalid` | 400 | `INVALID_REQUEST` |
+| 意味 | kind `unauthorized` | 401 | `UNAUTHORIZED` |
+| 意味 | kind `not_found` | 404 | `NOT_FOUND` |
+| 意味 | kind `conflict` | 409 | `CONFLICT` |
+| 意味 | kind `unprocessable` | 422 | `UNPROCESSABLE` |
+| 意味 | kind `unavailable` | 503 | `UNAVAILABLE` |
+
 ## 共通の決まり
 
 - 土台は印を持たない (`package.json` / `Cargo.toml` の name は `backend`、emulator の project は `demo-igeta`)
