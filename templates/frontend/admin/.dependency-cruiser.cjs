@@ -7,11 +7,12 @@
  * 形: features/<x>/ と shared/ は同じ 4 層 (presentation・application・domain・infrastructure) で切る。向きは層の名前で決め、
  * ①〜⑤ は feature と shared に一括で掛ける。backend と違い application → infrastructure と presentation → domain は許す
  * (差し替えの継ぎ目は Api 1 つで、domain は型と純関数だから)。
- * テスト (*.test.ts(x)) は層の隣に置く。テストが vitest などを import する規則 (①⑤) と shared/test-support を使う規則 (⑦) からは、テストを外す。
+ * テスト (*.test.ts(x)) は層の隣に置く。テストが vitest などを import する規則 (①⑤) と test-support を使う規則 (⑪) からは、テストを外す。
  */
 const LAYERS = '^src/(features/[^/]+|shared)';
 const layer = (name) => `${LAYERS}/${name}/`;
 const TEST = '\\.test\\.tsx?$';
+const TEST_SUPPORT = '/test-support/';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -89,9 +90,9 @@ module.exports = {
     {
       name: 'production-does-not-import-test-support',
       severity: 'error',
-      comment: '⑪ 本番のコードは shared/test-support を使わない。',
-      from: { path: '^src/', pathNot: [TEST, '^src/shared/test-support/'] },
-      to: { path: '^src/shared/test-support/' },
+      comment: '⑪ 本番のコードは test-support (shared/test-support と features/<x>/test-support) を使わない。試験と test-support どうしだけが使える。',
+      from: { path: '^src/', pathNot: [TEST, TEST_SUPPORT] },
+      to: { path: TEST_SUPPORT },
     },
     {
       name: 'no-circular',

@@ -5,16 +5,16 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { use__Feature__Mutation } from '@/features/__feature__/application/use-__feature__-mutation';
-import type { __Feature__Model } from '@/features/__feature__/domain/__feature__.model';
+import { dtoFixture, modelFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
 import { ApiProvider } from '@/shared/application/use-api';
 import type { Api } from '@/shared/domain/api';
 import { fakeApi, type FakeApi } from '@/shared/test-support/fake-api';
 
-const OPEN: __Feature__Model = { id: 'a-1', name: '茅野', status: 'open' };
-const CLOSED: __Feature__Model = { id: 'b-2', name: '伊那', status: 'closed' };
+const OPEN = modelFixture();
+const CLOSED = modelFixture({ id: 'b-2', name: '見本B', status: 'closed' });
 const CLOSE = 'POST /admin/api/__feature__/a-1/close';
 const CREATE = 'POST /admin/api/__feature__';
-const ITEM = { id: 'a-1', name: '茅野', status: 'open' };
+const ITEM = dtoFixture();
 
 function setup(api: Api) {
   const onChanged = vi.fn();
@@ -53,7 +53,7 @@ describe('use__Feature__Mutation', () => {
       expect(await pending).toBe('done');
     });
     expect(posts(api)).toEqual([{ method: 'POST', path: '/admin/api/__feature__/a-1/close', body: undefined }]);
-    expect(result.current.notice).toBe('茅野 を終了しました');
+    expect(result.current.notice).toBe('見本 を終了しました');
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
@@ -111,11 +111,11 @@ describe('use__Feature__Mutation', () => {
     const { result, onChanged } = setup(api);
     let outcome: unknown;
     await act(async () => {
-      outcome = await result.current.create({ name: '茅野' });
+      outcome = await result.current.create({ name: '見本' });
     });
     expect(outcome).toBe('done');
-    expect(posts(api)).toEqual([{ method: 'POST', path: '/admin/api/__feature__', body: { name: '茅野' } }]);
-    expect(result.current.notice).toBe('茅野 を登録しました');
+    expect(posts(api)).toEqual([{ method: 'POST', path: '/admin/api/__feature__', body: { name: '見本' } }]);
+    expect(result.current.notice).toBe('見本 を登録しました');
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
@@ -123,7 +123,7 @@ describe('use__Feature__Mutation', () => {
     const api = fakeApi({ [CREATE]: { status: 500, body: { error: { code: 'INTERNAL', message: 'x' } } } });
     const { result, onChanged } = setup(api);
     await act(async () => {
-      expect(await result.current.create({ name: '茅野' })).toBe('failed');
+      expect(await result.current.create({ name: '見本' })).toBe('failed');
     });
     expect(result.current.failure).toEqual({ error: { code: 'INTERNAL', message: 'x' } });
     expect(onChanged).not.toHaveBeenCalled();

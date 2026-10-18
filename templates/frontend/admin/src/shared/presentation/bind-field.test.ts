@@ -10,12 +10,12 @@ describe('bindField', () => {
     const element = document.createElement('s-text-field') as HTMLElement & { value: string };
     bindField(onValue)(element);
 
-    element.value = '茅';
+    element.value = '見';
     element.dispatchEvent(new Event('input'));
-    element.value = '茅野';
+    element.value = '見本';
     element.dispatchEvent(new Event('change'));
 
-    expect(onValue.mock.calls).toEqual([['茅'], ['茅野']]);
+    expect(onValue.mock.calls).toEqual([['見'], ['見本']]);
   });
 
   it('cleanup で購読を外すと、以後は渡さない', () => {
@@ -44,10 +44,10 @@ describe('useBindField', () => {
     rerender({ onValue: second });
     expect(result.current).toBe(ref);
 
-    element.value = '茅野';
+    element.value = '見本';
     element.dispatchEvent(new Event('change'));
     expect(add).toHaveBeenCalledTimes(2);
     expect(first).not.toHaveBeenCalled();
-    expect(second.mock.calls).toEqual([['茅野']]);
+    expect(second.mock.calls).toEqual([['見本']]);
   });
 });

@@ -7,7 +7,7 @@ const NAME_ERROR = '名称は 1〜40 文字で入れてください';
 
 describe('validate__Feature__Form', () => {
   it('通れば、前後の空白を除いた値を返す', () => {
-    expect(validate__Feature__Form({ name: ' 茅野 ' })).toEqual({ ok: true, value: { name: '茅野' } });
+    expect(validate__Feature__Form({ name: ' 見本 ' })).toEqual({ ok: true, value: { name: '見本' } });
   });
 
   it.each([

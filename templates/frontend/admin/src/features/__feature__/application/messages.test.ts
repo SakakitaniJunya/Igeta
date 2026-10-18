@@ -20,12 +20,12 @@ describe('__feature__ messages', () => {
   });
 
   it('知らせの文に対象の名前が入る', () => {
-    expect(NOTICE.created('茅野')).toBe('茅野 を登録しました');
-    expect(NOTICE.closed('茅野')).toBe('茅野 を終了しました');
+    expect(NOTICE.created('見本')).toBe('見本 を登録しました');
+    expect(NOTICE.closed('見本')).toBe('見本 を終了しました');
   });
 
   it('閉じるの確認は対象の名前を見出しに入れ、重大な操作として出す', () => {
-    expect(closeConfirmText('茅野')).toMatchObject({ heading: '茅野 を終了しますか', confirmLabel: '終了する', tone: 'critical' });
+    expect(closeConfirmText('見本')).toMatchObject({ heading: '見本 を終了しますか', confirmLabel: '終了する', tone: 'critical' });
   });
 
   it('状態ごとに語と色の表がある (開いているだけ成功の色)', () => {

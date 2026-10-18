@@ -15,23 +15,23 @@ describe('__Feature__Toolbar', () => {
   it('絞り込み欄に打った文字を onQueryChange に返す', () => {
     const { container, onQueryChange } = renderToolbar();
     const field = container.querySelector('s-text-field[label="絞り込み"]') as HTMLElement & { value: string };
-    field.value = '茅';
+    field.value = '見';
     fireEvent(field, new Event('input'));
-    expect(onQueryChange).toHaveBeenLastCalledWith('茅');
+    expect(onQueryChange).toHaveBeenLastCalledWith('見');
   });
 
   it('再描画しても確定で 1 回だけ呼ぶ', () => {
     const { container, onQueryChange, rerender } = renderToolbar();
-    rerender(<__Feature__Toolbar query="茅" onQueryChange={onQueryChange} onAdd={() => undefined} />);
+    rerender(<__Feature__Toolbar query="見" onQueryChange={onQueryChange} onAdd={() => undefined} />);
     const field = container.querySelector('s-text-field[label="絞り込み"]') as HTMLElement & { value: string };
-    field.value = '茅野';
+    field.value = '見本';
     fireEvent(field, new Event('change'));
-    expect(onQueryChange.mock.calls).toEqual([['茅野']]);
+    expect(onQueryChange.mock.calls).toEqual([['見本']]);
   });
 
   it('いまの絞り込みの文字を欄に出す', () => {
-    const { container } = renderToolbar({ query: '茅野' });
-    expect(container.querySelector('s-text-field')?.getAttribute('value')).toBe('茅野');
+    const { container } = renderToolbar({ query: '見本' });
+    expect(container.querySelector('s-text-field')?.getAttribute('value')).toBe('見本');
   });
 
   it('追加を押すと onAdd を呼ぶ', async () => {

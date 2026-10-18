@@ -5,14 +5,15 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { __Feature__Screen } from '@/features/__feature__/presentation/screen/__Feature__Screen';
+import { dtoFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
 import { ApiProvider } from '@/shared/application/use-api';
 import { fakeApi, type FakeApi, type FakeResponse } from '@/shared/test-support/fake-api';
 import { findBanner } from '@/shared/test-support/polaris';
 
 const GET = 'GET /admin/api/__feature__';
-const OPEN = { id: 'a-1', name: '茅野', status: 'open' };
-const OTHER = { id: 'b-2', name: '伊那', status: 'open' };
-const CLOSED = { id: 'c-3', name: '南箕輪', status: 'closed' };
+const OPEN = dtoFixture();
+const OTHER = dtoFixture({ id: 'b-2', name: '見本B' });
+const CLOSED = dtoFixture({ id: 'c-3', name: '見本C', status: 'closed' });
 
 function renderScreen(responses: Record<string, FakeResponse>): FakeApi {
   const api = fakeApi(responses);
@@ -30,7 +31,7 @@ describe('__Feature__Screen', () => {
   it('読み込み中を出してから一覧を出す', async () => {
     renderScreen({ [GET]: { status: 200, body: { items: [OPEN], truncated: false } } });
     expect(screen.getByRole('status').textContent).toContain('読み込んでいます');
-    expect(await screen.findByText('茅野')).toBeTruthy();
+    expect(await screen.findByText('見本')).toBeTruthy();
   });
 
   it('サーバが打ち切ったときは上限の件数と打ち切りの知らせを出す', async () => {
@@ -51,7 +52,7 @@ describe('__Feature__Screen', () => {
 
   it('打ち切られていなければ知らせを出さない', async () => {
     renderScreen({ [GET]: { status: 200, body: { items: [OPEN], truncated: false } } });
-    await screen.findByText('茅野');
+    await screen.findByText('見本');
     expect(document.querySelector('s-banner[tone="warning"]')).toBeNull();
   });
 
@@ -73,8 +74,8 @@ describe('__Feature__Screen', () => {
     const field = container.querySelector('s-text-field[label="絞り込み"]') as HTMLElement & { value: string };
     field.value = '伊';
     field.dispatchEvent(new Event('input'));
-    expect(await screen.findByText('伊那')).toBeTruthy();
-    expect(screen.queryByText('茅野')).toBeNull();
+    expect(await screen.findByText('見本B')).toBeTruthy();
+    expect(screen.queryByText('見本')).toBeNull();
   });
 
   it('閉じるは確認を出し、確定すると閉じて通知し、一覧を読み直す', async () => {
@@ -83,9 +84,9 @@ describe('__Feature__Screen', () => {
       'POST /admin/api/__feature__/a-1/close': { status: 200, body: { ok: true, item: { ...OPEN, status: 'closed' } } },
     });
     await userEvent.click(await screen.findByText('終了', { selector: 's-button' }));
-    await waitFor(() => expect(document.querySelector('s-modal[heading="茅野 を終了しますか"]')).not.toBeNull());
+    await waitFor(() => expect(document.querySelector('s-modal[heading="見本 を終了しますか"]')).not.toBeNull());
     await userEvent.click(screen.getByText('終了する'));
-    expect(await findBanner('茅野 を終了しました')).toBeTruthy();
+    expect(await findBanner('見本 を終了しました')).toBeTruthy();
     expect(api.calls).toContainEqual({ method: 'POST', path: '/admin/api/__feature__/a-1/close', body: undefined });
     expect(gets(api)).toBe(2);
   });
@@ -117,15 +118,15 @@ describe('__Feature__Screen', () => {
     expect(api.calls.filter((c) => c.method === 'POST')).toHaveLength(0);
 
     const field = document.querySelector('s-text-field[label="名称"]') as HTMLElement & { value: string };
-    field.value = '伊那';
+    field.value = '見本B';
     field.dispatchEvent(new Event('input'));
     await userEvent.click(screen.getByText('登録', { selector: 's-button' }));
-    expect(await findBanner('伊那 を登録しました')).toBeTruthy();
-    expect(api.calls).toContainEqual({ method: 'POST', path: '/admin/api/__feature__', body: { name: '伊那' } });
+    expect(await findBanner('見本B を登録しました')).toBeTruthy();
+    expect(api.calls).toContainEqual({ method: 'POST', path: '/admin/api/__feature__', body: { name: '見本B' } });
   });
 });
 
-async function renderAndWait(items: ReadonlyArray<typeof OPEN>) {
+async function renderAndWait(items: ReadonlyArray<ReturnType<typeof dtoFixture>>) {
   const api = fakeApi({ [GET]: { status: 200, body: { items, truncated: false } } });
   const view = render(
     <ApiProvider api={api}>

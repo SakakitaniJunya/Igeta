@@ -75,6 +75,8 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
           __feature__.dto.ts                        要求・応答の型 (API 仕様の写し。型だけ)
           __feature__.mapper.ts                     dto ⇄ model の変換
           __feature__.mapper.test.ts                欠け・未知の値・往復
+        test-support/
+          __feature__.fixtures.ts                   試験用の値 (dtoFixture・modelFixture)。試験だけが import する
     shared/                                         共通機能と部品の既定の置き場。feature と app を知らない
       presentation/
         bind-field.ts                               Polaris 入力欄の確定の購読 (bindField と、購読を 1 回だけにする useBindField)
@@ -103,10 +105,14 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
         use-api.test.tsx                            Provider の外では投げる
         use-resource.ts                             取得の状態 (読み込み中・成功・失敗・再取得)
         use-resource.test.ts                        重なった要求は最後だけ使う
+        use-mutation-flow.ts                        書き込みの共通の流れ (確認 → 送信中 → 二重送信の防止 → 通知 → 再取得)。feature は手順を渡す
+        use-mutation-flow.test.tsx                  やめる・busy・失敗は再取得しない・dismiss
         use-navigate.ts                             画面内の移動の hook
         use-navigate.test.ts                        履歴と search の引き継ぎ
       domain/                                       値と形だけ
         api.ts                                      Api・ApiResult・ApiError の型 (型だけ)
+        api-error.ts                                ApiError の読み取り (validationFields = VALIDATION_FAILED の項目名)
+        api-error.test.ts                           文字だけ・無ければ空
         date.ts                                     Asia/Tokyo の今日・加減・差
         date.test.ts                                UTC 15:00 前後の境界
         field-parse.ts                              数・文字の parse と誤りの集約
@@ -143,7 +149,7 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
 8. `other-features-through-index-only` — 他の feature へは `index.ts` だけ (app も同じ)
 9. `shared-is-a-leaf` — shared は feature・app を知らない
 10. `app-is-read-by-main-only` — app を読むのは `main.tsx` だけ
-11. `production-does-not-import-test-support` — 本番は test-support を使わない
+11. `production-does-not-import-test-support` — 本番は `shared/test-support` も `features/<x>/test-support` も使わない
 12. `no-circular` — 循環なし
 
 backend と違い、application → infrastructure と presentation → domain は許す (差し替えの継ぎ目は `Api` 1 つで、domain は型と純関数だから)。dto ⇄ model の変換は mapper (infrastructure) で、domain は dto を知らない。
@@ -164,13 +170,29 @@ feature 間は 3 経路。(1) 経路と合成は `app/` が組む。(2) 複数�
 - TypeScript は strict・`noUncheckedIndexedAccess`・`any` 禁止。npm の規則は `(^|/)node_modules/<名前>` から書く
 - Node は 22 か 24 (jsdom の engine。25 は組み込みの localStorage が jsdom を覆い session.test が落ちる、実測)
 
+## E2E が頼る DOM の目印
+
+E2E (Playwright など) の入力・押下は次の形に頼る。部品を差し替えるときはここを保つ。
+
+| 目印 | 確かめるテスト |
+|---|---|
+| `s-text-field[label^=…]`・`s-number-field[label^=…]`・`s-date-field[label^=…]`。`label` は**属性**。絞り込み欄の label は入力欄の label と先頭が重ならない語にする | Form・Toolbar・`DateField` のテスト |
+| `maxlength`・`required`・`readonly` も属性 | Form・Screen のテスト |
+| `value` は**プロパティ** (属性に出ない) | `bind-field.test.ts`・Form のテスト |
+| `s-button` は `onClick` で 1 回 | Row・Toolbar・`ConfirmDialog` のテスト |
+| 確認ダイアログは `s-modal[heading=…]`。確定・やめる・外側・閉じるのどれでも結果は 1 回 | `ConfirmDialog.test.tsx` |
+| host は `display:contents`。操作は内側の `input`/`select`。`s-select` は host の `.value`、`s-checkbox` は `.checked`、`s-choice-list` は `.values` | 雛形のテスト対象外 (jsdom は Polaris を読まない。使う部品が今の雛形に無い。使うとき実ブラウザで実測する) |
+| バナーの見出しは `heading` 属性で、文字として描かれない | `findBanner` (`shared/test-support/polaris.ts`) |
+
+React の `onChange` は 1 回の確定で 2 回呼ばれる。副作用を置かず、確定の購読は `shared/presentation/bind-field.ts` の `bindField` を使う。
+
 ## テスト
 
 | 書くもの | テスト | 確かめ方 |
 |---|---|---|
 | 画面 | `*Screen.test.tsx` | Testing Library。3 状態・表示・操作 |
 | components・`shared/presentation/ui` | 隣の `*.test.tsx` | 受け取った値の出し方と、操作を呼び出し元へ返すこと |
-| hook | 隣の `*.test.ts(x)` | `renderHook`。状態の移り変わりと API の呼び方。偽の API は `shared/test-support/fake-api.ts` |
+| hook | 隣の `*.test.ts(x)` | `renderHook`。状態の移り変わりと API の呼び方。偽の API は `shared/test-support/fake-api.ts`。feature の試験の値は `test-support/__feature__.fixtures.ts` |
 | endpoint・mapper | 隣の `*.test.ts` | パス・メソッド・本文 / 欠け・未知の値 |
 | domain | 隣の `*.test.ts` | 偽物なしで表を直接 |
 

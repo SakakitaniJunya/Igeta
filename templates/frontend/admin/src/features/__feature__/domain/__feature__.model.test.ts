@@ -2,18 +2,16 @@
 
 import { describe, expect, it } from 'vitest';
 import { filterByName, type __Feature__Model } from '@/features/__feature__/domain/__feature__.model';
+import { modelFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
 
-const ITEMS: ReadonlyArray<__Feature__Model> = [
-  { id: 'a-1', name: '茅野', status: 'open' },
-  { id: 'b-2', name: '伊那', status: 'closed' },
-];
+const ITEMS: ReadonlyArray<__Feature__Model> = [modelFixture(), modelFixture({ id: 'b-2', name: '見本B', status: 'closed' })];
 
 describe('filterByName', () => {
   it.each([
     ['空は全部', '', 2],
     ['空白だけは全部', '  ', 2],
-    ['部分一致', '伊', 1],
-    ['前後の空白を無視', ' 茅 ', 1],
+    ['部分一致', '本B', 1],
+    ['前後の空白を無視', ' 本B ', 1],
     ['該当なし', '該当なし', 0],
   ])('%s', (_name, query, count) => {
     expect(filterByName(ITEMS, query)).toHaveLength(count);

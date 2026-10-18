@@ -4,11 +4,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { use__Feature__ } from '@/features/__feature__/application/use-__feature__';
+import { dtoFixture, modelFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
 import { ApiProvider } from '@/shared/application/use-api';
 import { fakeApi, type FakeApi, type FakeResponse } from '@/shared/test-support/fake-api';
 
 const GET = 'GET /admin/api/__feature__';
-const LIST = { items: [{ id: 'a-1', name: '茅野', status: 'open' }], truncated: false };
+const LIST = { items: [dtoFixture()], truncated: false };
 
 function setup(api: FakeApi) {
   const wrapper = ({ children }: { children: ReactNode }) => <ApiProvider api={api}>{children}</ApiProvider>;
@@ -19,15 +20,15 @@ const gets = (api: FakeApi) => api.calls.filter((c) => c.method === 'GET').lengt
 
 describe('use__Feature__', () => {
   it('読み込み中から、読めた状態になり、応答は画面の値になる', async () => {
-    const api = fakeApi({ [GET]: { status: 200, body: { ...LIST, items: [...LIST.items, { id: 'b-2', name: '伊那', status: 'unknown' }] } } });
+    const api = fakeApi({ [GET]: { status: 200, body: { ...LIST, items: [...LIST.items, dtoFixture({ id: 'b-2', name: '見本B', status: 'unknown' })] } } });
     const { result } = setup(api);
     expect(result.current.state).toBe('loading');
     await waitFor(() => expect(result.current.state).toBe('ready'));
     expect(result.current).toMatchObject({
       data: {
         items: [
-          { id: 'a-1', name: '茅野', status: 'open' },
-          { id: 'b-2', name: '伊那', status: 'closed' },
+          modelFixture(),
+          modelFixture({ id: 'b-2', name: '見本B', status: 'closed' }),
         ],
         truncated: false,
       },

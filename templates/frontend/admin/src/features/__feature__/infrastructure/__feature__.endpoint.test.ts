@@ -2,9 +2,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { close__Feature__, create__Feature__, list__Feature__ } from '@/features/__feature__/infrastructure/__feature__.endpoint';
+import { dtoFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
 import { fakeApi } from '@/shared/test-support/fake-api';
 
-const ITEM = { id: 'a-1', name: '茅野', status: 'open' };
+const ITEM = dtoFixture();
 
 describe('__feature__.endpoint', () => {
   it('一覧は GET /admin/api/__feature__。応答は変換せずそのまま返す', async () => {
@@ -16,8 +17,8 @@ describe('__feature__.endpoint', () => {
 
   it('作るは POST で名称だけを送る', async () => {
     const api = fakeApi({ 'POST /admin/api/__feature__': { status: 201, body: { ok: true, item: ITEM } } });
-    await create__Feature__(api, { name: '茅野' });
-    expect(api.calls).toEqual([{ method: 'POST', path: '/admin/api/__feature__', body: { name: '茅野' } }]);
+    await create__Feature__(api, { name: '見本' });
+    expect(api.calls).toEqual([{ method: 'POST', path: '/admin/api/__feature__', body: { name: '見本' } }]);
   });
 
   it('閉じるは POST で、id は URL に入れるため符号化する', async () => {

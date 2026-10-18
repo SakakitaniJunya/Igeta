@@ -4,14 +4,15 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { __Feature__Row } from '@/features/__feature__/presentation/components/__Feature__Row';
+import { modelFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
 
-const OPEN = { id: 'a-1', name: '<b>茅野</b>', status: 'open' } as const;
-const CLOSED = { id: 'b-2', name: '伊那', status: 'closed' } as const;
+const OPEN = modelFixture({ name: '<b>見本</b>' });
+const CLOSED = modelFixture({ id: 'b-2', name: '見本B', status: 'closed' });
 
 describe('__Feature__Row', () => {
   it('名称を文字として出す (HTML として差し込まない)', () => {
     render(<__Feature__Row item={OPEN} onClose={() => undefined} />);
-    expect(screen.getByText('<b>茅野</b>')).toBeTruthy();
+    expect(screen.getByText('<b>見本</b>')).toBeTruthy();
   });
 
   it('状態の語を出す', () => {

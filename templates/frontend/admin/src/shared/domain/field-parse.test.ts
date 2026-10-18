@@ -40,7 +40,7 @@ describe('parseTextInput', () => {
   });
 
   it('前後の空白を除いた値を返す', () => {
-    expect(parseTextInput('  茅野  ', NAME)).toEqual({ ok: true, value: '茅野' });
+    expect(parseTextInput('  見本  ', NAME)).toEqual({ ok: true, value: '見本' });
   });
 
   it('形 (pattern) が違えば、その文を返す', () => {
@@ -51,8 +51,8 @@ describe('parseTextInput', () => {
 
 describe('collectFields', () => {
   it('全部通れば、項目名ごとの値の組', () => {
-    const result = collectFields({ name: parseTextInput('茅野', { label: '名称', min: 1, max: 5 }), days: parseIntegerInput('2', DAYS) });
-    expect(result).toEqual({ ok: true, value: { name: '茅野', days: 2 } });
+    const result = collectFields({ name: parseTextInput('見本', { label: '名称', min: 1, max: 5 }), days: parseIntegerInput('2', DAYS) });
+    expect(result).toEqual({ ok: true, value: { name: '見本', days: 2 } });
   });
 
   it('誤りは項目の並びの順に全部返す', () => {

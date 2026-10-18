@@ -1,4 +1,4 @@
-// 保存の失敗の知らせのテスト: 文を出す・details を項目として並べる (文字・field・path・それ以外)・サーバの message は出さない。
+// 保存の失敗の知らせのテスト: 文を出す・details の項目名を並べる (文字だけ。文字でないものは出さない)・サーバの message は出さない。
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -12,17 +12,12 @@ describe('SaveErrorBanner', () => {
     expect(screen.getByText('もう一度お試しください')).toBeTruthy();
   });
 
-  it('details の文字・field・path を項目として並べ、それ以外は定型の文', () => {
-    const error = {
-      code: 'VALIDATION_FAILED',
-      message: 'x',
-      details: ['名称', { field: '点検日数' }, { path: 'items.0.name' }, 42],
-    };
+  it('details の文字の項目名を並べ、文字でないものは出さない', () => {
+    const error = { code: 'VALIDATION_FAILED', message: 'x', details: ['名称', '点検日数', { field: 'x' }, 42] };
     render(<SaveErrorBanner error={error} />);
     expect(screen.getByText('名称')).toBeTruthy();
     expect(screen.getByText('点検日数')).toBeTruthy();
-    expect(screen.getByText('items.0.name')).toBeTruthy();
-    expect(screen.getByText('入力の誤り')).toBeTruthy();
+    expect(document.querySelectorAll('s-list-item')).toHaveLength(2);
   });
 
   it('サーバの message は画面に出さない', () => {

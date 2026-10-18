@@ -26,16 +26,16 @@ describe('__Feature__Form', () => {
   it('通れば、前後の空白を除いた名称を onSubmit に渡す', async () => {
     const onSubmit = vi.fn();
     const { container } = render(<__Feature__Form saving={false} onSubmit={onSubmit} onCancel={() => undefined} />);
-    typeName(container, ' 茅野 ');
+    typeName(container, ' 見本 ');
     await userEvent.click(screen.getByText('登録', { selector: 's-button' }));
-    expect(onSubmit).toHaveBeenCalledWith({ name: '茅野' });
+    expect(onSubmit).toHaveBeenCalledWith({ name: '見本' });
   });
 
   it('送っても入力は残る (失敗したときに直せるように)', async () => {
     const { container } = render(<__Feature__Form saving={false} onSubmit={() => undefined} onCancel={() => undefined} />);
-    const field = typeName(container, '茅野');
+    const field = typeName(container, '見本');
     await userEvent.click(screen.getByText('登録', { selector: 's-button' }));
-    expect(field.value).toBe('茅野');
+    expect(field.value).toBe('見本');
   });
 
   it('送信中は登録もやめるも押せない', () => {
