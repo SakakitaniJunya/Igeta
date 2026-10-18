@@ -54,8 +54,8 @@ fn query_to_value(raw: Option<String>) -> Value {
 /// main.rs で `.nest("/<入口の前置き>", routes(deps))` として付ける。
 pub fn routes<V: Verifier, M: __Context__Module>(deps: RoutesDeps<V, M>) -> Router {
     Router::new()
-        .route("/__aggregates__", get(list::<M>).post(create::<M>))
-        .route("/__aggregates__/{id}/close", post(close::<M>))
+        .route("/__aggregatesPath__", get(list::<M>).post(create::<M>))
+        .route("/__aggregatesPath__/{id}/close", post(close::<M>))
         .layer(from_fn_with_state(Arc::new(deps.verify), verify_layer::<V>))
         .with_state(Arc::new(deps.__context__))
 }
