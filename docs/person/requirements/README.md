@@ -17,6 +17,6 @@ owners: [eng]
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
 - [01-requirements.md](01-requirements.md) — **要件定義書** `product` _(draft)_ — docs を開いた読み手が、その文書が 顧客 / 開発者 / AI の誰向けかを即判別できない、を解く。
-  - [02-audience-directories.md](02-audience-directories.md) — **要件定義書 — 確定させる人ごとのディレクトリ (docs/ の物理分割)** `product` _(draft)_ — docs/ を開いた人が、どれが人の読んで決める文書で、どれが AI の使う文書かを、フォルダだけで判別できない、を解く。docs/ 直下を、確定させる人ごとのディレクトリ (person/ai/client) に分け、kind → 置き…
+  - [02-audience-directories.md](02-audience-directories.md) — **要件定義書 — 確定させる人ごとのディレクトリ (docs/ の物理分割)** `product` _(draft)_ — docs/ を開いた人が、文書を確定させる人 (人 / AI / 顧客) でフォルダだけで判別できない、を解く。
 
 <!-- AUTOGEN:dir-index:end -->

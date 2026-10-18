@@ -61,3 +61,19 @@ relates_to: [folder-placement]
 
 本書と ADR 群が確定した後の作業: 文書体系ガイドの改訂、雛形の再編 (ADR-0010)、
 新設の検査と `igeta docs-migrate` の実装、Igeta 自身の移行 (ADR-0003)。
+
+## 6. 要件 01・02 の長い行から移した全文 (ID は修飾 ID で引く)
+
+長い行は person に短く残し、元の行の全文をここに置く (ADR-0003 決定 5)。
+
+- requirements の元の行: requirements/REQ-001 | docs を開いた人・AI が、その文書が顧客・開発者・AI の誰向けかを、文書体系の知識が無くても即判別できる | 読み手 3 種と kind→読み手対応は設計確定済みで層の実体 (まとまりの地図・約束・提出物の章) もあるが、索引・入口・ガイドのどこにも読み手の表示が無い。対応表は 解説 03 §3 (ai 側) にだけあり、docs を開いた人からは見えない | requirements/REQ-101〜104 をすべて満たす | 読み手 3 種・入口の構成・kind→読み手対応: explanation/03 §3。「即判別」の定量目標 (秒数・操作数) は**未整備**で、構造的受入条件で代替する | 仮
+- requirements の元の行: requirements/REQ-002 | 細粒度に分かれた正本文書群を、読み手 (顧客 / 開発者 / AI) が「現時点の全体像」として 1 本の物語で読める | 文書は kind × context × id の小品群と depends_on の木で機械には強いが、索引 (dir-index) は地図であって物語ではない。読み手向けに全体を 1 本の叙述として読む生成物が無い | requirements/REQ-405 の再検討条件を満たした版で、読み手別の生成物語 1 本が depends_on の木と kind→読み手対応から生成される (要件化は次段) | Hora Kit (Open Reach Tech) 公開記事との比較 (2026-09-06)。同記事の spec.md が版ごとの物語を持つのに対し、本リポジトリは索引のみ | 仮
+- requirements の元の行: requirements/REQ-101 | Event | 索引生成 (dir-index) が走ったとき、システムは各文書を確定させる人 (人 / AI / 顧客) を frontmatter `kind` から機械判定し、生成索引の当該文書の行に表示しなければならない | requirements/REQ-001 | 利用 repo で索引を再生成すると、kind を持つ全文書の行に区分が出る。kind を直せば次回生成で表示が変わる。kind を持たない文書は移行のときに一覧で止める (audience-directories/REQ-103) | 仮
+- requirements の元の行: requirements/REQ-103 | Ubiquitous | 利用 repo の docs/README.md は「入口」として 3 行を持たなければならない。人 → `person/` を確定前に全部読む / AI → `AGENTS.md` から `person/` と `ai/` / 顧客 → `client/` の提出物 | requirements/REQ-001 | 新しく起こした利用 repo の docs/README.md に 3 行が含まれ、各行が実在するフォルダを指す。入口の文言は AUTOGEN 索引区間の外にあり、索引の再生成で消えない | 仮
+- requirements の元の行: requirements/REQ-405 | 読み手別の「生成物語」— depends_on の木と kind→読み手対応から、読み手ごとの「現時点の全体像」文書 1 本を生成する機能 | 本版は読み手の「表示」(requirements/REQ-101〜104) に絞る。生成は正本の機械判定と入口整備が消費 repo に効いてから意味を持つ。作業中の実装に同梱しない | requirements/REQ-101〜104 が消費 repo に効き、次の版の要件として起案するとき (requirements/REQ-002 の受入として扱う) | 仮
+- audience-directories の元の行: > **TL;DR**: docs/ を開いた人が、どれが人の読んで決める文書で、どれが AI の使う文書かを、フォルダだけで判別できない、を解く。docs/ 直下を、確定させる人ごとのディレクトリ (`person`/`ai`/`client`) に分け、kind → 置き場所の対応を正本 1 つに置き、
+- audience-directories の元の行: > 置き場所の違反を検査で落とす。人の側の文書は、人が全部読んで決められる型と量に保つ
+- audience-directories の元の行: | audience-directories/REQ-001 | docs/ を開いた人が、文書を 1 本も開く前に、フォルダだけで「人が読んで決める文書」と「AI が使う文書」と「顧客に渡す文書」を判別できる | v0.4.0 の読み手の表示は索引を経由したときだけ見える。フォルダは文書の種類で分かれていて、人が決める業務の決まりや画面が AI 側の場所にある | audience-directories/REQ-101〜106 をすべて満たす | CEO 指摘 (原文): 「どれが人間が読むもので、AIがどれかわかりません」「フォルダで大きく三つに分けちゃえばいいのに。docs」 | 仮 |
+- audience-directories の元の行: | audience-directories/REQ-002 | 人が、自分の決める文書を 1 つのフォルダから全部たどれ、全部読める量に収まっている | 人の決める内容と作り方が 1 本に混ざり、基本設計をそのまま人の側へ移すと約 31 万字で読みきれない | `person/` の文書が ADR-0002 の型と量の条件を満たす | CEO 指摘 (2026-10-02): 「読みきれるボリュームなの？」ほか | 仮 |
+- audience-directories の元の行: | audience-directories/REQ-105 | Event | 旧い構成の repo を移行するとき、システムは文書の移動と相対パスの書き換えを適用まで機械的に行わなければならない | audience-directories/REQ-002 | 移す段の完了条件 (リンク・置き場所・索引・由来と合意の状態・文書の集合) を満たし、残る違反が書き直す段の作業の列として出る。書き直す段の後に全検査が通る (ADR-0003・ADR-0006) | 仮 |
+- audience-directories の元の行: | audience-directories/REQ-107 | Ubiquitous | システムは、§8 に挙げた kind の人の文書に、その kind の許す図種の Mermaid の図を、TL;DR の次の節 (最初の表より前) に 1 枚以上持たせなければならない | audience-directories/REQ-003 | §8 の kind の文書で、図が無い・空・別図種・閉じていない・冒頭域の外のどれかなら検査が落ちる。雛形 16 本が自分の検査を通る (ADR-0011、テスト仕様 08) | 仮 |
