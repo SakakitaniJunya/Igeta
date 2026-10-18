@@ -113,7 +113,7 @@ const isFile = (path: string): boolean => existsSync(path) && statSync(path).isF
 const SKIPPED_DIRS: ReadonlySet<string> = new Set(['.git', 'node_modules']);
 
 /** repo の中の、いまあるファイル (repo 直下からの相対パス。区切りは `/`。パスの文字コード順) */
-function listRepoFiles(root: string): readonly string[] {
+export function listRepoFiles(root: string): readonly string[] {
   const found: string[] = [];
   const walk = (dir: string, prefix: string): void => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

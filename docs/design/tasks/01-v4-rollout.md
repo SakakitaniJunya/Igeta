@@ -48,7 +48,7 @@ relates_to: [test-approval-gate, test-person-form, test-doc-graph, test-review-s
 
 ### US-2 既存の repo を移す
 
-- [ ] T200 [audience-directories/REQ-105] `docs-migrate`: テスト仕様 07 の全部。旧い構成の警告の文を「`igeta docs-migrate` を実行する」に戻す (`src/cli/commands/DocsMigrateCommand.ts`・`src/generators/DocsMigrate*.ts`)
+- [x] T200 [audience-directories/REQ-105] `docs-migrate`: テスト仕様 07 の全部。旧い構成の警告の文を「`igeta docs-migrate` を実行する」に戻す (`src/cli/commands/DocsMigrateCommand.ts`・`src/generators/DocsMigrate*.ts`)
 
 ### US-3 Igeta 自身を移す
 

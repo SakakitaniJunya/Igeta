@@ -261,7 +261,7 @@ npm run docs:graph
 置いた後に、GitHub で既定ブランチの保護を設定し、`npx igeta doctor` で確かめる (上の「変更から承認まで」)。
 
 - `AGENTS.md` と `.github/CODEOWNERS` が既にある repo では、足りない分だけを足す (CODEOWNERS は先頭に足すので、既にある割り当ては変わらない)
-- `docs/` に既に文書がある repo では、`init` は何も書かずに止まる。旧い構成 (`docs/product`・`docs/design` など) の repo を 3 フォルダへ移すコマンドは 0.6.0 で入る。それまで、旧い構成の検査はいままでのまま動き、警告を 1 件出す
+- `docs/` に既に文書がある repo では、`init` は何も書かずに止まる。旧い構成 (`docs/product`・`docs/design` など) の repo は、`igeta docs-migrate` で 3 フォルダへ移す (下の検査の表の行)。移すまで、旧い構成の検査はいままでのまま動き、警告を 1 件出す
 
 版の固定は `.igeta-version` (semver 1 行)。`npx igeta check` が追従遅れを検出し、`npx igeta upgrade --to <ver>` で書き換える。
 
@@ -281,6 +281,7 @@ npm run docs:graph
 | `npx igeta provenance-coverage [<chapter> ...]` | 由来の順方向網羅 (既定 OFF) | delivery-chapter の H2 節 (「関連」除く) に由来が 1 件も無い |
 | `npx igeta source-coverage` | 由来の逆方向網羅 (既定 OFF) | 正本の行定義がどの章の由来にも現れない (`clientExempt`/`.igeta.json` の `coverageExemptions` で対象外にできる) |
 | `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/adr/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
+| `npx igeta docs-migrate --owner <持ち主> [--dry-run]` | (生成・移す段、[詳細](docs/design/test/specs/07-docs-migrate.md)) | 旧い構成・v3 の構成の `docs/` を 3 フォルダ (`person`・`ai`・`client`) へ移し、リンクと索引と承認の割り当て (`AGENTS.md`・CODEOWNERS) を作る。作業ツリーが clean であること・kind の無い文書など止める条件 (S1〜S9) があれば何も書かず終了 2。完了条件 (C1〜C5) が欠けたら終了 1 で作業ツリーを戻す手順を出す。commit はしない。`--dry-run` は計画だけを出す |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
