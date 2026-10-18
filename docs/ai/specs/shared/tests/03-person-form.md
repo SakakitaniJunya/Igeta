@@ -10,7 +10,7 @@ status: draft
 canonical: true
 owners: [eng]
 created: 2026-10-02
-depends_on: [adr-0002-role-boundary-invariants]
+depends_on: [adr-0002-role-boundary-invariants, adr-0011-person-diagram-first]
 relates_to: [audience-directories, test-person-diagram]
 ---
 

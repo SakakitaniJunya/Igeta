@@ -90,6 +90,8 @@ graph LR
   class person-design-index index
   person-design-shared-index["shared — 索引"]
   class person-design-shared-index index
+  person-doc-background["解説 — 人の文書の背景と作り方 (要件 01・02・解決戦略から移した行と経緯)"]
+  class person-doc-background explanation
   person-index["person — 索引"]
   class person-index index
   person-requirements-index["requirements — 索引"]
@@ -139,13 +141,18 @@ graph LR
   provenance-and-agreement ==> agreement-ledger
   requirements ==> audience-directories
   human-review-layer ==> audience-layers
+  requirements ==> audience-layers
   audience-layers ==> context-boundaries
   provenance-and-agreement ==> coverage-and-learning
   requirements ==> docs-model-strategy
   audience-directories ==> docs-model-strategy
   audience-directories ==> folder-placement
+  docs-model-strategy ==> person-doc-background
+  audience-directories ==> person-doc-background
+  requirements ==> person-doc-background
   audience-layers ==> provenance-and-agreement
   audience-layers ==> reader-granularity
+  adr-0011-person-diagram-first ==> reader-granularity
   audience-directories ==> tasks-v4-rollout
   audience-directories ==> template-section-audit
   adr-0008-human-approval-scope ==> test-approval-gate
@@ -158,6 +165,7 @@ graph LR
   adr-0011-person-diagram-first ==> test-person-diagram
   adr-0002-role-boundary-invariants ==> test-person-diagram
   adr-0002-role-boundary-invariants ==> test-person-form
+  adr-0011-person-diagram-first ==> test-person-form
   adr-0002-role-boundary-invariants ==> test-review-sheet
   adr-0008-human-approval-scope ==> test-review-sheet
   adr-0001-document-role-directories -.- adr-0009-kind-placement
@@ -175,8 +183,6 @@ graph LR
   adr-0008-human-approval-scope -.- adr-0002-role-boundary-invariants
   adr-0009-kind-placement -.- adr-0010-value-ownership
   adr-0009-kind-placement -.- audience-directories
-  adr-0011-person-diagram-first -.- test-person-form
-  adr-0011-person-diagram-first -.- test-person-diagram
   agreement-ledger -.- coverage-and-learning
   agreement-ledger -.- export-deliverable
   audience-layers -.- provenance-and-agreement
@@ -187,6 +193,7 @@ graph LR
   folder-placement -.- reader-granularity
   folder-placement -.- context-boundaries
   map -.- requirements
+  person-doc-background -.- folder-placement
   provenance-and-agreement -.- coverage-and-learning
   provenance-and-agreement -.- agreement-ledger
   reader-granularity -.- human-review-layer
@@ -253,6 +260,7 @@ graph LR
 - **export-deliverable** — [igeta export — 提出用 PDF 出力基盤](ai/handbook/explanation/06-export-deliverable.md)
 - **folder-placement** — [どの文書をどこに置くか — 木の図と、その理由](ai/handbook/explanation/10-folder-placement.md)
 - **human-review-layer** — [人間レビュー層 (地図・決定台帳・レビューシート) を足した理由](ai/handbook/explanation/02-human-review-layer.md)
+- **person-doc-background** — [解説 — 人の文書の背景と作り方 (要件 01・02・解決戦略から移した行と経緯)](ai/handbook/explanation/13-person-doc-background.md)
 - **provenance-and-agreement** — [由来・鮮度の形 (delivery-chapter 限定)](ai/handbook/explanation/04-provenance-and-agreement.md)
 - **reader-granularity** — [人が読んで決める文書の型と量](ai/handbook/explanation/09-reader-granularity.md)
 - **template-section-audit** — [雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表](ai/handbook/explanation/12-template-section-audit.md)
