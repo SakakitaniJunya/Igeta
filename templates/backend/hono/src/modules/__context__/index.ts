@@ -13,7 +13,7 @@ import { FirestoreTransactionRunner } from './infrastructure/firestore-transacti
 import { handleClose__Aggregate__, handleCreate__Aggregate__, handleList__Aggregate__Items } from './presentation/__aggregate__.controller.js';
 
 /**
- * 入口 (Hono のルート) から呼ぶ関数の表。入口は検証せず、本文・id・query を unknown のまま渡す。
+ * 入口 (routes / controller) から呼ぶ関数の表。入口は検証せず、本文・id・query を unknown のまま渡す。
  * 形の検証はこの中の controller (zod) が行い、HttpResponse を返す。
  */
 export interface __Context__Module {

@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Inject, Logger, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, BadGatewayException, Inject, Logger, Post } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -18,6 +18,11 @@ class ThrowingController {
   @Get('forbidden')
   forbidden(): never {
     throw new ForbiddenException(SECRET);
+  }
+
+  @Get('bad-gateway')
+  badGateway(): never {
+    throw new BadGatewayException(SECRET);
   }
 
   @Get('api')
@@ -57,7 +62,15 @@ describe('AllExceptionsFilter と configureHttp', () => {
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'internal server error' } });
     expect(response.text).not.toContain(SECRET);
-    expect(logged).toHaveBeenCalledWith(SECRET, expect.any(String));
+    expect(logged).toHaveBeenCalledWith(`Error: ${SECRET}`, expect.any(String));
+  });
+
+  it('5xx の HttpException も REQUEST_REJECTED にせず、記録して 500 INTERNAL_ERROR にする', async () => {
+    const response = await (await start({ bodyLimit: 1024 })).get('/t/bad-gateway');
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'internal server error' } });
+    expect(response.text).not.toContain(SECRET);
+    expect(logged).toHaveBeenCalledWith(`BadGatewayException: ${SECRET}`, expect.any(String));
   });
 
   it('経路なしは 404', async () => {
@@ -116,5 +129,6 @@ describe('toErrorResponse', () => {
     expect(toErrorResponse(new Error('x'))).toBeUndefined();
     expect(toErrorResponse('x')).toBeUndefined();
     expect(toErrorResponse({ status: 500 })).toBeUndefined();
+    expect(toErrorResponse(new BadGatewayException())).toBeUndefined();
   });
 });

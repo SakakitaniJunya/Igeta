@@ -12,7 +12,7 @@ import { ApiResponseException } from '@/entries/http/all-exceptions.filter.js';
 
 /** 検証済みの値。必要な項目だけを持つ。 */
 export interface __Entry__Claims {
-  readonly shop: string;
+  readonly subject: string;
 }
 
 export type __Entry__Verifier = (request: {

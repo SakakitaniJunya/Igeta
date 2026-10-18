@@ -8,7 +8,7 @@ import { VERIFIER, __Entry__Guard } from '@/entries/__entry__/__entry__.guard.js
 import type { __Context__Module } from '@/modules/__context__/index.js';
 
 describe('__Entry__EntryModule.register', () => {
-  const verify = async () => ok({ shop: 's-1' });
+  const verify = async () => ok({ subject: 's-1' });
 
   async function compile() {
     // Firestore には繋がない。組み立てが FIRESTORE を module の公開面に渡せることだけを見る。

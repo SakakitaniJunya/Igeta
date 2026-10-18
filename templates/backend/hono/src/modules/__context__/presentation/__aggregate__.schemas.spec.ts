@@ -54,7 +54,8 @@ describe('list__Aggregate__ItemsQuerySchema', () => {
     expect(detailsFor(list__Aggregate__ItemsQuerySchema, { status: '' })).toEqual(['status']);
   });
 
-  it('余計な項目は落ちる', () => {
-    expect(detailsFor(list__Aggregate__ItemsQuerySchema, { limit: '5' })).toEqual(['limit']);
+  it('query の未知の key は黙って捨てる (認証の引数などが付いても落ちない)', () => {
+    const parsed = list__Aggregate__ItemsQuerySchema.safeParse({ status: 'open', signature: 'abc', host: 'x' });
+    expect(parsed.success && parsed.data).toEqual({ status: 'open' });
   });
 });

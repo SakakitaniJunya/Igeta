@@ -48,6 +48,16 @@ describe('create__Entry__Routes', () => {
     expect(module.list__Aggregate__Items).toHaveBeenCalledWith({ status: 'open' });
   });
 
+  it('GET: verify が使う引数など余計な query が付いても、入口は落とさず query 全体を渡す', async () => {
+    const module = fakeModule();
+    const app = create__Entry__Routes({ verify: pass, __contextVar__: module });
+
+    const response = await app.request('/__aggregates__?status=open&signature=abc&host=x');
+
+    expect(response.status).toBe(200);
+    expect(module.list__Aggregate__Items).toHaveBeenCalledWith({ status: 'open', signature: 'abc', host: 'x' });
+  });
+
   it('POST: 本文を検証せず unknown のまま渡す (形の悪い本文でも入口は通す)', async () => {
     const module = fakeModule();
     const app = create__Entry__Routes({ verify: pass, __contextVar__: module });

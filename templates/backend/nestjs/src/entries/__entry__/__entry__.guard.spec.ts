@@ -21,10 +21,10 @@ function requestOf(): Partial<__Entry__Request> {
 
 describe('__Entry__Guard', () => {
   it('検証に通れば true で、claims を request に載せる', async () => {
-    const verify = vi.fn().mockResolvedValue(ok({ shop: 's-1' }));
+    const verify = vi.fn().mockResolvedValue(ok({ subject: 's-1' }));
     const request = requestOf();
     await expect(new __Entry__Guard(verify).canActivate(contextOf(request))).resolves.toBe(true);
-    expect(request.claims).toEqual({ shop: 's-1' });
+    expect(request.claims).toEqual({ subject: 's-1' });
   });
 
   it('落ちたら 401 UNAUTHORIZED の例外を投げ、claims を載せない', async () => {
@@ -40,7 +40,7 @@ describe('__Entry__Guard', () => {
   });
 
   it('検証にはヘッダと URL だけを渡し、本文は渡さない', async () => {
-    const verify = vi.fn().mockResolvedValue(ok({ shop: 's-1' }));
+    const verify = vi.fn().mockResolvedValue(ok({ subject: 's-1' }));
     await new __Entry__Guard(verify).canActivate(contextOf(requestOf()));
     expect(verify).toHaveBeenCalledWith({
       headers: { authorization: 'Bearer x' },

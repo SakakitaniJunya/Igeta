@@ -65,6 +65,25 @@ describeEmulator('Firestore__Aggregate__Repository (Firestore エミュレータ
     expect(openIds).toContain(openId);
   });
 
+  it('保存済みの doc が不変条件を外れている (name が長すぎる・文字列でない・status が不正) と、findById は doc id つきの unprocessable', async () => {
+    const collection = db.collection('__aggregates__');
+    const longId = uniqueId('long');
+    const typeId = uniqueId('type');
+    const statusId = uniqueId('status');
+    await collection.doc(longId).set({ name: 'x'.repeat(41), status: 'open' });
+    await collection.doc(typeId).set({ name: 1, status: 'open' });
+    await collection.doc(statusId).set({ name: '名前', status: 'done' });
+
+    try {
+      for (const id of [longId, typeId, statusId]) {
+        await expect(repository.findById(id)).rejects.toMatchObject({ kind: 'unprocessable', detail: { id } });
+      }
+    } finally {
+      // 共有のエミュレータで、list を読む他のテストが壊れた doc に当たらないよう、すぐ消す (list も同じ toDomain を通る)。
+      await Promise.all([longId, typeId, statusId].map((id) => collection.doc(id).delete()));
+    }
+  });
+
   it('limit 件で打ち切る', async () => {
     await save(make(uniqueId()));
     await save(make(uniqueId()));

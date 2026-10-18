@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
 import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import { unprocessable } from '@/shared/domain/app-error.js';
 import { LIST_LIMIT, List__Aggregate__ItemsUseCase } from './list-__aggregates__.usecase.js';
 
 class FakeRepository implements __Aggregate__Repository {
@@ -63,6 +64,15 @@ describe('List__Aggregate__ItemsUseCase', () => {
     repository.rows.push(make('a-open'), make('a-closed', 'closed'));
     const result = await useCase.execute({ status: 'closed' });
     expect(result.ok ? result.value.items.map((item) => item.id) : null).toEqual(['a-closed']);
+  });
+
+  it('保存済みの doc が壊れていて repository が unprocessable を投げたら、Result の失敗で返す', async () => {
+    const { repository, useCase } = setup(0, 5);
+    repository.list = async () => {
+      throw unprocessable('stored __aggregate__ is malformed', { id: 'a-bad' });
+    };
+    const result = await useCase.execute({});
+    expect(result.ok ? null : [result.error.kind, result.error.detail]).toEqual(['unprocessable', { id: 'a-bad' }]);
   });
 
   it('上限の定数は正の整数', () => {

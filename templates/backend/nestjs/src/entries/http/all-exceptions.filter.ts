@@ -1,5 +1,5 @@
 // 想定外の例外と、Nest・body-parser が出す 4xx を、API の失敗の形 ({ok:false,error}) にする。
-// 想定外は 500 で、内側の message・stack は本文に出さずログにだけ残す。経路なしは 404。
+// 想定外 (5xx の HttpException を含む) は 500 で、内側の name・message・stack は本文に出さずログにだけ残す。経路なしは 404。
 // 入口が持つ HTTP の設定 (本文の上限・CORS・この filter の登録) も、main.ts と spec が同じ形で使えるようここに置く。
 
 import { Catch, HttpException, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
@@ -29,7 +29,8 @@ function clientStatusOf(exception: unknown): number | undefined {
 export function toErrorResponse(exception: unknown): HttpResponse | undefined {
   if (exception instanceof ApiResponseException) return exception.apiResponse;
   const status = exception instanceof HttpException ? exception.getStatus() : clientStatusOf(exception);
-  if (status === undefined) return undefined;
+  // 5xx の HttpException と想定外の例外は undefined (= 想定外)。filter が記録して 500 INTERNAL_ERROR にする。REQUEST_REJECTED は 4xx だけ。
+  if (status === undefined || status >= 500) return undefined;
   if (status === 404) return apiError(404, 'NOT_FOUND', 'route not found');
   if (status === 413) return apiError(413, 'PAYLOAD_TOO_LARGE', 'request body is too large');
   // 本文が JSON として読めない (SyntaxError) ときと、URL の % が壊れている (URIError) ときは、Nest が 400 の例外に包む。区別できないので code は同じ MALFORMED_REQUEST にする。
@@ -44,7 +45,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const known = toErrorResponse(exception);
     if (known === undefined) {
-      this.logger.error(exception instanceof Error ? exception.message : String(exception), exception instanceof Error ? exception.stack : undefined);
+      this.logger.error(
+        exception instanceof Error ? `${exception.name}: ${exception.message}` : String(exception),
+        exception instanceof Error ? exception.stack : undefined,
+      );
     }
     sendResponse(host.switchToHttp().getResponse<Response>(), known ?? apiError(500, 'INTERNAL_ERROR', 'internal server error'));
   }

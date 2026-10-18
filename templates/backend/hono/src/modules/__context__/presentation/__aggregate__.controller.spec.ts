@@ -22,6 +22,15 @@ describe('handleList__Aggregate__Items', () => {
     expect(execute).toHaveBeenCalledWith({ status: 'open' });
   });
 
+  it('保存済みの doc が壊れていた失敗 (unprocessable + doc id) は 422 と detail', async () => {
+    const execute = vi.fn().mockResolvedValue(err(unprocessable('stored __aggregate__ is malformed', { id: 'a-bad' })));
+    const response = await handleList__Aggregate__Items(stub<List__Aggregate__ItemsUseCase>(execute), {});
+    expect(response).toEqual({
+      status: 422,
+      body: { ok: false, error: { code: 'UNPROCESSABLE', message: 'stored __aggregate__ is malformed', details: { id: 'a-bad' } } },
+    });
+  });
+
   it('形が悪ければ 400 VALIDATION_FAILED と項目名で、usecase を呼ばない', async () => {
     const execute = vi.fn();
     const response = await handleList__Aggregate__Items(stub<List__Aggregate__ItemsUseCase>(execute), { status: 'done' });

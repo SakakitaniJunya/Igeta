@@ -1,5 +1,5 @@
 // 形の検証 (zod)。zod を import してよいのは module の presentation だけ (zod-only-in-module-presentation)。
-// ここが見るのは型・必須・余計な項目・query の形まで。意味 (名前の長さなど) は domain の値オブジェクトが見る。
+// ここが見るのは型・必須・余計な項目 (本文と id。query の未知の key は捨てる)・query の形まで。意味 (名前の長さなど) は domain の値オブジェクトが見る。
 // 入口 (entries/) は本文と id を unknown のまま渡してくるので、controller がここで safeParse する。
 
 import { z } from 'zod';
@@ -9,7 +9,8 @@ export const create__Aggregate__BodySchema = z.object({ name: z.string() }).stri
 /** id は path の値。落ちたときに項目名 `id` を出すため、オブジェクトに包んで検査する。 */
 export const close__Aggregate__ParamsSchema = z.object({ id: z.string().min(1) }).strict();
 
-export const list__Aggregate__ItemsQuerySchema = z.object({ status: z.enum(['open', 'closed']).optional() }).strict();
+/** query は strict にしない。認証 (署名の引数など) や proxy が足す未知の key は黙って捨てる (zod の既定)。本文は strict のまま。 */
+export const list__Aggregate__ItemsQuerySchema = z.object({ status: z.enum(['open', 'closed']).optional() });
 
 /** 落ちた項目名の配列 (重複なし)。VALIDATION_FAILED の details にする。余計な項目はその名前、本文全体の型違いは `(root)`。 */
 export function detailsOf(error: z.ZodError): string[] {

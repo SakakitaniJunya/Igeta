@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { __Aggregate__ } from '@/modules/__context__/domain/__aggregate__.js';
 import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import { unprocessable } from '@/shared/domain/app-error.js';
 import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
 import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
 import { Close__Aggregate__UseCase } from './close-__aggregate__.usecase.js';
@@ -53,6 +54,15 @@ describe('Close__Aggregate__UseCase', () => {
     const { useCase } = setup();
     const result = await useCase.execute({ id: 'missing' });
     expect(result.ok ? null : result.error.kind).toBe('not_found');
+  });
+
+  it('保存済みの doc が壊れていて repository が unprocessable を投げたら、unprocessable で返す', async () => {
+    const { repository, useCase } = setup();
+    repository.findById = async () => {
+      throw unprocessable('stored __aggregate__ is malformed', { id: 'a-bad' });
+    };
+    const result = await useCase.execute({ id: 'a-bad' });
+    expect(result.ok ? null : [result.error.kind, result.error.detail]).toEqual(['unprocessable', { id: 'a-bad' }]);
   });
 
   it('閉じ済みなら conflict で、保存しない', async () => {

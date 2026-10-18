@@ -23,7 +23,7 @@ describe('__Entry__Controller', () => {
   };
 
   beforeEach(async () => {
-    verify.mockReset().mockResolvedValue(ok({ shop: 's-1' }));
+    verify.mockReset().mockResolvedValue(ok({ subject: 's-1' }));
     sample.list__Aggregate__Items.mockReset().mockResolvedValue({ status: 200, body: { ok: true, items: [], truncated: false } });
     sample.create__Aggregate__.mockReset().mockResolvedValue({ status: 201, body: { ok: true, item: {} } });
     sample.close__Aggregate__.mockReset().mockResolvedValue({ status: 200, body: { ok: true, item: {} } });

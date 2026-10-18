@@ -5,6 +5,7 @@ import type { Firestore } from '@google-cloud/firestore';
 import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
 import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import { unprocessable } from '@/shared/domain/app-error.js';
 import { assertValidDocIdSegment, isValidDocIdSegment } from '@/shared/domain/doc-id.js';
 import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
 import { toTransaction } from './firestore-scope.js';
@@ -16,8 +17,21 @@ interface __Aggregate__Doc {
   status: __Aggregate__Status;
 }
 
-function toDomain(id: string, data: __Aggregate__Doc): __Aggregate__ {
-  return new __Aggregate__({ id, name: __Aggregate__Name.create(data.name), status: data.status });
+/**
+ * 保存済みの doc を domain へ変換する。name・status が不変条件を満たさない doc (規則を変える前のデータ・他の書き手)
+ * は、投げる前に 422 の AppError (detail = doc id) にする。呼び出す usecase が Result の失敗にして返す。
+ */
+function toDomain(id: string, data: unknown): __Aggregate__ {
+  const { name, status } = (data ?? {}) as Partial<Record<keyof __Aggregate__Doc, unknown>>;
+  if (typeof name !== 'string' || (status !== 'open' && status !== 'closed')) {
+    throw unprocessable('stored __aggregate__ is malformed', { id });
+  }
+  try {
+    return new __Aggregate__({ id, name: __Aggregate__Name.create(name), status });
+  } catch (error) {
+    if (error instanceof RangeError) throw unprocessable('stored __aggregate__ is malformed', { id });
+    throw error;
+  }
 }
 
 export class Firestore__Aggregate__Repository implements __Aggregate__Repository {
@@ -28,7 +42,7 @@ export class Firestore__Aggregate__Repository implements __Aggregate__Repository
     if (!isValidDocIdSegment(id)) return undefined;
     const ref = this.db.collection(COLLECTION).doc(id);
     const snapshot = scope === undefined ? await ref.get() : await toTransaction(scope).get(ref);
-    const data = snapshot.data() as __Aggregate__Doc | undefined;
+    const data: unknown = snapshot.data();
     return data === undefined ? undefined : toDomain(id, data);
   }
 
@@ -37,7 +51,7 @@ export class Firestore__Aggregate__Repository implements __Aggregate__Repository
     const collection = this.db.collection(COLLECTION);
     const query = status === undefined ? collection : collection.where('status', '==', status);
     const snapshot = await query.limit(limit).get();
-    return snapshot.docs.map((doc) => toDomain(doc.id, doc.data() as __Aggregate__Doc));
+    return snapshot.docs.map((doc) => toDomain(doc.id, doc.data()));
   }
 
   async save(entity: __Aggregate__, scope: TransactionScope): Promise<void> {
