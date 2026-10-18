@@ -1,67 +1,71 @@
+// 一覧を確かめる: 上限を超えたら打ち切って truncated:true / ちょうど上限なら false / 上限より 1 件多く読む / status で絞る。
+
 import { describe, expect, it } from 'vitest';
-import { LIST_LIMIT, List__Aggregate__ItemsUseCase } from '@/modules/__context__/application/list-__aggregates__.usecase.js';
 import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
-import type {
-  List__Aggregate__Query,
-  __Aggregate__Repository,
-} from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
+import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import { LIST_LIMIT, List__Aggregate__ItemsUseCase } from './list-__aggregates__.usecase.js';
 
-function make(id: string, status: __Aggregate__Status): __Aggregate__ {
-  return new __Aggregate__({ id, name: __Aggregate__Name.create(`名前-${id}`), status });
-}
-
-/** status で絞り、limit で切るだけの偽物。渡された query も控える。 */
-class InMemory__Aggregate__Repository implements __Aggregate__Repository {
-  readonly queries: List__Aggregate__Query[] = [];
-
-  constructor(private readonly rows: ReadonlyArray<__Aggregate__>) {}
+class FakeRepository implements __Aggregate__Repository {
+  readonly rows: __Aggregate__[] = [];
+  lastLimit: number | undefined;
 
   async findById(): Promise<__Aggregate__ | undefined> {
     return undefined;
   }
 
-  async list(query: List__Aggregate__Query): Promise<ReadonlyArray<__Aggregate__>> {
-    this.queries.push(query);
-    return this.rows.filter((row) => query.status === undefined || row.status === query.status).slice(0, query.limit);
-  }
-
   async save(): Promise<void> {}
+
+  async list(status: __Aggregate__Status | undefined, limit: number): Promise<ReadonlyArray<__Aggregate__>> {
+    this.lastLimit = limit;
+    return this.rows.filter((row) => status === undefined || row.status === status).slice(0, limit);
+  }
+}
+
+function make(id: string, status: __Aggregate__Status = 'open'): __Aggregate__ {
+  return new __Aggregate__({ id, name: __Aggregate__Name.create(`name-${id}`), status });
+}
+
+function setup(count: number, limit: number) {
+  const repository = new FakeRepository();
+  for (let i = 0; i < count; i += 1) repository.rows.push(make(`a-${i}`));
+  return { repository, useCase: new List__Aggregate__ItemsUseCase(repository, limit) };
 }
 
 describe('List__Aggregate__ItemsUseCase', () => {
-  it('status を省くと全部返す', async () => {
-    const useCase = new List__Aggregate__ItemsUseCase(new InMemory__Aggregate__Repository([make('a-1', 'open'), make('a-2', 'closed')]));
+  it('上限を超えたら limit 件で打ち切り、truncated:true', async () => {
+    const { useCase } = setup(3, 2);
     const result = await useCase.execute({});
-    expect(result).toEqual({
-      ok: true,
-      value: {
-        items: [
-          { id: 'a-1', name: '名前-a-1', status: 'open' },
-          { id: 'a-2', name: '名前-a-2', status: 'closed' },
-        ],
-        truncated: false,
-      },
-    });
+    expect(result.ok ? result.value.items.map((item) => item.id) : null).toEqual(['a-0', 'a-1']);
+    expect(result.ok && result.value.truncated).toBe(true);
+  });
+
+  it('ちょうど上限なら全部返し、truncated:false', async () => {
+    const { useCase } = setup(2, 2);
+    const result = await useCase.execute({});
+    expect(result.ok && result.value.items).toHaveLength(2);
+    expect(result.ok && result.value.truncated).toBe(false);
+  });
+
+  it('上限より 1 件多く読んで超過を見分ける', async () => {
+    const { repository, useCase } = setup(0, 5);
+    await useCase.execute({});
+    expect(repository.lastLimit).toBe(6);
+  });
+
+  it('0 件は空の配列で truncated:false', async () => {
+    const { useCase } = setup(0, 5);
+    expect(await useCase.execute({})).toEqual({ ok: true, value: { items: [], truncated: false } });
   });
 
   it('status で絞る', async () => {
-    const useCase = new List__Aggregate__ItemsUseCase(new InMemory__Aggregate__Repository([make('a-1', 'open'), make('a-2', 'closed')]));
+    const { repository, useCase } = setup(0, 5);
+    repository.rows.push(make('a-open'), make('a-closed', 'closed'));
     const result = await useCase.execute({ status: 'closed' });
-    expect(result.ok ? result.value.items.map((item) => item.id) : null).toEqual(['a-2']);
+    expect(result.ok ? result.value.items.map((item) => item.id) : null).toEqual(['a-closed']);
   });
 
-  it('上限ちょうどなら truncated は false', async () => {
-    const rows = Array.from({ length: LIST_LIMIT }, (_, i) => make(`a-${i}`, 'open'));
-    const result = await new List__Aggregate__ItemsUseCase(new InMemory__Aggregate__Repository(rows)).execute({});
-    expect(result.ok ? [result.value.items.length, result.value.truncated] : null).toEqual([LIST_LIMIT, false]);
-  });
-
-  it('上限を超えたら上限で切って truncated は true (1 件多く読む)', async () => {
-    const rows = Array.from({ length: LIST_LIMIT + 5 }, (_, i) => make(`a-${i}`, 'open'));
-    const repository = new InMemory__Aggregate__Repository(rows);
-    const result = await new List__Aggregate__ItemsUseCase(repository).execute({});
-    expect(result.ok ? [result.value.items.length, result.value.truncated] : null).toEqual([LIST_LIMIT, true]);
-    expect(repository.queries[0]?.limit).toBe(LIST_LIMIT + 1);
+  it('上限の定数は正の整数', () => {
+    expect(Number.isInteger(LIST_LIMIT) && LIST_LIMIT >= 1).toBe(true);
   });
 });

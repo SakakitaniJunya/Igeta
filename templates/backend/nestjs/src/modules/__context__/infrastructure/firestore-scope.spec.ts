@@ -1,9 +1,9 @@
 import type { Transaction } from '@google-cloud/firestore';
 import { describe, expect, it } from 'vitest';
-import { toScope, toTransaction } from '@/modules/__context__/infrastructure/firestore-scope.js';
+import { toScope, toTransaction } from './firestore-scope.js';
 
 describe('firestore-scope', () => {
-  it('往復しても同じ物が返る', () => {
+  it('Transaction → scope → Transaction で同じ物に戻る', () => {
     const tx = {} as Transaction;
     expect(toTransaction(toScope(tx))).toBe(tx);
   });

@@ -55,7 +55,7 @@ describe('AllExceptionsFilter と configureHttp', () => {
   it('想定外の例外は 500 の定型で、内側の message を本文に出さずログにだけ残す', async () => {
     const response = await (await start({ bodyLimit: 1024 })).get('/t/boom');
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'internal error' } });
+    expect(response.body).toEqual({ ok: false, error: { code: 'INTERNAL_ERROR', message: 'internal server error' } });
     expect(response.text).not.toContain(SECRET);
     expect(logged).toHaveBeenCalledWith(SECRET, expect.any(String));
   });
@@ -63,7 +63,7 @@ describe('AllExceptionsFilter と configureHttp', () => {
   it('経路なしは 404', async () => {
     const response = await (await start({ bodyLimit: 1024 })).get('/t/missing');
     expect(response.status).toBe(404);
-    expect(response.body).toEqual({ ok: false, error: { code: 'NOT_FOUND', message: 'not found' } });
+    expect(response.body).toEqual({ ok: false, error: { code: 'NOT_FOUND', message: 'route not found' } });
   });
 
   it('Nest の他の 4xx は status を保ち、元の message を本文に出さない', async () => {

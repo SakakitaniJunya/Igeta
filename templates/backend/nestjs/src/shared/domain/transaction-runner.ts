@@ -1,4 +1,4 @@
-import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
+import type { TransactionScope } from './transaction-scope.js';
 
 /**
  * 1 つの Firestore トランザクションの中で複数のリポジトリを読み書きするための port。

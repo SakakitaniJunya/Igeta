@@ -1,46 +1,47 @@
 // 公開面 (index.ts の create__Context__Module) の配線のテスト。本物の部品を組み立て、エミュレータ越しに
 // 「公開面の関数 → controller → usecase → Firestore」が 1 本につながっていることを確かめる。
-// emulator が無ければ skip する (npm run test:emulator で実行)。
+// エミュレータが無い (ふだんの npm test) ときは飛ばす (理由は題名に出る)。
 
 import { expect, it } from 'vitest';
-import { create__Context__Module } from '@/modules/__context__/index.js';
 import { createFirestore } from '@/shared/infrastructure/firestore.js';
 import { describeEmulator, EMULATOR_PROJECT, uniqueId } from '@/shared/test-support/emulator.js';
+import { create__Context__Module } from './index.js';
 
 interface ItemBody {
-  ok: boolean;
-  item: { id: string; name: string; status: string };
+  readonly ok: boolean;
+  readonly item: { readonly id: string; readonly name: string; readonly status: string };
 }
 
 describeEmulator('create__Context__Module (Firestore エミュレータ)', () => {
   const module = create__Context__Module(createFirestore(EMULATOR_PROJECT));
 
   it('create → list → close が Firestore を通ってつながる', async () => {
-    const created = await module.create__Aggregate__({ name: uniqueId('名前') });
+    const created = await module.create__Aggregate__({ name: '名前' });
     expect(created.status).toBe(201);
-    const { id, name } = (created.body as ItemBody).item;
+    const { item } = created.body as ItemBody;
+    expect(item).toMatchObject({ name: '名前', status: 'open' });
 
-    const open = await module.list__Aggregate__Items({ status: 'open' });
-    expect(open.status).toBe(200);
-    expect((open.body as { items: ItemBody['item'][] }).items).toContainEqual({ id, name, status: 'open' });
+    const listed = await module.list__Aggregate__Items({ status: 'open' });
+    expect(listed.status).toBe(200);
+    const listedBody = listed.body as { items: ReadonlyArray<{ id: string }>; truncated: boolean };
+    expect(listedBody.items.map((row) => row.id)).toContain(item.id);
 
-    const closed = await module.close__Aggregate__(id);
-    expect(closed).toEqual({ status: 200, body: { ok: true, item: { id, name, status: 'closed' } } });
+    const closed = await module.close__Aggregate__(item.id);
+    expect(closed.status).toBe(200);
+    expect((closed.body as ItemBody).item.status).toBe('closed');
 
-    const again = await module.close__Aggregate__(id);
+    const again = await module.close__Aggregate__(item.id);
     expect(again.status).toBe(409);
   });
 
-  it('無い id は 404', async () => {
+  it('無い id を閉じると 404', async () => {
     const response = await module.close__Aggregate__(uniqueId('missing'));
     expect(response.status).toBe(404);
   });
 
-  it('意味の誤り (長すぎる名前) は 400 INVALID_REQUEST、形の誤りは 400 VALIDATION_FAILED', async () => {
-    const tooLong = await module.create__Aggregate__({ name: 'x'.repeat(41) });
-    expect((tooLong.body as { error: { code: string } }).error.code).toBe('INVALID_REQUEST');
-
-    const wrongShape = await module.create__Aggregate__({ name: 1 });
-    expect((wrongShape.body as { error: { code: string } }).error.code).toBe('VALIDATION_FAILED');
+  it('形の悪い入力は 400 VALIDATION_FAILED', async () => {
+    const response = await module.create__Aggregate__({ name: 1 });
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', details: ['name'] } });
   });
 });

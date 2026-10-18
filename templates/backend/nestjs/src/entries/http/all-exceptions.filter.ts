@@ -30,10 +30,10 @@ export function toErrorResponse(exception: unknown): HttpResponse | undefined {
   if (exception instanceof ApiResponseException) return exception.apiResponse;
   const status = exception instanceof HttpException ? exception.getStatus() : clientStatusOf(exception);
   if (status === undefined) return undefined;
-  if (status === 404) return apiError(404, 'NOT_FOUND', 'not found');
+  if (status === 404) return apiError(404, 'NOT_FOUND', 'route not found');
   if (status === 413) return apiError(413, 'PAYLOAD_TOO_LARGE', 'request body is too large');
-  // 本文が JSON として読めない (SyntaxError) ときと、URL の % が壊れている (URIError) ときは、Nest が 400 の例外に包む。
-  if (status === 400) return apiError(400, 'MALFORMED_REQUEST', 'request body is not valid JSON or the URL is malformed');
+  // 本文が JSON として読めない (SyntaxError) ときと、URL の % が壊れている (URIError) ときは、Nest が 400 の例外に包む。区別できないので code は同じ MALFORMED_REQUEST にする。
+  if (status === 400) return apiError(400, 'MALFORMED_REQUEST', 'request body is malformed JSON');
   return apiError(status, 'REQUEST_REJECTED', 'request rejected');
 }
 
@@ -46,7 +46,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (known === undefined) {
       this.logger.error(exception instanceof Error ? exception.message : String(exception), exception instanceof Error ? exception.stack : undefined);
     }
-    sendResponse(host.switchToHttp().getResponse<Response>(), known ?? apiError(500, 'INTERNAL_ERROR', 'internal error'));
+    sendResponse(host.switchToHttp().getResponse<Response>(), known ?? apiError(500, 'INTERNAL_ERROR', 'internal server error'));
   }
 }
 

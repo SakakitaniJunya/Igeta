@@ -1,6 +1,4 @@
-// 失敗を投げずに値で返すための型。usecase はこれを返し、HTTP の状態への変換は presentation が行う。
-
-import type { AppError } from '@/shared/domain/app-error.js';
+import type { AppError } from './app-error.js';
 
 export type Result<T, E extends AppError = AppError> =
   | { ok: true; value: T }

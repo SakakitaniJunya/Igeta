@@ -1,10 +1,13 @@
+// ユースケースの単体テストの雛形。port はメモリ上の偽物で置き換え、エミュレータを使わずに速く回す。
+// Firestore を通した確認は *.emulator.spec.ts に書く。
+
 import { describe, expect, it } from 'vitest';
-import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
-import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
-import { Close__Aggregate__UseCase } from '@/modules/__context__/application/close-__aggregate__.usecase.js';
 import { __Aggregate__ } from '@/modules/__context__/domain/__aggregate__.js';
 import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
+import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
+import { Close__Aggregate__UseCase } from './close-__aggregate__.usecase.js';
 
 class InMemory__Aggregate__Repository implements __Aggregate__Repository {
   readonly rows = new Map<string, __Aggregate__>();
@@ -33,7 +36,7 @@ function setup(rows: ReadonlyArray<__Aggregate__> = []) {
 const OPEN = new __Aggregate__({ id: 'a-1', name: __Aggregate__Name.create('名前'), status: 'open' });
 
 describe('Close__Aggregate__UseCase', () => {
-  it('開いているものを閉じて保存し、閉じた姿を返す', async () => {
+  it('開いているものを閉じて保存し、View を返す', async () => {
     const { repository, useCase } = setup([OPEN]);
     const result = await useCase.execute({ id: 'a-1' });
     expect(result).toEqual({ ok: true, value: { id: 'a-1', name: '名前', status: 'closed' } });

@@ -1,62 +1,60 @@
 import { describe, expect, it } from 'vitest';
+import type { ZodError } from 'zod';
 import {
   close__Aggregate__ParamsSchema,
   create__Aggregate__BodySchema,
   detailsOf,
   list__Aggregate__ItemsQuerySchema,
-} from '@/modules/__context__/presentation/__aggregate__.schemas.js';
+} from './__aggregate__.schemas.js';
 
-function failedFields(result: { success: boolean; error?: Parameters<typeof detailsOf>[0] }): string[] | null {
+function detailsFor(schema: { safeParse: (value: unknown) => { success: boolean; error?: ZodError } }, value: unknown): string[] | null {
+  const result = schema.safeParse(value);
   return result.success || result.error === undefined ? null : detailsOf(result.error);
 }
 
 describe('create__Aggregate__BodySchema', () => {
-  it('name が文字列なら通る', () => {
-    expect(create__Aggregate__BodySchema.safeParse({ name: '名前' }).success).toBe(true);
-  });
-
-  it('空文字は形としては通る (長さは domain が見る)', () => {
+  it('name が文字列なら通る (長さは見ない)', () => {
     expect(create__Aggregate__BodySchema.safeParse({ name: '' }).success).toBe(true);
   });
 
-  it('型違いは name で落ちる', () => {
-    expect(failedFields(create__Aggregate__BodySchema.safeParse({ name: 5 }))).toEqual(['name']);
+  it('型違い・必須欠け・余計な項目は、その項目名で落ちる', () => {
+    expect(detailsFor(create__Aggregate__BodySchema, { name: 1 })).toEqual(['name']);
+    expect(detailsFor(create__Aggregate__BodySchema, {})).toEqual(['name']);
+    expect(detailsFor(create__Aggregate__BodySchema, { name: 'a', extra: true })).toEqual(['extra']);
   });
 
-  it('必須欠けは name で落ちる', () => {
-    expect(failedFields(create__Aggregate__BodySchema.safeParse({}))).toEqual(['name']);
+  it('本文が無い・オブジェクトでないときは (root)', () => {
+    expect(detailsFor(create__Aggregate__BodySchema, undefined)).toEqual(['(root)']);
+    expect(detailsFor(create__Aggregate__BodySchema, 'text')).toEqual(['(root)']);
   });
 
-  it('余計な項目はその項目名で落ちる', () => {
-    expect(failedFields(create__Aggregate__BodySchema.safeParse({ name: 'x', extra: 1 }))).toEqual(['extra']);
-  });
-
-  it('オブジェクトでない本文は (root) で落ちる', () => {
-    expect(failedFields(create__Aggregate__BodySchema.safeParse('x'))).toEqual(['(root)']);
-    expect(failedFields(create__Aggregate__BodySchema.safeParse(undefined))).toEqual(['(root)']);
+  it('同じ項目名は 1 つにまとめる', () => {
+    expect(detailsFor(create__Aggregate__BodySchema, { name: 1, a: 1, b: 2 })).toEqual(['name', 'a', 'b']);
   });
 });
 
 describe('close__Aggregate__ParamsSchema', () => {
-  it('空でない id は通る', () => {
+  it('空でない文字列の id が通る', () => {
     expect(close__Aggregate__ParamsSchema.safeParse({ id: 'a-1' }).success).toBe(true);
   });
 
-  it.each([{ id: '' }, { id: 1 }, {}])('空・型違い・欠けは id で落ちる (%j)', (value) => {
-    expect(failedFields(close__Aggregate__ParamsSchema.safeParse(value))).toEqual(['id']);
+  it('空・型違いは id で落ちる', () => {
+    expect(detailsFor(close__Aggregate__ParamsSchema, { id: '' })).toEqual(['id']);
+    expect(detailsFor(close__Aggregate__ParamsSchema, { id: undefined })).toEqual(['id']);
   });
 });
 
 describe('list__Aggregate__ItemsQuerySchema', () => {
-  it.each([{}, { status: 'open' }, { status: 'closed' }])('省略か open / closed は通る (%j)', (value) => {
-    expect(list__Aggregate__ItemsQuerySchema.safeParse(value).success).toBe(true);
+  it.each([{}, { status: 'open' }, { status: 'closed' }])('通る (%j)', (query) => {
+    expect(list__Aggregate__ItemsQuerySchema.safeParse(query).success).toBe(true);
   });
 
-  it.each([{ status: 'done' }, { status: ['open', 'closed'] }])('status の値違いは status で落ちる (%j)', (value) => {
-    expect(failedFields(list__Aggregate__ItemsQuerySchema.safeParse(value))).toEqual(['status']);
+  it('status は open / closed だけ', () => {
+    expect(detailsFor(list__Aggregate__ItemsQuerySchema, { status: 'done' })).toEqual(['status']);
+    expect(detailsFor(list__Aggregate__ItemsQuerySchema, { status: '' })).toEqual(['status']);
   });
 
-  it('余計な query は項目名で落ちる', () => {
-    expect(failedFields(list__Aggregate__ItemsQuerySchema.safeParse({ page: '2' }))).toEqual(['page']);
+  it('余計な項目は落ちる', () => {
+    expect(detailsFor(list__Aggregate__ItemsQuerySchema, { limit: '5' })).toEqual(['limit']);
   });
 });

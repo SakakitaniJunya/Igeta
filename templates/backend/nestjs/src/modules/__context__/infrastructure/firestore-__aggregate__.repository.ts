@@ -1,16 +1,13 @@
-// Firestore の repository。`@google-cloud/firestore` を import してよいのは infrastructure だけ (firebase-admin は使わない)。
+// Firestore のリポジトリの雛形。`@google-cloud/firestore` を import してよいのは infrastructure だけ (firebase-admin は使わない)。
 // doc の形 (__Aggregate__Doc) はここに閉じ、domain には変換してから渡す。
 
 import type { Firestore } from '@google-cloud/firestore';
+import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
+import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
+import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
 import { assertValidDocIdSegment, isValidDocIdSegment } from '@/shared/domain/doc-id.js';
 import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
-import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
-import type {
-  List__Aggregate__Query,
-  __Aggregate__Repository,
-} from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
-import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
-import { toTransaction } from '@/modules/__context__/infrastructure/firestore-scope.js';
+import { toTransaction } from './firestore-scope.js';
 
 const COLLECTION = '__aggregates__';
 
@@ -35,11 +32,11 @@ export class Firestore__Aggregate__Repository implements __Aggregate__Repository
     return data === undefined ? undefined : toDomain(id, data);
   }
 
-  async list(query: List__Aggregate__Query): Promise<ReadonlyArray<__Aggregate__>> {
-    // 並びは doc id 順 (既定)。status の等価で絞るだけなので、複合 index は要らない。
+  async list(status: __Aggregate__Status | undefined, limit: number): Promise<ReadonlyArray<__Aggregate__>> {
+    // 並びは doc id の昇順 (Firestore の既定)。status の絞り込みは等価条件だけなので、複合 index は要らない。
     const collection = this.db.collection(COLLECTION);
-    const filtered = query.status === undefined ? collection : collection.where('status', '==', query.status);
-    const snapshot = await filtered.limit(query.limit).get();
+    const query = status === undefined ? collection : collection.where('status', '==', status);
+    const snapshot = await query.limit(limit).get();
     return snapshot.docs.map((doc) => toDomain(doc.id, doc.data() as __Aggregate__Doc));
   }
 

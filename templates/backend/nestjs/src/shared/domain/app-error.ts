@@ -1,5 +1,3 @@
-// アプリ全体で使う失敗の種類。HTTP の状態への変換は shared/presentation の fail が行う。
-
 export type AppErrorKind =
   | 'unauthorized'
   | 'not_found'

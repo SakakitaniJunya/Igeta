@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { requireEnv } from '@/shared/infrastructure/env.js';
+import { requireEnv } from './env.js';
 
 describe('requireEnv', () => {
-  it('ある値を返す', () => {
-    expect(requireEnv('A', { A: 'x' })).toBe('x');
+  it('値があれば返す', () => {
+    expect(requireEnv('A', { A: 'v' })).toBe('v');
   });
 
-  it('無ければ名前つきで投げる', () => {
-    expect(() => requireEnv('A', {})).toThrow(/A/);
+  it('無ければキー名つきで落ちる', () => {
+    expect(() => requireEnv('A', {})).toThrow(/missing required env var: A/);
   });
 
-  it('空文字も無いものとして投げる', () => {
+  it('空文字も無いものとして落ちる', () => {
     expect(() => requireEnv('A', { A: '' })).toThrow(/A/);
   });
 });

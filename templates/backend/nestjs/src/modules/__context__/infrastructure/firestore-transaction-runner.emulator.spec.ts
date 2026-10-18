@@ -1,38 +1,34 @@
-// Firestore エミュレータを通すテスト。emulator が無ければ skip する (npm run test:emulator で実行)。
-// 同じエミュレータを全部のテストが共有し、消さない。id は毎回ユニークにしてテスト同士を分ける。
+// Firestore エミュレータを通す結合テスト。エミュレータが無いときは飛ばす (理由は題名に出る)。
+// 実行: npm run test:emulator (backend のパッケージで)
 
 import { expect, it } from 'vitest';
-import { __Aggregate__ } from '@/modules/__context__/domain/__aggregate__.js';
-import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
-import { Firestore__Aggregate__Repository } from '@/modules/__context__/infrastructure/firestore-__aggregate__.repository.js';
-import { FirestoreTransactionRunner } from '@/modules/__context__/infrastructure/firestore-transaction-runner.js';
 import { createFirestore } from '@/shared/infrastructure/firestore.js';
 import { describeEmulator, EMULATOR_PROJECT, uniqueId } from '@/shared/test-support/emulator.js';
+import { toTransaction } from './firestore-scope.js';
+import { FirestoreTransactionRunner } from './firestore-transaction-runner.js';
 
 describeEmulator('FirestoreTransactionRunner (Firestore エミュレータ)', () => {
   const db = createFirestore(EMULATOR_PROJECT);
-  const repository = new Firestore__Aggregate__Repository(db);
   const runner = new FirestoreTransactionRunner(db);
-  const make = (id: string) => new __Aggregate__({ id, name: __Aggregate__Name.create('名前'), status: 'open' });
 
-  it('成功すると確定し、fn の戻り値を返す', async () => {
-    const id = uniqueId();
-    const returned = await runner.run(async (scope) => {
-      await repository.save(make(id), scope);
+  it('成功すれば書き込みが確定し、fn の戻り値を返す', async () => {
+    const ref = db.collection('tx-check').doc(uniqueId());
+    const value = await runner.run(async (scope) => {
+      toTransaction(scope).set(ref, { n: 1 });
       return 'done';
     });
-    expect(returned).toBe('done');
-    expect((await repository.findById(id))?.id).toBe(id);
+    expect(value).toBe('done');
+    expect((await ref.get()).data()).toEqual({ n: 1 });
   });
 
-  it('fn が投げると巻き戻り、書いた物は残らない', async () => {
-    const id = uniqueId();
+  it('fn が投げれば書き込みは巻き戻り、エラーはそのまま出る', async () => {
+    const ref = db.collection('tx-check').doc(uniqueId());
     await expect(
       runner.run(async (scope) => {
-        await repository.save(make(id), scope);
-        throw new Error('途中で失敗');
+        toTransaction(scope).set(ref, { n: 1 });
+        throw new Error('boom');
       }),
-    ).rejects.toThrow('途中で失敗');
-    expect(await repository.findById(id)).toBeUndefined();
+    ).rejects.toThrow('boom');
+    expect((await ref.get()).exists).toBe(false);
   });
 });

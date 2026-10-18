@@ -1,18 +1,18 @@
-// usecase。1 usecase = 1 トランザクション。読みと書きは同じトランザクションの中で行う。
+// ユースケースの雛形 (閉じる)。application は domain と shared/domain だけに依存する (application-is-framework-free)。
+// HTTP も Firestore も知らない。失敗は投げずに Result で返し、HTTP の状態への変換は presentation が行う。
 
-import { invalid, notFound, type AppError } from '@/shared/domain/app-error.js';
+import { __Aggregate__AlreadyClosedError } from '@/modules/__context__/domain/errors/__aggregate__-already-closed.error.js';
+import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
+import { to__Aggregate__View, type __Aggregate__View } from '@/modules/__context__/application/create-__aggregate__.usecase.js';
+import { conflict, invalid, notFound, type AppError } from '@/shared/domain/app-error.js';
 import { isValidDocIdSegment } from '@/shared/domain/doc-id.js';
 import { err, ok, type Result } from '@/shared/domain/result.js';
 import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
-import { to__Aggregate__View, type __Aggregate__View } from '@/modules/__context__/application/create-__aggregate__.usecase.js';
-import { __Aggregate__AlreadyClosedError } from '@/modules/__context__/domain/errors/__aggregate__-already-closed.error.js';
-import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 
 export interface Close__Aggregate__Input {
   readonly id: string;
 }
 
-/** 開いている集約を閉じる。無ければ not_found、閉じ済みなら conflict。 */
 export class Close__Aggregate__UseCase {
   constructor(
     private readonly repository: __Aggregate__Repository,
@@ -24,6 +24,7 @@ export class Close__Aggregate__UseCase {
     if (!isValidDocIdSegment(input.id)) {
       return err(invalid('id has an invalid format'));
     }
+    // 読んでから書く。読みと書きは同じトランザクションの中で行う (1 usecase = 1 Tx)。
     return this.transactionRunner.run(async (scope) => {
       const found = await this.repository.findById(input.id, scope);
       if (found === undefined) return err(notFound(`__aggregate__ not found: ${input.id}`));
@@ -32,7 +33,7 @@ export class Close__Aggregate__UseCase {
         await this.repository.save(closed, scope);
         return ok(to__Aggregate__View(closed));
       } catch (error) {
-        if (error instanceof __Aggregate__AlreadyClosedError) return err(error);
+        if (error instanceof __Aggregate__AlreadyClosedError) return err(conflict('__aggregate__ already closed'));
         throw error;
       }
     });

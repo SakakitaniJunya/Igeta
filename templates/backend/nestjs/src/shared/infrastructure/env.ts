@@ -1,9 +1,12 @@
-// 必須の環境変数を読む。無い・空なら起動時に気づけるよう投げる (既定値で黙って進めない)。
+// 起動に必須の環境変数の検査。無い・空なら起動で落とす (原則: 値を仮定しない)。
+// module ごとの設定は、その module の index.ts が読む。ここは requireEnv だけ。
 
-export function requireEnv(name: string, env: Readonly<Record<string, string | undefined>> = process.env): string {
-  const value = env[name];
+export type Env = Readonly<Record<string, string | undefined>>;
+
+export function requireEnv(key: string, env: Env = process.env): string {
+  const value = env[key];
   if (value === undefined || value === '') {
-    throw new Error(`環境変数 ${name} が設定されていません`);
+    throw new Error(`missing required env var: ${key}`);
   }
   return value;
 }

@@ -29,7 +29,7 @@
 
 ## 木
 
-役割は 1 行。`modules/` と `shared/` は Hono 版と同じ中身で、差は注記したものだけ。import は `@/` の絶対パス。
+役割は 1 行。`modules/` と `shared/` は Hono 版とファイル単位で同一 (`diff -r` で差分 0)。枠を替えるときは `entries/`・`main.ts`・`app.module.ts` だけを書き換える。import は `@/` の絶対パス。
 
 ```text
 templates/backend/nestjs/                           = apps/<app>/backend/
@@ -61,7 +61,7 @@ templates/backend/nestjs/                           = apps/<app>/backend/
         __entry__.entry.module.ts                   動的 module (`register({ verify })`)。controller・guard・`VERIFIER`・module の公開面を作る provider を束ねる
         __entry__.entry.module.spec.ts              verify が `register` で渡り、公開面が注入される
     modules/
-      __context__/                                  1 単位 (Hono 版と同じ)
+      __context__/                                  1 単位 (Hono 版とファイル単位で同一)
         index.ts                                    公開面と組み立て
         __context__-module.emulator.spec.ts         公開面 → Firestore を本物の部品で create → list → close
         presentation/
@@ -91,7 +91,7 @@ templates/backend/nestjs/                           = apps/<app>/backend/
           firestore-scope.spec.ts                   往復で同じ物
           firestore-transaction-runner.ts           1 usecase = 1 Tx
           firestore-transaction-runner.emulator.spec.ts  失敗で巻き戻る
-    shared/                                         Hono 版と同じ中身 (Nest 固有の変更は無い)
+    shared/                                         Hono 版とファイル単位で同一 (`diff -r` で差分 0)
       domain/
         result.ts                                   Result と ok/err
         result.spec.ts                              ok/err の判別
@@ -122,7 +122,7 @@ Hono 版の 18 本と同じ意味で、違いは次の 3 点。
 2. `no-decorator-validation` — `class-validator`・`class-transformer` は使わない (19 本目。zod に 1 本化)
 3. `entries-go-through-module-index` — 入口に `main.ts`・`app.module.ts` を含む。`zod-only-in-module-presentation` は `@hono/zod-validator` の項を除く
 
-残りの 16 本 (domain の 2 本、application の 2 本、presentation → application、infrastructure、firestore、ai-sdk、test-support、shared-infrastructure、cross-module、shared-is-a-leaf、module-does-not-import-entries、no-circular、no-orphan-file) は名前も中身も同じ。
+残りの 15 本 (domain の 2 本、application の 2 本、presentation → application、infrastructure、firestore、ai-sdk、test-support、shared-infrastructure、cross-module、shared-is-a-leaf、module-does-not-import-entries、no-circular、no-orphan-file) は名前も中身も同じ。
 
 ## テスト
 

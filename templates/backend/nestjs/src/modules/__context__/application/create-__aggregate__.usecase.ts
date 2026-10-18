@@ -1,14 +1,14 @@
-// usecase。application は domain と shared/domain だけに依存する。HTTP も Firestore も Nest も知らない。
-// 失敗は投げずに Result で返し、HTTP の状態への変換は module の presentation が行う。
+// ユースケースの雛形 (作る)。application は domain と shared/domain だけに依存する (application-is-framework-free)。
+// 意味の検証 (名前の長さ) は domain の値オブジェクトに任せ、外れたら invalid で返す。HTTP も Firestore も知らない。
 
-import { invalid, type AppError } from '@/shared/domain/app-error.js';
-import { err, ok, type Result } from '@/shared/domain/result.js';
-import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
 import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
 import type { __Aggregate__Repository } from '@/modules/__context__/domain/ports/__aggregate__.repository.port.js';
 import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import { invalid, type AppError } from '@/shared/domain/app-error.js';
+import { err, ok, type Result } from '@/shared/domain/result.js';
+import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
 
-/** 外へ返す集約の姿。list・create・close の 3 つの usecase が同じ形で返す。 */
+/** 外へ返す形。集約そのものは外に出さない。 */
 export interface __Aggregate__View {
   readonly id: string;
   readonly name: string;
@@ -23,12 +23,11 @@ export interface Create__Aggregate__Input {
   readonly name: string;
 }
 
-/** 名前から値オブジェクトを作り、開いた状態で保存する。名前の意味の誤り (空・長すぎ) は invalid。 */
 export class Create__Aggregate__UseCase {
   constructor(
     private readonly repository: __Aggregate__Repository,
     private readonly transactionRunner: TransactionRunner,
-    /** id の生成。乱数は組み立て側 (module の index.ts) が渡す。 */
+    /** id の作り方は組み立て (index.ts) が決めて注入する。 */
     private readonly newId: () => string,
   ) {}
 

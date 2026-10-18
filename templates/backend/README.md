@@ -34,7 +34,8 @@
 | 段 | 条件 | status | code |
 |---|---|---|---|
 | 入口 | 本文が上限超過 | 413 | `PAYLOAD_TOO_LARGE` |
-| 入口 | JSON の構文が壊れている・URL が壊れている | 400 | `MALFORMED_REQUEST` |
+| 入口 | JSON の構文が壊れている | 400 | `MALFORMED_REQUEST` (NestJS と Rust は壊れた URL も同じ code。Hono は入れていない。壊れた `%` の扱いはアプリごと) |
+| 入口 | その他の 4xx (405・415 など。NestJS だけが出す) | 各 status | `REQUEST_REJECTED` |
 | 形 | zod / serde の検証に落ちた | 400 | `VALIDATION_FAILED` (`details` = 項目名の配列) |
 | 意味 | kind `invalid` | 400 | `INVALID_REQUEST` |
 | 意味 | kind `unauthorized` | 401 | `UNAUTHORIZED` |
@@ -42,6 +43,8 @@
 | 意味 | kind `conflict` | 409 | `CONFLICT` |
 | 意味 | kind `unprocessable` | 422 | `UNPROCESSABLE` |
 | 意味 | kind `unavailable` | 503 | `UNAVAILABLE` |
+
+404 (経路なし) と 500 (想定外) の message は 3 変種で揃える: `route not found` / `internal server error`。
 
 ## 共通の決まり
 

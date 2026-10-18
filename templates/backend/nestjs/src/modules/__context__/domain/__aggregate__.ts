@@ -1,11 +1,11 @@
-// 集約。domain は自分の module の domain と shared/domain 以外を知らない。
+// 集約の雛形。domain は他の層も npm も知らない (domain-is-framework-free)。
 
-import { __Aggregate__AlreadyClosedError } from '@/modules/__context__/domain/errors/__aggregate__-already-closed.error.js';
-import type { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__aggregate__-name.js';
+import { __Aggregate__AlreadyClosedError } from './errors/__aggregate__-already-closed.error.js';
+import type { __Aggregate__Name } from './value-objects/__aggregate__-name.js';
 
 export type __Aggregate__Status = 'open' | 'closed';
 
-/** 名前を持ち、開いている間だけ閉じられる集約。 */
+/** <この集約が何か・どのコレクションに載るかを 1 行で>。 */
 export class __Aggregate__ {
   readonly id: string;
   readonly name: __Aggregate__Name;
@@ -17,11 +17,11 @@ export class __Aggregate__ {
     this.status = params.status;
   }
 
-  /** 状態を変える操作は、新しいインスタンスを返す (自分は変えない)。閉じ済みを閉じるとドメインエラー。 */
+  /** 状態を変える操作は、新しいインスタンスを返す (自分は変えない)。不変条件の違反はドメインエラーを投げる。 */
   close(): __Aggregate__ {
     if (this.status === 'closed') {
       throw new __Aggregate__AlreadyClosedError(this.id);
     }
-    return new __Aggregate__({ id: this.id, name: this.name, status: 'closed' });
+    return new __Aggregate__({ ...this, status: 'closed' });
   }
 }

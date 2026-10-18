@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { assertValidDocIdSegment, InvalidDocIdSegment, isValidDocIdSegment } from '@/shared/domain/doc-id.js';
+import { assertValidDocIdSegment, InvalidDocIdSegment, isValidDocIdSegment } from './doc-id.js';
 
 describe('isValidDocIdSegment', () => {
-  it.each(['a', 'a-1', 'A_b-9', 'x'.repeat(64)])('通る (%s)', (value) => {
+  it.each(['a', 'A-1_b', 'x'.repeat(64), '0f8fad5b-d9cb-469f-a165-70867728950e'])('通す (%s)', (value) => {
     expect(isValidDocIdSegment(value)).toBe(true);
   });
 
-  it.each(['', 'a/b', '../x', '.', '..', 'a b', 'x'.repeat(65)])('通らない (%j)', (value) => {
+  it.each(['', 'a/b', '../x', '.', '..', 'a b', 'x'.repeat(65), 'あ'])('落とす (%j)', (value) => {
     expect(isValidDocIdSegment(value)).toBe(false);
   });
 });
 
 describe('assertValidDocIdSegment', () => {
-  it('不正なら生値を含まないメッセージで投げる', () => {
-    expect(() => assertValidDocIdSegment('a/secret')).toThrow(InvalidDocIdSegment);
-    expect(() => assertValidDocIdSegment('a/secret')).not.toThrow(/secret/);
+  it('正しければ何も起きない', () => {
+    expect(() => assertValidDocIdSegment('ok-1')).not.toThrow();
   });
 
-  it('正しければ投げない', () => {
-    expect(() => assertValidDocIdSegment('a-1')).not.toThrow();
+  it('不正なら投げ、生の値をメッセージに残さない', () => {
+    expect(() => assertValidDocIdSegment('a/secret')).toThrow(InvalidDocIdSegment);
+    expect(() => assertValidDocIdSegment('a/secret')).not.toThrow(/secret/);
   });
 });

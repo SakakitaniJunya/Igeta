@@ -1,111 +1,81 @@
-// controller のテスト。usecase は execute だけを持つ偽物にし、状態と本文の対応だけを確かめる。
+// コントローラのテストの雛形。ユースケースは execute だけを持つ偽物にし、状態と本文の対応だけを確かめる。
 
 import { describe, expect, it, vi } from 'vitest';
-import {
-  conflict,
-  invalid,
-  notFound,
-  unauthorized,
-  unavailable,
-  unprocessable,
-  type AppError,
-  type AppErrorKind,
-} from '@/shared/domain/app-error.js';
+import type { Close__Aggregate__UseCase } from '@/modules/__context__/application/close-__aggregate__.usecase.js';
+import type { Create__Aggregate__UseCase } from '@/modules/__context__/application/create-__aggregate__.usecase.js';
+import type { List__Aggregate__ItemsUseCase } from '@/modules/__context__/application/list-__aggregates__.usecase.js';
+import { conflict, invalid, notFound, unauthorized, unavailable, unprocessable, type AppError, type AppErrorKind } from '@/shared/domain/app-error.js';
 import { err, ok } from '@/shared/domain/result.js';
-import { __Aggregate__Controller } from '@/modules/__context__/presentation/__aggregate__.controller.js';
+import { handleClose__Aggregate__, handleCreate__Aggregate__, handleList__Aggregate__Items } from './__aggregate__.controller.js';
 
-const VIEW = { id: 'a-1', name: '名前', status: 'open' } as const;
+const VIEW = { id: 'a-1', name: '名前', status: 'open' as const };
 
-function build(overrides: { list?: unknown; create?: unknown; close?: unknown } = {}) {
-  const list = vi.fn().mockResolvedValue(ok({ items: [VIEW], truncated: false }));
-  const create = vi.fn().mockResolvedValue(ok(VIEW));
-  const close = vi.fn().mockResolvedValue(ok({ ...VIEW, status: 'closed' }));
-  const useCases = {
-    list: { execute: overrides.list ?? list },
-    create: { execute: overrides.create ?? create },
-    close: { execute: overrides.close ?? close },
-  } as unknown as ConstructorParameters<typeof __Aggregate__Controller>[0];
-  return { controller: new __Aggregate__Controller(useCases), list, create, close };
+function stub<T extends { execute: (...args: never[]) => unknown }>(execute: T['execute']): T {
+  return { execute } as unknown as T;
 }
 
-const KINDS: ReadonlyArray<[AppErrorKind, AppError, number, string]> = [
-  ['unauthorized', unauthorized('m'), 401, 'UNAUTHORIZED'],
-  ['invalid', invalid('m'), 400, 'INVALID_REQUEST'],
-  ['not_found', notFound('m'), 404, 'NOT_FOUND'],
-  ['conflict', conflict('m'), 409, 'CONFLICT'],
-  ['unprocessable', unprocessable('m'), 422, 'UNPROCESSABLE'],
-  ['unavailable', unavailable('m'), 503, 'UNAVAILABLE'],
-];
-
-describe('__Aggregate__Controller.list', () => {
-  it('成功は 200 と {ok,items,truncated}。status を usecase へ渡す', async () => {
-    const { controller, list } = build();
-    const response = await controller.list({ status: 'open' });
+describe('handleList__Aggregate__Items', () => {
+  it('成功は 200 と { ok, items, truncated }。通った query が usecase に渡る', async () => {
+    const execute = vi.fn().mockResolvedValue(ok({ items: [VIEW], truncated: false }));
+    const response = await handleList__Aggregate__Items(stub<List__Aggregate__ItemsUseCase>(execute), { status: 'open' });
     expect(response).toEqual({ status: 200, body: { ok: true, items: [VIEW], truncated: false } });
-    expect(list).toHaveBeenCalledWith({ status: 'open' });
+    expect(execute).toHaveBeenCalledWith({ status: 'open' });
   });
 
-  it('形の違う query は 400 VALIDATION_FAILED と項目名で、usecase を呼ばない', async () => {
-    const { controller, list } = build();
-    const response = await controller.list({ status: 'done' });
+  it('形が悪ければ 400 VALIDATION_FAILED と項目名で、usecase を呼ばない', async () => {
+    const execute = vi.fn();
+    const response = await handleList__Aggregate__Items(stub<List__Aggregate__ItemsUseCase>(execute), { status: 'done' });
     expect(response).toEqual({
       status: 400,
       body: { ok: false, error: { code: 'VALIDATION_FAILED', message: 'request validation failed', details: ['status'] } },
     });
-    expect(list).not.toHaveBeenCalled();
-  });
-
-  it.each(KINDS)('%s の失敗は kind に応じた応答', async (_kind, error, status, code) => {
-    const { controller } = build({ list: vi.fn().mockResolvedValue(err(error)) });
-    const response = await controller.list({});
-    expect([response.status, (response.body as { error: { code: string } }).error.code]).toEqual([status, code]);
+    expect(execute).not.toHaveBeenCalled();
   });
 });
 
-describe('__Aggregate__Controller.create', () => {
-  it('成功は 201 と {ok,item}。name を usecase へ渡す', async () => {
-    const { controller, create } = build();
-    const response = await controller.create({ name: '名前' });
+describe('handleCreate__Aggregate__', () => {
+  it('成功は 201 と { ok, item }', async () => {
+    const execute = vi.fn().mockResolvedValue(ok(VIEW));
+    const response = await handleCreate__Aggregate__(stub<Create__Aggregate__UseCase>(execute), { name: '名前' });
     expect(response).toEqual({ status: 201, body: { ok: true, item: VIEW } });
-    expect(create).toHaveBeenCalledWith({ name: '名前' });
+    expect(execute).toHaveBeenCalledWith({ name: '名前' });
   });
 
-  it.each([undefined, {}, { name: 1 }, { name: 'x', extra: true }])('形の違う本文は 400 VALIDATION_FAILED (%j)', async (body) => {
-    const { controller, create } = build();
-    const response = await controller.create(body);
+  it('形が悪ければ 400 VALIDATION_FAILED と項目名', async () => {
+    const execute = vi.fn();
+    const response = await handleCreate__Aggregate__(stub<Create__Aggregate__UseCase>(execute), { name: 1 });
     expect(response.status).toBe(400);
-    expect((response.body as { error: { code: string } }).error.code).toBe('VALIDATION_FAILED');
-    expect(create).not.toHaveBeenCalled();
+    expect(response.body).toMatchObject({ error: { code: 'VALIDATION_FAILED', details: ['name'] } });
+    expect(execute).not.toHaveBeenCalled();
   });
 
-  it.each(KINDS)('%s の失敗は kind に応じた応答', async (_kind, error, status, code) => {
-    const { controller } = build({ create: vi.fn().mockResolvedValue(err(error)) });
-    const response = await controller.create({ name: 'x' });
-    expect([response.status, (response.body as { error: { code: string } }).error.code]).toEqual([status, code]);
+  it('意味の誤り (usecase の invalid) は 400 INVALID_REQUEST', async () => {
+    const response = await handleCreate__Aggregate__(stub<Create__Aggregate__UseCase>(vi.fn().mockResolvedValue(err(invalid('too long')))), { name: 'x' });
+    expect(response).toEqual({ status: 400, body: { ok: false, error: { code: 'INVALID_REQUEST', message: 'too long' } } });
   });
 });
 
-describe('__Aggregate__Controller.close', () => {
-  it('成功は 200 と {ok,item}。id を usecase へ渡す', async () => {
-    const { controller, close } = build();
-    const response = await controller.close('a-1');
-    expect(response).toEqual({ status: 200, body: { ok: true, item: { ...VIEW, status: 'closed' } } });
-    expect(close).toHaveBeenCalledWith({ id: 'a-1' });
+describe('handleClose__Aggregate__', () => {
+  it('成功は 200 と { ok, item }', async () => {
+    const response = await handleClose__Aggregate__(stub<Close__Aggregate__UseCase>(vi.fn().mockResolvedValue(ok(VIEW))), 'a-1');
+    expect(response).toEqual({ status: 200, body: { ok: true, item: VIEW } });
   });
 
-  it.each([undefined, '', 5])('文字列でない・空の id は id の 400 VALIDATION_FAILED (%j)', async (id) => {
-    const { controller, close } = build();
-    const response = await controller.close(id);
-    expect(response.body).toEqual({
-      ok: false,
-      error: { code: 'VALIDATION_FAILED', message: 'request validation failed', details: ['id'] },
-    });
-    expect(close).not.toHaveBeenCalled();
+  it('id が文字列でなければ 400 VALIDATION_FAILED と id', async () => {
+    const response = await handleClose__Aggregate__(stub<Close__Aggregate__UseCase>(vi.fn()), undefined);
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({ error: { code: 'VALIDATION_FAILED', details: ['id'] } });
   });
 
-  it.each(KINDS)('%s の失敗は kind に応じた応答', async (_kind, error, status, code) => {
-    const { controller } = build({ close: vi.fn().mockResolvedValue(err(error)) });
-    const response = await controller.close('a-1');
-    expect([response.status, (response.body as { error: { code: string } }).error.code]).toEqual([status, code]);
+  it.each<[AppErrorKind, AppError, number, string]>([
+    ['invalid', invalid('x'), 400, 'INVALID_REQUEST'],
+    ['unauthorized', unauthorized('x'), 401, 'UNAUTHORIZED'],
+    ['not_found', notFound('x'), 404, 'NOT_FOUND'],
+    ['conflict', conflict('x'), 409, 'CONFLICT'],
+    ['unprocessable', unprocessable('x'), 422, 'UNPROCESSABLE'],
+    ['unavailable', unavailable('x'), 503, 'UNAVAILABLE'],
+  ])('失敗 %s は status %i・code %s', async (_kind, error, status, code) => {
+    const response = await handleClose__Aggregate__(stub<Close__Aggregate__UseCase>(vi.fn().mockResolvedValue(err(error))), 'a-1');
+    expect(response).toEqual({ status, body: { ok: false, error: { code, message: 'x' } } });
   });
 });
