@@ -403,7 +403,7 @@ describe('TaxonomyGuideSync: 要件定義書 02 §7 と ROLE_OF_KIND', () => {
 
   it('[TST-108 / spec 08] §8・Role.ts の diagrams・手引き §4・解説 09 §3 で、16 kind の図種が一致し、図が要らない kind は adr・feature-brief の 2 つで、本文の「16」が §8 の kind 数と合う', () => {
     assert.deepEqual(diffAgainstDiagramTable(requirements), []);
-    const explanation = readFileSync(join(IGETA_ROOT, 'docs', 'explanation', '09-reader-granularity.md'), 'utf8');
+    const explanation = readFileSync(join(IGETA_ROOT, 'docs', 'ai', 'handbook', 'explanation', '09-reader-granularity.md'), 'utf8');
     assert.deepEqual(diffDiagramProse('手引き §4', guide, 4, requirements), []);
     assert.deepEqual(diffDiagramProse('解説 09 §3', explanation, 3, requirements), []);
     const table = readDiagramTable(requirements);
@@ -497,7 +497,7 @@ describe('TaxonomyGuideSync: 表を書き換えると、食い違いを見つけ
     assert.ok(diagrams(mutateDiagrams('図が要らない kind: adr・feature-brief', '図が要らない kind: adr')).some((diff) => diff.includes('図が要らない kind は adr・feature-brief')));
 
     const guideProse = (text: string): string[] => diffDiagramProse('手引き §4', text, 4, requirements);
-    const explanation = readFileSync(join(IGETA_ROOT, 'docs', 'explanation', '09-reader-granularity.md'), 'utf8');
+    const explanation = readFileSync(join(IGETA_ROOT, 'docs', 'ai', 'handbook', 'explanation', '09-reader-granularity.md'), 'utf8');
     const explanationProse = (text: string): string[] => diffDiagramProse('解説 09 §3', text, 3, requirements);
     assert.ok(guideProse(guide.replace('図が要る 16 kind', '図が要る 15 kind')).some((diff) => diff.includes('「16 kind」と書く')));
     assert.ok(guideProse(guide.replace('図が要る 16 kind', '図が要る map・context-map・business-flow・screen-spec・solution-strategy・as-is-overview の 6 kind')).length > 0);

@@ -132,9 +132,9 @@ docs/
 - 承認済みの ADR は、`person/` の決まりの行のどれかが `ADR-NNNN` の形で引く (どの決まりにも効かない決定を残さない)
 
 背骨は arc42 の 12 章で、章はフォルダではなく各文書の frontmatter `arc42:` が持つ。
-kind 47 種の置き場所・ID の接頭辞・行数の上限は **[文書体系ガイド](templates/docs/ai/handbook/how-to/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/explanation/01-design-doc-standards.md)** にある。
+kind 47 種の置き場所・ID の接頭辞・行数の上限は **[文書体系ガイド](templates/docs/ai/handbook/how-to/01-document-taxonomy.md)**、採用した外部標準と採らなかった理由は **[外部標準の解説](docs/ai/handbook/explanation/01-design-doc-standards.md)** にある。
 地図・決定台帳の読む順と、レビューする人の手順は **[人間レビュー層の読み方](templates/docs/ai/handbook/how-to/03-human-review.md)**、
-足した理由は **[人間レビュー層を足した理由](docs/explanation/02-human-review-layer.md)** にある。
+足した理由は **[人間レビュー層を足した理由](docs/ai/handbook/explanation/02-human-review-layer.md)** にある。
 
 ### 人の文書の書き方
 
@@ -272,30 +272,30 @@ npm run docs:graph
 | `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 / 行数上限超過 (`line_limit` を持つ kind のみ)。**新しい構成の `docs/person/**`・`docs/client/**` では加えて (人の文書の型)**: 決まりの表 (最後の列が `状態`) の行の最初のセルが ID の形でない・列の数が見出しと違う・状態が `決定`・`仮`・`未決`・`廃` 以外 / 型の検査が要る kind に、自分の接頭辞の決まりの行が無い / 図が要る kind に mermaid の図が無い / 100 行 (要件は 150 行) 超 / HTML コメント、決まった 3 種以外の生成区間 / `廃` の ID の使い直し。`--base <宛先>` を付けると、宛先で `廃` だった行を消した変更も違反。まとまりの合計字数の超過は警告 |
 | `npm run docs:template-check -- --require-human-review` | 人間レビュー層 (既定 OFF・段階導入・**試験中**、既知の取りこぼしは人間レビュー層の手引き §7) | `kind: requirements` が地図からリンクされていない / まとまりの地図が地図からリンクされていない / `feature-brief` がまとまりの地図からリンクされていない / 決定の帰属主張に `DEC-nnn` が無いか台帳に無い / 「仮置き」に `OPEN-nnn` が無いか台帳に無い / 他ファイルの ID を修飾形式 `<doc-id>/PREFIX-nnn` で書いていない |
 | `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い / `docs/common/` が残っている (v3 の構成)。**新しい構成 (`docs/person`・`ai`・`client` のどれかがある repo) では加えて**: kind から導く置き場所と実際のパスの食い違い / フォルダ名のまとまりと `context` の食い違い / `docs/` 直下の 3 フォルダに属さないもの (`.igeta.json` の `nonDocPaths` を除く) / 参照の向きの違反 (`person/` が `ai/`・`client/` を指す、`ai/` が `client/` を指す) / `ai/specs/` の文書が `depends_on` をたどっても `person/` に届かない / 承認済みの ADR を、`person/` のどの決まりの行も `ADR-NNNN` で引いていない / `ai/` の文書の未決の節 / 1 フォルダ 16 本以上 / `AGENTS.md` の欠落 / `.github/CODEOWNERS` の欠落、または人の承認が要るパス (「変更から承認まで」の表。`humanPaths` に当たる、いまあるファイルを含む) に持ち主が付いていない (GitHub と同じく最後に当たる行を見る。`docs/person/*` は直下のファイルにしか当たらない)。旧い構成の repo は、移行を促す警告 1 件が出るだけ |
-| `npx igeta context-boundary-check` | まとまり (context) の境界 (既定 OFF、[詳細](docs/explanation/07-context-boundaries.md)) | `context: A` の文書が `context: B` (A と違い shared でも B の `context-contract` でもない) の文書を depends_on・本文リンク・修飾 ID で直接参照している |
+| `npx igeta context-boundary-check` | まとまり (context) の境界 (既定 OFF、[詳細](docs/ai/handbook/explanation/07-context-boundaries.md)) | `context: A` の文書が `context: B` (A と違い shared でも B の `context-contract` でもない) の文書を depends_on・本文リンク・修飾 ID で直接参照している |
 | `npx igeta context-size [<context>]` | まとまりの量の上限 (既定 OFF、`.igeta.json` の `contextSizeLimit` 未設定なら無制限) | 指定したまとまり (省略時は全部一覧) の「自分の文書 + 参照している隣の `context-contract`」の総行数が上限を超えている |
 | `npx igeta context-files <context>` | (生成) | AI が読むべきファイル一覧を 1 行 1 パスで出す (既定は共有文書のうち `map`/`glossary`/自分の地図だけ、`--with-shared` で全部、`--json` で JSON 配列) |
-| `npx igeta provenance-capture <chapter> --anchor "<a>" (--from <id>/<token> \| --no-source --reason "<r>") --by <name>` | (生成、[詳細](docs/explanation/04-provenance-and-agreement.md)) | 由来 sidecar (`<章>.provenance.json`) を作る・上書きする。上書きすると承認情報を消す |
+| `npx igeta provenance-capture <chapter> --anchor "<a>" (--from <id>/<token> \| --no-source --reason "<r>") --by <name>` | (生成、[詳細](docs/ai/handbook/explanation/04-provenance-and-agreement.md)) | 由来 sidecar (`<章>.provenance.json`) を作る・上書きする。上書きすると承認情報を消す |
 | `npx igeta provenance-accept <chapter> (--anchor "<a>" \| --all) --by <name>` | (生成) | 別の主体が由来を承認する。`capturedBy` と同じ主体は `self-approved` で拒む |
 | `npx igeta provenance-check [<chapter> ...]` | 由来の鮮度 (既定 OFF) | `pending`/`stale`/`orphan`/`orphan-content`/`self-approved`/`source-missing`/`open-stated-as-final` (`needs-recompute` は既定警告、`--strict-normalization` で違反) |
 | `npx igeta provenance-coverage [<chapter> ...]` | 由来の順方向網羅 (既定 OFF) | delivery-chapter の H2 節 (「関連」除く) に由来が 1 件も無い |
 | `npx igeta source-coverage` | 由来の逆方向網羅 (既定 OFF) | 正本の行定義がどの章の由来にも現れない (`clientExempt`/`.igeta.json` の `coverageExemptions` で対象外にできる) |
-| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/adr/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
-| `npx igeta docs-migrate --owner <持ち主> [--dry-run]` | (生成・移す段、[詳細](docs/design/test/specs/07-docs-migrate.md)) | 旧い構成・v3 の構成の `docs/` を 3 フォルダ (`person`・`ai`・`client`) へ移し、リンクと索引と承認の割り当て (`AGENTS.md`・CODEOWNERS) を作る。作業ツリーが clean であること・kind の無い文書など止める条件 (S1〜S9) があれば何も書かず終了 2。完了条件 (C1〜C5) が欠けたら終了 1 で作業ツリーを戻す手順を出す。commit はしない。`--dry-run` は計画だけを出す |
+| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/person/decisions/2026/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
+| `npx igeta docs-migrate --owner <持ち主> [--dry-run]` | (生成・移す段、[詳細](docs/ai/specs/shared/tests/07-docs-migrate.md)) | 旧い構成・v3 の構成の `docs/` を 3 フォルダ (`person`・`ai`・`client`) へ移し、リンクと索引と承認の割り当て (`AGENTS.md`・CODEOWNERS) を作る。作業ツリーが clean であること・kind の無い文書など止める条件 (S1〜S9) があれば何も書かず終了 2。完了条件 (C1〜C5) が欠けたら終了 1 で作業ツリーを戻す手順を出す。commit はしない。`--dry-run` は計画だけを出す |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
 | `npm run scaffold` | (生成) | NestJS + Prisma の `api-*` / `web-feature` 雛形を `apps/` へ展開。既存ファイルは上書きしない |
 | `npm run expand -- <templates の 1 単位の path> --app <name> --context … --aggregate …` | (生成) | `templates/backend/<変種>/` と `templates/frontend/admin/` の 1 単位 (印の付いたフォルダ) を、鏡の path (`apps/<app>/backend/`・`apps/<app>/frontend/admin/`) へ展開する。書く前に全部検査し、既存・置換後の同名・印の残りは 1 ファイルも書かず exit 1、名前の不足は exit 2。`--dry-run` あり |
 | `npm run check:templates -- [--variant hono\|nestjs\|rust\|frontend] [--require-emulator]` | 雛形の自己検査 | 変種ごとに一時 dir へ展開・登録し、`npm ci` → 型 → テスト → 層の規則 → build (rust は `cargo build/test --locked`、cargo が無ければ Docker) を通す。落ちた手順は 1 件 = exit 1、Java・cargo と Docker など前提の道具が無ければ exit 2。CI は `templates.yml` で、必須チェックにはしない (報告だけ) |
-| `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
+| `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/ai/handbook/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
 | `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `docs/ai/specs/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
 | `npm run docs:analyze` | 整合レポート (読み取り専用) | 網羅の穴・タスクが存在しない ID を参照しているダングリング参照・未決 OPEN・曖昧語・ID のローカル採番の重複。ダングリング参照だけ落ちる |
 | `npm run docs:fix-ids` | (生成・既定 dry-run) | 定義元が 1 件に一意な裸の ID 参照だけを修飾 ID に書き換える。`--write` を付けるまで書き込まない |
 | `npx igeta approval-scope (--ci \| --base <ref>)` | 人の承認が要る変更か (上の「変更から承認まで」) | 変更が人の承認が要るパスに触れると `human` (終了コード 1)、触れなければ `ai` (0)。宛先が決まらない・宛先が旧い構成・merge が衝突するときは検査不能 (2) で、`ai` として扱わない |
 | `npx igeta doctor` | GitHub の保護 (`gh` が要る) | 既定ブランチで、PR が必須・CODEOWNERS の持ち主のレビューが必須・新しい push で承認を取り消す・CODEOWNERS の誤りが 0 件、のどれかが欠けている。読めなければ検査不能 |
-| `npx igeta agreement-check` | 顧客との合意 | 承認した版から変わった章・正本を、再合意が要るものと通知のみに分けて出す。`export --record-agreement` で提出を記録し、`agreement-approve` で承認を記録する ([詳細](docs/explanation/08-agreement-ledger.md)) |
-| `npx igeta discrepancy-add <dir> --location "<path>[#<anchor>]" --category <cat>` | (生成、[詳細](docs/explanation/05-coverage-and-learning.md)) | 評価で見つかった食い違いを `<dir>/discrepancies.log.jsonl` に 1 行追記。category は閉集合の外・location のファイルが実在しないと違反 |
+| `npx igeta agreement-check` | 顧客との合意 | 承認した版から変わった章・正本を、再合意が要るものと通知のみに分けて出す。`export --record-agreement` で提出を記録し、`agreement-approve` で承認を記録する ([詳細](docs/ai/handbook/explanation/08-agreement-ledger.md)) |
+| `npx igeta discrepancy-add <dir> --location "<path>[#<anchor>]" --category <cat>` | (生成、[詳細](docs/ai/handbook/explanation/05-coverage-and-learning.md)) | 評価で見つかった食い違いを `<dir>/discrepancies.log.jsonl` に 1 行追記。category は閉集合の外・location のファイルが実在しないと違反 |
 | `npx igeta discrepancy-report` | 食い違いの集計 (既定 OFF・手動) | category ごとの件数と事前捕捉率を出す。違反ではなく集計情報なので、ログが壊れているときだけ検査不能 |
 | `npm run test:scripts` | スクリプト自身 | 検査コードのテスト |
 
