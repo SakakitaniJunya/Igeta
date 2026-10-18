@@ -3,6 +3,7 @@ id: test-docs-migrate
 title: テスト仕様 — 移行コマンド (docs-migrate)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft

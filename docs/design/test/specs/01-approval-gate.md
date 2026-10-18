@@ -3,6 +3,7 @@ id: test-approval-gate
 title: テスト仕様 — 人の承認が要る変更の見分け (approval-scope・doctor)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft

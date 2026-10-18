@@ -3,6 +3,7 @@ id: test-person-form
 title: テスト仕様 — 人の文書の型・量・書き込み口 (PersonFormCheck)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft

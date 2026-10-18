@@ -3,6 +3,7 @@ id: test-person-diagram
 title: テスト仕様 — 人の文書の冒頭の図 (PersonFormCheck の図種と位置)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft

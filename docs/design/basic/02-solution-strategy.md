@@ -3,6 +3,7 @@ id: docs-model-strategy
 title: 文書モデルの解決戦略 — 確定させる人で 3 つに分け、検査で守り、モデルの進化に左右されない
 type: design
 kind: solution-strategy
+context: shared
 arc42: 4
 id_prefix: SS
 status: draft

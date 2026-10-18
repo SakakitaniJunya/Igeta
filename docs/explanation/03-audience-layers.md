@@ -100,7 +100,7 @@ flowchart LR
 - 決定 ID は 3 桁の形式を標準のまま。`DEC-\d{3}` が日付入り ID に部分一致する誤検出は前提修正として直す ([別紙](./04-provenance-and-agreement.md))
 - 再合意の判定粒度は kind + 節の単位まで ([別紙](./04-provenance-and-agreement.md))
 
-## 8. 下流の TODO
+## 8. 下流への申し送り
 
 - `templates/docs/ai/handbook/how-to/03-human-review.md` の読む順を、§3 の「地図 → まとまりの地図 → review-sheet」の 2 段に合わせて直す (本設計では文面は変えない。次の実装の対象)
 
