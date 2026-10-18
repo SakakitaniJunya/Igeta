@@ -38,10 +38,13 @@ describe('createApi', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it('2 回続けて 401 なら、それ以上は送らず 401 を返す', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse(401, {}));
+  it('2 回続けて 401 なら、それ以上は送らず 2 回目の応答 (status と error) を返す', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'FIRST', message: 'first' } }))
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'SECOND', message: 'second' } }));
     const result = await createApi(async () => 'tok', fetchImpl).get('/admin/api/samples');
-    expect(result).toEqual({ ok: false, status: 401, error: null });
+    expect(result).toEqual({ ok: false, status: 401, error: { code: 'SECOND', message: 'second' } });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 

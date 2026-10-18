@@ -61,7 +61,7 @@ export function __Feature__Screen() {
           <s-paragraph>該当する項目はありません。</s-paragraph>
         ) : (
           <s-stack gap="small-200">
-            <CountLabel count={items.length} limit={LIST_LIMIT} />
+            <CountLabel count={items.length} truncated={truncated} />
             {truncated && <s-banner tone="warning" heading={`先頭の ${LIST_LIMIT} 件だけを表示しています。絞り込みで探してください。`} />}
             <s-section padding="none" accessibilityLabel="一覧">
               <s-table>

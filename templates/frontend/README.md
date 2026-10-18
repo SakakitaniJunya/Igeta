@@ -77,6 +77,8 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
           __feature__.mapper.test.ts                欠け・未知の値・往復
     shared/                                         共通機能と部品の既定の置き場。feature と app を知らない
       presentation/
+        bind-field.ts                               Polaris 入力欄の確定の購読 (bindField と、購読を 1 回だけにする useBindField)
+        bind-field.test.ts                          確定で 1 回だけ呼ぶ
         ui/                                         意味を知らない部品
           LoadingView.tsx                           読み込み中
           LoadingView.test.tsx                      文言を出す
@@ -94,8 +96,8 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
           SaveErrorBanner.test.tsx                  details と再試行
           StatusBadge.tsx                           状態の印 (語は引数)
           StatusBadge.test.tsx                      tone ごとの出し方
-          CountLabel.tsx                            件数の表示 (上限で `n+`)
-          CountLabel.test.tsx                       0・上限・単位
+          CountLabel.tsx                            件数の表示 (打ち切られたときだけ `n+`)
+          CountLabel.test.tsx                       0・100 件で打ち切りなし/あり・単位
       application/
         use-api.tsx                                 ApiProvider と useApi
         use-api.test.tsx                            Provider の外では投げる
@@ -103,8 +105,6 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
         use-resource.test.ts                        重なった要求は最後だけ使う
         use-navigate.ts                             画面内の移動の hook
         use-navigate.test.ts                        履歴と search の引き継ぎ
-        bind-field.ts                               Polaris 入力欄の確定の購読 (bindField と、購読を 1 回だけにする useBindField)
-        bind-field.test.ts                          確定で 1 回だけ呼ぶ
       domain/                                       値と形だけ
         api.ts                                      Api・ApiResult・ApiError の型 (型だけ)
         date.ts                                     Asia/Tokyo の今日・加減・差
@@ -139,7 +139,7 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
 4. `presentation-does-not-look-at-infrastructure` — presentation は infrastructure を見ない
 5. `domain-is-framework-free` — domain は React・npm・shared/infrastructure を使わない
 6. `components-do-not-import-screen` — components は screen を見ない
-7. `shared-ui-depends-on-domain-and-ui-only` — `shared/presentation/ui` は shared/domain と ui だけ
+7. `shared-ui-depends-on-domain-and-ui-only` — `shared/presentation/ui` は shared/domain と shared/presentation だけ (application・infrastructure は見ない)
 8. `other-features-through-index-only` — 他の feature へは `index.ts` だけ (app も同じ)
 9. `shared-is-a-leaf` — shared は feature・app を知らない
 10. `app-is-read-by-main-only` — app を読むのは `main.tsx` だけ
@@ -160,7 +160,7 @@ feature 間は 3 経路。(1) 経路と合成は `app/` が組む。(2) 複数�
 - 見た目は Polaris の web components (`s-*`) だけ。import しない (型は `@shopify/polaris-types`)。値は文字として出し、HTML として差し込まない
 - 画面は空・読み込み中・エラー (やり直し付き) の 3 状態を必ず出す。アイコンは Phosphor、絵文字は使わない
 - API のパスはその feature の `*.endpoint.ts` にだけ書く。読み込みと保存は application の hook に書き、見た目に書かない
-- React の `onChange` は 1 回の確定で 2 回呼ばれる。副作用を置かず、確定の購読は `useBindField` を使う
+- React の `onChange` は 1 回の確定で 2 回呼ばれる。副作用を置かず、確定の購読は `shared/presentation/bind-field.ts` の `useBindField` を使う
 - TypeScript は strict・`noUncheckedIndexedAccess`・`any` 禁止。npm の規則は `(^|/)node_modules/<名前>` から書く
 - Node は 22 か 24 (jsdom の engine。25 は組み込みの localStorage が jsdom を覆い session.test が落ちる、実測)
 

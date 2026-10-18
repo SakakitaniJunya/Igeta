@@ -1,7 +1,7 @@
 // 一覧の画面のテスト: 3 つの状態 (読み込み中・エラー・空) / 一覧の表示 / 絞り込み / 登録 (入力の誤り・成功) / 閉じる (確認・成功・失敗・閉じ済み)。
 // API は偽物 (fakeApi) を渡し、通信しない。バナーの見出しは属性なので findBanner で探す。
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { __Feature__Screen } from '@/features/__feature__/presentation/screen/__Feature__Screen';
@@ -36,6 +36,17 @@ describe('__Feature__Screen', () => {
   it('サーバが打ち切ったときは上限の件数と打ち切りの知らせを出す', async () => {
     renderScreen({ [GET]: { status: 200, body: { items: [OPEN], truncated: true } } });
     expect(await findBanner('先頭の 100 件だけを表示しています。絞り込みで探してください。')).toBeTruthy();
+  });
+
+  it('ちょうど 100 件で打ち切りなしなら「100 件」、打ち切りありなら「100+ 件」', async () => {
+    const items = Array.from({ length: 100 }, (_, i) => ({ id: `id-${i}`, name: `名${i}`, status: 'open' }));
+    const exact = renderScreen({ [GET]: { status: 200, body: { items, truncated: false } } });
+    expect(await screen.findByText('100 件')).toBeTruthy();
+    expect(screen.queryByText('100+ 件')).toBeNull();
+    expect(gets(exact)).toBe(1);
+    cleanup();
+    renderScreen({ [GET]: { status: 200, body: { items, truncated: true } } });
+    expect(await screen.findByText('100+ 件')).toBeTruthy();
   });
 
   it('打ち切られていなければ知らせを出さない', async () => {

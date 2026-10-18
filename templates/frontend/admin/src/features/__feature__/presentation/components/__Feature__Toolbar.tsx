@@ -1,6 +1,6 @@
 // 一覧の上の操作。名称での絞り込み (欄の label は「絞り込み」) と追加ボタン。API を呼ばない。入力と押下は呼び出し元へ返す。
 
-import { useBindField } from '@/shared/application/bind-field';
+import { useBindField } from '@/shared/presentation/bind-field';
 
 export interface __Feature__ToolbarProps {
   readonly query: string;

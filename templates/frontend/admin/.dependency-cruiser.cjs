@@ -61,9 +61,9 @@ module.exports = {
     {
       name: 'shared-ui-depends-on-domain-and-ui-only',
       severity: 'error',
-      comment: '⑦ shared/presentation/ui は意味を知らない部品。使ってよい自分たちのコードは shared/domain と shared/presentation/ui だけ。',
+      comment: '⑦ shared/presentation/ui は意味を知らない部品。使ってよい自分たちのコードは shared/domain と shared/presentation (ui と bind-field) だけ。application・infrastructure は見ない。',
       from: { path: '^src/shared/presentation/ui/', pathNot: TEST },
-      to: { path: '^src/', pathNot: ['^src/shared/domain/', '^src/shared/presentation/ui/'] },
+      to: { path: '^src/', pathNot: ['^src/shared/domain/', '^src/shared/presentation/'] },
     },
     {
       name: 'other-features-through-index-only',

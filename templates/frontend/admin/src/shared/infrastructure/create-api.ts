@@ -21,7 +21,8 @@ function errorOf(data: unknown): ApiError | null {
 export function createApi(getToken: () => Promise<string>, fetchImpl: typeof fetch = fetch): Api {
   async function request<T>(method: string, path: string, body?: unknown): Promise<ApiResult<T>> {
     try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
+      // 最終回 (attempt 1) は 401 でも結果を返す。ループの最終回が唯一の出口。
+      for (let attempt = 0; ; attempt += 1) {
         const token = await getToken();
         const headers: Record<string, string> = { authorization: `Bearer ${token}` };
         const init: RequestInit = { method, headers };
@@ -44,7 +45,6 @@ export function createApi(getToken: () => Promise<string>, fetchImpl: typeof fet
     } catch {
       return { ok: false, status: 0, error: null };
     }
-    return { ok: false, status: 401, error: null };
   }
 
   return {

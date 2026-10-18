@@ -2,7 +2,7 @@
 // 入力欄は React の onChange でなく useBindField (input・change の購読) で読む。入力は送っても消さない (失敗したときに残すため)。
 
 import { useState } from 'react';
-import { useBindField } from '@/shared/application/bind-field';
+import { useBindField } from '@/shared/presentation/bind-field';
 import { FormErrorBanner } from '@/shared/presentation/ui/FormErrorBanner';
 import type { __Feature__Draft } from '@/features/__feature__/domain/__feature__.model';
 import { NAME_MAX, validate__Feature__Form } from '@/features/__feature__/domain/__feature__.validation';

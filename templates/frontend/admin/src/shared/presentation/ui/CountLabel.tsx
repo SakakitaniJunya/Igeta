@@ -1,14 +1,13 @@
-// 件数の表示 (例: 3 件、上限に届いた 200+ 件)。count が limit に届いたら「limit+」と出す。
-// 上限の判断はここで済ませる。単位は既定で「件」。
+// 件数の表示 (例: 3 件、打ち切られた 100+ 件)。truncated (サーバが打ち切った) のときだけ「n+」と出す。
+// ちょうど上限の件数でも、打ち切られていなければ「+」は付けない。単位は既定で「件」。
 
 export interface CountLabelProps {
   readonly count: number;
-  /** 一覧の上限。count がこれに届いたら「上限+」。省くと上限の表示をしない。 */
-  readonly limit?: number;
+  /** サーバが上限で打ち切ったか。true なら「count+」。省くと false。 */
+  readonly truncated?: boolean;
   readonly unit?: string;
 }
 
-export function CountLabel({ count, limit, unit = '件' }: CountLabelProps) {
-  const shown = limit !== undefined && count >= limit ? `${limit}+` : String(count);
-  return <s-text>{`${shown} ${unit}`}</s-text>;
+export function CountLabel({ count, truncated = false, unit = '件' }: CountLabelProps) {
+  return <s-text>{`${count}${truncated ? '+' : ''} ${unit}`}</s-text>;
 }

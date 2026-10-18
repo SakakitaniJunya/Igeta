@@ -2,7 +2,7 @@
 
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { bindField, useBindField } from '@/shared/application/bind-field';
+import { bindField, useBindField } from '@/shared/presentation/bind-field';
 
 describe('bindField', () => {
   it('input と change のそれぞれで、現在の値を 1 回ずつ渡す', () => {
