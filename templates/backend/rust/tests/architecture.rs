@@ -1,5 +1,5 @@
 // 層の向きの規則 16 本。src/ の全 .rs を読み、各ファイルの `use` と `crate::` の path、外部 crate の path を取り出して判定する。
-// `#[cfg(test)]` 以降の行は本番の規則から外す (単体テストは何を使ってもよい)。
+// `#[cfg(test)]` 以降の行と `*_test.rs` は本番の規則から外す (単体テストは何を使ってもよい)。
 // 規則 1 本 = テスト 1 本。落ちた規則の名前と、違反した「ファイル -> 行き先」が出る。
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,12 +8,13 @@ use std::path::{Path, PathBuf};
 
 const STD: [&str; 3] = ["std", "core", "alloc"];
 /// path を本文中で探す外部 crate (use の無い `axum::Router` のような書き方も拾うため)。
-const KNOWN_EXTERNALS: [&str; 10] = [
+const KNOWN_EXTERNALS: [&str; 11] = [
     "axum",
     "tower_http",
     "tower",
     "serde_json",
     "serde_path_to_error",
+    "serde_urlencoded",
     "serde",
     "firestore",
     "tokio",
@@ -276,6 +277,8 @@ fn scan() -> Vec<Source> {
     walk(&src, &mut files);
     files
         .iter()
+        // `*_test.rs` は `#[cfg(test)] mod …_test;` で隣から取り込む単体テスト。本番の規則からは外す。
+        .filter(|file| !file.to_string_lossy().ends_with("_test.rs"))
         .map(|file| {
             let path = file.strip_prefix(&src).unwrap().to_string_lossy().to_string();
             let text = production_text(&fs::read_to_string(file).unwrap());
@@ -394,7 +397,7 @@ fn application_is_framework_free() {
         "application-is-framework-free",
         violations_by_external(
             |l| is_module_layer(l, ModuleLayer::Application),
-            |e| ["firestore", "axum", "tower", "tower_http", "serde", "serde_json", "serde_path_to_error"].contains(&e),
+            |e| ["firestore", "axum", "tower", "tower_http", "serde", "serde_json", "serde_path_to_error", "serde_urlencoded"].contains(&e),
         ),
     );
 }

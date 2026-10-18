@@ -156,6 +156,7 @@ dependencies = [
  "serde_urlencoded",
  "tokio",
  "tower",
+ "tower-http",
  "uuid",
 ]
 
@@ -2544,6 +2545,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
  "url",
 ]
 

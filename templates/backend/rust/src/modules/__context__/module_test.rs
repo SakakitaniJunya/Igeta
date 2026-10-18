@@ -2,12 +2,9 @@
 // 「公開面の関数 → controller → usecase → Firestore」が 1 本につながっていることを確かめる。
 // エミュレータが無いときは理由を出して即 return する。
 
-#[path = "../src/shared/test_support/emulator.rs"]
-mod emulator;
-
-use backend::modules::__context__::{__Context__Module, create_module};
-use backend::shared::infrastructure::firestore::create_firestore;
-use emulator::{EMULATOR_PROJECT, emulator_available, unique_id};
+use super::{__Context__Module, create_module};
+use crate::shared::infrastructure::firestore::create_firestore;
+use crate::shared::test_support::emulator::{EMULATOR_PROJECT, emulator_available, unique_id};
 use serde_json::{Value, json};
 
 async fn module() -> impl __Context__Module {

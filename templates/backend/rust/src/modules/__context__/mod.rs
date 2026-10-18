@@ -58,3 +58,6 @@ pub fn create_module(db: FirestoreDb) -> impl __Context__Module {
         close: Close__Aggregate__::new(repository),
     }
 }
+
+#[cfg(test)]
+mod module_test;

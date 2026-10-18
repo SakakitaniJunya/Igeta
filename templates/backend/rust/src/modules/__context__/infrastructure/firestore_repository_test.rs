@@ -1,15 +1,12 @@
 // repository を本物の Firestore エミュレータに当てる。保存・絞り込み・読み戻し・Tx での遷移。
 // エミュレータが無い (FIRESTORE_EMULATOR_HOST が無い) ときは理由を出して即 return する。
 
-#[path = "../src/shared/test_support/emulator.rs"]
-mod emulator;
-
-use backend::modules::__context__::domain::{
+use super::Firestore__Aggregate__Repository;
+use crate::modules::__context__::domain::{
     DomainError, TransitionError, __Aggregate__, __Aggregate__Name, __Aggregate__Repository, __Aggregate__Status,
 };
-use backend::modules::__context__::infrastructure::Firestore__Aggregate__Repository;
-use backend::shared::infrastructure::firestore::create_firestore;
-use emulator::{EMULATOR_PROJECT, emulator_available, unique_id};
+use crate::shared::infrastructure::firestore::create_firestore;
+use crate::shared::test_support::emulator::{EMULATOR_PROJECT, emulator_available, unique_id};
 
 async fn repository() -> Firestore__Aggregate__Repository {
     Firestore__Aggregate__Repository::new(create_firestore(EMULATOR_PROJECT).await.unwrap())

@@ -1,10 +1,11 @@
-// 組み立て: 環境変数 → Firestore → /healthz → fallback 404 → serve。ここはテストを持たない (起動の配線だけ)。
+// 組み立て: 環境変数 → Firestore → /healthz → fallback 404 → panic は 500 → serve。ここはテストを持たない (起動の配線だけ)。
 // module も入口 (entries) もここでは登録しない。1 単位を展開したあと、下のコメントの 2 か所に 1 行ずつ足す。
 
 use axum::Json;
 use axum::Router;
 use axum::response::Response;
 use axum::routing::get;
+use backend::entries::http::catch_panic::catch_panic_layer;
 use backend::entries::http::to_response::to_response;
 use backend::shared::infrastructure::env::require_env;
 use backend::shared::infrastructure::firestore::create_firestore;
@@ -32,7 +33,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new().route("/healthz", get(healthz));
     // 2 つ目 (入口を付ける): .nest("/<前置き>", backend::entries::<entry>::routes(RoutesDeps { verify, <context> }))
     //   verify (署名・トークンの検証) はこのアプリがここで作って渡す。
-    let app = app.fallback(not_found);
+    // handler の panic は 500 INTERNAL_ERROR の JSON にする (fallback も含め app 全体に掛ける)。
+    let app = app.fallback(not_found).layer(catch_panic_layer());
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;

@@ -1,5 +1,5 @@
 // 形の検証 (serde)。serde を使ってよいのは module の presentation と infrastructure だけ (tests/architecture.rs の serde-only-in-presentation-and-infrastructure)。
-// ここが見るのは型・必須・余計な項目・query の形まで。意味 (名前の長さなど) は domain の値オブジェクトが見る。
+// ここが見るのは型・必須・余計な項目 (本文と id だけ。query は未知の項目を捨てる)・query の形まで。意味 (名前の長さなど) は domain の値オブジェクトが見る。
 // 入口 (entries/) は本文と id と query を Value のまま渡してくるので、controller がここで `parse` する。
 
 use serde::de::{DeserializeOwned, Error as _};
@@ -22,8 +22,8 @@ pub struct Close__Aggregate__Params {
     pub id: String,
 }
 
+/// query は未知の項目を黙って捨てる (verify が使う `shop`・`signature` などが付くため)。本文と id は strict。
 #[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct List__Aggregate__sQuery {
     pub status: Option<StatusParam>,
 }
@@ -119,10 +119,15 @@ mod tests {
     }
 
     #[test]
-    fn list_query_rejects_other_status_and_extra_fields() {
+    fn list_query_rejects_other_status() {
         assert_eq!(details::<List__Aggregate__sQuery>(json!({ "status": "done" })), names(&["status"]));
         assert_eq!(details::<List__Aggregate__sQuery>(json!({ "status": "" })), names(&["status"]));
-        assert_eq!(details::<List__Aggregate__sQuery>(json!({ "limit": "5" })), names(&["limit"]));
+    }
+
+    #[test]
+    fn list_query_ignores_unknown_keys() {
+        assert!(parse::<List__Aggregate__sQuery>(json!({ "shop": "a", "signature": "s", "host": "h" })).is_ok());
+        assert!(parse::<List__Aggregate__sQuery>(json!({ "limit": "5", "status": "open" })).is_ok());
     }
 
     #[test]

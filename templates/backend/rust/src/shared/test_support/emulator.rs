@@ -1,6 +1,5 @@
-// Firestore エミュレータを使うテスト (tests/emulator_*.rs) の共通部品。テストは持たない。
-// tests/ からは `#[path = "../src/shared/test_support/emulator.rs"] mod emulator;` で取り込む
-// (統合テストからは `#[cfg(test)]` の module が見えないため)。
+// Firestore エミュレータを使うテスト (module の `*_test.rs`) の共通部品。テストは持たない。
+// crate 内のテストから `crate::shared::test_support::emulator` で使う (`#[cfg(test)]` なので本番には入らない)。
 // エミュレータが無いときは飛ばす。REQUIRE_EMULATOR=1 のときは飛ばさず落とす (CI で「飛ばして緑」にならないように)。
 // 同じエミュレータを全部のテストが共有し、消さない。id は unique_id() でユニークにしてテスト同士を分ける。
 
