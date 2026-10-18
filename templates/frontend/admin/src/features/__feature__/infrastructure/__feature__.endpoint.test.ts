@@ -27,8 +27,8 @@ describe('__feature__.endpoint', () => {
   });
 
   it('失敗の code と状態はそのまま返る', async () => {
-    const api = fakeApi({ 'POST /admin/api/__feature__/a-1/close': { status: 409, body: { ok: false, error: { code: 'ALREADY_CLOSED', message: 'x' } } } });
+    const api = fakeApi({ 'POST /admin/api/__feature__/a-1/close': { status: 409, body: { ok: false, error: { code: 'CONFLICT', message: 'x' } } } });
     const result = await close__Feature__(api, 'a-1');
-    expect(result).toEqual({ ok: false, status: 409, error: { code: 'ALREADY_CLOSED', message: 'x' } });
+    expect(result).toEqual({ ok: false, status: 409, error: { code: 'CONFLICT', message: 'x' } });
   });
 });

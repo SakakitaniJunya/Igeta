@@ -1,4 +1,4 @@
-// 管理画面のビルドと試験の設定。成果物は dist/app.js と dist/app.css の決まった名前 (配る側は起動時に決まった名前の表で読む)。
+// 管理画面のビルドと試験の設定。成果物は dist/app.js と dist/app.css の決まった名前 (css 以外の資産は assets/ の下に [name]-[hash]) (配る側は起動時に決まった名前の表で読む)。
 // `@/` は src/ の絶対パス (tsconfig の paths と同じ)。
 
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,7 @@ export default defineConfig({
       input: 'src/main.tsx',
       output: {
         entryFileNames: 'app.js',
-        assetFileNames: 'app[extname]',
+        assetFileNames: (asset) => (asset.names.some((name) => name.endsWith('.css')) ? 'app.css' : 'assets/[name]-[hash][extname]'),
       },
     },
   },

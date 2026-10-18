@@ -20,8 +20,8 @@ export interface __Feature__Draft {
   readonly name: string;
 }
 
-/** 一覧の上限。サーバの打ち切りと同じ値にする。 */
-export const LIST_LIMIT = 200;
+/** 一覧の上限。backend の一覧の上限 (100) と同じ値にする。 */
+export const LIST_LIMIT = 100;
 
 /** 名称に文字が含まれるものだけ。前後の空白は無視し、空なら全部。 */
 export function filterByName(items: ReadonlyArray<__Feature__Model>, query: string): ReadonlyArray<__Feature__Model> {

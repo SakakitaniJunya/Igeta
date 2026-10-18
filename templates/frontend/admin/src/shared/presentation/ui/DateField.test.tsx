@@ -20,4 +20,21 @@ describe('DateField', () => {
     fireEvent(field, new Event('change'));
     expect(onChange.mock.calls).toEqual([['2026-10-20']]);
   });
+
+  it('再描画しても購読は付け直さず、最新の onChange を 1 回呼ぶ', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const add = vi.spyOn(HTMLElement.prototype, 'addEventListener');
+    const { container, rerender } = render(<DateField label="期日" value="2026-10-18" onChange={first} />);
+    const field = container.querySelector('s-date-field') as HTMLElement & { value: string };
+    const attached = add.mock.calls.filter(([type]) => type === 'input' || type === 'change').length;
+    rerender(<DateField label="期日" value="2026-10-19" onChange={second} />);
+    expect(add.mock.calls.filter(([type]) => type === 'input' || type === 'change')).toHaveLength(attached);
+    add.mockRestore();
+
+    field.value = '2026-10-20';
+    fireEvent(field, new Event('change'));
+    expect(first).not.toHaveBeenCalled();
+    expect(second.mock.calls).toEqual([['2026-10-20']]);
+  });
 });

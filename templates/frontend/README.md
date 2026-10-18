@@ -28,7 +28,7 @@
 templates/frontend/admin/                           = apps/<app>/frontend/admin/
   package.json                                      name は admin。依存 (react・vite・Polaris の型) と scripts
   tsconfig.json                                     strict・noUncheckedIndexedAccess・paths `@/*`
-  vite.config.ts                                    alias `@/`・dist/app.js と app.css の固定名・vitest (jsdom)
+  vite.config.ts                                    alias `@/`・dist/app.js と app.css の固定名 (他の資産は assets/[name]-[hash])・vitest (jsdom)
   .dependency-cruiser.cjs                           規則 12 本の正本
   src/
     main.tsx                                        描画の入口 (起動の 1 行)
@@ -103,7 +103,7 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
         use-resource.test.ts                        重なった要求は最後だけ使う
         use-navigate.ts                             画面内の移動の hook
         use-navigate.test.ts                        履歴と search の引き継ぎ
-        bind-field.ts                               Polaris 入力欄の確定の購読
+        bind-field.ts                               Polaris 入力欄の確定の購読 (bindField と、購読を 1 回だけにする useBindField)
         bind-field.test.ts                          確定で 1 回だけ呼ぶ
       domain/                                       値と形だけ
         api.ts                                      Api・ApiResult・ApiError の型 (型だけ)
@@ -160,7 +160,7 @@ feature 間は 3 経路。(1) 経路と合成は `app/` が組む。(2) 複数�
 - 見た目は Polaris の web components (`s-*`) だけ。import しない (型は `@shopify/polaris-types`)。値は文字として出し、HTML として差し込まない
 - 画面は空・読み込み中・エラー (やり直し付き) の 3 状態を必ず出す。アイコンは Phosphor、絵文字は使わない
 - API のパスはその feature の `*.endpoint.ts` にだけ書く。読み込みと保存は application の hook に書き、見た目に書かない
-- React の `onChange` は 1 回の確定で 2 回呼ばれる。副作用を置かず、確定の購読は `bindField` を使う
+- React の `onChange` は 1 回の確定で 2 回呼ばれる。副作用を置かず、確定の購読は `useBindField` を使う
 - TypeScript は strict・`noUncheckedIndexedAccess`・`any` 禁止。npm の規則は `(^|/)node_modules/<名前>` から書く
 - Node は 22 か 24 (jsdom の engine。25 は組み込みの localStorage が jsdom を覆い session.test が落ちる、実測)
 

@@ -90,7 +90,7 @@ describe('use__Feature__Mutation', () => {
   });
 
   it('失敗は failure に残し、一覧は読み直さない。閉じ済みの code は文として届く', async () => {
-    const api = fakeApi({ [CLOSE]: { status: 409, body: { ok: false, error: { code: 'ALREADY_CLOSED', message: 'x' } } } });
+    const api = fakeApi({ [CLOSE]: { status: 409, body: { ok: false, error: { code: 'CONFLICT', message: 'x' } } } });
     const { result, onChanged } = setup(api);
     let pending!: Promise<unknown>;
     act(() => {
@@ -101,7 +101,7 @@ describe('use__Feature__Mutation', () => {
       result.current.answer(true);
       expect(await pending).toBe('failed');
     });
-    expect(result.current.failure).toEqual({ error: { code: 'ALREADY_CLOSED', message: 'x' } });
+    expect(result.current.failure).toEqual({ error: { code: 'CONFLICT', message: 'x' } });
     expect(result.current.notice).toBeNull();
     expect(onChanged).not.toHaveBeenCalled();
   });

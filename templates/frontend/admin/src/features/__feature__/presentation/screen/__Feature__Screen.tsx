@@ -27,7 +27,7 @@ export function __Feature__Screen() {
     return <ErrorView heading="一覧を取得できません" message="通信に失敗しました。もう一度読み込んでください。" onRetry={resource.reload} />;
   }
 
-  const { items } = resource.data;
+  const { items, truncated } = resource.data;
   const visible = filterByName(items, query);
 
   return (
@@ -62,6 +62,7 @@ export function __Feature__Screen() {
         ) : (
           <s-stack gap="small-200">
             <CountLabel count={items.length} limit={LIST_LIMIT} />
+            {truncated && <s-banner tone="warning" heading={`先頭の ${LIST_LIMIT} 件だけを表示しています。絞り込みで探してください。`} />}
             <s-section padding="none" accessibilityLabel="一覧">
               <s-table>
                 <s-table-header-row>

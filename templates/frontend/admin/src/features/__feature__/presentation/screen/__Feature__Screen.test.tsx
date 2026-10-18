@@ -33,6 +33,17 @@ describe('__Feature__Screen', () => {
     expect(await screen.findByText('茅野')).toBeTruthy();
   });
 
+  it('サーバが打ち切ったときは上限の件数と打ち切りの知らせを出す', async () => {
+    renderScreen({ [GET]: { status: 200, body: { items: [OPEN], truncated: true } } });
+    expect(await findBanner('先頭の 100 件だけを表示しています。絞り込みで探してください。')).toBeTruthy();
+  });
+
+  it('打ち切られていなければ知らせを出さない', async () => {
+    renderScreen({ [GET]: { status: 200, body: { items: [OPEN], truncated: false } } });
+    await screen.findByText('茅野');
+    expect(document.querySelector('s-banner[tone="warning"]')).toBeNull();
+  });
+
   it('空なら空の案内を出す', async () => {
     renderScreen({ [GET]: { status: 200, body: { items: [], truncated: false } } });
     expect(await screen.findByText('まだ登録されていません')).toBeTruthy();
@@ -76,7 +87,7 @@ describe('__Feature__Screen', () => {
   it('閉じるの失敗は、その code の文を保存できなかった知らせに出す', async () => {
     renderScreen({
       [GET]: { status: 200, body: { items: [OPEN], truncated: false } },
-      'POST /admin/api/__feature__/a-1/close': { status: 409, body: { ok: false, error: { code: 'ALREADY_CLOSED', message: 'x' } } },
+      'POST /admin/api/__feature__/a-1/close': { status: 409, body: { ok: false, error: { code: 'CONFLICT', message: 'x' } } },
     });
     await userEvent.click(await screen.findByText('終了', { selector: 's-button' }));
     await userEvent.click(await screen.findByText('終了する'));

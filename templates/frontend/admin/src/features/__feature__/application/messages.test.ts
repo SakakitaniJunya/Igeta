@@ -10,7 +10,7 @@ describe('__feature__ messages', () => {
   });
 
   it('この feature の code はその文、知らない code と通信の失敗は保存失敗の文', () => {
-    expect(failureText({ code: 'ALREADY_CLOSED', message: 'x' })).toBe(ERROR_MESSAGES.ALREADY_CLOSED);
+    expect(failureText({ code: 'CONFLICT', message: 'x' })).toBe(ERROR_MESSAGES.CONFLICT);
     expect(failureText({ code: 'UNKNOWN', message: 'internal detail' })).toBe(SAVE_FAILED_MESSAGE);
     expect(failureText(null)).toBe(SAVE_FAILED_MESSAGE);
   });

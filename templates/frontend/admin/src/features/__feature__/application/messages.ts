@@ -5,12 +5,12 @@
 import type { __Feature__Status } from '@/features/__feature__/domain/__feature__.model';
 import type { ApiError } from '@/shared/domain/api';
 
-export const ERROR_CODES = ['NOT_FOUND', 'ALREADY_CLOSED'] as const;
+export const ERROR_CODES = ['NOT_FOUND', 'CONFLICT'] as const;
 export type __Feature__ErrorCode = (typeof ERROR_CODES)[number];
 
 export const ERROR_MESSAGES: Readonly<Record<__Feature__ErrorCode, string>> = {
   NOT_FOUND: '対象が見つかりません。一覧を読み直してください。',
-  ALREADY_CLOSED: 'すでに終了しています。一覧を読み直してください。',
+  CONFLICT: 'すでに終了しています。一覧を読み直してください。',
 };
 
 export const SAVE_FAILED_MESSAGE = '保存できませんでした。もう一度お試しください。';

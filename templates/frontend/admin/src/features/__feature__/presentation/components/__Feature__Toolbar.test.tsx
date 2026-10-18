@@ -20,6 +20,15 @@ describe('__Feature__Toolbar', () => {
     expect(onQueryChange).toHaveBeenLastCalledWith('茅');
   });
 
+  it('再描画しても確定で 1 回だけ呼ぶ', () => {
+    const { container, onQueryChange, rerender } = renderToolbar();
+    rerender(<__Feature__Toolbar query="茅" onQueryChange={onQueryChange} onAdd={() => undefined} />);
+    const field = container.querySelector('s-text-field[label="絞り込み"]') as HTMLElement & { value: string };
+    field.value = '茅野';
+    fireEvent(field, new Event('change'));
+    expect(onQueryChange.mock.calls).toEqual([['茅野']]);
+  });
+
   it('いまの絞り込みの文字を欄に出す', () => {
     const { container } = renderToolbar({ query: '茅野' });
     expect(container.querySelector('s-text-field')?.getAttribute('value')).toBe('茅野');
