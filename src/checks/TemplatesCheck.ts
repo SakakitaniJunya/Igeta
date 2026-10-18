@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
@@ -72,7 +72,7 @@ export class TemplatesCheck implements Check {
       found.push(...result);
     }
     if (workDir === undefined) {
-      if (found.length === 0) rmSync(root, { recursive: true, force: true });
+      if (found.length === 0 || readdirSync(root).length === 0) rmSync(root, { recursive: true, force: true });
       else this.#options.log(`作業 dir を残した (調べる用): ${root}`);
     }
     return found;

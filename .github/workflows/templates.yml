@@ -1,0 +1,95 @@
+name: templates
+
+# 雛形 (templates/backend・frontend) の自己検査。変種ごとに展開・登録して、型・テスト・層の規則・build を通す。
+# 動くのは雛形かその検査コードを変えた PR だけ (paths)。そのため必須チェックにはしない (報告だけ)。
+# 必須にすると、paths に当たらない PR が「待ち」で止まる。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'templates/backend/**'
+      - 'templates/frontend/**'
+      - 'src/generators/TemplateExpand*'
+      - 'src/generators/TemplateRegistration*'
+      - 'src/checks/Templates*'
+      - 'src/checks/templates*'
+      - 'src/checks/CommandRunner*'
+      - 'src/core/Naming*'
+      - 'src/cli/commands/ExpandCommand*'
+      - 'src/cli/commands/CheckTemplatesCommand*'
+      - '.github/workflows/templates.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: templates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [hono, nestjs, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # emulator は Java が要る。runner にも入っているが版を固定する
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/firebase/emulators
+          key: templates-node-${{ runner.os }}-${{ hashFiles('templates/backend/*/package-lock.json', 'templates/frontend/admin/package-lock.json') }}
+          restore-keys: templates-node-${{ runner.os }}-
+      # prepare スクリプトが走るのでここで dist/ が build される
+      - run: npm ci
+      - name: 雛形の自己検査
+        run: node dist/cli.js check-templates --variant ${{ matrix.variant }} --require-emulator
+
+  rust:
+    name: rust
+    runs-on: ubuntu-latest
+    env:
+      # check-templates の作業 dir は毎回変わるので、target はここに固定してキャッシュする
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.igeta-rust-target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      # rust-toolchain.toml の pin と同じ版を先に入れる
+      - id: pin
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' templates/backend/rust/rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ github.workspace }}/.igeta-rust-target
+            ~/.npm
+            ~/.cache/firebase/emulators
+          key: templates-rust-${{ runner.os }}-${{ hashFiles('templates/backend/rust/Cargo.lock', 'templates/backend/rust/rust-toolchain.toml') }}
+          restore-keys: templates-rust-${{ runner.os }}-
+      - run: npm ci
+      - name: 雛形の自己検査
+        run: node dist/cli.js check-templates --variant rust --require-emulator

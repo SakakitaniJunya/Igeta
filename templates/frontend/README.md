@@ -9,6 +9,8 @@
 - `templates/frontend/admin/` の中の path = `apps/<app>/frontend/admin/` の中の path。展開先を別に指定しない
 - 土台 = 印の無いファイル (`shared/`・`app/`・`main.tsx`・package.json・tsconfig・vite 設定・`.dependency-cruiser.cjs`)。Igeta に土台も置くのは、実アプリが無い Igeta が雛形だけで組み立てて検査するためで、利用 repo が最初にコピーする骨格でもある
 - 1 単位 = `src/features/__feature__/` だけ。`__Component__` の印は無い。共通の部品は `shared/presentation/ui/` に直接置く
+- 展開は `igeta expand templates/frontend/admin/src/features/__feature__ --app <app> --feature <kebab>`。展開先は path から決まり、既存は上書きしない
+- 展開したあと、`src/app/routes.ts` の目印 `// @igeta:register-import` の上に `import { <Feature>Screen } from '@/features/<feature>';`、`// @igeta:register-route` の上に `{ path: '/<feature>', screen: <Feature>Screen },` を足す。**目印は消さない**。`igeta check-templates --variant frontend` が登録後の形を型・テスト・層の規則・`vite build` まで検査する (Node は `engines` の 22 か 24 で走らせる。Node 25 は組み込みの `localStorage` が jsdom のものを隠して `session.test.ts` が落ちることを実測した)
 - 利用 repo 側の `templates/` には 1 単位 (`src/features/__feature__/`) だけ置けばよい。土台はそのアプリ自身
 - 案件固有の枠 (拠点の切替など) は雛形に置かない。feature をまたぐ合成は `app/` だけ
 
@@ -27,13 +29,14 @@
 ```text
 templates/frontend/admin/                           = apps/<app>/frontend/admin/
   package.json                                      name は admin。依存 (react・vite・Polaris の型) と scripts
+  package-lock.json                                 依存の固定。`npm ci` で再現する (検査もこれで入れる)
   tsconfig.json                                     strict・noUncheckedIndexedAccess・paths `@/*`
   vite.config.ts                                    alias `@/`・dist/app.js と app.css の固定名 (他の資産は assets/[name]-[hash])・vitest (jsdom)
   .dependency-cruiser.cjs                           規則 12 本の正本
   src/
     main.tsx                                        描画の入口 (起動の 1 行)
     app/                                            feature をまたぐ合成はここだけ
-      routes.ts                                     経路の正本。`routes` (空の表 + 例を 1 行コメント) と `matchRoute(routes, pathname)`
+      routes.ts                                     経路の正本。`routes` (空の表 + 登録の目印 `@igeta:register-import`・`-route`) と `matchRoute(routes, pathname)`
       routes.test.ts                                一致・不一致・表が空でも落ちない (表を渡して確かめる)
       App.tsx                                       Provider を積み経路を描く。`routes` を props で受ける (既定は routes.ts の表)
       App.test.tsx                                  表を渡して経路ごとの画面・不明は not-found

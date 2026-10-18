@@ -2,7 +2,7 @@
 
 > **TL;DR**: 意味は [`../hono/README.md`](../hono/README.md) と同じ。axum は `entries/` に閉じ込め、module は Rust の `mod` と `trait` (port) で 4 層に切る。形の検証は serde (`Deserialize`) を module の presentation に置き、落ちたら `VALIDATION_FAILED` + `details`。意味の検証は domain の値オブジェクト。Firestore は `firestore` crate (abdolence/firestore-rs)。`templates/backend/rust/` = `apps/<app>/backend/` の鏡。**dependency-cruiser が使えない**ので、層の向きは `tests/architecture.rs` (cargo test) が `use crate::` と外部 crate の path を読んで落とす。
 > - 木に無いファイルは雛形に無い。テストは隣: 単体は同じファイル末尾の `#[cfg(test)] mod tests`、入口と Firestore の統合テストは対象の隣の `*_test.rs` (`#[cfg(test)] mod …_test;` で取り込む)。`tests/` は `architecture.rs` だけ。例外は型だけ (port・`HttpResponse`)・`mod.rs` の再 export・`test_support/`・起動の `main.rs`
-> - 印はスネーク形で渡す (`stock_item`・`location`)。Rust の `mod` 名がケバブにできないため
+> - 印の名前はケバブで渡す (`stock-item`)。`igeta expand` が Rust では `mod` 名・識別子用にスネークへ変える (`stock_item`)。URL と collection 名の `__aggregatesPath__` だけケバブのまま
 
 ## Hono 版との対応
 
@@ -20,10 +20,20 @@
 ## 置き場の規則
 
 - 土台 = 印の無いファイル。印を持たないので `Cargo.toml` の name は `backend`、emulator の project は `demo-igeta`
-- 1 単位 = `src/entries/__entry__/` と `src/modules/__context__/`。展開したあと `pub mod <unit>;` を `src/entries/mod.rs` と `src/modules/mod.rs` に足し (場所はコメントで示してある。`lib.rs` は変えない)、`src/main.rs` の 2 か所を足す
+- 1 単位 = `src/entries/__entry__/` と `src/modules/__context__/`。展開は `igeta expand templates/backend/rust/src/modules/__context__ --app <app> --context <kebab> --aggregate <kebab>` (入口は `src/entries/__entry__` に `--entry <kebab>` も渡す)。既存は上書きしない
+- 展開したあと、目印の**上**に足す。`src/entries/mod.rs`・`src/modules/mod.rs` の `// @igeta:register-mod` に `pub mod <unit>;`、`src/main.rs` の `register-verify` (verify の実装。このアプリが作る)・`register-module` (`let <context> = backend::modules::<context>::create_module(db.clone());`)・`register-entry` (`let app = app.nest("/<前置き>", backend::entries::<entry>::routes(RoutesDeps { verify, <context> }));`)。`lib.rs` は変えない。**目印は消さない**。`igeta check-templates --variant rust` が登録後の形を `cargo build --locked` と `cargo test --locked` まで検査する (cargo が無ければ Docker `rust:1-bookworm`)
 - 入口と Firestore のテストは 1 単位の中 (`entries/__entry__/routes_test.rs`・`modules/__context__/infrastructure/firestore_repository_test.rs`・`modules/__context__/module_test.rs`) にあり、`crate::shared::test_support` を使う。**土台だけでも `cargo build` と `cargo test` が丸ごと通る** (展開前は 1 単位が無いのでそのテストも無い)。`*_test.rs` は `tests/architecture.rs` の本番の規則から外す。依存は `Cargo.lock` で固定し `--locked` で再現する
 - 入口がアプリごとに持つ物: CORS の許可元、HEAD の拒否、壊れた `%` の 404。壊れた `%` や不正な UTF-8 は serde_urlencoded が落とさず通す (実測)。クエリで落ちるのは形の検証 (`VALIDATION_FAILED`) だけ。proxy (署名)・webhook (HMAC) の入口は `__entry__` を展開して `verify.rs` を差し替える
 - 利用 repo 側の `templates/` には 1 単位 2 つだけ置けばよい
+
+## 印
+
+| 書き方 | 出力 (`stock-item` / `location`) |
+|---|---|
+| `__context__` / `__Context__` / `__contextVar__` | `stock_item` / `StockItem` / `stockItem` |
+| `__aggregate__` / `__Aggregate__` / `__aggregates__` | `location` / `Location` / `locations` (ケバブの入力でもスネークで出る。`order-line` なら `order_line`) |
+| `__aggregatesPath__` | `locations` (**ケバブのまま**。URL の経路と Firestore の collection 名。Hono / NestJS の `__aggregates__` と同じ文字列にそろえる) |
+| `__entry__` / `__Entry__` | `admin` / `Admin` |
 
 ## 木
 

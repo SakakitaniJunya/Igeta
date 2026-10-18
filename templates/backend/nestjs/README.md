@@ -23,7 +23,8 @@
 
 - 土台 = 印の無いファイル。印を持たないので `package.json` の name は `backend`、emulator の project は `demo-igeta`
 - 1 単位 = `src/entries/__entry__/` と `src/modules/__context__/`。印は Hono 版と同じ (`__context__` 系・`__aggregate__` 系・`__entry__` 系)
-- `src/main.ts` と `src/app.module.ts` は module も entry も登録しない。展開後、`app.module.ts` の `imports` に `__Entry__EntryModule.register({ verify })` を 1 行足す (verify は利用 repo が作って register に渡す)
+- 展開は `igeta expand templates/backend/nestjs/src/modules/__context__ --app <app> --context <kebab> --aggregate <kebab>` (入口は `src/entries/__entry__` に `--entry <kebab>` も渡す)。展開先は path から決まり、既存は上書きしない
+- `src/main.ts` と `src/app.module.ts` は module も entry も登録しない。展開後、`app.module.ts` の目印 `// @igeta:register-import`・`-verify`・`-entry` の**上**に、入口の import・verify・`<Entry>EntryModule.register({ verify })` を足す (verify は利用 repo が作って register に渡す。module の公開面は entry module が作るので module の登録は無い)。**目印は消さない**。`igeta check-templates --variant nestjs` が登録後の形を型・テスト・層の規則・build まで検査する
 - proxy (署名) や webhook (HMAC) の入口は、`__entry__` を展開して Guard を差し替える
 - 利用 repo 側の `templates/` には 1 単位 2 つだけ置けばよい
 
@@ -34,13 +35,14 @@
 ```text
 templates/backend/nestjs/                           = apps/<app>/backend/
   package.json                                      name は backend。@nestjs/common・core・platform-express・zod・firestore。build は tsc + tsc-alias
+  package-lock.json                                 依存の固定。`npm ci` で再現する (検査もこれで入れる)
   tsconfig.json                                     strict・noUncheckedIndexedAccess・experimentalDecorators・paths `@/*`
   tsconfig.build.json                               build 用 (spec と test-support を除く)
   vitest.config.ts                                  alias `@/`。emulator を使うファイルは順に走らせる
   .dependency-cruiser.cjs                           層の決まり 19 本の正本
   src/
     main.ts                                         起動: Nest を作り、`configureHttp` で本文の上限・CORS を設定して listen (spec 無し)
-    app.module.ts                                   ルートの Nest module。database と health を束ねる
+    app.module.ts                                   ルートの Nest module。database と health を束ねる。登録の目印 `@igeta:register-*` を 3 つ持つ
     app.module.spec.ts                              compile できる・/healthz が 200
     entries/
       http/                                         土台
