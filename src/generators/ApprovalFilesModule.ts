@@ -10,8 +10,9 @@
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { CODEOWNERS_TARGETS, codeownersProblems, missingAgentsMentions } from '../checks/AgentsEntrypointCheck.js';
+import { CODEOWNERS_TARGETS, codeownersProblems, listRepoFiles, missingAgentsMentions } from '../checks/AgentsEntrypointCheck.js';
 import { parseCodeowners } from '../core/Codeowners.js';
+import { matchesGlob } from '../gate/PathGlob.js';
 
 const AGENTS_FILE = 'AGENTS.md';
 const CODEOWNERS_FILE = '.github/CODEOWNERS';
@@ -61,6 +62,41 @@ const AGENTS_SECTIONS: string = [
 
 const AGENTS_NEW_FILE: string = ['# AGENTS.md', '', 'AI がこの repo で作業するときの入口。', '', AGENTS_SECTIONS].join('\n');
 
+/**
+ * humanPaths の glob を CODEOWNERS の書き方に写す。`dir/**` は `/dir/`、それ以外は先頭に `/` を付けて repo 直下から数える。
+ * CODEOWNERS は `[ ]` の文字集合を読まないので、写せない glob (null) は、当たるファイルがある場合だけ止める。
+ */
+export function codeownersPatternOf(glob: string): string | null {
+  if (/[[\]\\]/.test(glob)) return null;
+  if (glob.endsWith('/**')) return `/${glob.slice(0, -2)}`;
+  return `/${glob}`;
+}
+
+interface HumanLine {
+  readonly pattern: string;
+  /** glob に当たるいまあるファイル (持ち主の付いたことを確かめるため) */
+  readonly files: readonly string[];
+}
+
+/**
+ * humanPaths の glob を、CODEOWNERS の行に写す。写せない glob は、当たるファイルがあれば止める (stops)。
+ * repoFiles は、書いた後の repo のファイル (docs-migrate は移した後の場所で見る)
+ */
+function humanLines(humanPaths: readonly string[], repoFiles: readonly string[], stops: string[]): HumanLine[] {
+  if (humanPaths.length === 0) return [];
+  const lines: HumanLine[] = [];
+  for (const glob of humanPaths) {
+    const files = repoFiles.filter((file) => matchesGlob(file, glob));
+    const pattern = codeownersPatternOf(glob);
+    if (pattern === null) {
+      if (files.length > 0) stops.push(`humanPaths の ${glob} は CODEOWNERS の書き方に写せない (角括弧の文字集合)。${files.length} 件に当たる`);
+      continue;
+    }
+    lines.push({ pattern, files });
+  }
+  return lines;
+}
+
 export interface ApprovalWrite {
   /** repo 直下からの相対パス */
   readonly relPath: string;
@@ -82,11 +118,14 @@ export class ApprovalFilesModule {
     this.#root = targetRoot;
   }
 
-  /** owner は isOwnerForm を通ったもの (CODEOWNERS の行にそのまま書く) */
-  plan(owner: string): ApprovalPlan {
+  /**
+   * owner は isOwnerForm を通ったもの (CODEOWNERS の行にそのまま書く)。humanPaths (`.igeta.json`) に当たる、いまあるファイルの
+   * うち持ち主の付かないものには、その glob を CODEOWNERS の書き方に写した行を足す (docs-migrate。init は空を渡す)。
+   */
+  plan(owner: string, humanPaths: readonly string[] = [], filesAfter?: readonly string[]): ApprovalPlan {
     if (!isOwnerForm(owner)) throw new Error(`持ち主の形が違う: ${JSON.stringify(owner)}`);
     const stops: string[] = [];
-    const writes = [this.#planAgents(stops), this.#planCodeowners(owner, stops)].filter(
+    const writes = [this.#planAgents(stops), this.#planCodeowners(owner, humanPaths, filesAfter, stops)].filter(
       (write): write is ApprovalWrite => write !== null,
     );
     return stops.length > 0 ? { stops } : { writes };
@@ -105,7 +144,7 @@ export class ApprovalFilesModule {
     return { relPath: AGENTS_FILE, content: `${text}${separator}${AGENTS_SECTIONS}`, action: 'update' };
   }
 
-  #planCodeowners(owner: string, stops: string[]): ApprovalWrite | null {
+  #planCodeowners(owner: string, humanPaths: readonly string[], filesAfter: readonly string[] | undefined, stops: string[]): ApprovalWrite | null {
     const others = OTHER_CODEOWNERS_FILES.filter((file) => existsSync(join(this.#root, file)));
     for (const file of others) {
       stops.push(
@@ -116,9 +155,11 @@ export class ApprovalFilesModule {
     if (others.length > 0) return null;
 
     const lineOf = (pattern: string): string => `${pattern} ${owner}`;
+    const human = humanLines(humanPaths, filesAfter ?? listRepoFiles(this.#root), stops);
     const path = join(this.#root, CODEOWNERS_FILE);
     if (!existsSync(path)) {
-      return { relPath: CODEOWNERS_FILE, content: `${CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)).join('\n')}\n`, action: 'create' };
+      const created = [...CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)), ...human.map((item) => lineOf(item.pattern))];
+      return { relPath: CODEOWNERS_FILE, content: `${created.join('\n')}\n`, action: 'create' };
     }
     if (!statSync(path).isFile()) {
       stops.push(`${CODEOWNERS_FILE} がファイルでない`);
@@ -128,12 +169,14 @@ export class ApprovalFilesModule {
     const text = readFileSync(path, 'utf8');
     const entries = parseCodeowners(text);
     const missing = CODEOWNERS_TARGETS.filter((target) => codeownersProblems(entries, target.paths).length > 0);
-    if (missing.length === 0) return null;
+    const missingHuman = human.filter((item) => codeownersProblems(entries, item.files).length > 0);
+    if (missing.length === 0 && missingHuman.length === 0) return null;
 
-    const content = `${missing.map((target) => lineOf(target.pattern)).join('\n')}\n${text}`;
+    const prepended = [...missing.map((target) => lineOf(target.pattern)), ...missingHuman.map((item) => lineOf(item.pattern))];
+    const content = `${prepended.join('\n')}\n${text}`;
     const remaining = codeownersProblems(
       parseCodeowners(content),
-      CODEOWNERS_TARGETS.flatMap((target) => target.paths),
+      [...CODEOWNERS_TARGETS.flatMap((target) => target.paths), ...human.flatMap((item) => item.files)],
     );
     if (remaining.length > 0) {
       stops.push(

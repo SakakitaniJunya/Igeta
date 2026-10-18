@@ -531,7 +531,7 @@ describe('RoleBoundaryCheck: 旧い構成 (legacy)', () => {
     const result = run(root, igetaRootWithVersion(`${LEGACY_LAYOUT_VIOLATION_FROM_MAJOR - 1}.9.9`));
     assert.deepEqual(result.violations, []);
     assert.deepEqual(result.warnings, [LEGACY_LAYOUT_MESSAGE]);
-    assert.equal(LEGACY_LAYOUT_MESSAGE, '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)');
+    assert.equal(LEGACY_LAYOUT_MESSAGE, '旧い構成です。`igeta docs-migrate` を実行する');
   });
 
   it('検査のたびに警告を 1 件出す (同じ検査を 2 回走らせても 2 件にならない)', () => {

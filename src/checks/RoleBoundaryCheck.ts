@@ -39,7 +39,7 @@ import { matchesGlob } from '../gate/PathGlob.js';
 export const LEGACY_LAYOUT_VIOLATION_FROM_MAJOR = 1;
 
 // 移行コマンド (docs-migrate) が入るまでの文。入ったら「`igeta docs-migrate` を実行してください」に戻す (docs/design/tasks/01-v4-rollout.md の T200)
-export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)';
+export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。`igeta docs-migrate` を実行する';
 
 /**
  * ai/ の文書の見出しに置かない語 (ADR-0002 条件 11)。TBD・TODO は、他の英単語の一部 (Mastodon など) と
@@ -47,6 +47,9 @@ export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。3 フォルダの構�
  */
 const UNDECIDED_HEADING_RE = /未決|未確定|保留|要確認|宿題|(?<![A-Za-z])(?:tbd|todo)s?(?![A-Za-z])/i;
 const HEADING_RE = /^\s{0,3}#{1,6}\s+(.*?)\s*$/;
+
+/** 未決の節の違反の文の頭 (docs-migrate の完了条件は、この違反を書き直す段の作業の列へ回す)。 */
+export const UNDECIDED_HEADING_MESSAGE = 'ai/ の文書に未決の節がある';
 
 export class RoleBoundaryCheck implements Check {
   readonly name = 'role-boundary-check';
@@ -229,7 +232,7 @@ function checkUndecidedHeadings(lines: readonly string[], bodyStart: number, fil
     if (heading === undefined || !UNDECIDED_HEADING_RE.test(heading)) continue;
     violations.push({
       severity: 'violation',
-      message: `ai/ の文書に未決の節がある: 「${heading}」 (人の決めが要るものは person の「決めてほしいこと」に書き、ai はその ID を引く)`,
+      message: `${UNDECIDED_HEADING_MESSAGE}: 「${heading}」 (人の決めが要るものは person の「決めてほしいこと」に書き、ai はその ID を引く)`,
       file,
       line: i + 1,
     });
