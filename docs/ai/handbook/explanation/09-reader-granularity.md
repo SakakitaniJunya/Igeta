@@ -7,7 +7,7 @@ status: active
 canonical: false
 owners: [eng]
 created: 2026-10-01
-depends_on: [audience-layers]
+depends_on: [audience-layers, adr-0011-person-diagram-first]
 relates_to: [folder-placement, human-review-layer]
 ---
 

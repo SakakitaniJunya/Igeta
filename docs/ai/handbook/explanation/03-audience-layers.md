@@ -7,7 +7,7 @@ status: active
 canonical: true
 owners: [product, eng]
 created: 2026-09-30
-depends_on: [human-review-layer]
+depends_on: [human-review-layer, requirements]
 relates_to: [provenance-and-agreement, coverage-and-learning, context-boundaries]
 ---
 

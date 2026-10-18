@@ -9,7 +9,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-08
 depends_on: [adr-0002-role-boundary-invariants, adr-0009-kind-placement, adr-0010-value-ownership]
-relates_to: [test-person-form, test-person-diagram]
+relates_to: []
 ---
 
 # ADR-0011: 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る
@@ -21,9 +21,9 @@ relates_to: [test-person-form, test-person-diagram]
 ## 関連
 
 - **上流 (depends_on)**: ADR-0002 (条件 6) / ADR-0009 (型の検査の区分) / ADR-0010 (値の持ち主は 1 つ)
-- **下流**: [要件定義書 02](../../requirements/02-audience-directories.md) §8 / [テスト仕様 08](../../../ai/specs/shared/tests/08-person-diagram.md) /
+- **下流**: [要件定義書 02](../../requirements/02-audience-directories.md) §8 / テスト仕様 08 (ai 側) /
   `src/core/Role.ts`・`src/checks/{PersonFormCheck,MermaidCheck}.ts` / `templates/docs/person/**` の 16 本 /
-  図の記述の 2 文書 (文書体系ガイド §4・[解説 09](../../../ai/handbook/explanation/09-reader-granularity.md) §3。`TaxonomyGuideSync.test.ts` が §8 と突き合わせる)
+  図の記述の 2 文書 (文書体系ガイド §4・解説 09 (ai 側) §3。`TaxonomyGuideSync.test.ts` が §8 と突き合わせる)
 
 ## Status
 
@@ -48,7 +48,7 @@ v0.5.0 の person の雛形 19 本のうち、図があるのは 6 本。残り�
 全体の俯瞰は決定台帳の図が受け持つ) / feature-brief (2〜3 文とストーリーの表。図はまとまりの地図と業務フローが持つ)。
 
 **3. 検査は図種と位置を見る**: 許す図種の数える図 (閉じていて、図種が読めて、中身がある) が 1 枚以上あり、最初の 1 枚が
-冒頭域 (最初の表と 2 つ目の `##` の手前) にある。規則は [テスト仕様 08](../../../ai/specs/shared/tests/08-person-diagram.md)。
+冒頭域 (最初の表と 2 つ目の `##` の手前) にある。規則は テスト仕様 08 (ai 側)。
 図 1 枚が 40 行を超えたときだけ警告で、他は違反。
 
 **4. 図に書くのは名前・ID・関係**。値は行が持つ (ADR-0010)。図に値を書く例外は 2 つ: gantt・timeline の日付 (行の期間と同じ値)、
