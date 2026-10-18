@@ -203,6 +203,30 @@ describe('TemplateExpandModule: 最小の雛形', () => {
   });
 });
 
+describe('TemplateExpandModule: 追加の検査', () => {
+  it('親フォルダ名が印の形 (__work__) でも、展開先の印の残りと誤検出しない', () => {
+    const base = tmp();
+    const root = join(base, '__work__', 'app');
+    mkdirSync(root, { recursive: true });
+    const expand = new TemplateExpandModule({ targetRoot: root, igetaRoot: IGETA_ROOT });
+    const plan = expand.prepare({ templatePath: tpl('frontend', 'admin', 'src', 'features', '__feature__'), app: 'a', names: NAMES });
+    assert.deepEqual(plan.violations, []);
+    expand.execute(plan);
+    assert.ok(existsSync(join(root, 'apps/a/frontend/admin/src/features/locations/index.ts')));
+  });
+
+  it('Object.prototype のキー (__defineGetter__ など) は名前の要求にならず、残った印として報告される', () => {
+    const igeta = tmp();
+    writeTemplates(igeta, 'backend/hono/src/modules/__context__', { 'a.ts': '__defineGetter__ __context__ __constructor__' });
+    const expand = new TemplateExpandModule({ targetRoot: tmp(), igetaRoot: igeta });
+    const path = join(igeta, 'templates/backend/hono/src/modules/__context__');
+    const plan = expand.prepare({ templatePath: path, app: 'a', names: { context: 'c' } });
+    assert.deepEqual(plan.missingNames, []);
+    assert.equal(plan.violations.length, 2);
+    assert.match(plan.violations.map((v) => v.message).join('\n'), /__defineGetter__[\s\S]*__constructor__|__constructor__[\s\S]*__defineGetter__/);
+  });
+});
+
 describe('buildReplacements', () => {
   it('スネークの変種は __aggregatesPath__ だけケバブ、パスカルとキャメルは同じ', () => {
     const table = buildReplacements({ context: 'stock-item', aggregate: 'order-line' }, true);

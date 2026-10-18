@@ -1,7 +1,9 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
+import { listFiles } from '../core/FileTree.js';
+import { lowerFirst, toKebab, toPascal } from '../core/Naming.js';
 import { detectLayout } from '../core/Role.js';
 
 /**
@@ -51,20 +53,6 @@ const PLACEHOLDER_RE =
 
 type Replacements = Readonly<Record<string, string>>;
 
-const toPascal = (kebab: string): string =>
-  kebab
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-
-const toCamel = (pascal: string): string => pascal.charAt(0).toLowerCase() + pascal.slice(1);
-
-const toKebab = (pascal: string): string =>
-  pascal
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
-    .toLowerCase();
-
 const toConst = (pascal: string): string => toKebab(pascal).replace(/-/g, '_').toUpperCase();
 
 /** UTC の YYYYMMDDhhmmss */
@@ -84,17 +72,6 @@ function substitute(text: string, replacements: Replacements): string {
     }
     return value;
   });
-}
-
-function collectFiles(dir: string, base: string = dir): string[] {
-  const files: string[] = [];
-  const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
-  for (const entry of entries) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...collectFiles(full, base));
-    else files.push(relative(base, full));
-  }
-  return files;
 }
 
 export class ScaffoldModule {
@@ -166,7 +143,7 @@ export class ScaffoldModule {
       return {
         feature,
         Feature: toPascal(feature),
-        featureCamel: toCamel(toPascal(feature)),
+        featureCamel: lowerFirst(toPascal(feature)),
       };
     }
 
@@ -177,11 +154,11 @@ export class ScaffoldModule {
     return {
       context,
       Context: toPascal(context),
-      contextCamel: toCamel(toPascal(context)),
+      contextCamel: lowerFirst(toPascal(context)),
       CONTEXT: context.replace(/-/g, '_').toUpperCase(),
       aggregate: toKebab(aggregate),
       Aggregate: aggregate,
-      aggregateCamel: toCamel(aggregate),
+      aggregateCamel: lowerFirst(aggregate),
       AGGREGATE: toConst(aggregate),
       timestamp: timestamp(now),
     };
@@ -192,7 +169,7 @@ export class ScaffoldModule {
     if (!existsSync(templateDir) || !statSync(templateDir).isDirectory()) {
       throw new Error(`テンプレートが無い: ${templateDir}`);
     }
-    return collectFiles(templateDir).map((relPath) => ({
+    return listFiles(templateDir).map((relPath) => ({
       from: join(templateDir, relPath),
       to: join(destDir, substitute(relPath, replacements)),
     }));
