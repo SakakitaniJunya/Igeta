@@ -165,7 +165,7 @@ export class ApprovalFilesModule {
     const path = join(this.#root, CODEOWNERS_FILE);
     if (!existsSync(path)) {
       for (const item of unexpressible) {
-        if (item.files.length > 0) stops.push(`humanPaths の ${item.glob} は CODEOWNERS の書き方に写せない (角括弧)。${item.files.length} 件に当たり、行を足せない`);
+        if (item.files.length > 0) stops.push(`humanPaths の ${item.glob} は CODEOWNERS の書き方に写せない (角括弧・波括弧)。${item.files.length} 件に当たり、行を足せない`);
       }
       const created = `${[...CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)), ...human.map((item) => lineOf(item.pattern))].join('\n')}\n`;
       // 書いた後の行で、持ち主の付かないパスが残らないことを、update の側と同じ関数で確かめる
