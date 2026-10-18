@@ -1,0 +1,16 @@
+/docs/person/ @SakakitaniJunya
+/docs/client/ @SakakitaniJunya
+/.github/ @SakakitaniJunya
+/CODEOWNERS @SakakitaniJunya
+/docs/CODEOWNERS @SakakitaniJunya
+/.igeta.json @SakakitaniJunya
+/.igeta-version @SakakitaniJunya
+/.claude/ @SakakitaniJunya
+AGENTS.md @SakakitaniJunya
+CLAUDE.md @SakakitaniJunya
+/templates/ @SakakitaniJunya
+/src/checks/ @SakakitaniJunya
+/src/gate/ @SakakitaniJunya
+/src/core/Role.ts @SakakitaniJunya
+/src/core/IgetaConfig.ts @SakakitaniJunya
+/src/core/LineClassifier.ts @SakakitaniJunya
