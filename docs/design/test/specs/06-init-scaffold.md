@@ -3,6 +3,7 @@ id: test-init-scaffold
 title: テスト仕様 — 新しい repo の骨格 (init・雛形・手引きの突き合わせ)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft

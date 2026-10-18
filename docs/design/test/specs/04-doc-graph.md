@@ -3,6 +3,7 @@ id: test-doc-graph
 title: テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft

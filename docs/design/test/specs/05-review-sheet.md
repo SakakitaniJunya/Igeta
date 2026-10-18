@@ -3,6 +3,7 @@ id: test-review-sheet
 title: テスト仕様 — 人が読む「変わった行」の一覧 (review-sheet --diff)
 type: design
 kind: test-spec
+context: shared
 arc42: 10
 id_prefix: TST
 status: draft
