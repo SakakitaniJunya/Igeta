@@ -38,7 +38,7 @@ import { matchesGlob } from '../gate/PathGlob.js';
 /** 旧い構成を、警告から違反に上げる Igeta のメジャー版 (ADR-0005 決定 1) */
 export const LEGACY_LAYOUT_VIOLATION_FROM_MAJOR = 1;
 
-// 移行コマンド (docs-migrate) が入るまでの文。入ったら「`igeta docs-migrate` を実行してください」に戻す (docs/ai/specs/tasks/01-v4-rollout.md の T200)
+// 旧い構成の警告の文。移行コマンドの案内 (テスト仕様 04 の適用範囲の文と 1 字も違わない)
 export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。`igeta docs-migrate` を実行する';
 
 /**

@@ -39,11 +39,8 @@ const SCRIPTS: Readonly<Record<string, string>> = {
   scaffold: 'igeta scaffold',
 };
 
-/**
- * 旧い docs がある repo への案内 (I6)。移行コマンドが入る版 (0.6.0) では、「`igeta docs-migrate` を実行する」に替える。
- * 0.5.0 は、移行コマンドがまだ無い。
- */
-const MIGRATION_GUIDANCE = '旧い docs がある repo は、新しい構成にしてから使う。移行コマンド `igeta docs-migrate` は次の版で入る';
+/** 旧い docs がある repo への案内 (I6)。移行は `igeta docs-migrate` で行う */
+const MIGRATION_GUIDANCE = '旧い docs がある repo は、新しい構成にしてから使う。`igeta docs-migrate` を実行する';
 
 const DOCS_README = [
   '# ドキュメント',
