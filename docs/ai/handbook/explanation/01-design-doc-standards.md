@@ -84,9 +84,10 @@ relates_to: [docs-index]
 
 <!-- 「基本設計書はどれですか」と聞かれたときに指す先を 1 行で決めておく -->
 
-- **要件定義** = §1 導入と目標 + §2 制約 → `docs/product/01-requirements.md` (機能要件は EARS 記法)
-- **基本設計 (外部設計)** = §3 コンテキスト + §4 解決戦略 + §5 の上位 (画面 / API / テーブル) + §7 配置 → `docs/design/basic/` と `docs/architecture/01-overview.md`
-- **詳細設計 (内部設計)** = §5 の下位 (ドメインクラス図 / モジュール仕様) + §6 実行時ビュー + §8 横断概念 → `docs/design/detail/` と `docs/design/basic/04-crosscutting.md` 系
-- **テスト設計** = §10 品質要求 → `docs/design/test/`
-- **移行・運用設計** = §7 配置ビュー → `docs/design/ops/` と `docs/runbooks/`
+- **要件定義** = §1 導入と目標 + §2 制約 → `docs/person/requirements/` (`01-requirements.md`、まとまりごとの `NN-<まとまり>.md`。機能要件は EARS 記法)
+- **基本設計 (外部設計)** = §3 コンテキスト + §4 解決戦略 + §5 の上位 (画面 / API / テーブル) + §7 配置 → `docs/person/design/shared/` の固定番号の文書 (`02-solution-strategy.md` など) と、まとまりの `docs/person/design/<まとまり>/`
+- **詳細設計 (内部設計)** = §5 の下位 (ドメインクラス図 / モジュール仕様) + §6 実行時ビュー + §8 横断概念 → `docs/ai/specs/<まとまり>/` (`domain`・`modules`・`sequences` など) と `docs/ai/specs/shared/` の固定番号の文書
+- **テスト設計** = §10 品質要求 → `docs/ai/specs/shared/tests/` と、まとまりの `docs/ai/specs/<まとまり>/tests/`
+- **移行・運用設計** = §7 配置ビュー → `docs/person/design/shared/08-operations.md`・`09-migration-plan.md` と `docs/ai/handbook/runbooks/`
+- 置き場所の正本は要件定義書 02 §7 (kind → 置き場所の表)。上の対応は読み手の語彙の写像で、置き場所は kind から決まる (ADR-0009)
 - arc42 に「基本設計」「詳細設計」という区切りは無い。上の対応は**読み手の語彙に合わせるための写像**であり、章が正典
