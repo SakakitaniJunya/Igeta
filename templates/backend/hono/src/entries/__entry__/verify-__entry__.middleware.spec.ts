@@ -2,7 +2,7 @@
 
 import { Hono } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
-import { unauthorized } from '@/shared/domain/app-error.js';
+import { unauthorized, unavailable } from '@/shared/domain/app-error.js';
 import { err, ok } from '@/shared/domain/result.js';
 import { verify__Entry__, type __Entry__Env, type __Entry__Verifier } from './verify-__entry__.middleware.js';
 
@@ -31,6 +31,12 @@ describe('verify__Entry__', () => {
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ ok: false, error: { code: 'UNAUTHORIZED', message: 'bad signature' } });
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('verify が unavailable を返すと 503 UNAVAILABLE (401 にしない)', async () => {
+    const response = await appWith(async () => err(unavailable('verifier down'))).request('/probe');
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, error: { code: 'UNAVAILABLE', message: 'verifier down' } });
   });
 
   it('検証にはヘッダと URL だけを渡す (本文は渡さない)', async () => {

@@ -47,7 +47,7 @@ templates/backend/nestjs/                           = apps/<app>/backend/
         send-response.ts                            HttpResponse → express の応答
         send-response.spec.ts                       status・header・本文なし (204)
         all-exceptions.filter.ts                    想定外は 500・経路なしは 404 を apiError で返す。`configureHttp` (本文の上限 413・CORS) もここ
-        all-exceptions.filter.spec.ts               機微な値を本文に出さない・413・壊れた JSON/URL は 400 `MALFORMED_REQUEST`・CORS
+        all-exceptions.filter.spec.ts               機微な値を本文に出さない・413・壊れた JSON は 400 `MALFORMED_REQUEST`・それ以外の 400 (壊れた URL など) は `REQUEST_REJECTED`・CORS
         health.controller.ts                        GET /healthz
         health.controller.spec.ts                   200 と {ok:true}
       database/

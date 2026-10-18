@@ -4,7 +4,7 @@
 
 import { Catch, HttpException, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import type { Response } from 'express';
+import type { ErrorRequestHandler, Response } from 'express';
 import { apiError } from '@/shared/presentation/api-response.js';
 import type { HttpResponse } from '@/shared/presentation/response.js';
 import { sendResponse } from '@/entries/http/send-response.js';
@@ -26,6 +26,12 @@ function clientStatusOf(exception: unknown): number | undefined {
   return typeof status === 'number' && status >= 400 && status < 500 ? status : undefined;
 }
 
+/** body-parser の JSON 構文エラー (type: entity.parse.failed) だけを 400 MALFORMED_REQUEST の例外に変える Express エラーミドルウェア。 */
+export const jsonSyntaxErrorBridge: ErrorRequestHandler = (error: unknown, _request, _response, next) => {
+  const type = typeof error === 'object' && error !== null ? (error as { type?: unknown }).type : undefined;
+  next(type === 'entity.parse.failed' ? new ApiResponseException(apiError(400, 'MALFORMED_REQUEST', 'request body is malformed JSON')) : error);
+};
+
 export function toErrorResponse(exception: unknown): HttpResponse | undefined {
   if (exception instanceof ApiResponseException) return exception.apiResponse;
   const status = exception instanceof HttpException ? exception.getStatus() : clientStatusOf(exception);
@@ -33,8 +39,9 @@ export function toErrorResponse(exception: unknown): HttpResponse | undefined {
   if (status === undefined || status >= 500) return undefined;
   if (status === 404) return apiError(404, 'NOT_FOUND', 'route not found');
   if (status === 413) return apiError(413, 'PAYLOAD_TOO_LARGE', 'request body is too large');
-  // 本文が JSON として読めない (SyntaxError) ときと、URL の % が壊れている (URIError) ときは、Nest が 400 の例外に包む。区別できないので code は同じ MALFORMED_REQUEST にする。
-  if (status === 400) return apiError(400, 'MALFORMED_REQUEST', 'request body is malformed JSON');
+  // 400 は他の 4xx と同じ REQUEST_REJECTED (後から足した guard/pipe の BadRequestException、壊れた % の URL など)。
+  // 本文の JSON 構文エラーだけ MALFORMED_REQUEST だが、Nest は body-parser の SyntaxError を素の BadRequestException に包んで種類を失う。
+  // そのため configureHttp の jsonSyntaxErrorBridge が包まれる前に ApiResponseException へ変える。
   return apiError(status, 'REQUEST_REJECTED', 'request rejected');
 }
 
@@ -64,6 +71,7 @@ export interface HttpOptions {
 /** 入口が持つ HTTP の設定。本文の上限・失敗の形・CORS。検証は持たない (形の検証は module の presentation)。 */
 export function configureHttp(app: NestExpressApplication, options: HttpOptions): void {
   app.useBodyParser('json', { limit: options.bodyLimit });
+  app.use(jsonSyntaxErrorBridge);
   app.useGlobalFilters(new AllExceptionsFilter());
   if (options.corsOrigins !== undefined) app.enableCors({ origin: [...options.corsOrigins] });
 }

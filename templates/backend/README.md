@@ -34,7 +34,7 @@
 | 段 | 条件 | status | code |
 |---|---|---|---|
 | 入口 | 本文が上限超過 | 413 | `PAYLOAD_TOO_LARGE` |
-| 入口 | JSON の構文が壊れている | 400 | `MALFORMED_REQUEST` (NestJS は壊れた URL も同じ code。Hono は入れていない。壊れた `%` の扱いはアプリごと) |
+| 入口 | JSON の構文が壊れている | 400 | `MALFORMED_REQUEST` (本文の JSON 構文エラーだけ。NestJS の他の 400 や壊れた `%` の URL は `REQUEST_REJECTED`。Hono は壊れた `%` を入れていない。扱いはアプリごと) |
 | 入口 | その他の 4xx (405・415 など。NestJS だけが出す) | 各 status | `REQUEST_REJECTED` |
 | 形 | zod / serde の検証に落ちた | 400 | `VALIDATION_FAILED` (`details` = 項目名の配列) |
 | 意味 | kind `invalid` | 400 | `INVALID_REQUEST` |

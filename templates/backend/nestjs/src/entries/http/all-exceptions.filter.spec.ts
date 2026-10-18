@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, BadGatewayException, Inject, Logger, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, BadGatewayException, Inject, Logger, Post } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -28,6 +28,16 @@ class ThrowingController {
   @Get('api')
   api(): never {
     throw new ApiResponseException(apiError(401, 'UNAUTHORIZED', 'nope'));
+  }
+
+  @Get('bad-request')
+  badRequest(): never {
+    throw new BadRequestException(SECRET);
+  }
+
+  @Get('echo/:id')
+  byId(): string {
+    return 'ok';
   }
 
   @Post('echo')
@@ -98,7 +108,26 @@ describe('AllExceptionsFilter と configureHttp', () => {
       .set('content-type', 'application/json')
       .send('{"a":');
     expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe('MALFORMED_REQUEST');
+    expect(response.body).toEqual({ ok: false, error: { code: 'MALFORMED_REQUEST', message: 'request body is malformed JSON' } });
+  });
+
+  it('ApiResponseException の 503 は本文の形のまま返る', async () => {
+    expect(toErrorResponse(new ApiResponseException(apiError(503, 'UNAVAILABLE', 'verifier down')))).toEqual({
+      status: 503,
+      body: { ok: false, error: { code: 'UNAVAILABLE', message: 'verifier down' } },
+    });
+  });
+
+  it('JSON 構文以外の BadRequestException は 400 REQUEST_REJECTED (MALFORMED_REQUEST にしない)', async () => {
+    const response = await (await start({ bodyLimit: 1024 })).get('/t/bad-request');
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ ok: false, error: { code: 'REQUEST_REJECTED', message: 'request rejected' } });
+  });
+
+  it('壊れた % の URL は 400 REQUEST_REJECTED', async () => {
+    const response = await (await start({ bodyLimit: 1024 })).get('/t/echo/%E0%A4%A');
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ ok: false, error: { code: 'REQUEST_REJECTED', message: 'request rejected' } });
   });
 
   it('本文が上限以下なら通り、超えると 413', async () => {

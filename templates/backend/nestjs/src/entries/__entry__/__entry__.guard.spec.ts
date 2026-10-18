@@ -1,6 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { unauthorized } from '@/shared/domain/app-error.js';
+import { unauthorized, unavailable } from '@/shared/domain/app-error.js';
 import { err, ok } from '@/shared/domain/result.js';
 import { ApiResponseException } from '@/entries/http/all-exceptions.filter.js';
 import { __Entry__Guard, type __Entry__Request } from '@/entries/__entry__/__entry__.guard.js';
@@ -37,6 +37,16 @@ describe('__Entry__Guard', () => {
       body: { ok: false, error: { code: 'UNAUTHORIZED', message: 'bad token' } },
     });
     expect(request.claims).toBeUndefined();
+  });
+
+  it('verify が unavailable を返すと 503 UNAVAILABLE の例外を投げる', async () => {
+    const verify = vi.fn().mockResolvedValue(err(unavailable('verifier down')));
+    const failure = await new __Entry__Guard(verify).canActivate(contextOf(requestOf())).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiResponseException);
+    expect((failure as ApiResponseException).apiResponse).toEqual({
+      status: 503,
+      body: { ok: false, error: { code: 'UNAVAILABLE', message: 'verifier down' } },
+    });
   });
 
   it('検証にはヘッダと URL だけを渡し、本文は渡さない', async () => {

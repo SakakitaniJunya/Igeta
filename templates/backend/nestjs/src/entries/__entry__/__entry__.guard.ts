@@ -1,4 +1,5 @@
-// 入口の認証 Guard。トークン・署名の検証は VERIFIER で注入された関数に任せ、通らなければ配下の経路を呼ばずに 401 を返す。
+// 入口の認証 Guard。トークン・署名の検証は VERIFIER で注入された関数に任せ、通らなければ配下の経路を呼ばずに失敗を返す。
+// 失敗の kind は fail() で status/code に写す (unauthorized は 401、unavailable は 503 など)。message は verify の作者が決める値。
 // 通ったら、検証済みの値 (claims) を request に載せる。
 // 検証にはヘッダと URL だけを渡す。本文は読まない (ここで読むと、あとの経路が本文を読めなくなる)。
 // 本文の HMAC が要る入口 (webhook など) は、この Guard を差し替え、生の本文を一度だけ読んでから確かめる。
@@ -7,7 +8,7 @@ import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@ne
 import type { Request } from 'express';
 import type { AppError } from '@/shared/domain/app-error.js';
 import type { Result } from '@/shared/domain/result.js';
-import { apiError } from '@/shared/presentation/api-response.js';
+import { fail } from '@/shared/presentation/api-response.js';
 import { ApiResponseException } from '@/entries/http/all-exceptions.filter.js';
 
 /** 検証済みの値。必要な項目だけを持つ。 */
@@ -37,7 +38,7 @@ export class __Entry__Guard implements CanActivate {
       url: `${request.protocol}://${request.get('host') ?? ''}${request.originalUrl}`,
     });
     if (!verified.ok) {
-      throw new ApiResponseException(apiError(401, 'UNAUTHORIZED', verified.error.message));
+      throw new ApiResponseException(fail(verified.error));
     }
     request.claims = verified.value;
     return true;
