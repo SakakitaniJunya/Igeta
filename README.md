@@ -263,6 +263,15 @@ npm run docs:graph
 - `AGENTS.md` と `.github/CODEOWNERS` が既にある repo では、足りない分だけを足す (CODEOWNERS は先頭に足すので、既にある割り当ては変わらない)
 - `docs/` に既に文書がある repo では、`init` は何も書かずに止まる。旧い構成 (`docs/product`・`docs/design` など) の repo は、`igeta docs-migrate` で 3 フォルダへ移す (下の検査の表の行)。移すまで、旧い構成の検査はいままでのまま動き、警告を 1 件出す
 
+### 既存の repo を移す
+
+旧い構成 (`docs/product`・`docs/design` など) か、v3 の構成 (`docs/common/` がある) の repo は、移す段と書き直す段の 2 段で移す。両方を 1 本の PR で済ませてから merge する ([ADR-0003](docs/person/decisions/2026/0003-docs-model-migration-and-dogfooding.md))。
+
+1. **移す段 (機械)**: Igeta の版を上げ、作業ツリーを clean にしてから `npx igeta docs-migrate --owner <持ち主> --dry-run` を実行する。止める条件 (`STOP S<番号>`) が出たら、その行の文書や画像を直すか、`.igeta.json` の `nonDocPaths` に足してから、もう一度実行する。止まらなければ `npx igeta docs-migrate --owner <持ち主>` で適用する。commit はしない。
+2. **書き直す段 (人と AI)**: 適用の最後に出る `WORK` の行が、書き直す作業の一覧。`person/` の文書は人の型 (状態の列・図・量) へ書き直し、`person/` から `ai/`・`client/` への参照は外す。`ai/` の文書の未決の節は、人の決めが要るものを `person/` の「決めてほしいこと」に移す。`npx igeta docs-check` と `npm run docs:template-check` が通ったら、PR にする。
+3. **承認の取り直し**: 書き直しで由来が指す正本の行を変えたら、その由来は承認し直す。`npx igeta docs-migrate --split-report` で、取り直しが要る由来を一覧にできる (何も書かない)。
+
+適用の完了条件 (リンク・置き場所・索引・由来と合意の状態・文書の集合) が 1 つでも欠けたら、適用は終了 1 で止まり、作業ツリーを戻す手順を出す。
 版の固定は `.igeta-version` (semver 1 行)。`npx igeta check` が追従遅れを検出し、`npx igeta upgrade --to <ver>` で書き換える。
 
 ## 検査
