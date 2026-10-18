@@ -1,5 +1,5 @@
 // node --test dist/core/DecisionRows.test.js
-// テスト仕様 03 (docs/design/test/specs/03-person-form.md) §0 の定義の表: ID の形・決まりの表・決まりの行。
+// テスト仕様 03 (docs/ai/specs/shared/tests/03-person-form.md) §0 の定義の表: ID の形・決まりの表・決まりの行。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,5 +1,5 @@
 // discrepancy-add / discrepancy-report: 食い違いの記録と集計。
-// Spec: docs/explanation/05-coverage-and-learning.md §3 (記録) / §5 (集計)
+// Spec: docs/ai/handbook/explanation/05-coverage-and-learning.md §3 (記録) / §5 (集計)
 //
 // CLI 非依存のロジックだけを持つ。違反・検査不能の判定はここ、
 // 出力整形と終了コードの決定は cli/commands/DiscrepancyCommands.ts 側。

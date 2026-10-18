@@ -21,7 +21,7 @@ relates_to: [implementation-order, docs-index]
 |---|---|---|
 | 上流 | [Igeta の設計思想](https://github.com/SakakitaniJunya/Igeta/blob/main/README.md#設計思想) | — |
 | 下流 | `templates/docs/**` / 全設計書 | 全接頭辞 |
-| 参考 | [設計書テンプレが参照した外部標準](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/01-design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
+| 参考 | [設計書テンプレが参照した外部標準](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/ai/handbook/explanation/01-design-doc-standards.md) (MADR / spec-kit / EARS / Diátaxis / arc42 / C4 / OpenAPI) | — |
 
 ## 1. 3 つのフォルダ — 確定させる人で分ける
 
@@ -222,7 +222,7 @@ flowchart TB
 | `delivery-chapter` | `igeta export` が束ねる章 1 本。`deliverable.json` の `chapters` の順に束ね、本文 (`#` 見出しの次から) がそのまま PDF になる。社内 ID (`DEC-`・`REQ-` など) を本文に残すと `forbid` が見つけて export を止める。```` ```mermaid ```` は図として描画される。節を書いたら `igeta provenance-capture` で付属ファイルに由来を記録する (`04-provenance-workflow.md`) |
 | `proposal` | 背景と課題は相手の言葉で書く (こちらの都合を課題にしない)。調査結果は一次情報だけで、出典の URL と確認日を添える (「〜らしい」は書かない)。推奨案は相手の判断基準 (費用・期間・リスク) で説明する。崩れたら金額・期間が変わる前提を明示する |
 
-arc42 の章ごとの意味と外部標準は、[設計書テンプレが参照した外部標準](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/01-design-doc-standards.md) にある。
+arc42 の章ごとの意味と外部標準は、[設計書テンプレが参照した外部標準](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/ai/handbook/explanation/01-design-doc-standards.md) にある。
 
 ## 8. Igeta の手引きの置き場所
 

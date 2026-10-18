@@ -1,5 +1,5 @@
 // 人の文書 (docs/person/・docs/client/) の、型・量・人の目に見えない書き込み口の検査。
-// Spec: docs/design/test/specs/03-person-form.md の規則 P1〜P10 (ADR-0002 条件 5〜10)。`template-check` の中で動く
+// Spec: docs/ai/specs/shared/tests/03-person-form.md の規則 P1〜P10 (ADR-0002 条件 5〜10)。`template-check` の中で動く
 // (DocTemplateCheck が雛形の ID の接頭辞を渡す)。「決まりの表・決まりの行・ID の形」の定義は core/DecisionRows.ts。
 //
 // P1 新しい構成 (docs/person・ai・client のどれかがある) の repo だけで動く。旧い構成の repo では何も出さない

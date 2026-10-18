@@ -78,7 +78,7 @@ flowchart TB
 
 ## 4. 主要な設計判断 (ADR 一覧)
 
-ADR の一覧は生成索引 ([docs/adr/README.md](../../decisions/2026/README.md)) が出す。本書は §1 の「決定元 ADR」の列で引く。
+ADR の一覧は生成索引 ([docs/person/decisions/2026/README.md](../../decisions/2026/README.md)) が出す。本書は §1 の「決定元 ADR」の列で引く。
 
 ## 費用の上限
 

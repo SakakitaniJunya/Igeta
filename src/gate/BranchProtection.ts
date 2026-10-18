@@ -1,5 +1,5 @@
 // GitHub の保護の設定を gh で読み、人の承認が実際に求められる設定かを点検する (`igeta doctor`)。
-// Spec: docs/design/test/specs/01-approval-gate.md (R7)、docs/adr/0008-human-approval-scope.md 決定 2・6
+// Spec: docs/ai/specs/shared/tests/01-approval-gate.md (R7)、docs/person/decisions/2026/0008-human-approval-scope.md 決定 2・6
 //
 // 読むのは既定ブランチの保護 (従来のブランチ保護と ruleset) と、GitHub が返す CODEOWNERS の誤りだけで、次の 4 つを
 // 1 つずつ点検する: PR が必須 / CODEOWNERS の持ち主のレビューが必須 / 新しい push で承認を取り消す /

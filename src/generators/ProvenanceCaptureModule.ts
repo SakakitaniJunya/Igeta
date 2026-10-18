@@ -1,5 +1,5 @@
 // provenance-capture: 由来を作る・上書きする。
-// Spec: docs/explanation/04-provenance-and-agreement.md §4
+// Spec: docs/ai/handbook/explanation/04-provenance-and-agreement.md §4
 //
 // 上書き (同じ anchor を再度 capture) したら acceptedBy/acceptedAt を消す (未承認に戻す) —
 // 新しいエントリを丸ごと作り直すことで自然に実現する (古いエントリの承認情報を引き継がない)。

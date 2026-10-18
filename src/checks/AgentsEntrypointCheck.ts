@@ -1,6 +1,6 @@
 // AI の入口と、人の承認が要るパスを承認する人に結びつける線の検査。
-// Spec: docs/adr/0002-role-boundary-invariants.md 条件 15、ADR-0008 決定 1、
-//       docs/design/test/specs/06-init-scaffold.md の I14。
+// Spec: docs/person/decisions/2026/0002-role-boundary-invariants.md 条件 15、ADR-0008 決定 1、
+//       docs/ai/specs/shared/tests/06-init-scaffold.md の I14。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) の repo で、次を違反にする:
 //   - repo 直下の AGENTS.md が無い、または docs/person/ と docs/ai/ の両方への言及が無い

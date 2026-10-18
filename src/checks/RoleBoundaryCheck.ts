@@ -1,5 +1,5 @@
 // 確定させる人 (person / ai / client) の境界の検査。
-// Spec: docs/adr/0002-role-boundary-invariants.md の条件 2・11・15、ADR-0005 決定 1。
+// Spec: docs/person/decisions/2026/0002-role-boundary-invariants.md の条件 2・11・15、ADR-0005 決定 1。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) の repo では、次を違反にする:
 //   - kind から導く置き場所と、実際のパスが食い違う (要件定義書 02 §7 の表のどのパターンにも当たらない)。
@@ -18,7 +18,7 @@
 // docs/ 直下の生成索引 (README.md・dependencies.md) と各フォルダの README.md は対象外。
 // `.igeta.json` の nonDocPaths (ADR-0003 決定 6) は、新しい構成の repo でだけ読む。読めない・3 フォルダの配下に当たる
 // 設定は、置き場所を判定できないので、その違反だけを返す。旧い構成の repo では読まない。
-// Spec: docs/design/test/specs/04-doc-graph.md の G9。
+// Spec: docs/ai/specs/shared/tests/04-doc-graph.md の G9。
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -38,7 +38,7 @@ import { matchesGlob } from '../gate/PathGlob.js';
 /** 旧い構成を、警告から違反に上げる Igeta のメジャー版 (ADR-0005 決定 1) */
 export const LEGACY_LAYOUT_VIOLATION_FROM_MAJOR = 1;
 
-// 移行コマンド (docs-migrate) が入るまでの文。入ったら「`igeta docs-migrate` を実行してください」に戻す (docs/design/tasks/01-v4-rollout.md の T200)
+// 移行コマンド (docs-migrate) が入るまでの文。入ったら「`igeta docs-migrate` を実行してください」に戻す (docs/ai/specs/tasks/01-v4-rollout.md の T200)
 export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。`igeta docs-migrate` を実行する';
 
 /**

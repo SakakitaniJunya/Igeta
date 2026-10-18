@@ -1,5 +1,5 @@
 // node --test dist/gate/ApprovalScope.test.js
-// approval-scope の見分け。テスト仕様 01 (docs/design/test/specs/01-approval-gate.md) の表の行に 1 本ずつ対応する。
+// approval-scope の見分け。テスト仕様 01 (docs/ai/specs/shared/tests/01-approval-gate.md) の表の行に 1 本ずつ対応する。
 // 一時ディレクトリの本物の git repo で、変更を実際に commit して判定させる。
 import { readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';

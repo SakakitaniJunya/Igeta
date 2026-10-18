@@ -1,5 +1,5 @@
 // export --record-agreement: 提出した版を合意台帳に記録する。
-// Spec: docs/explanation/08-agreement-ledger.md §2
+// Spec: docs/ai/handbook/explanation/08-agreement-ledger.md §2
 //
 // 提出物のディレクトリ = manifest のあるディレクトリ。台帳はその直下に置く。
 // 由来の検査 (provenance-check / provenance-coverage) が通らない章が 1 つでもあれば記録しない
