@@ -1,5 +1,5 @@
 // 承認の割り当てのファイル (`AGENTS.md` と `.github/CODEOWNERS`) の作り手。`init` と `docs-migrate` が、同じこの作り手で置く。
-// Spec: docs/design/test/specs/06-init-scaffold.md の I5・I8・I9、docs/adr/0008-human-approval-scope.md 決定 1・5・7。
+// Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I5・I8・I9、docs/person/decisions/2026/0008-human-approval-scope.md 決定 1・5・7。
 //
 // 何も書かず、書く内容 (書いた後のファイルの全文) を返す。ほかのファイルの衝突と合わせて、書くか止めるかは呼び出し側が決める。
 //   AGENTS.md        無ければ雛形から作る。あって docs/person・docs/ai に触れていなければ、入口の節 (雛形の節) を末尾に足す
@@ -67,7 +67,8 @@ const AGENTS_NEW_FILE: string = ['# AGENTS.md', '', 'AI がこの repo で作業
  * CODEOWNERS は `[ ]` の文字集合を読まないので、写せない glob (null) は、当たるファイルがある場合だけ止める。
  */
 export function codeownersPatternOf(glob: string): string | null {
-  if (/[[\]\\]/.test(glob)) return null;
+  // 角括弧の文字集合・波括弧の展開は、CODEOWNERS (GitHub) が読まない。書けない glob として返す
+  if (/[[\]{}\\]/.test(glob)) return null;
   if (glob.endsWith('/**')) return `/${glob.slice(0, -2)}`;
   return `/${glob}`;
 }
@@ -158,14 +159,25 @@ export class ApprovalFilesModule {
     if (others.length > 0) return null;
 
     const lineOf = (pattern: string): string => `${pattern} ${owner}`;
-    const { lines: human, unexpressible } = humanLines(humanPaths, filesAfter ?? listRepoFiles(this.#root));
+    // humanPaths が無いとき (init) は、repo を走査しない
+    const repoFiles = humanPaths.length === 0 ? [] : (filesAfter ?? listRepoFiles(this.#root));
+    const { lines: human, unexpressible } = humanLines(humanPaths, repoFiles);
     const path = join(this.#root, CODEOWNERS_FILE);
     if (!existsSync(path)) {
       for (const item of unexpressible) {
         if (item.files.length > 0) stops.push(`humanPaths の ${item.glob} は CODEOWNERS の書き方に写せない (角括弧)。${item.files.length} 件に当たり、行を足せない`);
       }
-      const created = [...CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)), ...human.map((item) => lineOf(item.pattern))];
-      return { relPath: CODEOWNERS_FILE, content: `${created.join('\n')}\n`, action: 'create' };
+      const created = `${[...CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)), ...human.map((item) => lineOf(item.pattern))].join('\n')}\n`;
+      // 書いた後の行で、持ち主の付かないパスが残らないことを、update の側と同じ関数で確かめる
+      const leftover = codeownersProblems(
+        parseCodeowners(created),
+        [...CODEOWNERS_TARGETS.flatMap((target) => target.paths), ...human.flatMap((item) => item.files)],
+      );
+      if (leftover.length > 0) {
+        stops.push(`${CODEOWNERS_FILE} を作っても、持ち主の付かないパスが残る: ${leftover.slice(0, 3).join(' / ')}`);
+        return null;
+      }
+      return { relPath: CODEOWNERS_FILE, content: created, action: 'create' };
     }
     if (!statSync(path).isFile()) {
       stops.push(`${CODEOWNERS_FILE} がファイルでない`);
