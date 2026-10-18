@@ -6,9 +6,29 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync
 import { dirname, join } from 'node:path';
 import { DocGraphCheck } from '../checks/DocGraphCheck.js';
 import { rebaseFingerprints } from './FingerprintRebaseModule.js';
+import { gitOrNull } from './DocsMigrateRepo.js';
 import type { Plan } from './DocsMigratePlan.js';
 import type { Violation } from '../core/Report.js';
 import { isDrift } from './DocsMigrateVerify.js';
+
+/** シェルの 1 語にする (単一引用符で囲む) */
+const shellWord = (text: string): string => `'${text.replace(/'/g, "'\\''")}'`;
+
+/**
+ * 巻き戻しのコマンド。適用の前に作業ツリーが clean であること (S1) が前提なので、docs/ の中で未追跡のものは全部この実行が作った。
+ * docs/ は HEAD にあったものを restore し、無かったものを clean する。docs/ の外は、計画が触った path だけ (root README など)。
+ * 索引の作り直し (docs-graph) が書くファイルは計画の一覧に無いので、docs/ を丸ごと扱う。
+ */
+export function rollbackCommand(root: string, touched: readonly string[]): string {
+  const inHead = (path: string): boolean => gitOrNull(root, ['cat-file', '-e', `HEAD:${path}`]) !== null;
+  const outside = touched.filter((path) => !path.startsWith('docs/'));
+  const restore = [...(inHead('docs') ? ['docs'] : []), ...outside.filter(inHead)];
+  const clean = ['docs', ...outside.filter((path) => !inHead(path))];
+  const parts: string[] = [];
+  if (restore.length > 0) parts.push(`git -C ${shellWord(root)} restore -- ${restore.map(shellWord).join(' ')}`);
+  parts.push(`git -C ${shellWord(root)} clean -fd -- ${clean.map(shellWord).join(' ')}`);
+  return parts.join(' && ');
+}
 
 export interface ApplyResult {
   readonly ok: boolean;

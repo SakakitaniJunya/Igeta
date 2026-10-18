@@ -34,16 +34,10 @@ const maskCodeSpans = (line: string): string => line.replace(CODE_SPAN_RE, (span
 export function scanLinkHits(text: string): LinkHit[] {
   const hits: LinkHit[] = [];
   let inFence = false;
-  let inAutogen = false;
-  text.split('\n').forEach((line, index) => {
-    if (inAutogen) {
-      if (AUTOGEN_END_RE.test(line)) inAutogen = false;
-      return;
-    }
-    if (AUTOGEN_START_RE.test(line) && !AUTOGEN_END_RE.test(line)) {
-      inAutogen = true;
-      return;
-    }
+  const lines = text.split('\n');
+  const generated = autogenMask(lines);
+  lines.forEach((line, index) => {
+    if (generated[index]) return;
     if (FENCE_RE.test(line)) {
       inFence = !inFence;
       return;
@@ -71,22 +65,34 @@ export function scanLinkHits(text: string): LinkHit[] {
   return hits;
 }
 
-/** 本文の中の生成区間の行 (AUTOGEN の start から end まで、両端を含む) を除いた本文 */
-export function withoutAutogen(text: string): string {
-  const out: string[] = [];
-  let inAutogen = false;
-  for (const line of text.split('\n')) {
-    if (inAutogen) {
-      if (AUTOGEN_END_RE.test(line)) inAutogen = false;
+/**
+ * 行ごとに、生成区間 (AUTOGEN の start から end まで) の中か。区間の印の行も true にする。
+ * 生成区間の読み飛ばしは、この 1 か所だけで決める (リンクの走査・本文の比べ方・README の区間の外の文章が使う)。
+ */
+export function autogenMask(lines: readonly string[]): boolean[] {
+  const mask: boolean[] = [];
+  let inside = false;
+  for (const line of lines) {
+    if (inside) {
+      mask.push(true);
+      if (AUTOGEN_END_RE.test(line)) inside = false;
       continue;
     }
     if (AUTOGEN_START_RE.test(line) && !AUTOGEN_END_RE.test(line)) {
-      inAutogen = true;
+      inside = true;
+      mask.push(true);
       continue;
     }
-    out.push(line);
+    mask.push(false);
   }
-  return out.join('\n');
+  return mask;
+}
+
+/** 本文の中の生成区間の行を除いた本文 */
+export function withoutAutogen(text: string): string {
+  const lines = text.split('\n');
+  const generated = autogenMask(lines);
+  return lines.filter((_, index) => !generated[index]).join('\n');
 }
 
 /** リンクの 1 つを、置き換えた文字列にする (null なら残す)。hit は scanLinkHits の結果 */

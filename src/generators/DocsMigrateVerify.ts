@@ -12,7 +12,7 @@ import { FolderSizeCheck } from '../checks/FolderSizeCheck.js';
 import { ProvenanceCheck } from '../checks/ProvenanceCheck.js';
 import { AgreementCheck } from '../checks/AgreementCheck.js';
 import { RoleBoundaryCheck, UNDECIDED_HEADING_MESSAGE } from '../checks/RoleBoundaryCheck.js';
-import { readRepoDoc, filesUnder, isDirPath, nonDocMatcher, trackedFiles } from './DocsMigrateRepo.js';
+import { readRepoDoc, filesUnder, isDirPath, isIndexPath, nonDocMatcher, trackedFiles } from './DocsMigrateRepo.js';
 import { applyLinkEdits, bodyShapeForCompare, localTarget, scanLinkHits } from './DocsMigrateLinks.js';
 import type { Plan } from './DocsMigratePlan.js';
 import { loadIgetaConfig, DEFAULT_IGETA_CONFIG } from '../core/IgetaConfig.js';
@@ -38,7 +38,7 @@ export interface MeasuredState {
   readonly agreement: readonly { readonly file: string; readonly key: string }[];
 }
 
-const isIndexFile = (path: string): boolean => path.endsWith('/README.md') || path === 'docs/README.md' || path === 'docs/dependencies.md' || path === 'README.md';
+
 
 /** 違反の文から、状態を表す鍵 (「anchor: state」) を取る。詳細 (括弧の中) は除く */
 const stateKey = (message: string): string => {
@@ -69,7 +69,7 @@ export async function measure(root: string, igetaRoot: string): Promise<Measured
 
   const ids: { file: string; id: string }[] = [];
   const bodies = new Map<string, string>();
-  for (const file of movable.filter((path) => path.endsWith('.md') && !isIndexFile(path))) {
+  for (const file of movable.filter((path) => path.endsWith('.md') && !isIndexPath(path))) {
     const doc = readRepoDoc(root, file);
     if (doc.id !== null) ids.push({ file, id: doc.id });
     bodies.set(file, doc.bodyLines.join('\n'));
