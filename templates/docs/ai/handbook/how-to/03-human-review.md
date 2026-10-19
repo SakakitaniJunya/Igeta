@@ -27,7 +27,7 @@ relates_to: [map, decisions]
 設計書が 1 機能で数十ファイルになっても、人が最初に触るのはこの数枚だけでよい。
 
 1. **全体の地図 (`docs/person/design/shared/00-map.md`、5 分)** — 何を作るか・誰が使うか・主要フローを図で把握する。詳細が要るところだけ「詳細への入口」からたどる。
-2. **まとまりの地図 (`kind: context-map`、`docs/person/design/<まとまり>/00-map.md`、あれば)** — 対象のまとまり (業務コンテキスト) だけの概要・含む機能・隣接まとまりへの入口を把握する。まとまりの地図が 1 枚も無い案件ではこの手順を飛ばす ([まとまりの境界](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/07-context-boundaries.md))。
+2. **まとまりの地図 (`kind: context-map`、`docs/person/design/<まとまり>/00-map.md`、あれば)** — 対象のまとまり (業務コンテキスト) だけの概要・含む機能・隣接まとまりへの入口を把握する。まとまりの地図が 1 枚も無い案件ではこの手順を飛ばす ([まとまりの境界](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/ai/handbook/explanation/07-context-boundaries.md))。
 3. **今回の変更のレビューシート** — PR の差分を読む直前に `igeta review-sheet` を実行し、対象 REQ の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚にする (§4)。決定台帳 (`docs/person/decisions/01-decisions.md`) のうち今回関係する決定・未決はここに展開されるので、読む順には別途挟まない (台帳そのもの — 全決定と「仮置き」の一覧 — を読むのは要件を直すとき。§3)。機能ブリーフ (`kind: feature-brief`) も対象機能に関わる分だけ、必要なときにここで読む (要件文・受入条件は機能ブリーフには無く、review-sheet が要件定義書から展開する)。他ファイルの ID は `<doc-id>/PREFIX-nnn` の修飾形式で書かれているので、どのファイルの ID かが必ず分かる。
 
 45 ファイル規模で「どこが穴か」を先に知りたいときは、読む前に `igeta analyze` (§5) を走らせる。

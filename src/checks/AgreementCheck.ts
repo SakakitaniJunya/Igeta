@@ -1,5 +1,5 @@
 // agreement-check: 最後に承認された版から、何が変わったかを検査する。既定 OFF。
-// Spec: docs/explanation/08-agreement-ledger.md §4
+// Spec: docs/ai/handbook/explanation/08-agreement-ledger.md §4
 //
 // 出すもの:
 //   (a) 章の本文が承認した版から変わった            → 再合意が要る (違反)

@@ -1,4 +1,4 @@
-// 正規化 v3 のリンクの行き先の置き換え (docs/adr/0007-fingerprint-link-normalization.md 決定 1)。
+// 正規化 v3 のリンクの行き先の置き換え (docs/person/decisions/2026/0007-fingerprint-link-normalization.md 決定 1)。
 // 「どの行き先をどう直すか」の表はここに 1 か所だけ持つ。パスから id を引く表は、buildSourceIndex が
 // 持つ `SourceDoc.relPath` と `id` から作る (新しい索引は作らない)。
 //

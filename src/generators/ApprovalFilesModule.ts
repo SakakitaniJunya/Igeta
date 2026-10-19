@@ -1,5 +1,5 @@
 // 承認の割り当てのファイル (`AGENTS.md` と `.github/CODEOWNERS`) の作り手。`init` と `docs-migrate` が、同じこの作り手で置く。
-// Spec: docs/design/test/specs/06-init-scaffold.md の I5・I8・I9、docs/adr/0008-human-approval-scope.md 決定 1・5・7。
+// Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I5・I8・I9、docs/person/decisions/2026/0008-human-approval-scope.md 決定 1・5・7。
 //
 // 何も書かず、書く内容 (書いた後のファイルの全文) を返す。ほかのファイルの衝突と合わせて、書くか止めるかは呼び出し側が決める。
 //   AGENTS.md        無ければ雛形から作る。あって docs/person・docs/ai に触れていなければ、入口の節 (雛形の節) を末尾に足す
@@ -10,8 +10,9 @@
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { CODEOWNERS_TARGETS, codeownersProblems, missingAgentsMentions } from '../checks/AgentsEntrypointCheck.js';
+import { CODEOWNERS_TARGETS, codeownersProblems, listRepoFiles, missingAgentsMentions } from '../checks/AgentsEntrypointCheck.js';
 import { parseCodeowners } from '../core/Codeowners.js';
+import { matchesGlob } from '../gate/PathGlob.js';
 
 const AGENTS_FILE = 'AGENTS.md';
 const CODEOWNERS_FILE = '.github/CODEOWNERS';
@@ -61,6 +62,45 @@ const AGENTS_SECTIONS: string = [
 
 const AGENTS_NEW_FILE: string = ['# AGENTS.md', '', 'AI がこの repo で作業するときの入口。', '', AGENTS_SECTIONS].join('\n');
 
+/**
+ * humanPaths の glob を CODEOWNERS の書き方に写す。`dir/**` は `/dir/`、それ以外は先頭に `/` を付けて repo 直下から数える。
+ * CODEOWNERS は `[ ]` の文字集合を読まないので、写せない glob (null) は、当たるファイルがある場合だけ止める。
+ */
+export function codeownersPatternOf(glob: string): string | null {
+  // 角括弧の文字集合・波括弧の展開は、CODEOWNERS (GitHub) が読まない。書けない glob として返す
+  if (/[[\]{}\\]/.test(glob)) return null;
+  if (glob.endsWith('/**')) return `/${glob.slice(0, -2)}`;
+  return `/${glob}`;
+}
+
+interface HumanLine {
+  readonly pattern: string;
+  /** glob に当たるいまあるファイル (持ち主の付いたことを確かめるため) */
+  readonly files: readonly string[];
+}
+
+/** 写せない glob (角括弧)。当たるファイルが、既存の行で持ち主を得ているかを、書く側が確かめる */
+interface UnexpressibleGlob {
+  readonly glob: string;
+  readonly files: readonly string[];
+}
+
+/**
+ * humanPaths の glob を、CODEOWNERS の行に写す。写せない glob (角括弧) は、行を足せないので別に返す (呼び出し側が、
+ * 既存の行で持ち主が付いているかを確かめる)。repoFiles は、書いた後の repo のファイル (docs-migrate は移した後の場所で見る)
+ */
+function humanLines(humanPaths: readonly string[], repoFiles: readonly string[]): { lines: HumanLine[]; unexpressible: UnexpressibleGlob[] } {
+  const lines: HumanLine[] = [];
+  const unexpressible: UnexpressibleGlob[] = [];
+  for (const glob of humanPaths) {
+    const files = repoFiles.filter((file) => matchesGlob(file, glob));
+    const pattern = codeownersPatternOf(glob);
+    if (pattern === null) unexpressible.push({ glob, files });
+    else lines.push({ pattern, files });
+  }
+  return { lines, unexpressible };
+}
+
 export interface ApprovalWrite {
   /** repo 直下からの相対パス */
   readonly relPath: string;
@@ -82,11 +122,14 @@ export class ApprovalFilesModule {
     this.#root = targetRoot;
   }
 
-  /** owner は isOwnerForm を通ったもの (CODEOWNERS の行にそのまま書く) */
-  plan(owner: string): ApprovalPlan {
+  /**
+   * owner は isOwnerForm を通ったもの (CODEOWNERS の行にそのまま書く)。humanPaths (`.igeta.json`) に当たる、いまあるファイルの
+   * うち持ち主の付かないものには、その glob を CODEOWNERS の書き方に写した行を足す (docs-migrate。init は空を渡す)。
+   */
+  plan(owner: string, humanPaths: readonly string[] = [], filesAfter?: readonly string[]): ApprovalPlan {
     if (!isOwnerForm(owner)) throw new Error(`持ち主の形が違う: ${JSON.stringify(owner)}`);
     const stops: string[] = [];
-    const writes = [this.#planAgents(stops), this.#planCodeowners(owner, stops)].filter(
+    const writes = [this.#planAgents(stops), this.#planCodeowners(owner, humanPaths, filesAfter, stops)].filter(
       (write): write is ApprovalWrite => write !== null,
     );
     return stops.length > 0 ? { stops } : { writes };
@@ -105,7 +148,7 @@ export class ApprovalFilesModule {
     return { relPath: AGENTS_FILE, content: `${text}${separator}${AGENTS_SECTIONS}`, action: 'update' };
   }
 
-  #planCodeowners(owner: string, stops: string[]): ApprovalWrite | null {
+  #planCodeowners(owner: string, humanPaths: readonly string[], filesAfter: readonly string[] | undefined, stops: string[]): ApprovalWrite | null {
     const others = OTHER_CODEOWNERS_FILES.filter((file) => existsSync(join(this.#root, file)));
     for (const file of others) {
       stops.push(
@@ -116,9 +159,25 @@ export class ApprovalFilesModule {
     if (others.length > 0) return null;
 
     const lineOf = (pattern: string): string => `${pattern} ${owner}`;
+    // humanPaths が無いとき (init) は、repo を走査しない
+    const repoFiles = humanPaths.length === 0 ? [] : (filesAfter ?? listRepoFiles(this.#root));
+    const { lines: human, unexpressible } = humanLines(humanPaths, repoFiles);
     const path = join(this.#root, CODEOWNERS_FILE);
     if (!existsSync(path)) {
-      return { relPath: CODEOWNERS_FILE, content: `${CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)).join('\n')}\n`, action: 'create' };
+      for (const item of unexpressible) {
+        if (item.files.length > 0) stops.push(`humanPaths の ${item.glob} は CODEOWNERS の書き方に写せない (角括弧・波括弧)。${item.files.length} 件に当たり、行を足せない`);
+      }
+      const created = `${[...CODEOWNERS_TARGETS.map((target) => lineOf(target.pattern)), ...human.map((item) => lineOf(item.pattern))].join('\n')}\n`;
+      // 書いた後の行で、持ち主の付かないパスが残らないことを、update の側と同じ関数で確かめる
+      const leftover = codeownersProblems(
+        parseCodeowners(created),
+        [...CODEOWNERS_TARGETS.flatMap((target) => target.paths), ...human.flatMap((item) => item.files)],
+      );
+      if (leftover.length > 0) {
+        stops.push(`${CODEOWNERS_FILE} を作っても、持ち主の付かないパスが残る: ${leftover.slice(0, 3).join(' / ')}`);
+        return null;
+      }
+      return { relPath: CODEOWNERS_FILE, content: created, action: 'create' };
     }
     if (!statSync(path).isFile()) {
       stops.push(`${CODEOWNERS_FILE} がファイルでない`);
@@ -128,12 +187,19 @@ export class ApprovalFilesModule {
     const text = readFileSync(path, 'utf8');
     const entries = parseCodeowners(text);
     const missing = CODEOWNERS_TARGETS.filter((target) => codeownersProblems(entries, target.paths).length > 0);
-    if (missing.length === 0) return null;
+    const missingHuman = human.filter((item) => codeownersProblems(entries, item.files).length > 0);
+    // 角括弧の glob は、当たるファイルに既存の行で持ち主が付いていれば足りている (2 回目の実行で止めない)
+    for (const item of unexpressible) {
+      const problems = codeownersProblems(entries, item.files);
+      if (problems.length > 0) stops.push(`humanPaths の ${item.glob} は CODEOWNERS の書き方に写せず、持ち主の付かないファイルがある: ${problems.slice(0, 3).join(' / ')}。その行を 1 件ずつ書く`);
+    }
+    if (missing.length === 0 && missingHuman.length === 0) return null;
 
-    const content = `${missing.map((target) => lineOf(target.pattern)).join('\n')}\n${text}`;
+    const prepended = [...missing.map((target) => lineOf(target.pattern)), ...missingHuman.map((item) => lineOf(item.pattern))];
+    const content = `${prepended.join('\n')}\n${text}`;
     const remaining = codeownersProblems(
       parseCodeowners(content),
-      CODEOWNERS_TARGETS.flatMap((target) => target.paths),
+      [...CODEOWNERS_TARGETS.flatMap((target) => target.paths), ...human.flatMap((item) => item.files)],
     );
     if (remaining.length > 0) {
       stops.push(

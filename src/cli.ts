@@ -7,6 +7,7 @@ import { CheckTemplatesCommand } from './cli/commands/CheckTemplatesCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
 import { DoctorCommand } from './cli/commands/DoctorCommand.js';
+import { DocsMigrateCommand } from './cli/commands/DocsMigrateCommand.js';
 import { ExpandCommand } from './cli/commands/ExpandCommand.js';
 import { ExportCommand } from './cli/commands/ExportCommand.js';
 import { FingerprintRebaseCommand } from './cli/commands/FingerprintRebaseCommand.js';
@@ -34,6 +35,7 @@ import { ApprovalScopeCommand } from './gate/ApprovalScopeCommand.js';
 
 const cli = new Cli()
   .register(new InitCommand())
+  .register(new DocsMigrateCommand())
   .register(new DocsGraphCommand())
   .register(new DocsCheckCommand())
   .register(new TemplateCheckCommand())

@@ -1,5 +1,5 @@
 // 文書の中の参照を、行番号つきで拾う。新しい構成 (docs/person・ai・client) の「文書のつながり」の検査
-// (docs/design/test/specs/04-doc-graph.md の G1〜G4) が使う。
+// (docs/ai/specs/shared/tests/04-doc-graph.md の G1〜G4) が使う。
 //
 // 参照は 4 種 (G2):
 //   (a) frontmatter の参照の項目: depends_on・relates_to・supersedes・superseded_by・canonical_for (行は項目の行)。

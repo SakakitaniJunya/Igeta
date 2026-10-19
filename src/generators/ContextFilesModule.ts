@@ -1,5 +1,5 @@
 // context-files: AI が読むべきファイル一覧をパスで出す。
-// Spec: docs/explanation/07-context-boundaries.md §6
+// Spec: docs/ai/handbook/explanation/07-context-boundaries.md §6
 //
 // 自分の文書 (context: <name>) + 参照している隣の context-contract + 共有文書。
 // 共有文書が多いと短縮にならないので、既定では共有のうち map / glossary / 自分のまとまりの地図
@@ -7,7 +7,7 @@
 // この絞り込みは設計書 (07-context-boundaries.md §6) には無い実装判断 — docs に追記した。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) は、読む範囲をフォルダで決める (ADR-0004 決定 3 の 5・
-// docs/design/test/specs/04-doc-graph.md の B6): person/requirements/・person/design/shared/・person/design/<c>/・
+// docs/ai/specs/shared/tests/04-doc-graph.md の B6): person/requirements/・person/design/shared/・person/design/<c>/・
 // ai/specs/shared/・ai/specs/<c>/ と、自分のまとまりの文書が参照する隣の contract.md。--with-shared は結果を変えない。
 
 import { join } from 'node:path';

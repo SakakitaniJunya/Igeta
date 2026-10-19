@@ -14,7 +14,7 @@ relates_to: []
 # 由来 (provenance) の付け方 — 章を書く手順
 
 > **When to use**: `kind: delivery-chapter` (先方提出用の章) を書く・直すとき。由来・鮮度の仕組み全体は
-> [由来・鮮度・合意台帳の形](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/explanation/04-provenance-and-agreement.md) にある。
+> [由来・鮮度・合意台帳の形](https://github.com/SakakitaniJunya/Igeta/blob/main/docs/ai/handbook/explanation/04-provenance-and-agreement.md) にある。
 
 ## 関連
 

@@ -1,4 +1,4 @@
-// kind → 置き場所の正本のコード側 (docs/product/02-audience-directories.md §7 の表の転記。REQ-102)。
+// kind → 置き場所の正本のコード側 (docs/person/requirements/02-audience-directories.md §7 の表の転記。REQ-102)。
 // 決定の記録は ADR-0001 (確定させる人で 3 つに分ける) と ADR-0009 (置き場所の表)。
 //
 // 表を直すときは、まず §7 を直し、ここを写す。TaxonomyGuideSync.test.ts が §7 とこの表を突き合わせ、

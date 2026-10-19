@@ -1,5 +1,5 @@
 // 由来 (`from`) の修飾 ID / 節指定を正本側で解決する。
-// Spec: docs/explanation/04-provenance-and-agreement.md §4
+// Spec: docs/ai/handbook/explanation/04-provenance-and-agreement.md §4
 //
 // 形は 2 種:
 //   - `<doc-id>/PREFIX-nnn`  … 行頭セル定義 (`| PREFIX-nnn | ... |`)。判定は core/IdDefinitions.ts の

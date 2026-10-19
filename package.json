@@ -33,6 +33,7 @@
     "docs:review-sheet": "node dist/cli.js review-sheet",
     "docs:analyze": "node dist/cli.js analyze",
     "docs:fix-ids": "node dist/cli.js fix-ids",
+    "docs:migrate": "node dist/cli.js docs-migrate",
     "scaffold": "node dist/cli.js scaffold",
     "expand": "node dist/cli.js expand",
     "check:templates": "node dist/cli.js check-templates",

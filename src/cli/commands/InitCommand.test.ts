@@ -355,7 +355,7 @@ describe('init: 何も書かずに終わる (I5〜I8)', () => {
     const before = snapshot(root);
     const { code, stderr } = await runInit(root, ['--owner', OWNER]);
     assert.equal(code, ExitCode.Violation);
-    assert.ok(stderr.includes('移行コマンド `igeta docs-migrate` は次の版で入る'), stderr);
+    assert.ok(stderr.includes('`igeta docs-migrate` を実行する'), stderr);
     assert.equal(stderr.includes('CONFLICT'), false, '衝突の報告が先に出た');
     assert.deepEqual([...snapshot(root)], [...before]);
   });

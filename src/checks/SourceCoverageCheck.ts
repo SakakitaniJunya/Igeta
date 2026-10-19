@@ -1,5 +1,5 @@
 // source-coverage: 逆方向の網羅。既定 OFF。
-// Spec: docs/explanation/05-coverage-and-learning.md §2
+// Spec: docs/ai/handbook/explanation/05-coverage-and-learning.md §2
 //
 // 正本の行のうち、どの delivery-chapter の sidecar の from にも現れないものを一覧する。
 // 対象は「行頭セル定義 (`| PREFIX-nnn | ... |`) を持つ文書」全部 (05 §2 は「正本の要件行」と

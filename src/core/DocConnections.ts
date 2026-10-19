@@ -1,4 +1,4 @@
-// 新しい構成 (docs/person・ai・client) の「文書のつながり」の規則 (docs/design/test/specs/04-doc-graph.md の G1〜G4・G6)。
+// 新しい構成 (docs/person・ai・client) の「文書のつながり」の規則 (docs/ai/specs/shared/tests/04-doc-graph.md の G1〜G4・G6)。
 // 規則の本体は 04 の §0 が正本で、ここは文書の参照と決まりの行を読んで、違反と一覧の行を返す純粋な関数だけを持つ。
 // DocGraphCheck が、読んだ文書をここへ渡す。旧い構成の repo では呼ばない。
 //
