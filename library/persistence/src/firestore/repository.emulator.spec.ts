@@ -72,4 +72,17 @@ describeEmulator('FirestoreRepository の境界 (Firestore emulator)', () => {
       expect(updated?.title).toContain('b');
     });
   });
+
+  it('TST-711 work が ECONNRESET 付きの Error を投げたとき unavailable に翻訳されず、そのまま届く', async () => {
+    await withIsolatedParts([], async ({ runner }) => {
+      const fromWork = Object.assign(new Error('work の失敗'), { code: 'ECONNRESET' });
+      const failInsideWork = async (): Promise<void> => {
+        throw fromWork;
+      };
+
+      const thrown = await captureThrown(() => runner.run(failInsideWork));
+
+      expect(thrown).toBe(fromWork);
+    });
+  });
 });

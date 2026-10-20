@@ -1,6 +1,7 @@
 /** Postgres の Transaction で work を実行する runner。 */
 import type { Kysely } from 'kysely';
 import type { TransactionRunner, TransactionScope } from '../core/transaction';
+import { markWorkFailure } from '../core/work-failure';
 import { withPostgresErrors } from './errors';
 import { toGenericDatabase } from './generic-database';
 import { sqlScopes } from './transaction-scope';
@@ -21,7 +22,7 @@ export class SqlTransactionRunner<DB> implements TransactionRunner {
         .execute(async (transaction) => {
           const scope = sqlScopes.createScope(toGenericDatabase(transaction));
           try {
-            return await work(scope);
+            return await markWorkFailure(() => work(scope));
           } finally {
             sqlScopes.endScope(scope);
           }

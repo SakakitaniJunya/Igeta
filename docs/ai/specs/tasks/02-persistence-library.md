@@ -48,7 +48,7 @@ relates_to: [test-persistence-library]
 | | contract-*.ts・describe-repository-contract.ts | describeRepositoryContract・contract-types・contract-rows-basic (C1〜3)・contract-rows-list (C4〜6)・contract-rows-transaction (C7〜8)・contract-rows-malformed (C9)・contract-same-content。相対 import を `../` 1 段にするため、`contract/` の subdir は作らず `src/testing/` に平らに置く |
 | | in-memory-*.ts (3 files) | InMemoryStore (record を持つ。`putRaw` でテスト用に壊れた record を置く)・InMemoryRepository (Mapper と filterFields を受ける)・InMemoryTransactionRunner |
 | `test/` | readability.spec.ts・build.spec.ts・consumer/ | test-persistence-library/TST-604〜609 / test-persistence-library/TST-601〜603 の fixture (bundler・nodenext) |
-| `src/**` | *.spec.ts | 各 .ts の隣。表の行 (test-persistence-library/TST-101〜118・402〜406・504〜506) |
+| `src/**` | *.spec.ts | 各 .ts の隣。表の行 (test-persistence-library/TST-101〜119・402〜406・504〜506) |
 
 ## 2. package.json
 
@@ -84,7 +84,7 @@ nestjs は `modules/`・`shared/` が hono と同一ファイルなので、同�
 
 ## Phase 2 Foundational
 
-- [x] T002 [P] [test-persistence-library/TST-101〜112・116〜118] core の値: result・app-error・document-id・list-page・field-filter・scope-handle・id-generator と各 spec
+- [x] T002 [P] [test-persistence-library/TST-101〜112・116〜119] core の値: result・app-error・document-id・list-page・field-filter・scope-handle・id-generator と各 spec
 - [x] T003 [test-persistence-library/TST-113〜115] core の mapper: readStored。repository.ts・transaction.ts の型
 - [x] T004 [P] spike: Kysely で table を型引数に受ける基底の型が通るかを型検査だけで確かめた。試作は残さない。**T007 の前に終える**。
   - 結論 (U-1): 本体が `Kysely<DB>` を直接叩く素直な基底 (`SqlRepository<DB, TB extends keyof DB & string, Entity>`) は通らない (`where`・`orderBy` が TS2349、`Insertable<DB[TB]>` が TS2322)。Row を型引数にする案も、`Kysely<Database>` が `Kysely<Record<string, Row>>` に入らず不可 (Kysely は DB の型について不変)。`withTables` で cast を避ける案も不可。

@@ -1,5 +1,6 @@
 /** Firestore の失敗の翻訳。接続できない (code 14) だけを unavailable にし、他は素通しにする。 */
 import { unavailable } from '../core/app-error';
+import { translateDatabaseFailure } from '../core/work-failure';
 
 // gRPC の UNAVAILABLE
 const UNAVAILABLE_CODE = 14;
@@ -12,11 +13,7 @@ export function translateFirestoreError(error: unknown): unknown {
   return unavailable('Firestore に接続できません', { code: UNAVAILABLE_CODE });
 }
 
-/** work の失敗を翻訳して投げ直す。SDK を呼ぶ処理を包む。 */
-export async function withFirestoreErrors<Result>(work: () => Promise<Result>): Promise<Result> {
-  try {
-    return await work();
-  } catch (thrown) {
-    throw translateFirestoreError(thrown);
-  }
+/** SDK を呼ぶ処理を包む。接続の失敗は翻訳し、runner の work が投げた失敗はそのまま上げる。 */
+export function withFirestoreErrors<Result>(run: () => Promise<Result>): Promise<Result> {
+  return translateDatabaseFailure(run, translateFirestoreError);
 }

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { AppError } from '../core/app-error';
+import { captureThrown } from '../testing/capture-thrown';
 import { createMemo } from '../testing/memo-fixture';
 import { describePostgres } from '../testing/postgres-harness';
 import { createMemoTables, createPostgresMemoParts, dropMemoTables } from './postgres-memo-parts';
@@ -15,7 +16,7 @@ function createBarrier(parties: number): () => Promise<void> {
     });
 }
 
-describePostgres('SqlTransactionRunner の競合 (Postgres 16)', () => {
+describePostgres('SqlTransactionRunner (Postgres 16)', () => {
   const { db, repository, runner } = createPostgresMemoParts();
   const memoId = 'memo-conflict';
 
@@ -43,5 +44,16 @@ describePostgres('SqlTransactionRunner の競合 (Postgres 16)', () => {
     expect(rejected).toHaveLength(1);
     expect(rejected[0]?.reason).not.toBeInstanceOf(AppError);
     expect(updated?.title).toHaveLength('下書き'.length + 1);
+  });
+
+  it('TST-711 work が ECONNRESET 付きの Error を投げたとき unavailable に翻訳されず、そのまま届く', async () => {
+    const fromWork = Object.assign(new Error('work の失敗'), { code: 'ECONNRESET' });
+    const failInsideWork = async (): Promise<void> => {
+      throw fromWork;
+    };
+
+    const thrown = await captureThrown(() => runner.run(failInsideWork));
+
+    expect(thrown).toBe(fromWork);
   });
 });

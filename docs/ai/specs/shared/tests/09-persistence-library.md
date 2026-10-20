@@ -58,6 +58,7 @@ relates_to: []
 | TST-116 | 単体 | id-generator | `createUuidGenerator()` で作った generator | `next()` を 2 回呼ぶ | 生成した id は DocumentId の規則を満たし、2 回で異なる | 決定 1 |
 | TST-117 | 単体 | document-id | `__x__`・`____` | `isDocumentId` に通す | どちらも false (Firestore が予約する形。Postgres にも同じ規則を掛ける)。`__x`・`x__`・`a__b` は true | 決定 1 |
 | TST-118 | 単体 | scope-handle | `createScope(h)` で作り、`endScope` した scope | `handleOf` で取り出す | 普通の Error を投げる (終わった Transaction の scope は使えない) | 決定 1 |
+| TST-119 | 単体 | work-failure | runner の work が ECONNRESET 付きの Error を投げる。別に、DB 側の失敗を起こす | `translateDatabaseFailure` を通す | work の失敗は翻訳せずそのまま届く。DB 側の失敗は translate を通る | 決定 1 |
 | TST-201 | 契約 C1 | Repository | 保存していない id | `findById` | undefined | 決定 2 |
 | TST-202 | 契約 C2 | Repository | draft の状態の entity を保存 | 同じ id で読む | `isSameContent` が true | 決定 2 |
 | TST-203 | 契約 C3 | Repository | draft を保存し、同じ id に published を保存 | 読む | published の内容 | 決定 2 |
@@ -85,7 +86,7 @@ relates_to: []
 | TST-408 | 結合 | README | README の「Firestore の使い方」と同じ手順 (emulator) | `src/firestore/readme-example.emulator.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false | 決定 1 |
 | TST-501 | 結合 | SqlRepository | Postgres 16・`REQUIRE_POSTGRES=1` | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも) | 決定 2 |
 | TST-502 | 結合 | SqlRepository | id が `a-B`・`a1`・`a_0`・`A0` の 4 件 | `list` (limit 1000) | 並びが JS の `sort()` と同じ (`COLLATE "C"`) | 決定 2 |
-| TST-504 | 単体 | postgres/errors | SQLSTATE `08006` の Error。または接続先に届かない Node の code (`ECONNREFUSED`) | 変換する | `unavailable` の AppError | 決定 1 |
+| TST-504 | 単体 | postgres/errors | 接続の失敗の印を持つ Error (SQLSTATE `08006` `57P01` `57P03` などと、Node の `ECONNREFUSED` `ECONNRESET` `EHOSTUNREACH` `ENOTFOUND` `EAI_AGAIN` `EPIPE` `ETIMEDOUT`、code を持たない `Connection terminated unexpectedly`) | 変換する | `unavailable` の AppError | 決定 1 |
 | TST-505 | 単体 | postgres/errors | SQLSTATE `23505` の Error | 変換する | 同じ Error が返る | 決定 1 |
 | TST-506 | 結合 | migrateToLatest | 同じ migration の集まり | 2 回続けて実行する | 2 回目は何もせず成功する | 決定 1 |
 | TST-507 | 結合 | README | README の「Postgres の使い方」と同じ手順 (migration → 保存 → list) | `src/postgres/readme-example.postgres.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false | 決定 1 |
@@ -113,12 +114,13 @@ relates_to: []
 | TST-707 | 列名の不正 | Postgres の `filterFields` が存在しない列名 `no_such` を返し、`list` を呼ぶ | 普通の Error が上がる。空の一覧を黙って返さない |
 | TST-708 | Firestore の制約 | Firestore の Tx の中で、書いた後に読んで実行する。Postgres では同じ順で実行する | Firestore は SDK の拒否 (読みは書きの前、という制約) がエラーのまま素通しになる。AppError にしない。Postgres では同じ順で成功する (差の記録) |
 | TST-709 | Tx の衝突 | 同じ行を 2 つの Tx が競合して更新し、両方を実行する | Firestore は SDK が Tx を繰り返す (library は再試行を足さない)。Postgres は競合のエラーを素通しにし、部分的な書き込みは残らない |
+| TST-711 | 利用者の失敗 | `work` が ECONNRESET 付きの Error を投げる (Firestore・Postgres とも) | `unavailable` に翻訳されず、投げた Error がそのまま届く |
 
 ## 3. トレーサビリティ
 
 | 確認 | 結果 |
 |---|---|
-| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜307 / firestore = TST-401〜406・408 / postgres = TST-501〜502・504〜508 / build = TST-601〜609 |
+| ADR-0012 決定 1 (4 入口) | core = TST-101〜119 / testing = TST-211・301〜307 / firestore = TST-401〜406・408 / postgres = TST-501〜502・504〜508 / build = TST-601〜609 |
 | ADR-0012 決定 2 (契約が受入条件) | TST-201〜211 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
 | 読みやすさ (ADR-0012 の Drivers 1) | 機械で見るのは TST-604〜607 だけ。名前の選び方・1 行に 1 事は評価者が見る |
 | 機械で確かめないもの | Kysely で汎用の基底の型が通るか (spike で確かめ、結果をタスク 02 に書く) / 業務語の選び方 |

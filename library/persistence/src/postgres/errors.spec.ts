@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { AppError } from '../core/app-error';
 import { translatePostgresError } from './errors';
 
+const CONNECTION_CODES = [
+  '08006', '08001', '57P01', '57P03',
+  'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENOTFOUND', 'EAI_AGAIN', 'EPIPE', 'ETIMEDOUT',
+];
+
 describe('postgres/errors', () => {
-  it('TST-504 SQLSTATE 08006 の Error のとき unavailable の AppError に変わる', () => {
-    const connectionFailure = Object.assign(new Error('connection failure'), { code: '08006' });
+  it.each(CONNECTION_CODES)('TST-504 code %s の Error のとき unavailable の AppError に変わる', (code) => {
+    const connectionFailure = Object.assign(new Error('connection failure'), { code });
 
     const translated = translatePostgresError(connectionFailure);
 
@@ -12,10 +17,10 @@ describe('postgres/errors', () => {
     expect(translated).toMatchObject({ kind: 'unavailable' });
   });
 
-  it('TST-504 接続先に届かない Node の code (ECONNREFUSED) のときも unavailable になる', () => {
-    const refused = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
+  it('TST-504 code を持たない pg の Connection terminated unexpectedly のとき unavailable になる', () => {
+    const terminated = new Error('Connection terminated unexpectedly');
 
-    const translated = translatePostgresError(refused);
+    const translated = translatePostgresError(terminated);
 
     expect(translated).toMatchObject({ kind: 'unavailable' });
   });

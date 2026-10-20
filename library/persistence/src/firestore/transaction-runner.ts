@@ -1,6 +1,7 @@
 /** Firestore の Transaction で work を実行する runner。 */
 import type { Firestore } from '@google-cloud/firestore';
 import type { TransactionRunner, TransactionScope } from '../core/transaction';
+import { markWorkFailure } from '../core/work-failure';
 import { withFirestoreErrors } from './errors';
 import { firestoreScopes } from './transaction-scope';
 
@@ -17,7 +18,7 @@ export class FirestoreTransactionRunner implements TransactionRunner {
       this.db.runTransaction(async (transaction) => {
         const scope = firestoreScopes.createScope(transaction);
         try {
-          return await work(scope);
+          return await markWorkFailure(() => work(scope));
         } finally {
           firestoreScopes.endScope(scope);
         }
