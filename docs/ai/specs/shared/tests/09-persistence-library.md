@@ -63,7 +63,7 @@ relates_to: []
 | TST-207 | 契約 C7 | TransactionRunner | Tx の中で保存してから throw する | `run` を呼ぶ | reject (boom)。後で読むと undefined | 決定 2 |
 | TST-208 | 契約 C8 | TransactionRunner | first を保存済み | Tx の中で読み、second を保存する | Tx の中で読めた。Tx の外で読むと second | 決定 2 |
 | TST-209 | 契約 C9 | Repository | 不変条件を外した保存データ 3 種 (名前が長すぎる・名前が文字列でない・状態が不正) | `findById` と `list` を呼ぶ | 両方とも `unprocessable` で detail が `{ id }` | 決定 2 |
-| TST-301 | 単体 | InMemory | 契約 C1〜C9 を InMemory で通す | `describeRepositoryContract` を実行 | C1〜C8 が通る。C9 は表から外れ、題名に「表から外した」が出る | 決定 2 |
+| TST-301 | 単体 | InMemory | Mapper と filterFields を渡した InMemoryRepository。壊れた record は `putRaw` で生で置く | 契約 C1〜C9 を実行 | 9 行が通る (C9 は 3 ケースとも)。`putRaw` は Firestore・Postgres の harness と同じ形で壊れた record を置く | 決定 2 |
 | TST-401 | 結合 | FirestoreRepository | emulator あり・`REQUIRE_EMULATOR=1` | 契約 C1〜C9 を実行 | 9 行が通る (C9 は 3 ケースとも) | 決定 2 |
 | TST-402 | 単体 | firestore/errors | code 14 (UNAVAILABLE) の Error | 変換する | `unavailable` の AppError | 決定 1 |
 | TST-403 | 単体 | firestore/errors | code 14 以外の Error | 変換する | 同じ Error が返る (AppError にしない) | 決定 1 |
@@ -97,6 +97,9 @@ relates_to: []
 | TST-704 | 上限の境界 | limit ちょうどの件数だけ保存 | `list` が truncated false を返す (off-by-one を見る) |
 | TST-705 | 社内情報 | library の文書に `C-` + 3 桁の制約 ID を書く | `secret-scan --internal-ids` が落ちる |
 | TST-706 | 接続断 | Postgres が止まっている | `findById` は `unavailable`。`unprocessable` や素の Error にならない |
+| TST-707 | 列名の不正 | Postgres の `filterFields` が存在しない列名 `no_such` を返し、`list` を呼ぶ | 普通の Error が上がる。空の一覧を黙って返さない |
+| TST-708 | Firestore の制約 | Firestore の Tx の中で、書いた後に読んで実行する。Postgres では同じ順で実行する | Firestore は SDK の拒否 (読みは書きの前、という制約) がエラーのまま素通しになる。AppError にしない。Postgres では同じ順で成功する (差の記録) |
+| TST-709 | Tx の衝突 | 同じ行を 2 つの Tx が競合して更新し、両方を実行する | Firestore は SDK が Tx を繰り返す (library は再試行を足さない)。Postgres は競合のエラーを素通しにし、部分的な書き込みは残らない |
 
 ## 3. トレーサビリティ
 
