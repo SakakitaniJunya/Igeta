@@ -4,27 +4,21 @@ import type { ContractSubject } from './contract-types';
 import { describeRepositoryContract } from './describe-repository-contract';
 import { createInMemoryParts } from './in-memory-memo-parts';
 import type { InMemoryParts } from './in-memory-memo-parts';
-import { createMemo, createMemoFilter, isSameMemoContent } from './memo-fixture';
+import {
+  createMemo,
+  createMemoFilter,
+  isSameMemoContent,
+  MALFORMED_MEMO_RECORDS,
+} from './memo-fixture';
 import type { Memo, MemoFilter, MemoRecord } from './memo-fixture';
 
 const TITLE_TOO_LONG = 'あ'.repeat(41);
-
-// 保存先から来た「型に合わない生の値」を再現する。JSON.parse は any を返すので、型付きの関数に閉じ込める
-function parseRecord(json: string): MemoRecord {
-  return JSON.parse(json);
-}
-
-const MALFORMED_RECORDS: Readonly<Record<string, MemoRecord>> = {
-  'title-too-long': { title: TITLE_TOO_LONG, state: 'draft' },
-  'title-not-string': parseRecord('{"title":42,"state":"draft"}'),
-  'state-invalid': { title: '下書き', state: 'archived' },
-};
 
 function createInMemoryMemoSubject(parts: InMemoryParts): ContractSubject<Memo, MemoFilter> {
   const { store, repository, runner } = parts;
   const idGenerator = createUuidGenerator();
   const plantMalformed = async (kind: string, id: string): Promise<void> => {
-    const record = MALFORMED_RECORDS[kind];
+    const record = MALFORMED_MEMO_RECORDS[kind];
     if (record === undefined) throw new Error(`知らない種類: ${kind}`);
 
     await store.putRaw(id, record);
@@ -38,7 +32,7 @@ describe('InMemory の契約', () => {
   describeRepositoryContract({
     name: 'memos (InMemory)',
     setup: () => createInMemoryMemoSubject(contractParts),
-    malformedKinds: Object.keys(MALFORMED_RECORDS),
+    malformedKinds: Object.keys(MALFORMED_MEMO_RECORDS),
     fixtures: { createEntity: createMemo, filterByState: createMemoFilter, isSameContent: isSameMemoContent },
   });
 

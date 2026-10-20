@@ -61,3 +61,17 @@ export function createMemoFilter(state: ContractState): MemoFilter {
 export function isSameMemoContent(left: Memo, right: Memo): boolean {
   return left.title === right.title && left.state === right.state;
 }
+
+// 保存先から来た「型に合わない生の値」を再現する。JSON.parse は any を返すので、型付きの関数に閉じ込める
+function parseRecord(json: string): MemoRecord {
+  return JSON.parse(json);
+}
+
+const TITLE_TOO_LONG = 'あ'.repeat(MAX_TITLE_LENGTH + 1);
+
+/** 契約 C9 が使う、不変条件を外した保存データ。キーが malformedKinds になる。 */
+export const MALFORMED_MEMO_RECORDS: Readonly<Record<string, MemoRecord>> = {
+  'title-too-long': { title: TITLE_TOO_LONG, state: 'draft' },
+  'title-not-string': parseRecord('{"title":42,"state":"draft"}'),
+  'state-invalid': { title: '下書き', state: 'archived' },
+};

@@ -11,3 +11,5 @@ export { InMemoryRepository } from './in-memory-repository';
 export type { InMemoryRepositoryOptions } from './in-memory-repository';
 export { InMemoryStore } from './in-memory-store';
 export { InMemoryTransactionRunner } from './in-memory-transaction-runner';
+export { describeEmulator, EMULATOR_PROJECT } from './emulator';
+export { describePostgres } from './postgres-harness';
