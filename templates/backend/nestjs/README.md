@@ -88,11 +88,13 @@ templates/backend/nestjs/                           = apps/<app>/backend/
           ports/__aggregate__.repository.port.ts    保存の口 (型だけ)
         infrastructure/
           firestore-__aggregate__.repository.ts     Firestore の読み書き
-          firestore-__aggregate__.repository.emulator.spec.ts  保存・絞り込み・読み戻し
+          firestore-__aggregate__.repository.emulator.spec.ts  契約テストを Firestore で呼ぶ + doc id の行
           firestore-scope.ts                        TransactionScope ⇔ Transaction の変換
           firestore-scope.spec.ts                   往復で同じ物
           firestore-transaction-runner.ts           1 usecase = 1 Tx
           firestore-transaction-runner.emulator.spec.ts  失敗で巻き戻る
+        test-support/
+          __aggregate__-repository.contract.ts      repository の契約テスト (表 C1〜C9)。実装ごとに呼ぶ
     shared/                                         Hono 版とファイル単位で同一 (`diff -r` で差分 0)
       domain/
         result.ts                                   Result と ok/err
@@ -132,7 +134,8 @@ Hono 版の 18 本と同じ意味で、違いは次の 3 点。
 |---|---|
 | domain・shared/domain | 偽物なしで直接 |
 | usecase | port をメモリ上の偽物に |
-| repository・Tx runner・公開面 | Firestore エミュレータ (`test:emulator` のときだけ) |
+| repository・Tx runner | 契約テスト (`test-support/__aggregate__-repository.contract.ts`、表 C1〜C9) を実装ごとに呼ぶ。Firestore エミュレータ (`test:emulator` のときだけ) |
+| 公開面 | 本物の部品を組んでエミュレータ越しに (`test:emulator` のときだけ) |
 | module の controller・schemas | usecase を偽物にし、状態と本文の対応だけ |
 | entries の controller・Guard | `Test.createTestingModule` で組み、supertest で叩く。verify と module の公開面は偽物 |
 
