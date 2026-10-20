@@ -61,7 +61,7 @@ jobs:
           echo "PG_URL=postgres://postgres:${PG_PASSWORD}@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
           docker run -d --name library-pg -e POSTGRES_PASSWORD="$PG_PASSWORD" -p 5432:5432 postgres:16
           for attempt in $(seq 1 30); do
-            docker exec library-pg pg_isready -U postgres && exit 0
+            docker exec library-pg pg_isready -h 127.0.0.1 -p 5432 -U postgres && exit 0
             sleep 2
           done
           exit 1

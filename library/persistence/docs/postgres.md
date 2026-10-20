@@ -31,4 +31,4 @@ docker run -d --name pg-test -e POSTGRES_PASSWORD="$PGPASSWORD" -p 5433:5432 pos
 PG_URL="postgres://postgres:$PGPASSWORD@127.0.0.1:5433/postgres" npm run test:postgres
 ```
 
-パスワードはテスト専用の値を環境変数で渡す。CI の `postgres` job は services で `postgres:16` を立てて同じ環境変数を渡す。
+パスワードはテスト専用の値を環境変数で渡す。CI の `postgres` job は `docker run` で `postgres:16` を立て、job ごとの使い捨てのパスワードで同じ環境変数を渡す。
