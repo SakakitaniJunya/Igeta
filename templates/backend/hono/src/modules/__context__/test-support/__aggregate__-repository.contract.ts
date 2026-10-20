@@ -1,6 +1,6 @@
 // repository port の契約テスト。どの DB 実装 (Firestore・RDB …) も、この表の行を同じように通ること。
 // 実装ごとの *.emulator.spec.ts などが describe__Aggregate__RepositoryContract を呼ぶ。行の番号 C1〜C9 は README の表と同じ。
-// 共有の DB で他のテストと並走するので、保存する id には先頭に "0" を付けて一覧の先頭に寄せ、結果は自分の id だけを見る。
+// 共有の DB で他のテストと並走するので、一覧は残骸が混ざっても通る見方をする (自分の id を含む・全部が条件に合う、など)。
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { __Aggregate__, type __Aggregate__Status } from '@/modules/__context__/domain/__aggregate__.js';
@@ -10,7 +10,7 @@ import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
 
 export type MalformedKind = 'long-name' | 'bad-status' | 'name-not-string';
 
-/** 実装が契約テストへ渡す物。 */
+/** 実装が契約テストへ渡す物。非同期の初期化が要る実装は、自分の spec の beforeAll で作って closure で渡す。 */
 export interface ContractSetup {
   repository: __Aggregate__Repository;
   runner: TransactionRunner;
@@ -24,9 +24,9 @@ export interface ContractSetup {
 
 const MALFORMED_KINDS: ReadonlyArray<MalformedKind> = ['long-name', 'bad-status', 'name-not-string'];
 
-export function describe__Aggregate__RepositoryContract(name: string, setup: () => Promise<ContractSetup>): void {
-  describe(name, async () => {
-    const { repository, runner, newId, plantMalformed, cleanup } = await setup();
+export function describe__Aggregate__RepositoryContract(name: string, setup: () => ContractSetup): void {
+  describe(name, () => {
+    const { repository, runner, newId, plantMalformed, cleanup } = setup();
 
     afterEach(async () => {
       await cleanup?.();
@@ -34,8 +34,8 @@ export function describe__Aggregate__RepositoryContract(name: string, setup: () 
 
     const make = (id: string, status: __Aggregate__Status = 'open'): __Aggregate__ =>
       new __Aggregate__({ id, name: __Aggregate__Name.create('名前'), status });
-    // 先頭 "0" で、他のテストが残した id より先に一覧へ出る。
-    const sortedId = (): string => `0${newId()}`;
+    // C9 専用。壊れた doc が list の読む範囲に入るよう、先頭 "0" で他の id より先に並べる。
+    const frontId = (): string => `0${newId()}`;
     const save = (entity: __Aggregate__): Promise<void> => runner.run((scope) => repository.save(entity, scope));
 
     it('C1 無い id は undefined', async () => {
@@ -62,22 +62,22 @@ export function describe__Aggregate__RepositoryContract(name: string, setup: () 
     });
 
     it('C4 一覧は id の昇順', async () => {
-      const ids = [sortedId(), sortedId(), sortedId()];
+      const ids = [newId(), newId(), newId()];
       for (const id of ids) await save(make(id));
 
-      const listed = (await repository.list(undefined, 10)).map((row) => row.id);
+      const listed = (await repository.list(undefined, 1000)).map((row) => row.id);
 
       expect(listed).toEqual([...listed].sort());
       expect(listed).toEqual(expect.arrayContaining(ids));
     });
 
     it('C5 一覧は status で絞れる', async () => {
-      const [open1, open2, closed1] = [sortedId(), sortedId(), sortedId()];
+      const [open1, open2, closed1] = [newId(), newId(), newId()];
       await save(make(open1));
       await save(make(open2));
       await save(make(closed1, 'closed'));
 
-      const rows = await repository.list('closed', 10);
+      const rows = await repository.list('closed', 1000);
 
       expect(rows.every((row) => row.status === 'closed')).toBe(true);
       const ids = rows.map((row) => row.id);
@@ -88,7 +88,7 @@ export function describe__Aggregate__RepositoryContract(name: string, setup: () 
 
     it('C6 一覧は limit 件で打ち切る', async () => {
       const limit = 3;
-      for (let i = 0; i <= limit; i += 1) await save(make(sortedId()));
+      for (let i = 0; i <= limit; i += 1) await save(make(newId()));
 
       expect(await repository.list(undefined, limit)).toHaveLength(limit);
     });
@@ -125,7 +125,7 @@ export function describe__Aggregate__RepositoryContract(name: string, setup: () 
     } else {
       for (const kind of MALFORMED_KINDS) {
         it(`C9 保存済みデータが不変条件を外れていると、findById と list は doc id つきの unprocessable (${kind})`, async () => {
-          const id = sortedId();
+          const id = frontId();
           await plantMalformed(id, kind);
           // 壊れたデータは cleanup (各行の後に必ず走る) が消す。共有の DB で他のテストの list が当たらないように。
           await expect(repository.findById(id)).rejects.toMatchObject({ kind: 'unprocessable', detail: { id } });

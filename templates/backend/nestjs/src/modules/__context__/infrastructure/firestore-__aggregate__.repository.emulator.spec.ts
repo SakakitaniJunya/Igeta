@@ -18,7 +18,7 @@ describeEmulator('Firestore__Aggregate__Repository (Firestore エミュレータ
   const collection = db.collection('__aggregates__');
   const planted: string[] = [];
 
-  describe__Aggregate__RepositoryContract('Firestore', async () => ({
+  describe__Aggregate__RepositoryContract('Firestore', () => ({
     repository,
     runner,
     newId: () => uniqueId(),
