@@ -94,8 +94,8 @@ nestjs は `modules/`・`shared/` が hono と同一ファイルなので、同�
 
 ## Phase 3+ User Story
 
-- [x] T006 [test-persistence-library/TST-401〜406・708] firestore 入口と emulator helper。client.ts は shared/infrastructure/firestore.ts の挙動 (emulator で preferRest を外す) をそのまま持つ。Firestore で契約を通す。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
-- [ ] T007 [test-persistence-library/TST-501〜502・504〜506・701〜707・709] postgres 入口・harness・migrate。Postgres 16 で契約を通す (T004 の後)。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
+- [x] T006 [test-persistence-library/TST-401〜406・408・708] firestore 入口と emulator helper。client.ts は shared/infrastructure/firestore.ts の挙動 (emulator で preferRest を外す) をそのまま持つ。Firestore で契約を通す。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
+- [x] T007 [test-persistence-library/TST-501〜502・504〜507・701〜707・709] postgres 入口・harness・migrate。Postgres 16 で契約を通す (T004 の後)。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
 - [ ] T008 [test-persistence-library/TST-601〜609] build・consumer fixture・読みやすさの検査・npm pack の確認。tsup の d.ts は共有型を最初の入口 (`firestore/index.d.ts`) に寄せ、cjs は入口ごとに class を持つため、入口をまたぐ型と class (`AppError` の `instanceof`) の同一性を確かめる
 
 ## Polish

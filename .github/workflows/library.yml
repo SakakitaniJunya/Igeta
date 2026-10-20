@@ -1,0 +1,72 @@
+name: library
+
+# library/persistence の結合テスト。Firestore emulator と Postgres 16 で契約 C1〜C10 を通す。
+# 動くのは library を変えた PR だけ (paths)。そのため必須チェックにはしない (報告だけ)。
+# 必須にすると、paths に当たらない PR が「待ち」で止まる。単体テスト・lint は ci.yml の check job が全 PR で走らせる。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'library/**'
+      - '.github/workflows/library.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: library-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  firestore:
+    name: firestore
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # emulator は Java が要る
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: library-firestore-${{ runner.os }}
+      - run: npm install --global firebase-tools@15.14.0
+      - run: npm ci --prefix library/eslint-config
+      - run: npm ci --prefix library/persistence
+      - name: Firestore emulator で契約を通す
+        run: npm run test:firestore --prefix library/persistence
+
+  postgres:
+    name: postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # パスワードは job ごとに作る使い捨ての値。コードにも secrets にも置かない
+      - name: Postgres 16 を起動
+        run: |
+          PG_PASSWORD="$(openssl rand -hex 16)"
+          echo "::add-mask::$PG_PASSWORD"
+          echo "PG_URL=postgres://postgres:${PG_PASSWORD}@127.0.0.1:5432/postgres" >> "$GITHUB_ENV"
+          docker run -d --name library-pg -e POSTGRES_PASSWORD="$PG_PASSWORD" -p 5432:5432 postgres:16
+          for attempt in $(seq 1 30); do
+            docker exec library-pg pg_isready -U postgres && exit 0
+            sleep 2
+          done
+          exit 1
+      - run: npm ci --prefix library/eslint-config
+      - run: npm ci --prefix library/persistence
+      - name: Postgres 16 で契約を通す
+        run: npm run test:postgres --prefix library/persistence
