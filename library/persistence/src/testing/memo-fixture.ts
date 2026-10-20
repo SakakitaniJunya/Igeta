@@ -67,7 +67,8 @@ function parseRecord(json: string): MemoRecord {
   return JSON.parse(json);
 }
 
-const TITLE_TOO_LONG = 'あ'.repeat(MAX_TITLE_LENGTH + 1);
+/** 長さの上限を 1 字超える title。 */
+export const TITLE_TOO_LONG = 'あ'.repeat(MAX_TITLE_LENGTH + 1);
 
 /** 契約 C9 が使う、不変条件を外した保存データ。キーが malformedKinds になる。 */
 export const MALFORMED_MEMO_RECORDS: Readonly<Record<string, MemoRecord>> = {

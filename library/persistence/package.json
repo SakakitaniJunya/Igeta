@@ -65,7 +65,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint --max-warnings 0 .",
-    "test:firestore": "REQUIRE_EMULATOR=1 firebase emulators:exec --only firestore --project demo-igeta \"vitest run src/firestore\""
+    "test:firestore": "REQUIRE_EMULATOR=1 firebase emulators:exec --only firestore --project demo-igeta \"vitest run src/firestore\"",
+    "test:postgres": "REQUIRE_POSTGRES=1 vitest run src/postgres"
   },
   "peerDependencies": {
     "@google-cloud/firestore": "^7.0.0",
