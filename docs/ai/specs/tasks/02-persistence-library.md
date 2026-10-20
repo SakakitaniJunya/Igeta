@@ -90,7 +90,7 @@ nestjs は `modules/`・`shared/` が hono と同一ファイルなので、同�
   - 結論 (U-1): 本体が `Kysely<DB>` を直接叩く素直な基底 (`SqlRepository<DB, TB extends keyof DB & string, Entity>`) は通らない (`where`・`orderBy` が TS2349、`Insertable<DB[TB]>` が TS2322)。Row を型引数にする案も、`Kysely<Database>` が `Kysely<Record<string, Row>>` に入らず不可 (Kysely は DB の型について不変)。`withTables` で cast を避ける案も不可。
   - 通る形 (V4): 公開の型は `SqlRepository<DB, TB extends keyof DB & string, Entity>` で、`db: Kysely<DB>`・`table: TB`・`mapper: Mapper<Entity, Omit<Selectable<DB[TB]>, 'id'>>`。内部は行を `{ id: string }` とする `Kysely<Record<string, { id: string }>>` で持つ。境界の cast は `db as unknown as Kysely<GenericDb>` の 1 か所で、理由付きの eslint-disable (TS-02 の例外)。他の table の Mapper や存在しない table 名は型で落ちる。読み出した行を Mapper の入力へ渡す cast は、`fromRecord` が実行時に検証する前提で 1 関数に集める。
   - 利用側: `createPostgres<Database>()` は利用者が Database 型を渡す generic にする (`Kysely<unknown>` では table 名が `never` になる)。Transaction を直接渡すと型引数の推論が崩れるが、`SqlTransactionRunner` が scope で受けるので利用者は直接渡さない。ADR-0012 の再検討トリガは発動しない。
-- [x] T005 [test-persistence-library/TST-201〜211・301〜305] testing: 契約 (contract-*) と InMemory 3 ファイル。InMemory は Mapper と filterFields を受け、`putRaw` で壊れた record を置いて C1〜C10 の 10 行を通す
+- [x] T005 [test-persistence-library/TST-201〜211・301〜306] testing: 契約 (contract-*) と InMemory 3 ファイル。InMemory は Mapper と filterFields を受け、`putRaw` で壊れた record を置いて C1〜C10 の 10 行を通す
 
 ## Phase 3+ User Story
 

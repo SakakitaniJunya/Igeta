@@ -59,21 +59,22 @@ relates_to: []
 | TST-117 | 単体 | document-id | `__x__`・`____` | `isDocumentId` に通す | どちらも false (Firestore が予約する形。Postgres にも同じ規則を掛ける)。`__x`・`x__`・`a__b` は true | 決定 1 |
 | TST-118 | 単体 | scope-handle | `createScope(h)` で作り、`endScope` した scope | `handleOf` で取り出す | 普通の Error を投げる (終わった Transaction の scope は使えない) | 決定 1 |
 | TST-201 | 契約 C1 | Repository | 保存していない id | `findById` | undefined | 決定 2 |
-| TST-202 | 契約 C2 | Repository | first の状態の entity を保存 | 同じ id で読む | `isSameContent` が true | 決定 2 |
-| TST-203 | 契約 C3 | Repository | first を保存し、同じ id に second を保存 | 読む | second の内容 | 決定 2 |
+| TST-202 | 契約 C2 | Repository | draft の状態の entity を保存 | 同じ id で読む | `isSameContent` が true | 決定 2 |
+| TST-203 | 契約 C3 | Repository | draft を保存し、同じ id に published を保存 | 読む | published の内容 | 決定 2 |
 | TST-204 | 契約 C4 | Repository | ASCII の id を 3 件保存 | `list` (limit 1000) | id の並びが昇順で、3 件が含まれる | 決定 2 |
-| TST-205 | 契約 C5 | Repository | first を 2 件、second を 1 件保存 | second の filter で `list` | 返る行はすべて second。second の 1 件を含み、first は含まない | 決定 2 |
+| TST-205 | 契約 C5 | Repository | draft を 2 件、published を 1 件保存 | published の filter で `list` | 返る行はすべて published。published の 1 件を含み、draft は含まない | 決定 2 |
 | TST-206 | 契約 C6 | Repository | limit + 1 件 (limit は 3) を保存 | `list` (limit 3) | items 3 件・isTruncated true | 決定 2 |
 | TST-207 | 契約 C7 | TransactionRunner | Tx の中で保存してから throw する | `run` を呼ぶ | reject (boom)。後で読むと undefined | 決定 2 |
-| TST-208 | 契約 C8 | TransactionRunner | first を保存済み | Tx の中で読み、second を保存する | Tx の中で読めた。Tx の外で読むと second | 決定 2 |
+| TST-208 | 契約 C8 | TransactionRunner | draft を保存済み | Tx の中で読み、published を保存する | Tx の中で読めた。Tx の外で読むと published | 決定 2 |
 | TST-209 | 契約 C9 | Repository | 不変条件を外した保存データ 3 種 (名前が長すぎる・名前が文字列でない・状態が不正)。置いた行は it の後で必ず `remove` する | `findById` と `list` を呼ぶ | 両方とも `unprocessable` で detail が `{ id }` | 決定 2 |
 | TST-210 | 単体 | describeRepositoryContract | 壊れたデータの種類 (`malformedKinds`) があるのに、`setup` が置く関数 (`plantMalformed`) を返さない | 検査する | Error を投げる (`beforeAll` で落ちる)。種類が空なら投げない | 決定 2 |
 | TST-211 | 契約 C10 | Repository | 形の悪い id `../x` と、id が `a/b` の entity | `findById('../x')` と `save` | findById は undefined を返す (読みに行かない)。save は `invalid` を投げる | 決定 1 |
 | TST-301 | 単体 | InMemory | Mapper と filterFields を渡した InMemoryRepository。壊れた record は `putRaw` で生で置く | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも)。`putRaw` は Firestore・Postgres の harness と同じ形で壊れた record を置く | 決定 2 |
 | TST-302 | 単体 | InMemory | 別々の id を書く Transaction を、開始が重なるように 2 つ実行し、どちらも commit | 外から 2 つの id を読む | 両方読める (後に commit した側が先の書き込みを消さない) | 決定 2 |
 | TST-303 | 単体 | InMemory | Transaction の実行中に、Transaction の外で別の id を保存する | Transaction が commit した後に読む | 外で保存した行が残っている | 決定 2 |
-| TST-304 | 単体 | InMemory | commit 済み・rollback 済みの Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない) | 決定 2 |
+| TST-304 | 単体 | InMemory | commit 済みの Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない) | 決定 2 |
 | TST-305 | 単体 | InMemory | 契約 C1〜C10 を通し終えた保存先 | 行を数える | 0 件 (契約が `newId` で作った id を全部消している) | 決定 2 |
+| TST-306 | 単体 | InMemory | rollback 済み (work が throw した) Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない)。scope が取れていなければ、その旨の message で失敗する | 決定 2 |
 | TST-401 | 結合 | FirestoreRepository | emulator あり・`REQUIRE_EMULATOR=1` | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも) | 決定 2 |
 | TST-402 | 単体 | firestore/errors | code 14 (UNAVAILABLE) の Error | 変換する | `unavailable` の AppError | 決定 1 |
 | TST-403 | 単体 | firestore/errors | code 14 以外の Error | 変換する | 同じ Error が返る (AppError にしない) | 決定 1 |
@@ -113,8 +114,8 @@ relates_to: []
 
 | 確認 | 結果 |
 |---|---|
-| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜305 / firestore = TST-401〜406 / postgres = TST-501〜502・504〜506 / build = TST-601〜609 |
-| ADR-0012 決定 2 (契約が受入条件) | TST-201〜209 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
+| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜306 / firestore = TST-401〜406 / postgres = TST-501〜502・504〜506 / build = TST-601〜609 |
+| ADR-0012 決定 2 (契約が受入条件) | TST-201〜211 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
 | 読みやすさ (ADR-0012 の Drivers 1) | 機械で見るのは TST-604〜607 だけ。名前の選び方・1 行に 1 事は評価者が見る |
 | 機械で確かめないもの | Kysely で汎用の基底の型が通るか (spike で確かめ、結果をタスク 02 に書く) / 業務語の選び方 |
 
@@ -124,3 +125,13 @@ relates_to: []
 |---|---|---|---|
 | TST-801 | 架空の memo (title は 40 字以内・state は draft か published) | fixture 関数で作る | 個人情報は無い |
 | TST-802 | 不変条件を外した保存データ 3 種 (title が 41 字・title が数値・state が `done`) | 各実装の harness で生で書く | 個人情報は無い。テスト後に必ず消す |
+
+## 5. 実装ごとの差 (契約は見ない)
+
+| 実装 | Tx の中で自分の書き込みを読む | 同じ id を 2 つの Tx が書く |
+|---|---|---|
+| InMemory | 読める | 後で commit した側が勝つ |
+| Firestore | 読み → 書きの順を強制する (書いた後の読みは SDK が拒否する。TST-708) | SDK が Tx を再試行する。library は足さない (TST-709) |
+| Postgres | 読める | 競合のエラーで失敗する。部分的な書き込みは残らない (TST-709) |
+
+契約 C8 が見るのは「読んでから書く」だけで、上の差には触れない。

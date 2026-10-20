@@ -9,7 +9,7 @@ async function checkThrowingTransactionRollsBack<Entity extends ContractEntity, 
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
   const { repository, runner, newId } = context.subject();
-  const entity = context.fixtures.createEntity(newId(), 'first');
+  const entity = context.fixtures.createEntity(newId(), 'draft');
   const failure = new Error('boom');
   const saveThenThrow = async (scope: TransactionScope): Promise<void> => {
     await repository.save(entity, scope);
@@ -29,8 +29,8 @@ async function checkTransactionReadsAndWrites<Entity extends ContractEntity, Fil
   const { repository, runner, newId } = context.subject();
   const { createEntity, isSameContent } = context.fixtures;
   const id = newId();
-  const initial = createEntity(id, 'first');
-  const updated = createEntity(id, 'second');
+  const initial = createEntity(id, 'draft');
+  const updated = createEntity(id, 'published');
   await repository.save(initial);
   const readThenSave = async (scope: TransactionScope): Promise<Entity | undefined> => {
     const readInside = await repository.findById(id, scope);

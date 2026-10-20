@@ -6,7 +6,7 @@ import type { Repository, TransactionRunner } from '../index';
 export const LIST_ALL_LIMIT = 1000;
 
 /** 契約が使う 2 つの状態。fixture が自分の entity の状態に対応づける。 */
-export type ContractState = 'first' | 'second';
+export type ContractState = 'draft' | 'published';
 
 /** 壊れた保存データを、保存先に生で置く関数。kind は malformedKinds の 1 つ。 */
 export type PlantMalformed = (kind: string, id: string) => Promise<void>;

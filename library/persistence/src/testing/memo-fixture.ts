@@ -1,6 +1,6 @@
 /** 契約テストと mapper のテストが使う、memo 1 種類の entity・record・Mapper。 */
 import { err, ok, unprocessable } from '../index';
-import type { Mapper, Result } from '../index';
+import type { FieldFilter, Mapper, Result } from '../index';
 import type { ContractState } from './contract-types';
 
 const MAX_TITLE_LENGTH = 40;
@@ -41,20 +41,20 @@ export const memoMapper: Mapper<Memo, MemoRecord> = {
 };
 
 /** MemoFilter を保存の項目へ写す。 */
-export function memoFilterFields(filter: MemoFilter): Record<string, unknown> {
+export function memoFilterFields(filter: MemoFilter): FieldFilter {
   return { state: filter.state };
 }
 
-/** 契約の状態に対応する memo を作る。first は draft、second は published。 */
+/** 契約の状態に対応する memo を作る。 */
 export function createMemo(id: string, state: ContractState): Memo {
-  if (state === 'first') return { id, title: '最初', state: 'draft' };
+  if (state === 'draft') return { id, title: '下書き', state: 'draft' };
 
-  return { id, title: '次', state: 'published' };
+  return { id, title: '公開', state: 'published' };
 }
 
 /** 契約の状態に対応する絞り込みを作る。 */
 export function createMemoFilter(state: ContractState): MemoFilter {
-  return { state: state === 'first' ? 'draft' : 'published' };
+  return { state };
 }
 
 /** 2 つの memo の title と state が同じなら true。id は比べない。 */

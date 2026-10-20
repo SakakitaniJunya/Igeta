@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { matchesFieldFilter } from './field-filter';
 
 describe('field-filter', () => {
-  const draftRecord = { title: '最初', state: 'draft' };
+  const draftRecord = { title: '下書き', state: 'draft' };
 
   it('TST-110 全項目が一致するとき true を返す', () => {
     const isMatched = matchesFieldFilter(draftRecord, { state: 'draft' });

@@ -9,12 +9,12 @@ import type { Mapper } from './mapper';
 
 describe('mapper', () => {
   it('TST-113 有効な memo の record を fromRecord して toRecord に戻すとき元と同じ内容になる', () => {
-    const record: MemoRecord = { title: '最初', state: 'draft' };
+    const record: MemoRecord = { title: '下書き', state: 'draft' };
 
     const restored = memoMapper.fromRecord('memo-1', record);
 
-    expect(restored).toEqual(ok(createMemo('memo-1', 'first')));
-    expect(memoMapper.toRecord(createMemo('memo-1', 'first'))).toEqual(record);
+    expect(restored).toEqual(ok(createMemo('memo-1', 'draft')));
+    expect(memoMapper.toRecord(createMemo('memo-1', 'draft'))).toEqual(record);
   });
 });
 

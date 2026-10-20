@@ -11,7 +11,7 @@ async function checkBadIdIsRejected<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
   const { repository } = context.subject();
-  const entityWithBadId = context.fixtures.createEntity(BAD_SAVE_ID, 'first');
+  const entityWithBadId = context.fixtures.createEntity(BAD_SAVE_ID, 'draft');
 
   const found = await repository.findById(BAD_READ_ID);
   const saveFailure = await captureThrown(() => repository.save(entityWithBadId));

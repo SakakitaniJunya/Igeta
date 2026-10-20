@@ -19,7 +19,7 @@ async function checkSavedEntityIsRead<Entity extends ContractEntity, Filter>(
 ): Promise<void> {
   const { repository, newId } = context.subject();
   const { createEntity, isSameContent } = context.fixtures;
-  const saved = createEntity(newId(), 'first');
+  const saved = createEntity(newId(), 'draft');
   await repository.save(saved);
 
   const found = await repository.findById(saved.id);
@@ -33,8 +33,8 @@ async function checkSecondSaveOverwrites<Entity extends ContractEntity, Filter>(
   const { repository, newId } = context.subject();
   const { createEntity, isSameContent } = context.fixtures;
   const id = newId();
-  await repository.save(createEntity(id, 'first'));
-  const overwriting = createEntity(id, 'second');
+  await repository.save(createEntity(id, 'draft'));
+  const overwriting = createEntity(id, 'published');
 
   await repository.save(overwriting);
   const found = await repository.findById(id);

@@ -25,7 +25,7 @@ async function checkListIsAscendingById<Entity extends ContractEntity, Filter>(
   const { repository, newId } = context.subject();
   // 昇順と逆の順で保存し、並べ替えが効いていることを確かめる。newId の id だけを使い、後で消せるようにする
   const ownIds = [newId(), newId(), newId()].sort().reverse();
-  await saveAll(repository, ownIds.map((id) => context.fixtures.createEntity(id, 'first')));
+  await saveAll(repository, ownIds.map((id) => context.fixtures.createEntity(id, 'draft')));
 
   const page = await repository.list({ limit: LIST_ALL_LIMIT });
   const listedIds = page.items.map(toId);
@@ -40,17 +40,18 @@ async function checkFilterSelectsOnlyMatchingState<Entity extends ContractEntity
 ): Promise<void> {
   const { repository, newId } = context.subject();
   const { createEntity, filterByState, isSameContent } = context.fixtures;
-  const firstIds = [newId(), newId()];
-  const secondId = newId();
-  await saveAll(repository, [...firstIds.map((id) => createEntity(id, 'first')), createEntity(secondId, 'second')]);
+  const draftIds = [newId(), newId()];
+  const publishedId = newId();
+  const draftEntities = draftIds.map((id) => createEntity(id, 'draft'));
+  await saveAll(repository, [...draftEntities, createEntity(publishedId, 'published')]);
 
-  const page = await repository.list({ filter: filterByState('second'), limit: LIST_ALL_LIMIT });
+  const page = await repository.list({ filter: filterByState('published'), limit: LIST_ALL_LIMIT });
   const listedIds = page.items.map(toId);
-  const isEveryItemSecond = page.items.every((item) => isSameContent(item, createEntity(item.id, 'second')));
+  const isEveryItemPublished = page.items.every((item) => isSameContent(item, createEntity(item.id, 'published')));
 
-  expect(isEveryItemSecond, 'second 以外の状態の行が混ざっている').toBe(true);
-  expect(listedIds, 'second の 1 件が含まれていない').toContain(secondId);
-  expect(listedIds.filter((id) => firstIds.includes(id)), 'first の行が混ざっている').toEqual([]);
+  expect(isEveryItemPublished, 'published 以外の状態の行が混ざっている').toBe(true);
+  expect(listedIds, 'published の 1 件が含まれていない').toContain(publishedId);
+  expect(listedIds.filter((id) => draftIds.includes(id)), 'draft の行が混ざっている').toEqual([]);
 }
 
 async function checkLimitTruncatesPage<Entity extends ContractEntity, Filter>(
@@ -58,7 +59,7 @@ async function checkLimitTruncatesPage<Entity extends ContractEntity, Filter>(
 ): Promise<void> {
   const { repository, newId } = context.subject();
   const overLimitIds = Array.from({ length: PAGE_LIMIT + 1 }, () => newId());
-  await saveAll(repository, overLimitIds.map((id) => context.fixtures.createEntity(id, 'first')));
+  await saveAll(repository, overLimitIds.map((id) => context.fixtures.createEntity(id, 'draft')));
 
   const page = await repository.list({ limit: PAGE_LIMIT });
 
