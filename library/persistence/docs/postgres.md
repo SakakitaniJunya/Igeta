@@ -11,6 +11,7 @@ npm install @igeta/persistence kysely pg
 - table の型は `Database` interface として自分で書き、`createPostgres<Database>(url)` に渡す。`SqlRepository` の `table` は `keyof Database` だけを受け、Mapper の record 型は table の列 (id を除く) と合わせる。他の table の Mapper や存在しない table 名は、型で落ちる
 - table の列名は、Mapper が返す record の項目名と同じにする。DB の CHECK 制約は利用者が決める
 - 接続先は環境変数 (`PG_URL` など) から渡す。コードに埋めない
+- 待機中の接続が切れたときの error は、`createPostgres(url, { onConnectionError })` の callback に流れる。省略すると stderr に記録する (捨てない。受けないとプロセスが落ちる)
 
 ## migration
 

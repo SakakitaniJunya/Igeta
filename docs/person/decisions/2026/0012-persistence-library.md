@@ -56,7 +56,7 @@ flowchart TB
 1. 入口は 4 つ。core (Result・AppError・Repository・Mapper・TransactionRunner・IdGenerator・DocumentId・ListQuery)、`/firestore`、`/postgres`、`/testing` (契約テスト・InMemory・emulator と Postgres の helper)。SDK は peerDependencies。vitest は `/testing` だけが要る。
 2. 受入条件: 契約 C1〜C10 を InMemory・Firestore emulator・Postgres 16 で通す。InMemory も壊れた record を生で置けるので、3 実装とも 10 行すべてを通す。
 3. `library/**` は `.igeta.json` の humanPaths と CODEOWNERS に入れる。公開 API を持つ package なので、`src/**` と `templates/**` と同じく人の承認を要する。
-4. Postgres は Kysely + pg。table の型は利用者が `Database` の型で渡し、変換は Mapper だけが持つ。migration は Kysely の `Migrator` を包む。
+4. Postgres は Kysely + pg。table の型は利用者が `Database` の型で渡し、変換は Mapper だけが持つ。migration は Kysely の `Migrator` を包む。Transaction は `serializable` で実行し、競合のエラーは再試行せず上げる。
 
 | 判断軸 | 採用案での扱い | 理由 |
 |---|---|---|

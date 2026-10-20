@@ -89,6 +89,7 @@ relates_to: []
 | TST-505 | 単体 | postgres/errors | SQLSTATE `23505` の Error | 変換する | 同じ Error が返る | 決定 1 |
 | TST-506 | 結合 | migrateToLatest | 同じ migration の集まり | 2 回続けて実行する | 2 回目は何もせず成功する | 決定 1 |
 | TST-507 | 結合 | README | README の「Postgres の使い方」と同じ手順 (migration → 保存 → list) | `src/postgres/readme-example.postgres.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false | 決定 1 |
+| TST-508 | 単体 | postgres/client | `createPostgres` が作る Pool に、idle client の切断を模した `error` を emit する | `onConnectionError` を渡した場合と、渡さない場合 | プロセスは落ちない。渡した場合は callback が Error を受け取る。渡さない場合は stderr に記録する (黙って捨てない) | 決定 1 |
 | TST-601 | 結合 | build | `npm run build` | `dist` を見る | 4 入口ごとに esm・cjs の js と、`.d.ts`・`.d.cts` がある | 決定 1 |
 | TST-602 | 結合 | 型の解決 | `moduleResolution: bundler`・`.js` を付けない consumer | `tsc --noEmit` | 4 入口の型が解決し、エラー 0 | 決定 1 |
 | TST-603 | 結合 | 型の解決 | `moduleResolution: NodeNext` の consumer (ESM と CJS) | `tsc --noEmit` | 4 入口が解決し、import は `.d.ts`・require は `.d.cts` を読む | 決定 1 |
@@ -117,7 +118,7 @@ relates_to: []
 
 | 確認 | 結果 |
 |---|---|
-| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜307 / firestore = TST-401〜406・408 / postgres = TST-501〜502・504〜507 / build = TST-601〜609 |
+| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜307 / firestore = TST-401〜406・408 / postgres = TST-501〜502・504〜508 / build = TST-601〜609 |
 | ADR-0012 決定 2 (契約が受入条件) | TST-201〜211 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
 | 読みやすさ (ADR-0012 の Drivers 1) | 機械で見るのは TST-604〜607 だけ。名前の選び方・1 行に 1 事は評価者が見る |
 | 機械で確かめないもの | Kysely で汎用の基底の型が通るか (spike で確かめ、結果をタスク 02 に書く) / 業務語の選び方 |
