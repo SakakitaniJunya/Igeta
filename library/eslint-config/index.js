@@ -48,7 +48,8 @@ export const base = [
       'max-params': ['error', 3], // RC-02, TS-05
       'no-nested-ternary': 'error', // RC-03
       'max-len': ['error', { code: 120 }], // RC-03
-      'id-length': ['error', { min: 3, exceptions: ['i', 'id', 'db'] }], // RC-04
+      // RC-04 (ok は Result の生成関数と判別用の項目の名前。設計 ADR-0012 の語彙)
+      'id-length': ['error', { min: 3, exceptions: ['i', 'id', 'db', 'ok'] }],
       '@typescript-eslint/naming-convention': [
         // RC-04
         'error',
