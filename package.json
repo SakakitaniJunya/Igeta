@@ -38,8 +38,9 @@
     "expand": "node dist/cli.js expand",
     "check:templates": "node dist/cli.js check-templates",
     "secret-scan": "node dist/cli.js secret-scan --internal-ids",
-    "test": "npm run test:scripts",
-    "test:scripts": "tsc && node --test \"dist/**/*.test.js\""
+    "test": "npm run test:scripts && npm run test:library",
+    "test:scripts": "tsc && node --test \"dist/**/*.test.js\"",
+    "test:library": "npm --prefix library/eslint-config test && npm --prefix library/eslint-config run lint && npm --prefix library/persistence test && npm --prefix library/persistence run lint"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",

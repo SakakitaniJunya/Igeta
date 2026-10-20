@@ -47,8 +47,8 @@ relates_to: [test-persistence-library]
 | `src/testing/` | index.ts・emulator.ts・postgres-harness.ts | 入口 / describeEmulator・uniqueId / describePostgres・テスト用 table (CHECK 制約は置かない。C9 で壊れた行を置くため) |
 | | contract/ (5 files) | describeRepositoryContract・types・rows-basic (C1〜3)・rows-list (C4〜6)・rows-transaction (C7〜8)・rows-malformed (C9) |
 | | in-memory/ (3 files) | InMemoryStore (record を持つ。`putRaw` でテスト用に壊れた record を置く)・InMemoryRepository (Mapper と filterFields を受ける)・InMemoryTransactionRunner |
-| `test/` | readability.spec.ts・build.spec.ts・consumer/ | TST-604〜609 / TST-601〜603 の fixture (bundler・nodenext) |
-| `src/**` | *.spec.ts | 各 .ts の隣。表の行 (TST-101〜115・402〜407・504〜506) |
+| `test/` | readability.spec.ts・build.spec.ts・consumer/ | test-persistence-library/TST-604〜609 / test-persistence-library/TST-601〜603 の fixture (bundler・nodenext) |
+| `src/**` | *.spec.ts | 各 .ts の隣。表の行 (test-persistence-library/TST-101〜115・402〜407・504〜506) |
 
 ## 2. package.json
 
@@ -78,16 +78,30 @@ nestjs は `modules/`・`shared/` が hono と同一ファイルなので、同�
 
 公開前の検査 (後続 PR で `check-templates` に `--with-library <path>` を足す): `library/persistence` を `npm run build && npm pack` して tgz を作り、一時 dir の package.json の `@igeta/persistence` を `file:<tgz>` に差し替えて `npm install` する (lockfile は使わない)。公開後は差し替え無しで `npm ci`。
 
-## 5. 実装の順 (1 commit = 1 タスク)
+## Phase 1 Setup
 
-- [ ] T001 [ADR-0012] 骨格: package.json・tsconfig・tsup・vitest・LICENSE・CHANGELOG と空の入口。`build`・`typecheck` が通る
-- [ ] T002 [P] [TST-101〜112] core の値: result・app-error・document-id・list-page・field-filter・scope-handle・id-generator と各 spec
-- [ ] T003 [TST-113〜115] core の mapper: readStored。repository.ts・transaction.ts の型
-- [ ] T004 [P] spike: Kysely で table を型引数に受ける基底の型が通るかを型検査だけで確かめる。試作は残さない。**T007 の前に終える**。通らなければ ADR-0012 を改めてから T007 に進む
-- [ ] T005 [TST-201〜209・301] testing: contract 5 ファイルと InMemory 3 ファイル。InMemory は Mapper と filterFields を受け、`putRaw` で壊れた record を置いて C1〜C9 の 9 行を通す
-- [ ] T006 [TST-401〜407・708] firestore 入口と emulator helper。client.ts は shared/infrastructure/firestore.ts の挙動 (emulator で preferRest を外す) をそのまま持つ。Firestore で契約を通す
-- [ ] T007 [TST-501〜506・701〜707・709] postgres 入口・harness・migrate。Postgres 16 で契約を通す (T004 の後)
-- [ ] T008 [TST-601〜609] build・consumer fixture・読みやすさの検査・npm pack の確認
+- [x] T001 [ADR-0012] 骨格: package.json・tsconfig・tsup・vitest・LICENSE・CHANGELOG と、core の `Result`・`AppError` を入れた 4 入口 (sub-entry は型の再エクスポートだけ)。`build`・`typecheck` が通る
+
+## Phase 2 Foundational
+
+- [ ] T002 [P] [test-persistence-library/TST-101〜112] core の値: result・app-error・document-id・list-page・field-filter・scope-handle・id-generator と各 spec
+- [ ] T003 [test-persistence-library/TST-113〜115] core の mapper: readStored。repository.ts・transaction.ts の型
+- [x] T004 [P] spike: Kysely で table を型引数に受ける基底の型が通るかを型検査だけで確かめた。試作は残さない。**T007 の前に終える**。
+  - 結論 (U-1): 本体が `Kysely<DB>` を直接叩く素直な基底 (`SqlRepository<DB, TB extends keyof DB & string, Entity>`) は通らない (`where`・`orderBy` が TS2349、`Insertable<DB[TB]>` が TS2322)。Row を型引数にする案も、`Kysely<Database>` が `Kysely<Record<string, Row>>` に入らず不可 (Kysely は DB の型について不変)。`withTables` で cast を避ける案も不可。
+  - 通る形 (V4): 公開の型は `SqlRepository<DB, TB extends keyof DB & string, Entity>` で、`db: Kysely<DB>`・`table: TB`・`mapper: Mapper<Entity, Omit<Selectable<DB[TB]>, 'id'>>`。内部は行を `{ id: string }` とする `Kysely<Record<string, { id: string }>>` で持つ。境界の cast は `db as unknown as Kysely<GenericDb>` の 1 か所で、理由付きの eslint-disable (TS-02 の例外)。他の table の Mapper や存在しない table 名は型で落ちる。読み出した行を Mapper の入力へ渡す cast は、`fromRecord` が実行時に検証する前提で 1 関数に集める。
+  - 利用側: `createPostgres<Database>()` は利用者が Database 型を渡す generic にする (`Kysely<unknown>` では table 名が `never` になる)。Transaction を直接渡すと型引数の推論が崩れるが、`SqlTransactionRunner` が scope で受けるので利用者は直接渡さない。ADR-0012 の再検討トリガは発動しない。
+- [ ] T005 [test-persistence-library/TST-201〜209・301] testing: contract 5 ファイルと InMemory 3 ファイル。InMemory は Mapper と filterFields を受け、`putRaw` で壊れた record を置いて C1〜C9 の 9 行を通す
+
+## Phase 3+ User Story
+
+- [ ] T006 [test-persistence-library/TST-401〜407・708] firestore 入口と emulator helper。client.ts は shared/infrastructure/firestore.ts の挙動 (emulator で preferRest を外す) をそのまま持つ。Firestore で契約を通す
+- [ ] T007 [test-persistence-library/TST-501〜506・701〜707・709] postgres 入口・harness・migrate。Postgres 16 で契約を通す (T004 の後)
+- [ ] T008 [test-persistence-library/TST-601〜609] build・consumer fixture・読みやすさの検査・npm pack の確認。tsup の d.ts は共有型を最初の入口 (`firestore/index.d.ts`) に寄せ、cjs は入口ごとに class を持つため、入口をまたぐ型と class (`AppError` の `instanceof`) の同一性を確かめる
+
+## Polish
+
 - [ ] T009 Igeta 本体の検査 (3 の表) を入れ、新しい文書と ADR-0012 を生成索引へ。docs:check と docs:template-check を通す
+
+## 依存と並列
 
 前提: T001 → T002・T003 → T005 → T006・T007 (T007 は T004 の後) → T008 → T009。T006 と T007 は別ファイルを触る。
