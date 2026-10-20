@@ -8,6 +8,7 @@ import type { ListPage, ListQuery } from '../core/list-page';
 import { readStored } from '../core/mapper';
 import type { Mapper } from '../core/mapper';
 import type { Repository } from '../core/repository';
+import { toStoredValues } from '../core/stored-values';
 import type { TransactionScope } from '../core/transaction';
 import { withPostgresErrors } from './errors';
 import { toGenericDatabase, toStoredRecord } from './generic-database';
@@ -20,6 +21,13 @@ export interface SqlRepositoryOptions<DB, TB extends keyof DB & string, Entity, 
   readonly table: TB;
   readonly mapper: Mapper<Entity, Omit<Selectable<DB[TB]>, 'id'>>;
   readonly filterFields: (filter: Filter) => FieldFilter;
+}
+
+// 値が null の列は `= NULL` では取れないので IS NULL にする
+function equalTo(column: string, value: unknown) {
+  if (value === null) return sql<boolean>`${sql.ref(column)} is null`;
+
+  return sql<boolean>`${sql.ref(column)} = ${value}`;
 }
 
 /** Mapper を通して行を読み書きする。保存データが不正なら読み出しは unprocessable を投げる。 */
@@ -48,7 +56,7 @@ export class SqlRepository<DB, TB extends keyof DB & string, Entity extends { re
     const fields = query.filter === undefined ? {} : this.options.filterFields(query.filter);
     const conditions = Object.entries(fields)
       .filter(([, value]) => value !== undefined)
-      .map(([column, value]) => sql<boolean>`${sql.ref(column)} = ${value}`);
+      .map(([column, value]) => equalTo(column, value));
 
     // 続きがあるかを知るため、limit より 1 件多く読む。id は文字コード順 (JS の sort と同じ) に並べる
     const rows = await withPostgresErrors(() =>
@@ -68,7 +76,7 @@ export class SqlRepository<DB, TB extends keyof DB & string, Entity extends { re
 
   async save(entity: Entity, scope?: TransactionScope): Promise<void> {
     assertDocumentId(entity.id);
-    const values: Insertable<GenericRow> = { id: entity.id, ...this.options.mapper.toRecord(entity) };
+    const values: Insertable<GenericRow> = { id: entity.id, ...toStoredValues(this.options.mapper.toRecord(entity)) };
 
     await withPostgresErrors(() =>
       this.executor(scope)

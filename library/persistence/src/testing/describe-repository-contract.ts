@@ -1,9 +1,10 @@
-/** Repository の契約 C1〜C10。Firestore・Postgres・InMemory で同じ本文を通す。 */
+/** Repository の契約 C1〜C12。Firestore・Postgres・InMemory で同じ本文を通す。 */
 import { afterAll, beforeAll, describe } from 'vitest';
 import { declareBasicRows } from './contract-rows-basic';
 import { declareIdRows } from './contract-rows-id';
 import { declareListRows } from './contract-rows-list';
 import { declareMalformedRows } from './contract-rows-malformed';
+import { declareOptionalRows } from './contract-rows-optional';
 import { declareTransactionRows } from './contract-rows-transaction';
 import type { ContractContext, ContractEntity, ContractOptions, ContractSubject } from './contract-types';
 
@@ -41,7 +42,7 @@ async function removeAll<Entity extends ContractEntity, Filter>(
   }
 }
 
-/** 実装が契約 C1〜C10 を通すかを確かめる describe を登録する。setup は beforeAll で 1 回だけ呼ぶ。 */
+/** 実装が契約 C1〜C12 を通すかを確かめる describe を登録する。setup は beforeAll で 1 回だけ呼ぶ。 */
 export function describeRepositoryContract<Entity extends ContractEntity, Filter>(
   options: ContractOptions<Entity, Filter>,
 ): void {
@@ -67,6 +68,7 @@ export function describeRepositoryContract<Entity extends ContractEntity, Filter
     });
     declareBasicRows(context);
     declareIdRows(context);
+    declareOptionalRows(context);
     declareListRows(context);
     declareTransactionRows(context);
     declareMalformedRows(context, options.malformedKinds);

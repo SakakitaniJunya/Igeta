@@ -1,13 +1,27 @@
 // README の「Postgres の使い方」と同じ手順を Postgres 16 で流す。table 名だけが README と違う
 import { sql } from 'kysely';
 import { expect, it } from 'vitest';
-import { memoMapper } from '../testing/memo-fixture';
-import type { Memo } from '../testing/memo-fixture';
+import { err, ok, unprocessable } from '../index';
+import type { Mapper } from '../index';
 import { describePostgres } from '../testing/postgres-harness';
 import { createPostgres } from './client';
 import { migrateToLatest } from './migrations';
 import { SqlRepository } from './repository';
 import { SqlTransactionRunner } from './transaction-runner';
+
+interface Memo { readonly id: string; readonly title: string; readonly state: 'draft' | 'published' }
+interface MemoRecord { readonly title: string; readonly state: string }
+
+const MAX_TITLE_LENGTH = 40;
+
+// README の memoMapper と同じ
+const memoMapper: Mapper<Memo, MemoRecord> = {
+  toRecord: ({ title, state }) => ({ title, state }),
+  fromRecord: (id, { title, state }) =>
+    typeof title === 'string' && title.length <= MAX_TITLE_LENGTH && (state === 'draft' || state === 'published')
+      ? ok({ id, title, state })
+      : err(unprocessable('memo が不正')),
+};
 
 interface Database {
   readme_memos_postgres: { id: string; title: string; state: string };

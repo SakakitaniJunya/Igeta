@@ -15,7 +15,7 @@ relates_to: []
 
 # テスト仕様 — DB 層ライブラリ (@igeta/persistence)
 
-> **TL;DR**: `library/persistence` の全部の行 (core・mapper・契約 C1〜C10・InMemory・Firestore・Postgres・build と読みやすさ) を、1 行 = 1 テストで書く。受入条件は、契約 C1〜C10 が InMemory・Firestore emulator・Postgres 16 の全部で通ること
+> **TL;DR**: `library/persistence` の全部の行 (core・mapper・契約 C1〜C12・InMemory・Firestore・Postgres・build と読みやすさ) を、1 行 = 1 テストで書く。受入条件は、契約 C1〜C12 が InMemory・Firestore emulator・Postgres 16 の全部で通ること
 > - 題名は vitest の `it` の題名と同じにする。判定は期待結果の列の通りに機械で行う
 > - 契約の行 (TST-201〜209) は 3 つの実装で同じ本文を通す。本文を実装ごとに書き換えない
 
@@ -32,7 +32,8 @@ relates_to: []
 |---|---|
 | R1 | 1 行 = 1 テスト。判定を 2 つ入れない |
 | R2 | 実行環境が無いときの skip は手元だけ許す。CI は `REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` で落とす (サイレント縮退禁止) |
-| R3 | 契約の fixture (`createEntity`・`filterByState`・`isSameContent`) は実装者が渡す。本文 (C1〜C10) は 3 つの実装で同じ。`setup` は契約の最初 (`beforeAll`) に 1 回だけ呼び、失敗したら skip でなく落とす。終わりに `teardown` (`close`) を呼ぶ。各 it は `newId` の id だけを使う |
+| R3 | 契約の fixture (`createEntity`・`filterByState`・`isSameContent`) は実装者が渡す。本文 (C1〜C12) は 3 つの実装で同じ。`setup` は契約の最初 (`beforeAll`) に 1 回だけ呼び、失敗したら skip でなく落とす。終わりに `teardown` (`close`) を呼ぶ。各 it は `newId` の id だけを使う |
+| R6 | 任意の項目 (値が無いことがある項目) は、Mapper の record の値が undefined なら null として保存する。読むときは null が Mapper に渡る。Firestore・Postgres・InMemory で同じ |
 | R5 | 契約は `newId` で作った id を全部覚え、最後に `remove` で消す。共有の DB に行を溜めない |
 | R4 | 期待結果は kind・件数・値・終了状態で書く。「正しく動く」は書かない |
 
@@ -59,6 +60,7 @@ relates_to: []
 | TST-117 | 単体 | document-id | `__x__`・`____` | `isDocumentId` に通す | どちらも false (Firestore が予約する形。Postgres にも同じ規則を掛ける)。`__x`・`x__`・`a__b` は true | 決定 1 |
 | TST-118 | 単体 | scope-handle | `createScope(h)` で作り、`endScope` した scope | `handleOf` で取り出す | 普通の Error を投げる (終わった Transaction の scope は使えない) | 決定 1 |
 | TST-119 | 単体 | work-failure | runner の work が ECONNRESET 付きの Error を投げる。別に、DB 側の失敗を起こす | `translateDatabaseFailure` を通す | work の失敗は翻訳せずそのまま届く。DB 側の失敗は translate を通る | 決定 1 |
+| TST-120 | 単体 | stored-values | `{ title: '下書き', note: undefined, count: 0, empty: '' }` | `toStoredValues` に通す | `note` だけ null になる。0 と空文字は変わらない | 決定 1 |
 | TST-201 | 契約 C1 | Repository | 保存していない id | `findById` | undefined | 決定 2 |
 | TST-202 | 契約 C2 | Repository | draft の状態の entity を保存 | 同じ id で読む | `isSameContent` が true | 決定 2 |
 | TST-203 | 契約 C3 | Repository | draft を保存し、同じ id に published を保存 | 読む | published の内容 | 決定 2 |
@@ -70,21 +72,23 @@ relates_to: []
 | TST-209 | 契約 C9 | Repository | 不変条件を外した保存データ 3 種 (名前が長すぎる・名前が文字列でない・状態が不正)。置いた行は it の後で必ず `remove` する | `findById` と `list` を呼ぶ | 両方とも `unprocessable` で detail が `{ id }` | 決定 2 |
 | TST-210 | 単体 | describeRepositoryContract | 壊れたデータの種類 (`malformedKinds`) があるのに、`setup` が置く関数 (`plantMalformed`) を返さない | 検査する | Error を投げる (`beforeAll` で落ちる)。種類が空なら投げない | 決定 2 |
 | TST-211 | 契約 C10 | Repository | 形の悪い id `../x` と、id が `a/b` の entity | `findById('../x')` と `save` | findById は undefined を返す (読みに行かない)。save は `invalid` を投げる | 決定 1 |
-| TST-301 | 単体 | InMemory | Mapper と filterFields を渡した InMemoryRepository。壊れた record は `putRaw` で生で置く | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも)。`putRaw` は Firestore・Postgres の harness と同じ形で壊れた record を置く | 決定 2 |
+| TST-212 | 契約 C11 | Repository | 任意の項目に値がある entity を保存し、同じ id に値を消した entity を保存 (任意の項目の fixture を渡した実装だけ) | 読む | 任意の項目が消えている (null を Mapper に渡し、entity では項目が無い) | 決定 2 |
+| TST-213 | 契約 C12 | Repository | 任意の項目が null の行と、値がある行を保存 | 任意の項目が null の filter で `list` | null の行を含み、値がある行は含まない (Postgres は `IS NULL`、Firestore は `== null`) | 決定 2 |
+| TST-301 | 単体 | InMemory | Mapper と filterFields を渡した InMemoryRepository。壊れた record は `putRaw` で生で置く | 契約 C1〜C12 を実行 | 12 行が通る (C9 は 3 ケースとも)。`putRaw` は Firestore・Postgres の harness と同じ形で壊れた record を置く | 決定 2 |
 | TST-302 | 単体 | InMemory | 別々の id を書く Transaction を、開始が重なるように 2 つ実行し、どちらも commit | 外から 2 つの id を読む | 両方読める (後に commit した側が先の書き込みを消さない) | 決定 2 |
 | TST-303 | 単体 | InMemory | Transaction の実行中に、Transaction の外で別の id を保存する | Transaction が commit した後に読む | 外で保存した行が残っている | 決定 2 |
 | TST-304 | 単体 | InMemory | commit 済みの Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない) | 決定 2 |
-| TST-305 | 単体 | InMemory | 契約 C1〜C10 を通し終えた保存先 | 行を数える | 0 件 (契約が `newId` で作った id を全部消している) | 決定 2 |
+| TST-305 | 単体 | InMemory | 契約 C1〜C12 を通し終えた保存先 | 行を数える | 0 件 (契約が `newId` で作った id を全部消している) | 決定 2 |
 | TST-306 | 単体 | InMemory | rollback 済み (work が throw した) Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない)。scope が取れていなければ、その旨の message で失敗する | 決定 2 |
-| TST-307 | 結合 | README | README の「使い方」と「契約テスト」のコードと同じ手順 (InMemory の memo) | `src/readme-example.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false。同じ設定で契約 C1〜C10 が通る | 決定 1 |
-| TST-401 | 結合 | FirestoreRepository | emulator あり・`REQUIRE_EMULATOR=1` | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも) | 決定 2 |
+| TST-307 | 結合 | README | README の「使い方」と「契約テスト」のコードと同じ手順 (InMemory の memo) | `src/readme-example.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false。同じ設定で契約 C1〜C12 が通る | 決定 1 |
+| TST-401 | 結合 | FirestoreRepository | emulator あり・`REQUIRE_EMULATOR=1` | 契約 C1〜C12 を実行 | 12 行が通る (C9 は 3 ケースとも) | 決定 2 |
 | TST-402 | 単体 | firestore/errors | code 14 (UNAVAILABLE) の Error | 変換する | `unavailable` の AppError | 決定 1 |
 | TST-403 | 単体 | firestore/errors | code 14 以外の Error | 変換する | 同じ Error が返る (AppError にしない) | 決定 1 |
 | TST-404 | 単体 | firestore/client | `FIRESTORE_EMULATOR_HOST` がある | `firestoreSettings()` | preferRest が false | 決定 1 |
 | TST-405 | 単体 | firestore/client | 環境変数が無い | `firestoreSettings()` | preferRest が true | 決定 1 |
 | TST-406 | 単体 | firestore/client | 引数・GCP_PROJECT・GCLOUD_PROJECT を全部入れる | `firestoreSettings()` | projectId は引数の値 | 決定 1 |
 | TST-408 | 結合 | README | README の「Firestore の使い方」と同じ手順 (emulator) | `src/firestore/readme-example.emulator.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false | 決定 1 |
-| TST-501 | 結合 | SqlRepository | Postgres 16・`REQUIRE_POSTGRES=1` | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも) | 決定 2 |
+| TST-501 | 結合 | SqlRepository | Postgres 16・`REQUIRE_POSTGRES=1` | 契約 C1〜C12 を実行 | 12 行が通る (C9 は 3 ケースとも) | 決定 2 |
 | TST-502 | 結合 | SqlRepository | id が `a-B`・`a1`・`a_0`・`A0` の 4 件 | `list` (limit 1000) | 並びが JS の `sort()` と同じ (`COLLATE "C"`) | 決定 2 |
 | TST-504 | 単体 | postgres/errors | 接続の失敗の印を持つ Error (SQLSTATE `08006` `57P01` `57P03` などと、Node の `ECONNREFUSED` `ECONNRESET` `EHOSTUNREACH` `ENOTFOUND` `EAI_AGAIN` `EPIPE` `ETIMEDOUT`、code を持たない `Connection terminated unexpectedly`) | 変換する | `unavailable` の AppError | 決定 1 |
 | TST-505 | 単体 | postgres/errors | SQLSTATE `23505` の Error | 変換する | 同じ Error が返る | 決定 1 |
@@ -121,8 +125,8 @@ relates_to: []
 
 | 確認 | 結果 |
 |---|---|
-| ADR-0012 決定 1 (4 入口) | core = TST-101〜119 / testing = TST-211・301〜307 / firestore = TST-401〜406・408 / postgres = TST-501〜502・504〜508 / build = TST-601〜609 |
-| ADR-0012 決定 2 (契約が受入条件) | TST-201〜211 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
+| ADR-0012 決定 1 (4 入口) | core = TST-101〜120 / testing = TST-211〜213・301〜307 / firestore = TST-401〜406・408 / postgres = TST-501〜502・504〜508 / build = TST-601〜609 |
+| ADR-0012 決定 2 (契約が受入条件) | TST-201〜213 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
 | 読みやすさ (ADR-0012 の Drivers 1) | 機械で見るのは TST-604〜607 だけ。名前の選び方・1 行に 1 事は評価者が見る |
 | 機械で確かめないもの | Kysely で汎用の基底の型が通るか (spike で確かめ、結果をタスク 02 に書く) / 業務語の選び方 |
 

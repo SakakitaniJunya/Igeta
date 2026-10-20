@@ -106,7 +106,7 @@ const page = await memos.list({ filter: { state: 'draft' }, limit: 20 });
 
 ## 契約テスト
 
-自分の repository を契約 C1〜C10 に通す。vitest のテストファイルに書く。次は InMemory の例で、Firestore・Postgres も `repository`・`runner`・`remove` を差し替えるだけで同じ。
+自分の repository を契約 C1〜C12 に通す。vitest のテストファイルに書く。次は InMemory の例で、Firestore・Postgres も `repository`・`runner`・`remove` を差し替えるだけで同じ。
 
 ```ts
 import { describeRepositoryContract } from '@igeta/persistence/testing';
@@ -126,6 +126,7 @@ describeRepositoryContract({
 ```
 
 - `setup` は契約の最初に 1 回だけ呼ぶ。`newId` の id だけを使い、`remove(id)` で最後に全部消す (無い id を消しても失敗しない)。`close` があれば最後に呼ぶ
+- 任意の項目 (値が無いことがある項目) がある集約は、`fixtures.optional` も渡すと契約 C11・C12 が加わる。Mapper の record は、書くときは undefined でよく、保存では null になる。読むときは null が渡るので、Mapper で受ける
 - `malformedKinds` は壊れた保存データの種類で、1 種類につき C9 の 1 行を登録する。種類を書くなら `setup` に `plantMalformed(kind, id)` (壊れた保存データを生で置く) も返す。空なら C9 は表から外れる
 - id は `[A-Za-z0-9_-]` の 1〜64 字で、`__` で始まり `__` で終わる形は使えない
 

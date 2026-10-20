@@ -17,6 +17,7 @@ interface MemoRow {
   id: string;
   title: string;
   state: string;
+  note: string | null | undefined;
 }
 
 /** spec が使う table の型。 */
@@ -57,6 +58,7 @@ export async function createMemoTables(db: Kysely<MemoDatabase>): Promise<void> 
       .addColumn('id', 'text', (column) => column.primaryKey())
       .addColumn('title', 'text')
       .addColumn('state', 'text')
+      .addColumn('note', 'text')
       .execute();
   }
 }

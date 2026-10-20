@@ -30,11 +30,25 @@ export interface ContractSubject<Entity extends ContractEntity, Filter> {
   close?(): Promise<void> | void;
 }
 
+/** 任意の項目 (値が無いことがある項目) の扱い。渡すと契約 C11・C12 が加わる。 */
+export interface ContractOptionalField<Entity extends ContractEntity, Filter> {
+  /** 任意の項目に値を入れた entity を返す。 */
+  withValue(entity: Entity): Entity;
+  /** 任意の項目を消した entity を返す。 */
+  withoutValue(entity: Entity): Entity;
+  /** 任意の項目に値があれば true。 */
+  hasValue(entity: Entity): boolean;
+  /** 任意の項目に値が無い entity だけを取る絞り込み。 */
+  filterWithoutValue(): Filter;
+}
+
 /** 実装者が渡す fixture。契約の本文は実装ごとに書き換えない。 */
 export interface ContractFixtures<Entity extends ContractEntity, Filter> {
   createEntity(id: string, state: ContractState): Entity;
   filterByState(state: ContractState): Filter;
   isSameContent(left: Entity, right: Entity): boolean;
+  /** 任意の項目を持つ集約だけ渡す。無ければ C11・C12 は表から外れる。 */
+  readonly optional?: ContractOptionalField<Entity, Filter>;
 }
 
 /** describeRepositoryContract の引数。 */

@@ -7,6 +7,7 @@ import type { ListPage, ListQuery } from '../core/list-page';
 import { readStored } from '../core/mapper';
 import type { Mapper } from '../core/mapper';
 import type { Repository } from '../core/repository';
+import { toStoredValues } from '../core/stored-values';
 import type { TransactionScope } from '../core/transaction';
 import type { InMemoryStore } from './in-memory-store';
 
@@ -48,7 +49,7 @@ export class InMemoryRepository<Entity extends { readonly id: string }, StoredRe
 
   async save(entity: Entity, scope?: TransactionScope): Promise<void> {
     assertDocumentId(entity.id);
-    const record = this.options.mapper.toRecord(entity);
+    const record = toStoredValues(this.options.mapper.toRecord(entity));
 
     this.options.store.write(entity.id, record, scope);
   }

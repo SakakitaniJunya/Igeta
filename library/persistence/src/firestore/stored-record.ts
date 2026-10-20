@@ -1,9 +1,10 @@
 /** Firestore の文書と、Mapper が扱う record の境界。型の確定は Mapper が実行時に検証する。 */
 import type { DocumentData } from '@google-cloud/firestore';
+import { toStoredValues } from '../core/stored-values';
 
-/** record の項目を文書の形にする。 */
+/** record の項目を文書の形にする。undefined の項目は null で書く。 */
 export function toDocumentData(record: object): DocumentData {
-  return Object.fromEntries(Object.entries(record));
+  return Object.fromEntries(Object.entries(toStoredValues(record)));
 }
 
 /**

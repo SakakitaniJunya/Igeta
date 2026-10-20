@@ -4,12 +4,7 @@ import type { ContractSubject } from './contract-types';
 import { describeRepositoryContract } from './describe-repository-contract';
 import { createInMemoryParts } from './in-memory-memo-parts';
 import type { InMemoryParts } from './in-memory-memo-parts';
-import {
-  createMemo,
-  createMemoFilter,
-  isSameMemoContent,
-  MALFORMED_MEMO_RECORDS,
-} from './memo-fixture';
+import { MALFORMED_MEMO_RECORDS, memoContractFixtures } from './memo-fixture';
 import type { Memo, MemoFilter, MemoRecord } from './memo-fixture';
 
 const TITLE_TOO_LONG = 'あ'.repeat(41);
@@ -33,7 +28,7 @@ describe('InMemory の契約', () => {
     name: 'memos (InMemory)',
     setup: () => createInMemoryMemoSubject(contractParts),
     malformedKinds: Object.keys(MALFORMED_MEMO_RECORDS),
-    fixtures: { createEntity: createMemo, filterByState: createMemoFilter, isSameContent: isSameMemoContent },
+    fixtures: memoContractFixtures,
   });
 
   it('TST-305 契約を通し終えたとき保存先に行が残っていない', () => {
@@ -47,14 +42,14 @@ describe('InMemory の保存先', () => {
   it('TST-301 putRaw で置いた壊れた record は Mapper を通さず保存される', async () => {
     const { store } = createInMemoryParts();
 
-    await store.putRaw('raw-1', { title: TITLE_TOO_LONG, state: 'draft' });
+    await store.putRaw('raw-1', { title: TITLE_TOO_LONG, state: 'draft', note: null });
 
-    expect(store.read('raw-1')).toEqual({ title: TITLE_TOO_LONG, state: 'draft' });
+    expect(store.read('raw-1')).toEqual({ title: TITLE_TOO_LONG, state: 'draft', note: null });
   });
 
   it('TST-301 remove で消した record は読めなくなる', async () => {
     const { store } = createInMemoryParts();
-    await store.putRaw('raw-1', { title: TITLE_TOO_LONG, state: 'draft' });
+    await store.putRaw('raw-1', { title: TITLE_TOO_LONG, state: 'draft', note: null });
 
     await store.remove('raw-1');
 
