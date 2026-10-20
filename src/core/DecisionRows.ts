@@ -1,5 +1,5 @@
 // 人の文書 (docs/person/) の「決まりの表」の読み方。
-// 定義の正本は、テスト仕様 03 (docs/design/test/specs/03-person-form.md) の §0。PersonFormCheck・文書のつながり (04)・
+// 定義の正本は、テスト仕様 03 (docs/ai/specs/shared/tests/03-person-form.md) の §0。PersonFormCheck・文書のつながり (04)・
 // レビューシート (05) が同じ定義を使うよう、実装はここに 1 か所だけ持つ。
 //
 //   ID の形      英大文字で始まる英大文字と数字の接頭辞 + `-` + 数字 3 桁 (例: BF-113)。4 桁以上・小文字・全角・

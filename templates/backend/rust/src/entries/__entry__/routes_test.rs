@@ -80,7 +80,7 @@ async fn send(router: Router, request: Request<Body>) -> (u16, Value) {
 
 #[tokio::test]
 async fn unauthorized_is_401_on_every_route_and_the_module_is_not_called() {
-    for (method, path) in [("GET", "/__aggregates__"), ("POST", "/__aggregates__"), ("POST", "/__aggregates__/a-1/close")] {
+    for (method, path) in [("GET", "/__aggregatesPath__"), ("POST", "/__aggregatesPath__"), ("POST", "/__aggregatesPath__/a-1/close")] {
         let (router, calls) = app();
         let (status, body) = send(router, request(method, path, Body::from("{}"), false)).await;
         assert_eq!(status, 401, "{method} {path}");
@@ -92,7 +92,7 @@ async fn unauthorized_is_401_on_every_route_and_the_module_is_not_called() {
 #[tokio::test]
 async fn get_passes_the_query_as_it_is() {
     let (router, calls) = app();
-    let (status, body) = send(router, request("GET", "/__aggregates__?status=open", Body::empty(), true)).await;
+    let (status, body) = send(router, request("GET", "/__aggregatesPath__?status=open", Body::empty(), true)).await;
     assert_eq!(status, 200);
     assert_eq!(body, json!({ "ok": true, "items": [], "truncated": false }));
     assert_eq!(calls.lock().unwrap().as_slice(), [("list".to_string(), json!({ "status": "open" }))]);
@@ -101,7 +101,7 @@ async fn get_passes_the_query_as_it_is() {
 #[tokio::test]
 async fn get_with_extra_query_keys_still_reaches_the_module() {
     let (router, calls) = app();
-    let (status, _) = send(router, request("GET", "/__aggregates__?shop=a.example&signature=s&host=h", Body::empty(), true)).await;
+    let (status, _) = send(router, request("GET", "/__aggregatesPath__?shop=a.example&signature=s&host=h", Body::empty(), true)).await;
     assert_eq!(status, 200);
     assert_eq!(
         calls.lock().unwrap().as_slice(),
@@ -112,7 +112,7 @@ async fn get_with_extra_query_keys_still_reaches_the_module() {
 #[tokio::test]
 async fn post_passes_the_body_without_validating_it() {
     let (router, calls) = app();
-    let (status, _) = send(router, request("POST", "/__aggregates__", Body::from(r#"{"name":1,"extra":true}"#), true)).await;
+    let (status, _) = send(router, request("POST", "/__aggregatesPath__", Body::from(r#"{"name":1,"extra":true}"#), true)).await;
     assert_eq!(status, 201);
     assert_eq!(calls.lock().unwrap().as_slice(), [("create".to_string(), json!({ "name": 1, "extra": true }))]);
 }
@@ -120,14 +120,14 @@ async fn post_passes_the_body_without_validating_it() {
 #[tokio::test]
 async fn post_with_an_empty_body_passes_null() {
     let (router, calls) = app();
-    send(router, request("POST", "/__aggregates__", Body::empty(), true)).await;
+    send(router, request("POST", "/__aggregatesPath__", Body::empty(), true)).await;
     assert_eq!(calls.lock().unwrap().as_slice(), [("create".to_string(), Value::Null)]);
 }
 
 #[tokio::test]
 async fn post_with_broken_json_is_400_and_the_module_is_not_called() {
     let (router, calls) = app();
-    let (status, body) = send(router, request("POST", "/__aggregates__", Body::from("{oops"), true)).await;
+    let (status, body) = send(router, request("POST", "/__aggregatesPath__", Body::from("{oops"), true)).await;
     assert_eq!(status, 400);
     assert_eq!(body["error"]["code"], "MALFORMED_REQUEST");
     assert_eq!(body["error"]["message"], "request body is malformed JSON");
@@ -138,7 +138,7 @@ async fn post_with_broken_json_is_400_and_the_module_is_not_called() {
 async fn post_over_the_limit_is_413_and_the_module_is_not_called() {
     let (router, calls) = app();
     let big = json!({ "name": "x".repeat(BODY_LIMIT_BYTES) }).to_string();
-    let (status, body) = send(router, request("POST", "/__aggregates__", Body::from(big), true)).await;
+    let (status, body) = send(router, request("POST", "/__aggregatesPath__", Body::from(big), true)).await;
     assert_eq!(status, 413);
     assert_eq!(body["error"]["code"], "PAYLOAD_TOO_LARGE");
     assert!(calls.lock().unwrap().is_empty());
@@ -147,7 +147,7 @@ async fn post_over_the_limit_is_413_and_the_module_is_not_called() {
 #[tokio::test]
 async fn close_passes_the_path_id() {
     let (router, calls) = app();
-    let (status, _) = send(router, request("POST", "/__aggregates__/a-1/close", Body::empty(), true)).await;
+    let (status, _) = send(router, request("POST", "/__aggregatesPath__/a-1/close", Body::empty(), true)).await;
     assert_eq!(status, 200);
     assert_eq!(calls.lock().unwrap().as_slice(), [("close".to_string(), json!("a-1"))]);
 }
@@ -167,11 +167,11 @@ async fn a_nested_entry_gives_the_verifier_the_absolute_url_with_the_prefix() {
     let inner = routes(RoutesDeps { verify: RecordingVerifier(Arc::clone(&urls)), __context__: FakeModule(Calls::default()) });
     let router = Router::new().nest("/proxy", inner);
     let request = Request::builder()
-        .uri("/proxy/__aggregates__?status=open")
+        .uri("/proxy/__aggregatesPath__?status=open")
         .header("host", "api.example.com")
         .body(Body::empty())
         .unwrap();
     let (status, _) = send(router, request).await;
     assert_eq!(status, 200);
-    assert_eq!(urls.lock().unwrap().as_slice(), ["http://api.example.com/proxy/__aggregates__?status=open"]);
+    assert_eq!(urls.lock().unwrap().as_slice(), ["http://api.example.com/proxy/__aggregatesPath__?status=open"]);
 }

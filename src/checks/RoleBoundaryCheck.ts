@@ -1,5 +1,5 @@
 // 確定させる人 (person / ai / client) の境界の検査。
-// Spec: docs/adr/0002-role-boundary-invariants.md の条件 2・11・15、ADR-0005 決定 1。
+// Spec: docs/person/decisions/2026/0002-role-boundary-invariants.md の条件 2・11・15、ADR-0005 決定 1。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) の repo では、次を違反にする:
 //   - kind から導く置き場所と、実際のパスが食い違う (要件定義書 02 §7 の表のどのパターンにも当たらない)。
@@ -18,7 +18,7 @@
 // docs/ 直下の生成索引 (README.md・dependencies.md) と各フォルダの README.md は対象外。
 // `.igeta.json` の nonDocPaths (ADR-0003 決定 6) は、新しい構成の repo でだけ読む。読めない・3 フォルダの配下に当たる
 // 設定は、置き場所を判定できないので、その違反だけを返す。旧い構成の repo では読まない。
-// Spec: docs/design/test/specs/04-doc-graph.md の G9。
+// Spec: docs/ai/specs/shared/tests/04-doc-graph.md の G9。
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -38,8 +38,8 @@ import { matchesGlob } from '../gate/PathGlob.js';
 /** 旧い構成を、警告から違反に上げる Igeta のメジャー版 (ADR-0005 決定 1) */
 export const LEGACY_LAYOUT_VIOLATION_FROM_MAJOR = 1;
 
-// 移行コマンド (docs-migrate) が入るまでの文。入ったら「`igeta docs-migrate` を実行してください」に戻す (docs/design/tasks/01-v4-rollout.md の T200)
-export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)';
+// 旧い構成の警告の文。移行コマンドの案内 (テスト仕様 04 の適用範囲の文と 1 字も違わない)
+export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。`igeta docs-migrate` を実行する';
 
 /**
  * ai/ の文書の見出しに置かない語 (ADR-0002 条件 11)。TBD・TODO は、他の英単語の一部 (Mastodon など) と
@@ -47,6 +47,9 @@ export const LEGACY_LAYOUT_MESSAGE = '旧い構成です。3 フォルダの構�
  */
 const UNDECIDED_HEADING_RE = /未決|未確定|保留|要確認|宿題|(?<![A-Za-z])(?:tbd|todo)s?(?![A-Za-z])/i;
 const HEADING_RE = /^\s{0,3}#{1,6}\s+(.*?)\s*$/;
+
+/** 未決の節の違反の文の頭 (docs-migrate の完了条件は、この違反を書き直す段の作業の列へ回す)。 */
+export const UNDECIDED_HEADING_MESSAGE = 'ai/ の文書に未決の節がある';
 
 export class RoleBoundaryCheck implements Check {
   readonly name = 'role-boundary-check';
@@ -229,7 +232,7 @@ function checkUndecidedHeadings(lines: readonly string[], bodyStart: number, fil
     if (heading === undefined || !UNDECIDED_HEADING_RE.test(heading)) continue;
     violations.push({
       severity: 'violation',
-      message: `ai/ の文書に未決の節がある: 「${heading}」 (人の決めが要るものは person の「決めてほしいこと」に書き、ai はその ID を引く)`,
+      message: `${UNDECIDED_HEADING_MESSAGE}: 「${heading}」 (人の決めが要るものは person の「決めてほしいこと」に書き、ai はその ID を引く)`,
       file,
       line: i + 1,
     });

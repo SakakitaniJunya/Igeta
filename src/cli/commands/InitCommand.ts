@@ -1,4 +1,4 @@
-// 新しい repo の骨格を置く。Spec: docs/design/test/specs/06-init-scaffold.md の I1〜I11。
+// 新しい repo の骨格を置く。Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I1〜I11。
 //
 // 置くもの (I1): .igeta-version / docs/README.md (入口の 3 行と索引の区間) / 人の文書 3 本 (地図・要件・決定台帳。雛形から) /
 // docs/person/decisions/README.md / markdownlint の設定 2 本 / AGENTS.md と .github/CODEOWNERS (ApprovalFilesModule) /
@@ -39,11 +39,8 @@ const SCRIPTS: Readonly<Record<string, string>> = {
   scaffold: 'igeta scaffold',
 };
 
-/**
- * 旧い docs がある repo への案内 (I6)。移行コマンドが入る版 (0.6.0) では、「`igeta docs-migrate` を実行する」に替える。
- * 0.5.0 は、移行コマンドがまだ無い。
- */
-const MIGRATION_GUIDANCE = '旧い docs がある repo は、新しい構成にしてから使う。移行コマンド `igeta docs-migrate` は次の版で入る';
+/** 旧い docs がある repo への案内 (I6)。移行は `igeta docs-migrate` で行う */
+const MIGRATION_GUIDANCE = '旧い docs がある repo は、新しい構成にしてから使う。`igeta docs-migrate` を実行する';
 
 const DOCS_README = [
   '# ドキュメント',

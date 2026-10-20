@@ -87,7 +87,7 @@ const NON_ARC42_KINDS = new Set([
   'map',
   'decision-log',
   'human-review',
-  // まとまり (業務コンテキスト) の境界。docs/explanation/07-context-boundaries.md
+  // まとまり (業務コンテキスト) の境界。docs/ai/handbook/explanation/07-context-boundaries.md
   'context-map',
   'context-contract',
   // 由来 (provenance) の手引き。固定名の単独文書 (01-document-taxonomy 等と同型)

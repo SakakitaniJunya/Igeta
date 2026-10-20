@@ -1,5 +1,5 @@
 // kind: delivery-chapter の文書を由来の「塊」(既定は H2 節) に分ける。
-// Spec: docs/explanation/04-provenance-and-agreement.md §3
+// Spec: docs/ai/handbook/explanation/04-provenance-and-agreement.md §3
 //
 // frontmatter・AUTOGEN 区間・export で落とす節 (既定「関連」) は塊にしない。export の
 // `omitSections`/`stripFrontmatterAndAutogen` をそのまま再利用する (ゼロ変更、export 側は触らない)。

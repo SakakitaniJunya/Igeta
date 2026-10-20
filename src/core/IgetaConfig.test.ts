@@ -287,17 +287,17 @@ describe('loadIgetaConfig: nonDocPaths (ADR-0003 決定 6)', () => {
 });
 
 describe('Igeta 自身の .igeta.json (ADR-0008 決定 1)', () => {
+  // 検査として実行されるものの全部 (src・templates・npm のファイル・tsconfig) と、解説 03〜09 (移行後の path) (T302)
   const EXPECTED = [
+    'src/**',
     'templates/**',
-    'src/checks/**',
-    'src/gate/**',
-    'src/core/Role.ts',
-    'src/core/IgetaConfig.ts',
-    'src/core/LineClassifier.ts',
-    'docs/explanation/0[3-9]-*.md',
+    'package.json',
+    'package-lock.json',
+    'tsconfig.json',
+    'docs/ai/handbook/explanation/0[3-9]-*.md',
   ];
 
-  it('読めて、ADR-0008 が決めた 7 つの humanPaths を持つ', () => {
+  it('読めて、T302 の humanPaths (検査として実行されるものの全部と解説 03〜09) を持つ', () => {
     const result = loadIgetaConfig(IGETA_ROOT);
     assert.ok('config' in result, JSON.stringify(result));
     assert.deepEqual(result.config.humanPaths, EXPECTED);
@@ -316,12 +316,13 @@ describe('Igeta 自身の .igeta.json (ADR-0008 決定 1)', () => {
       'src/core/Role.ts',
       'src/core/IgetaConfig.ts',
       'src/core/LineClassifier.ts',
-      'docs/explanation/03-audience-layers.md',
-      'docs/explanation/09-reader-granularity.md',
+      'docs/ai/handbook/explanation/03-audience-layers.md',
+      'docs/ai/handbook/explanation/09-reader-granularity.md',
     ]) {
       assert.equal(guarded(path), true, `${path} が守られていない`);
     }
-    for (const path of ['src/cli/commands/InitCommand.ts', 'src/core/Report.ts', 'docs/explanation/02-human-review-layer.md', 'docs/explanation/10-folder-placement.md', 'README.md']) {
+    // src/** は T302 で守る (検査の対象すべて)。守らないのは、人の決まりでも検査の対象でもないもの
+    for (const path of ['docs/ai/handbook/explanation/02-human-review-layer.md', 'docs/ai/handbook/explanation/10-folder-placement.md', 'README.md']) {
       assert.equal(guarded(path), false, `${path} まで守られている`);
     }
   });

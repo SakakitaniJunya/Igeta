@@ -1,5 +1,5 @@
 // node --test dist/core/MarkdownTable.test.js
-// テスト仕様 03 (docs/design/test/specs/03-person-form.md) §0 の定義「表」: 次の行が区切りの行である見出しの行から始まり、
+// テスト仕様 03 (docs/ai/specs/shared/tests/03-person-form.md) §0 の定義「表」: 次の行が区切りの行である見出しの行から始まり、
 // 空行・見出し・コードフェンスの始まり・HTML コメントの行の手前まで続く (コードフェンス・生成区間・HTML コメントの外)。
 // 見出しと区切りの行頭の縦棒は無くてもよい。表の途中の行は、行頭が縦棒でなくても表の行。引用の中の表は読まない。
 import { describe, it } from 'node:test';

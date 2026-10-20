@@ -12,7 +12,7 @@ use crate::modules::__context__::domain::{DomainError, TransitionError, __Aggreg
 use crate::shared::domain::app_error::AppError;
 
 // doc の型 (serde)。domain へは変換してから渡す。
-pub(super) const COLLECTION: &str = "__aggregates__";
+pub(super) const COLLECTION: &str = "__aggregatesPath__";
 
 /// 書き込み用の doc (serde。firestore の `object()` が Deserialize も要求する)。読み出しは `Stored__Aggregate__Doc` が受ける。
 #[derive(Debug, Serialize, Deserialize)]

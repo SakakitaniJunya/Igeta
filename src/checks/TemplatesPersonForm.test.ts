@@ -1,6 +1,6 @@
 // node --test dist/checks/TemplatesPersonForm.test.js
 // person・client の雛形が、人の型のうち、本物の検査 (PersonFormCheck) が見ない規則を満たすこと
-// (docs/explanation/09-reader-granularity.md §3): 結論 (TL;DR) は 3 行まで・ID を書かない / 図は最初の表より前 /
+// (docs/ai/handbook/explanation/09-reader-granularity.md §3): 結論 (TL;DR) は 3 行まで・ID を書かない / 図は最初の表より前 /
 // 決めてほしいことの表と節の並び / 関連の下流の欄 / frontmatter に行末コメントを書かない / line_limit の宣言。
 // PersonFormCheck が見る規則 (HTML コメント・生成区間・状態の値と列・図の有無・行数) は、雛形を実際の置き場所に置いて
 // 本物の検査を回す TemplatesInstantiation.test.ts が見る。

@@ -109,7 +109,7 @@ function generatedDigests(root: string): Record<string, string> {
 }
 
 /** 旧い構成の警告の 1 文 (テスト仕様 04 の適用範囲の文と 1 字も違わない)。これだけが、足す前から変わった */
-const LEGACY_WARNING = '旧い構成です。3 フォルダの構成へ移してください (移行コマンド `igeta docs-migrate` は次の版で入ります)';
+const LEGACY_WARNING = '旧い構成です。`igeta docs-migrate` を実行する';
 
 /** 基準 (a9fdd0c) の build が、上の木から作った生成物の digest */
 const BASELINE_DIGESTS: Readonly<Record<string, string>> = {

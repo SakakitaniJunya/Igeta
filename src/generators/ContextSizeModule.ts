@@ -1,11 +1,11 @@
 // context-size: 指定したまとまりの「自分の文書 + 参照している隣の context-contract」の総行数を出す。
-// Spec: docs/explanation/07-context-boundaries.md §5
+// Spec: docs/ai/handbook/explanation/07-context-boundaries.md §5
 //
 // 引数を省略したら全部のまとまりを一覧する。まとまりの地図が 1 枚も無い案件では対象が空になるだけで
 // 何も落ちない (既存案件を赤くしない)。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) は、context-files と同じ範囲 (core/ContextGraph.ts の readingSet) を数える
-// (docs/design/test/specs/04-doc-graph.md の B6)。
+// (docs/ai/specs/shared/tests/04-doc-graph.md の B6)。
 
 import { join } from 'node:path';
 import { extractReferences, buildContextGraph, hasContextFolder, listContextFolders, readingSet } from '../core/ContextGraph.js';
