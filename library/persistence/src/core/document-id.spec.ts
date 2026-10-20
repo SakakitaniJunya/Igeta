@@ -19,6 +19,17 @@ describe('document-id', () => {
     expect(results).toEqual([false, false, false, false, false, false]);
   });
 
+  it('TST-117 `__x__` と `____` のとき isDocumentId は false を返し、`__x`・`x__`・`a__b` は true を返す', () => {
+    const reservedIds = ['__x__', '____'];
+    const ordinaryIds = ['__x', 'x__', 'a__b'];
+
+    const reservedResults = reservedIds.map(isDocumentId);
+    const ordinaryResults = ordinaryIds.map(isDocumentId);
+
+    expect(reservedResults).toEqual([false, false]);
+    expect(ordinaryResults).toEqual([true, true, true]);
+  });
+
   it('TST-106 `a/b` のとき assertDocumentId は値を含まない invalid を投げる', () => {
     const assertSlashId = () => assertDocumentId('a/b');
 

@@ -1,29 +1,19 @@
 /** 契約 C9: 壊れた保存データを読んだとき、id 付きの unprocessable を投げる。 */
 import { expect, it } from 'vitest';
-import { AppError } from '../core/app-error';
 import { captureThrown } from './capture-thrown';
+import { summarizeFailure } from './contract-failure';
+import type { FailureSummary } from './contract-failure';
 import { LIST_ALL_LIMIT } from './contract-types';
 import type { ContractContext, ContractEntity } from './contract-types';
-
-interface FailureSummary {
-  readonly kind: string;
-  readonly detail: unknown;
-}
-
-function summarizeFailure(thrown: unknown): FailureSummary {
-  if (thrown instanceof AppError) return { kind: thrown.kind, detail: thrown.detail };
-
-  return { kind: 'not-an-app-error', detail: String(thrown) };
-}
 
 async function checkMalformedRecordIsUnprocessable<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
   kind: string,
 ): Promise<void> {
-  const { repository, newId, malformed } = context.subject;
-  if (malformed === undefined) throw new Error('malformed がない');
+  const { repository, newId, plantMalformed, remove } = context.subject();
+  if (plantMalformed === undefined) throw new Error('plantMalformed がない');
   const id = newId();
-  await malformed.plant(kind, id);
+  await plantMalformed(kind, id);
 
   try {
     const foundFailure = await captureThrown(() => repository.findById(id));
@@ -34,7 +24,7 @@ async function checkMalformedRecordIsUnprocessable<Entity extends ContractEntity
     expect(summarizeFailure(listedFailure), 'list が unprocessable を投げない').toEqual(expected);
   } finally {
     // 残すと、同じ保存先を読む後続の list が壊れた行で失敗する
-    await malformed.remove(id);
+    await remove(id);
   }
 }
 

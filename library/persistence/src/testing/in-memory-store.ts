@@ -15,19 +15,27 @@ function compareIds(left: string, right: string): number {
   return 0;
 }
 
-/** record を id で持つ。Transaction の中の書き込みは、成功したときだけ反映する。 */
+/** record を id で持つ。Transaction の書き込みは、その Transaction が書いた id だけを成功したときに反映する。 */
 export class InMemoryStore<StoredRecord> {
-  private committed = new Map<string, StoredRecord>();
+  private readonly committed = new Map<string, StoredRecord>();
+  // Transaction ごとの、まだ反映していない書き込み
   private readonly scopes = createScopeHandles<Map<string, StoredRecord>>();
 
-  /** id の record を返す。scope があれば、その Transaction の中の書き込みを含めて読む。 */
+  /** id の record を返す。scope があれば、その Transaction の未反映の書き込みを先に見る。 */
   read(id: string, scope?: TransactionScope): StoredRecord | undefined {
-    return this.visibleRecords(scope).get(id);
+    if (scope === undefined) return this.committed.get(id);
+
+    return this.scopes.handleOf(scope).get(id) ?? this.committed.get(id);
   }
 
   /** record を書く。scope があれば、その Transaction が成功したときに反映する。 */
   write(id: string, record: StoredRecord, scope?: TransactionScope): void {
-    this.visibleRecords(scope).set(id, record);
+    if (scope === undefined) {
+      this.committed.set(id, record);
+      return;
+    }
+
+    this.scopes.handleOf(scope).set(id, record);
   }
 
   /** 全 record を id の昇順 (文字コード順。Postgres の COLLATE "C" と同じ) で返す。 */
@@ -42,25 +50,25 @@ export class InMemoryStore<StoredRecord> {
     this.committed.set(id, record);
   }
 
-  /** putRaw で置いた record を消す。 */
+  /** id の record を消す。無い id を消しても失敗しない。 */
   async remove(id: string): Promise<void> {
     this.committed.delete(id);
   }
 
   /** work を 1 つの Transaction で実行する。work が throw したら書き込みを捨てる。 */
   async runInTransaction<Result>(work: (scope: TransactionScope) => Promise<Result>): Promise<Result> {
-    const pending = new Map(this.committed);
-    const scope = this.scopes.createScope(pending);
+    const pendingWrites = new Map<string, StoredRecord>();
+    const scope = this.scopes.createScope(pendingWrites);
 
-    const result = await work(scope);
-    this.committed = pending;
+    try {
+      const result = await work(scope);
+      for (const [id, record] of pendingWrites) {
+        this.committed.set(id, record);
+      }
 
-    return result;
-  }
-
-  private visibleRecords(scope: TransactionScope | undefined): Map<string, StoredRecord> {
-    if (scope === undefined) return this.committed;
-
-    return this.scopes.handleOf(scope);
+      return result;
+    } finally {
+      this.scopes.endScope(scope);
+    }
   }
 }

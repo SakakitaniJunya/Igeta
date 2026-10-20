@@ -1,4 +1,5 @@
 /** InMemoryStore に保存する Repository。契約テストの基準になる実装。 */
+import { assertDocumentId, isDocumentId } from '../core/document-id';
 import { matchesFieldFilter } from '../core/field-filter';
 import type { FieldFilter } from '../core/field-filter';
 import { takePage } from '../core/list-page';
@@ -27,6 +28,7 @@ export class InMemoryRepository<Entity extends { readonly id: string }, StoredRe
   }
 
   async findById(id: string, scope?: TransactionScope): Promise<Entity | undefined> {
+    if (!isDocumentId(id)) return undefined;
     const record = this.options.store.read(id, scope);
     if (record === undefined) return undefined;
 
@@ -45,6 +47,7 @@ export class InMemoryRepository<Entity extends { readonly id: string }, StoredRe
   }
 
   async save(entity: Entity, scope?: TransactionScope): Promise<void> {
+    assertDocumentId(entity.id);
     const record = this.options.mapper.toRecord(entity);
 
     this.options.store.write(entity.id, record, scope);

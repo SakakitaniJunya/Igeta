@@ -21,4 +21,15 @@ describe('scope-handle', () => {
     expect(readForeignScope).toThrow(Error);
     expect(readForeignScope).not.toThrow(AppError);
   });
+
+  it('TST-118 endScope した scope のとき handleOf は普通の Error を投げる', () => {
+    const { createScope, handleOf, endScope } = createScopeHandles<string>();
+    const scope = createScope('handle-1');
+    endScope(scope);
+
+    const readEndedScope = () => handleOf(scope);
+
+    expect(readEndedScope).toThrow(Error);
+    expect(readEndedScope).not.toThrow(AppError);
+  });
 });

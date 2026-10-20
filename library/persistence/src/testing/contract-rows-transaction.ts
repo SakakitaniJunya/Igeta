@@ -8,7 +8,7 @@ import type { ContractEntity, ContractContext } from './contract-types';
 async function checkThrowingTransactionRollsBack<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, runner, newId } = context.subject;
+  const { repository, runner, newId } = context.subject();
   const entity = context.fixtures.createEntity(newId(), 'first');
   const failure = new Error('boom');
   const saveThenThrow = async (scope: TransactionScope): Promise<void> => {
@@ -26,7 +26,7 @@ async function checkThrowingTransactionRollsBack<Entity extends ContractEntity, 
 async function checkTransactionReadsAndWrites<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, runner, newId } = context.subject;
+  const { repository, runner, newId } = context.subject();
   const { createEntity, isSameContent } = context.fixtures;
   const id = newId();
   const initial = createEntity(id, 'first');

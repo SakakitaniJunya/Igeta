@@ -5,6 +5,8 @@ import type { TransactionScope } from './transaction';
 export interface ScopeHandles<Handle> {
   createScope(handle: Handle): TransactionScope;
   handleOf(scope: TransactionScope): Handle;
+  /** Transaction の終わりに呼ぶ (commit でも rollback でも)。以後その scope は使えない。 */
+  endScope(scope: TransactionScope): void;
 }
 
 /** runner ごとに 1 つ作る。別の runner が作った scope は取り出せない。 */
@@ -20,9 +22,12 @@ export function createScopeHandles<Handle>(): ScopeHandles<Handle> {
     },
     handleOf(scope) {
       const handle = handles.get(scope);
-      if (handle === undefined) throw new Error('この runner が作っていない scope です');
+      if (handle === undefined) throw new Error('この runner が作っていない、または終わった Transaction の scope です');
 
       return handle;
+    },
+    endScope(scope) {
+      handles.delete(scope);
     },
   };
 }

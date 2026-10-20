@@ -3,7 +3,7 @@ import { assertMalformedPlanter } from './describe-repository-contract';
 import type { ContractSubject } from './contract-types';
 import type { Memo, MemoFilter } from './memo-fixture';
 
-describe('describeRepositoryContract の登録', () => {
+describe('describeRepositoryContract の検査', () => {
   const subjectWithoutPlanter: ContractSubject<Memo, MemoFilter> = {
     repository: {
       findById: async () => undefined,
@@ -12,17 +12,18 @@ describe('describeRepositoryContract の登録', () => {
     },
     runner: { run: (work) => work({ kind: 'transaction-scope' }) },
     newId: () => 'id-1',
+    remove: async () => {},
   };
 
-  it('TST-210 壊れたデータの種類があるのに置く関数がないとき登録時に Error を投げる', () => {
-    const registerWithKinds = () => assertMalformedPlanter(subjectWithoutPlanter, ['title-too-long']);
+  it('TST-210 壊れたデータの種類があるのに置く関数がないとき Error を投げる', () => {
+    const checkWithKinds = () => assertMalformedPlanter(subjectWithoutPlanter, ['title-too-long']);
 
-    expect(registerWithKinds).toThrow('malformed');
+    expect(checkWithKinds).toThrow('plantMalformed');
   });
 
   it('TST-210 壊れたデータの種類が空のとき置く関数がなくても投げない', () => {
-    const registerWithoutKinds = () => assertMalformedPlanter(subjectWithoutPlanter, []);
+    const checkWithoutKinds = () => assertMalformedPlanter(subjectWithoutPlanter, []);
 
-    expect(registerWithoutKinds).not.toThrow();
+    expect(checkWithoutKinds).not.toThrow();
   });
 });

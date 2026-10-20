@@ -58,7 +58,7 @@ import { describeRepositoryContract } from '@igeta/persistence/testing';
 
 describeRepositoryContract({
   name: 'memos (Firestore)',
-  setup: () => ({ repository: memos, runner, newId: () => crypto.randomUUID(), malformed: { plant, remove } }),
+  setup: () => ({ repository: memos, runner, newId: () => crypto.randomUUID(), remove, plantMalformed }),
   malformedKinds: ['title-too-long', 'title-not-string', 'state-invalid'],
   fixtures: {
     createEntity: (id, state) => ({ id, title: state === 'first' ? '最初' : '次', state: state === 'first' ? 'draft' : 'published' }),
@@ -68,8 +68,8 @@ describeRepositoryContract({
 });
 ```
 
-- 自分の repository が C1〜C9 を通すかを確かめる。id は `[A-Za-z0-9_-]` の 1〜64 字
-- `malformedKinds` は壊れた保存データの種類で、1 種類につき C9 の 1 行を登録する。`malformed.plant(kind, id)` が壊れた保存データを生で置き、`malformed.remove(id)` が C9 の後に消す。種類が空なら C9 は表から外れる。`setup` は契約の最初に 1 回だけ呼ぶ。CI では `REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` を付ける
+- 自分の repository が C1〜C10 を通すかを確かめる。id は `[A-Za-z0-9_-]` の 1〜64 字
+- `malformedKinds` は壊れた保存データの種類で、1 種類につき C9 の 1 行を登録する。`plantMalformed(kind, id)` が壊れた保存データを生で置く (種類があるのに無ければ失敗)。契約は `newId` で作った id を最後に `remove(id)` で全部消す (無い id を消しても失敗しない)。`setup` は契約の最初に 1 回だけ呼び、`close` があれば最後に呼ぶ。CI では `REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` を付ける
 
 ## 開発と版
 

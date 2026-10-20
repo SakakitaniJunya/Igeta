@@ -5,7 +5,7 @@ export type {
   ContractOptions,
   ContractState,
   ContractSubject,
-  MalformedPlanter,
+  PlantMalformed,
 } from './contract-types';
 export { InMemoryRepository } from './in-memory-repository';
 export type { InMemoryRepositoryOptions } from './in-memory-repository';

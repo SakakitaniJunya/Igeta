@@ -6,7 +6,7 @@ import type { ContractEntity, ContractContext } from './contract-types';
 async function checkUnsavedIdIsUndefined<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = context.subject;
+  const { repository, newId } = context.subject();
   const unsavedId = newId();
 
   const found = await repository.findById(unsavedId);
@@ -17,7 +17,7 @@ async function checkUnsavedIdIsUndefined<Entity extends ContractEntity, Filter>(
 async function checkSavedEntityIsRead<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = context.subject;
+  const { repository, newId } = context.subject();
   const { createEntity, isSameContent } = context.fixtures;
   const saved = createEntity(newId(), 'first');
   await repository.save(saved);
@@ -30,7 +30,7 @@ async function checkSavedEntityIsRead<Entity extends ContractEntity, Filter>(
 async function checkSecondSaveOverwrites<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = context.subject;
+  const { repository, newId } = context.subject();
   const { createEntity, isSameContent } = context.fixtures;
   const id = newId();
   await repository.save(createEntity(id, 'first'));

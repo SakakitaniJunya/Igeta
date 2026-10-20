@@ -22,10 +22,9 @@ async function saveAll<Entity extends ContractEntity, Filter>(
 async function checkListIsAscendingById<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = context.subject;
-  // 昇順と逆の順で保存し、並べ替えが効いていることを確かめる
-  const prefix = newId();
-  const ownIds = [`${prefix}-c`, `${prefix}-a`, `${prefix}-b`];
+  const { repository, newId } = context.subject();
+  // 昇順と逆の順で保存し、並べ替えが効いていることを確かめる。newId の id だけを使い、後で消せるようにする
+  const ownIds = [newId(), newId(), newId()].sort().reverse();
   await saveAll(repository, ownIds.map((id) => context.fixtures.createEntity(id, 'first')));
 
   const page = await repository.list({ limit: LIST_ALL_LIMIT });
@@ -39,7 +38,7 @@ async function checkListIsAscendingById<Entity extends ContractEntity, Filter>(
 async function checkFilterSelectsOnlyMatchingState<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = context.subject;
+  const { repository, newId } = context.subject();
   const { createEntity, filterByState, isSameContent } = context.fixtures;
   const firstIds = [newId(), newId()];
   const secondId = newId();
@@ -57,7 +56,7 @@ async function checkFilterSelectsOnlyMatchingState<Entity extends ContractEntity
 async function checkLimitTruncatesPage<Entity extends ContractEntity, Filter>(
   context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = context.subject;
+  const { repository, newId } = context.subject();
   const overLimitIds = Array.from({ length: PAGE_LIMIT + 1 }, () => newId());
   await saveAll(repository, overLimitIds.map((id) => context.fixtures.createEntity(id, 'first')));
 
