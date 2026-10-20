@@ -12,7 +12,7 @@ import type { TransactionScope } from '../core/transaction';
 import { withPostgresErrors } from './errors';
 import { toGenericDatabase, toStoredRecord } from './generic-database';
 import type { GenericDatabase, GenericRow } from './generic-database';
-import { sqlScopes } from './transaction-scope';
+import { sqlScopesFor } from './transaction-scope';
 
 /** SqlRepository の部品。filterFields は絞り込みの値を保存の列へ写す。 */
 export interface SqlRepositoryOptions<DB, TB extends keyof DB & string, Entity, Filter> {
@@ -87,6 +87,6 @@ export class SqlRepository<DB, TB extends keyof DB & string, Entity extends { re
   private executor(scope?: TransactionScope): Kysely<GenericDatabase> {
     if (scope === undefined) return toGenericDatabase(this.options.db);
 
-    return sqlScopes.handleOf(scope);
+    return sqlScopesFor(this.options.db).handleOf(scope);
   }
 }

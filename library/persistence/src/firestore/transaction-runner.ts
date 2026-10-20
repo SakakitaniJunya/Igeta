@@ -3,7 +3,7 @@ import type { Firestore } from '@google-cloud/firestore';
 import type { TransactionRunner, TransactionScope } from '../core/transaction';
 import { markWorkFailure } from '../core/work-failure';
 import { withFirestoreErrors } from './errors';
-import { firestoreScopes } from './transaction-scope';
+import { firestoreScopesFor } from './transaction-scope';
 
 /** work を Firestore の 1 つの Transaction で実行する。衝突時は SDK が work を繰り返す。 */
 export class FirestoreTransactionRunner implements TransactionRunner {
@@ -16,11 +16,11 @@ export class FirestoreTransactionRunner implements TransactionRunner {
   run<Result>(work: (scope: TransactionScope) => Promise<Result>): Promise<Result> {
     return withFirestoreErrors(() =>
       this.db.runTransaction(async (transaction) => {
-        const scope = firestoreScopes.createScope(transaction);
+        const scope = firestoreScopesFor(this.db).createScope(transaction);
         try {
           return await markWorkFailure(() => work(scope));
         } finally {
-          firestoreScopes.endScope(scope);
+          firestoreScopesFor(this.db).endScope(scope);
         }
       }),
     );

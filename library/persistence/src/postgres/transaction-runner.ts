@@ -4,7 +4,7 @@ import type { TransactionRunner, TransactionScope } from '../core/transaction';
 import { markWorkFailure } from '../core/work-failure';
 import { withPostgresErrors } from './errors';
 import { toGenericDatabase } from './generic-database';
-import { sqlScopes } from './transaction-scope';
+import { sqlScopesFor } from './transaction-scope';
 
 /** work を serializable の 1 つの Transaction で実行する。競合の失敗は再試行せず、そのまま上げる。 */
 export class SqlTransactionRunner<DB> implements TransactionRunner {
@@ -20,11 +20,11 @@ export class SqlTransactionRunner<DB> implements TransactionRunner {
         .transaction()
         .setIsolationLevel('serializable')
         .execute(async (transaction) => {
-          const scope = sqlScopes.createScope(toGenericDatabase(transaction));
+          const scope = sqlScopesFor(this.db).createScope(toGenericDatabase(transaction));
           try {
             return await markWorkFailure(() => work(scope));
           } finally {
-            sqlScopes.endScope(scope);
+            sqlScopesFor(this.db).endScope(scope);
           }
         }),
     );

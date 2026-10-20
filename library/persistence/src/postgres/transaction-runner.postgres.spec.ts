@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { AppError } from '../core/app-error';
+import type { TransactionScope } from '../core/transaction';
 import { captureThrown } from '../testing/capture-thrown';
 import { createMemo } from '../testing/memo-fixture';
 import { describePostgres } from '../testing/postgres-harness';
@@ -55,5 +56,17 @@ describePostgres('SqlTransactionRunner (Postgres 16)', () => {
     const thrown = await captureThrown(() => runner.run(failInsideWork));
 
     expect(thrown).toBe(fromWork);
+  });
+
+  it('TST-710 別の db の runner が作った scope を save に渡したとき Error を投げる', async () => {
+    const otherDatabase = createPostgresMemoParts();
+    const saveToOtherDatabase = (scope: TransactionScope) =>
+      otherDatabase.repository.save(createMemo('memo-other-db', 'draft'), scope);
+
+    const thrown = await captureThrown(() => runner.run(async (scope) => saveToOtherDatabase(scope)));
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).not.toBeInstanceOf(AppError);
+    await otherDatabase.db.destroy();
   });
 });

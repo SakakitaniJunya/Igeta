@@ -11,7 +11,7 @@ import type { Repository } from '../core/repository';
 import type { TransactionScope } from '../core/transaction';
 import { withFirestoreErrors } from './errors';
 import { toDocumentData, toStoredRecord } from './stored-record';
-import { firestoreScopes } from './transaction-scope';
+import { firestoreScopesFor } from './transaction-scope';
 
 /** FirestoreRepository の部品。filterFields は絞り込みの値を保存の項目へ写す。 */
 export interface FirestoreRepositoryOptions<Entity, StoredRecord, Filter> {
@@ -42,7 +42,7 @@ export class FirestoreRepository<Entity extends { readonly id: string }, StoredR
     const reference = this.options.db.collection(this.options.collection).doc(id);
 
     const snapshot = await withFirestoreErrors(() =>
-      scope === undefined ? reference.get() : firestoreScopes.handleOf(scope).get(reference),
+      scope === undefined ? reference.get() : firestoreScopesFor(this.options.db).handleOf(scope).get(reference),
     );
 
     if (!snapshot.exists) return undefined;
@@ -76,7 +76,7 @@ export class FirestoreRepository<Entity extends { readonly id: string }, StoredR
         return;
       }
 
-      firestoreScopes.handleOf(scope).set(reference, data);
+      firestoreScopesFor(this.options.db).handleOf(scope).set(reference, data);
     });
   }
 }

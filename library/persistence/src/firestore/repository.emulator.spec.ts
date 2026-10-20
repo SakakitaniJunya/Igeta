@@ -85,4 +85,18 @@ describeEmulator('FirestoreRepository の境界 (Firestore emulator)', () => {
       expect(thrown).toBe(fromWork);
     });
   });
+
+  it('TST-710 別の db の runner が作った scope を save に渡したとき Error を投げる', async () => {
+    await withIsolatedParts([], async ({ runner }) => {
+      const otherDatabase = createFirestoreMemoParts(`isolated_${crypto.randomUUID()}`);
+      const saveToOtherDatabase = (scope: TransactionScope) =>
+        otherDatabase.repository.save(createMemo('memo-other-db', 'draft'), scope);
+
+      const thrown = await captureThrown(() => runner.run(async (scope) => saveToOtherDatabase(scope)));
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect(thrown).not.toBeInstanceOf(AppError);
+      await otherDatabase.db.terminate();
+    });
+  });
 });

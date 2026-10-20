@@ -114,6 +114,7 @@ relates_to: []
 | TST-707 | 列名の不正 | Postgres の `filterFields` が存在しない列名 `no_such` を返し、`list` を呼ぶ | 普通の Error が上がる。空の一覧を黙って返さない |
 | TST-708 | Firestore の制約 | Firestore の Tx の中で、書いた後に読んで実行する。Postgres では同じ順で実行する | Firestore は SDK の拒否 (読みは書きの前、という制約) がエラーのまま素通しになる。AppError にしない。Postgres では同じ順で成功する (差の記録) |
 | TST-709 | Tx の衝突 | 同じ行を 2 つの Tx が競合して更新し、両方を実行する | Firestore は SDK が Tx を繰り返す (library は再試行を足さない)。Postgres は競合のエラーを素通しにし、部分的な書き込みは残らない |
+| TST-710 | 取り違え | 別の db (別の Kysely・別の Firestore) の runner が作った scope を、`save` へ渡す (Firestore・Postgres とも) | 普通の Error を投げる。黙って別の db に書かない |
 | TST-711 | 利用者の失敗 | `work` が ECONNRESET 付きの Error を投げる (Firestore・Postgres とも) | `unavailable` に翻訳されず、投げた Error がそのまま届く |
 
 ## 3. トレーサビリティ
