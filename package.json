@@ -40,7 +40,8 @@
     "secret-scan": "node dist/cli.js secret-scan --internal-ids",
     "test": "npm run test:scripts && npm run test:library",
     "test:scripts": "tsc && node --test \"dist/**/*.test.js\"",
-    "test:library": "npm --prefix library/eslint-config test && npm --prefix library/eslint-config run lint && npm --prefix library/persistence test && npm --prefix library/persistence run lint"
+    "install:library": "npm ci --prefix library/eslint-config && npm ci --prefix library/persistence",
+    "test:library": "npm run install:library && npm --prefix library/eslint-config test && npm --prefix library/eslint-config run lint && npm --prefix library/persistence test && npm --prefix library/persistence run lint"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",
