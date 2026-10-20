@@ -35,7 +35,7 @@ export function createFirestoreMemoParts(collection: string = CONTRACT_COLLECTIO
 /** 契約の対象にする。壊れた保存データは生で置き、db は契約の最後に閉じる。 */
 export function createFirestoreMemoSubject(parts: FirestoreMemoParts): ContractSubject<Memo, MemoFilter> {
   const { db, repository, runner } = parts;
-  const collection = db.collection(CONTRACT_COLLECTION);
+  const collection = db.collection(parts.collection);
   const plantMalformed = async (kind: string, id: string): Promise<void> => {
     const record = MALFORMED_MEMO_RECORDS[kind];
     if (record === undefined) throw new Error(`知らない種類: ${kind}`);
