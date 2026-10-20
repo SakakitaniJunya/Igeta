@@ -23,6 +23,15 @@ const VIOLATION_ROWS = [
   ['FN-07', 'max-lines-per-function', 'fn-07-max-lines-per-function.ts'],
   ['FN-07', 'max-depth', 'fn-07-max-depth.ts'],
   ['FN-05', 'max-params', 'fn-05-max-params.ts'],
+  ['FN-04', 'no-param-reassign', 'fn-04-no-param-reassign.ts'],
+  ['FN-08', 'no-else-return', 'fn-08-no-else-return.ts'],
+  ['FN-09', 'no-negated-condition', 'fn-09-no-negated-condition.ts'],
+  ['FN-11', 'prefer-const', 'fn-11-prefer-const.ts'],
+  ['FN-11', 'no-var', 'fn-11-no-var.ts'],
+  ['CM-04', 'no-warning-comments', 'cm-04-no-warning-comments.ts'],
+  ['NM-08', 'unicorn/prevent-abbreviations', 'nm-08-prevent-abbreviations.ts'],
+  ['NM-03', 'no-restricted-syntax', 'nm-03-boolean-name-literal.ts'],
+  ['NM-03', 'no-restricted-syntax', 'nm-03-boolean-name-annotation.ts'],
   ['FN-12', 'no-nested-ternary', 'fn-12-no-nested-ternary.ts'],
   ['FN-12', 'max-len', 'fn-12-max-len.ts'],
   ['NM-09', 'id-length', 'nm-09-id-length.ts'],
@@ -90,6 +99,21 @@ describe('規約に沿った書き方は落ちない', () => {
   it('TS-05 .tsx の部品は PascalCase のファイル名でよい', async () => {
     const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
     const [result] = await eslint.lintText('export {};\n', { filePath: path.join(VIOLATIONS, 'ItemCard.tsx') });
+
+    assert.deepEqual(result?.messages, []);
+  });
+
+  it('NM-08 許可リストの id・db・ok・err・props・args・env は略語として扱わない', async () => {
+    const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
+    const source = '/** 見本。 */\nexport const props = [1];\n/** 見本。 */\nexport const args = [1];\n/** 見本。 */\nexport const env = [1];\n';
+    const [result] = await eslint.lintText(source, { filePath: path.join(VIOLATIONS, 'allowed-names.ts') });
+
+    assert.deepEqual(result?.messages, []);
+  });
+
+  it('NM-03 is で始まる真偽値の名前は許される', async () => {
+    const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
+    const [result] = await eslint.lintText('export const isOpen = true;\n', { filePath: path.join(VIOLATIONS, 'named.ts') });
 
     assert.deepEqual(result?.messages, []);
   });
