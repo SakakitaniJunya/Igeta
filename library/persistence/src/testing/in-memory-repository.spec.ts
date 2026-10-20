@@ -3,8 +3,9 @@ import { createUuidGenerator } from '../core/id-generator';
 import type { ContractSubject } from './contract-types';
 import { describeRepositoryContract } from './describe-repository-contract';
 import { createInMemoryParts } from './in-memory-memo-parts';
+import { InMemoryRepository } from './in-memory-repository';
 import type { InMemoryParts } from './in-memory-memo-parts';
-import { MALFORMED_MEMO_RECORDS, memoContractFixtures } from './memo-fixture';
+import { createMemo, MALFORMED_MEMO_RECORDS, memoContractFixtures, memoMapper } from './memo-fixture';
 import type { Memo, MemoFilter, MemoRecord } from './memo-fixture';
 
 const TITLE_TOO_LONG = 'あ'.repeat(41);
@@ -54,5 +55,15 @@ describe('InMemory の保存先', () => {
     await store.remove('raw-1');
 
     expect(store.read('raw-1')).toBeUndefined();
+  });
+
+  it('TST-712 filterFields が存在しない項目を返すとき list は 0 件を返す (失敗しない)', async () => {
+    const { store } = createInMemoryParts();
+    const repository = new InMemoryRepository({ store, mapper: memoMapper, filterFields: () => ({ no_such: 'x' }) });
+    await repository.save(createMemo('memo-1', 'draft'));
+
+    const page = await repository.list({ filter: {}, limit: 10 });
+
+    expect(page.items).toEqual([]);
   });
 });

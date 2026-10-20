@@ -34,6 +34,7 @@ relates_to: []
 | R2 | 実行環境が無いときの skip は手元だけ許す。CI は `REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` で落とす (サイレント縮退禁止) |
 | R3 | 契約の fixture (`createEntity`・`filterByState`・`isSameContent`) は実装者が渡す。本文 (C1〜C12) は 3 つの実装で同じ。`setup` は契約の最初 (`beforeAll`) に 1 回だけ呼び、失敗したら skip でなく落とす。終わりに `teardown` (`close`) を呼ぶ。各 it は `newId` の id だけを使う |
 | R6 | 任意の項目 (値が無いことがある項目) は、Mapper の record の値が undefined なら null として保存する。読むときは null が Mapper に渡る。Firestore・Postgres・InMemory で同じ |
+| R7 | `as` は TS-02 の例外として 4 か所だけ許す (理由つき eslint-disable)。型を持たない保存データを Mapper に渡す境界 (`core/stored-values.ts`・`firestore/stored-record.ts`・`postgres/generic-database.ts` の 1 か所) と、Kysely の汎用基底の境界 (`postgres/generic-database.ts` の 1 か所) だけ |
 | R5 | 契約は `newId` で作った id を全部覚え、最後に `remove` で消す。共有の DB に行を溜めない |
 | R4 | 期待結果は kind・件数・値・終了状態で書く。「正しく動く」は書かない |
 
@@ -120,6 +121,8 @@ relates_to: []
 | TST-709 | Tx の衝突 | 同じ行を 2 つの Tx が競合して更新し、両方を実行する | Firestore は SDK が Tx を繰り返す (library は再試行を足さない)。Postgres は競合のエラーを素通しにし、部分的な書き込みは残らない |
 | TST-710 | 取り違え | 別の db (別の Kysely・別の Firestore) の runner が作った scope を、`save` へ渡す (Firestore・Postgres とも) | 普通の Error を投げる。黙って別の db に書かない |
 | TST-711 | 利用者の失敗 | `work` が ECONNRESET 付きの Error を投げる (Firestore・Postgres とも) | `unavailable` に翻訳されず、投げた Error がそのまま届く |
+| TST-712 | 未知の項目 | InMemory の `filterFields` が存在しない項目 `no_such` を返し、`list` を呼ぶ | 0 件を返す。失敗しない (DIF-5) |
+| TST-713 | 未知の項目 | Firestore の `filterFields` が存在しない項目 `no_such` を返し、`list` を呼ぶ | 0 件を返す。失敗しない (DIF-5) |
 
 ## 3. トレーサビリティ
 
@@ -139,10 +142,14 @@ relates_to: []
 
 ## 5. 実装ごとの差 (契約は見ない)
 
-| 実装 | Tx の中で自分の書き込みを読む | 同じ id を 2 つの Tx が書く |
-|---|---|---|
-| InMemory | 読める | 後で commit した側が勝つ |
-| Firestore | 読み → 書きの順を強制する (書いた後の読みは SDK が拒否する。TST-708) | SDK が Tx を再試行する。library は足さない (TST-709) |
-| Postgres | 読める | `serializable` で実行し、競合のエラー (SQLSTATE 40001) で失敗する。再試行は呼び出し側が決める。部分的な書き込みは残らない (TST-709) |
+| ID | 観点 | InMemory | Firestore | Postgres |
+|---|---|---|---|---|
+| DIF-1 | Tx の中で自分の書き込みを読む | 読める | 読み → 書きの順を強制する (書いた後の読みは SDK が拒否する。TST-708) | 読める |
+| DIF-2 | 同じ id を 2 つの Tx が書く | 後で commit した側が勝つ | SDK が Tx を再試行する。library は足さない (TST-709) | `serializable` で実行し、競合のエラー (SQLSTATE 40001) で失敗する。再試行は呼び出し側が決める。部分的な書き込みは残らない (TST-709) |
+| DIF-3 | エラーの翻訳の範囲 | 翻訳しない (DB を呼ばない) | 接続できない (code 14) だけを `unavailable` にする。他の SDK のエラーは素通し (TST-402・403) | 接続断だけを `unavailable` にする (SQLSTATE 08・57P01・57P03、Node の接続 code、pg の接続断の message。TST-504・706)。SQL のエラーは素通し (TST-505) |
+| DIF-4 | 一覧の並び順の根拠 | id の文字コード順 | 文書 id の昇順 (UTF-8 のバイト順) | `ORDER BY id COLLATE "C"` (バイト順。TST-502) |
+| DIF-5 | 未知の項目で絞る | 0 件を返す (TST-712) | 0 件を返す (TST-713) | SQL のエラー (列が無い。TST-707) |
 
-契約 C8 が見るのは「読んでから書く」だけで、上の差には触れない。
+- DIF-1・DIF-2: 契約 C8 が見るのは「読んでから書く」だけで、この 2 行には触れない。
+- DIF-4: 3 実装の並びが同じになる前提は、id を ASCII に限る規則 (core の DocumentId、`[A-Za-z0-9_-]`) にある。契約 C4 は ASCII の id でしか見ない。ASCII 以外の id を許すと、文字コード順とバイト順がずれる。
+- DIF-5: `filterFields` は Mapper が決める項目だけを返す。未知の項目は利用者の誤りで、実装ごとに失敗の形が違う (0 件か、SQL のエラーか)。

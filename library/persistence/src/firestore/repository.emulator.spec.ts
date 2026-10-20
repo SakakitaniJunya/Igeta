@@ -4,7 +4,9 @@ import type { TransactionScope } from '../core/transaction';
 import { captureThrown } from '../testing/capture-thrown';
 import { describeEmulator } from '../testing/emulator';
 import { createMemo } from '../testing/memo-fixture';
+import { memoMapper } from '../testing/memo-fixture';
 import { createFirestoreMemoParts } from './firestore-memo-parts';
+import { FirestoreRepository } from './repository';
 import type { FirestoreMemoParts } from './firestore-memo-parts';
 
 const PAGE_LIMIT = 3;
@@ -97,6 +99,20 @@ describeEmulator('FirestoreRepository の境界 (Firestore emulator)', () => {
       expect(thrown).toBeInstanceOf(Error);
       expect(thrown).not.toBeInstanceOf(AppError);
       await otherDatabase.db.terminate();
+    });
+  });
+
+  it('TST-713 filterFields が存在しない項目を返すとき list は 0 件を返す (失敗しない)', async () => {
+    const id = crypto.randomUUID();
+
+    await withIsolatedParts([id], async ({ db, collection, repository }) => {
+      await repository.save(createMemo(id, 'draft'));
+      const filterFields = () => ({ no_such: 'x' });
+      const unknownField = new FirestoreRepository({ db, collection, mapper: memoMapper, filterFields });
+
+      const page = await unknownField.list({ filter: {}, limit: 10 });
+
+      expect(page.items).toEqual([]);
     });
   });
 });
