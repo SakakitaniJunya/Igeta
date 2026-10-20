@@ -1,28 +1,28 @@
 # @igeta/persistence
 
-DB 層の部品 (Result・AppError・Repository の port・Mapper・Transaction、Firestore と Postgres の実装、契約テスト)。0.1.0 (未公開)。
+DB 層の部品 (Result・AppError・Repository の port・Mapper・Transaction、契約テスト、InMemory 実装)。0.1.0 (未公開)。Firestore と Postgres の実装は次の版で入る (実装タスク 02 の T006・T007)。
 
 ## 入れ方
 
 ```sh
-npm install @igeta/persistence @google-cloud/firestore   # Firestore の場合 (Postgres は kysely pg)
-npm install -D vitest                                    # 契約テストを使う場合
+npm install @igeta/persistence
+npm install -D vitest   # 契約テストを使う場合
 ```
 
-## 4 つの入口
+## 入口
 
 | 入口 | 中身 | 要る SDK |
 |---|---|---|
-| `@igeta/persistence` | Result・AppError・Repository・Mapper・TransactionRunner・DocumentId・ListQuery | なし |
-| `@igeta/persistence/firestore` | FirestoreRepository・FirestoreTransactionRunner・createFirestore | @google-cloud/firestore |
-| `@igeta/persistence/postgres` | SqlRepository・SqlTransactionRunner・createPostgres・migrateToLatest | kysely・pg |
-| `@igeta/persistence/testing` | describeRepositoryContract・InMemoryRepository・InMemoryTransactionRunner・emulator と Postgres の helper | vitest |
+| `@igeta/persistence` | Result・AppError・Repository・Mapper・TransactionRunner・DocumentId・ListQuery・IdGenerator | なし |
+| `@igeta/persistence/testing` | describeRepositoryContract・InMemoryStore・InMemoryRepository・InMemoryTransactionRunner | vitest |
+| `@igeta/persistence/firestore`・`/postgres` | 次の版で入る ([docs/postgres.md](docs/postgres.md)) | — |
 
-## 使い方 (集約 1 つ: memo)
+## 使い方 (集約 1 つ: memo、InMemory)
 
 ```ts
-import { ok, err, unprocessable, type Mapper } from '@igeta/persistence';
-import { FirestoreRepository, FirestoreTransactionRunner, createFirestore } from '@igeta/persistence/firestore';
+import { createUuidGenerator, err, ok, unprocessable } from '@igeta/persistence';
+import type { Mapper } from '@igeta/persistence';
+import { InMemoryRepository, InMemoryStore, InMemoryTransactionRunner } from '@igeta/persistence/testing';
 
 interface Memo { readonly id: string; readonly title: string; readonly state: 'draft' | 'published' }
 interface MemoRecord { readonly title: string; readonly state: string }
@@ -36,46 +36,47 @@ const memoMapper: Mapper<Memo, MemoRecord> = {
       : err(unprocessable('memo が不正')),
 };
 
-const db = createFirestore('my-project');
-const memos = new FirestoreRepository({
-  db,
-  collection: 'memos',
+const store = new InMemoryStore<MemoRecord>();
+const memos = new InMemoryRepository({
+  store,
   mapper: memoMapper,
   filterFields: (filter: { state?: Memo['state'] }) => ({ state: filter.state }), // 絞り込みの値を保存の項目へ写す。undefined は絞らない
 });
-const runner = new FirestoreTransactionRunner(db);
+const runner = new InMemoryTransactionRunner(store);
 
 await runner.run((scope) => memos.save({ id: 'm-1', title: 'はじめ', state: 'draft' }, scope));
 const page = await memos.list({ filter: { state: 'draft' }, limit: 20 }); // page.isTruncated: 続きがあれば true
 ```
 
-Postgres の使い方は [docs/postgres.md](docs/postgres.md)。
-
 ## 契約テスト
+
+上の `store`・`memos`・`runner` を、自分の repository の契約 C1〜C10 に通す。vitest のテストファイルに書く。
 
 ```ts
 import { describeRepositoryContract } from '@igeta/persistence/testing';
 
+const idGenerator = createUuidGenerator();
+
 describeRepositoryContract({
-  name: 'memos (Firestore)',
-  setup: () => ({ repository: memos, runner, newId: () => crypto.randomUUID(), remove, plantMalformed }),
-  malformedKinds: ['title-too-long', 'title-not-string', 'state-invalid'],
+  name: 'memos (InMemory)',
+  setup: () => ({ repository: memos, runner, newId: () => idGenerator.next(), remove: (id) => store.remove(id) }),
+  malformedKinds: [],
   fixtures: {
-    createEntity: (id, state) => ({ id, title: state === 'first' ? '最初' : '次', state: state === 'first' ? 'draft' : 'published' }),
-    filterByState: (state) => ({ state: state === 'first' ? 'draft' : 'published' }),
+    createEntity: (id, state) => ({ id, title: state === 'draft' ? '下書き' : '公開', state }),
+    filterByState: (state) => ({ state }),
     isSameContent: (left, right) => left.title === right.title && left.state === right.state,
   },
 });
 ```
 
-- 自分の repository が C1〜C10 を通すかを確かめる。id は `[A-Za-z0-9_-]` の 1〜64 字
-- `malformedKinds` は壊れた保存データの種類で、1 種類につき C9 の 1 行を登録する。`plantMalformed(kind, id)` が壊れた保存データを生で置く (種類があるのに無ければ失敗)。契約は `newId` で作った id を最後に `remove(id)` で全部消す (無い id を消しても失敗しない)。`setup` は契約の最初に 1 回だけ呼び、`close` があれば最後に呼ぶ。CI では `REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` を付ける
+- `setup` は契約の最初に 1 回だけ呼ぶ。`newId` の id だけを使い、`remove(id)` で最後に全部消す (無い id を消しても失敗しない)。`close` があれば最後に呼ぶ
+- `malformedKinds` は壊れた保存データの種類で、1 種類につき C9 の 1 行を登録する。種類を書くなら `setup` に `plantMalformed(kind, id)` (壊れた保存データを生で置く) も返す。空なら C9 は表から外れる
+- id は `[A-Za-z0-9_-]` の 1〜64 字で、`__` で始まり `__` で終わる形は使えない
 
 ## 開発と版
 
 ```sh
-npm test                 # unit
-npm run test:firestore   # Firestore emulator が要る
+npm test    # unit
 ```
 
 semver。1.0.0 までは破壊的変更を minor で入れ、CHANGELOG.md に書く。

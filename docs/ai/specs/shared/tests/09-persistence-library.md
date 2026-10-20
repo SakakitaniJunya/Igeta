@@ -75,6 +75,7 @@ relates_to: []
 | TST-304 | 単体 | InMemory | commit 済みの Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない) | 決定 2 |
 | TST-305 | 単体 | InMemory | 契約 C1〜C10 を通し終えた保存先 | 行を数える | 0 件 (契約が `newId` で作った id を全部消している) | 決定 2 |
 | TST-306 | 単体 | InMemory | rollback 済み (work が throw した) Transaction の scope | その scope で `save` する | 普通の Error を投げる (黙って捨てない)。scope が取れていなければ、その旨の message で失敗する | 決定 2 |
+| TST-307 | 結合 | README | README の「使い方」と「契約テスト」のコードと同じ手順 (InMemory の memo) | `src/readme-example.spec.ts` で流す | draft の memo を保存して `list` すると 1 件・isTruncated false。同じ設定で契約 C1〜C10 が通る | 決定 1 |
 | TST-401 | 結合 | FirestoreRepository | emulator あり・`REQUIRE_EMULATOR=1` | 契約 C1〜C10 を実行 | 10 行が通る (C9 は 3 ケースとも) | 決定 2 |
 | TST-402 | 単体 | firestore/errors | code 14 (UNAVAILABLE) の Error | 変換する | `unavailable` の AppError | 決定 1 |
 | TST-403 | 単体 | firestore/errors | code 14 以外の Error | 変換する | 同じ Error が返る (AppError にしない) | 決定 1 |
@@ -114,7 +115,7 @@ relates_to: []
 
 | 確認 | 結果 |
 |---|---|
-| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜306 / firestore = TST-401〜406 / postgres = TST-501〜502・504〜506 / build = TST-601〜609 |
+| ADR-0012 決定 1 (4 入口) | core = TST-101〜118 / testing = TST-211・301〜307 / firestore = TST-401〜406 / postgres = TST-501〜502・504〜506 / build = TST-601〜609 |
 | ADR-0012 決定 2 (契約が受入条件) | TST-201〜211 を InMemory (TST-301)・Firestore (TST-401)・Postgres (TST-501) で通す |
 | 読みやすさ (ADR-0012 の Drivers 1) | 機械で見るのは TST-604〜607 だけ。名前の選び方・1 行に 1 事は評価者が見る |
 | 機械で確かめないもの | Kysely で汎用の基底の型が通るか (spike で確かめ、結果をタスク 02 に書く) / 業務語の選び方 |
