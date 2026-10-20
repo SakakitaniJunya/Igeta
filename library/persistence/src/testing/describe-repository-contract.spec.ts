@@ -7,7 +7,7 @@ describe('describeRepositoryContract の登録', () => {
   const subjectWithoutPlanter: ContractSubject<Memo, MemoFilter> = {
     repository: {
       findById: async () => undefined,
-      list: async () => ({ items: [], truncated: false }),
+      list: async () => ({ items: [], isTruncated: false }),
       save: async () => {},
     },
     runner: { run: (work) => work({ kind: 'transaction-scope' }) },

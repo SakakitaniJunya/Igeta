@@ -7,10 +7,10 @@ export interface ListQuery<Filter> {
   readonly limit: number;
 }
 
-/** 一覧の結果。続きがあるとき truncated が true。 */
+/** 一覧の結果。続きがあるとき isTruncated が true。 */
 export interface ListPage<Entity> {
   readonly items: readonly Entity[];
-  readonly truncated: boolean;
+  readonly isTruncated: boolean;
 }
 
 /** limit が 1 以上の整数でないとき invalid を投げる。 */
@@ -20,9 +20,9 @@ export function assertListLimit(limit: number): void {
   throw invalid('limit は 1 以上の整数にしてください', { limit });
 }
 
-/** 先頭から limit 件を取り、それより多く渡されていれば truncated を true にする。呼び出し側は limit + 1 件まで読む。 */
+/** 先頭から limit 件を取り、それより多く渡されていれば isTruncated を true にする。呼び出し側は limit + 1 件まで読む。 */
 export function takePage<Row>(rows: readonly Row[], limit: number): ListPage<Row> {
   assertListLimit(limit);
 
-  return { items: rows.slice(0, limit), truncated: rows.length > limit };
+  return { items: rows.slice(0, limit), isTruncated: rows.length > limit };
 }

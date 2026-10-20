@@ -41,7 +41,7 @@ export class InMemoryRepository<Entity extends { readonly id: string }, StoredRe
     const page = takePage(matchedRows, query.limit);
 
     const items = page.items.map((row) => readStored(mapper, row.id, row.record));
-    return { items, truncated: page.truncated };
+    return { items, isTruncated: page.isTruncated };
   }
 
   async save(entity: Entity, scope?: TransactionScope): Promise<void> {

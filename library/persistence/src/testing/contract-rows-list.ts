@@ -64,7 +64,7 @@ async function checkLimitTruncatesPage<Entity extends ContractEntity, Filter>(
   const page = await repository.list({ limit: PAGE_LIMIT });
 
   expect(page.items, 'items が limit 件でない').toHaveLength(PAGE_LIMIT);
-  expect(page.truncated, '続きがあるのに truncated が false').toBe(true);
+  expect(page.isTruncated, '続きがあるのに isTruncated が false').toBe(true);
 }
 
 /** C4〜C6 の it を登録する。 */
@@ -73,5 +73,5 @@ export function declareListRows<Entity extends ContractEntity, Filter>(
 ): void {
   it('TST-204 契約 C4 id を 3 件保存したとき list は id の昇順で 3 件を含む', () => checkListIsAscendingById(context));
   it('TST-205 契約 C5 状態の違う行があるとき filter で絞った状態の行だけ返る', () => checkFilterSelectsOnlyMatchingState(context));
-  it('TST-206 契約 C6 limit を超えて保存したとき limit 件で truncated は true', () => checkLimitTruncatesPage(context));
+  it('TST-206 契約 C6 limit を超えて保存したとき limit 件で isTruncated は true', () => checkLimitTruncatesPage(context));
 }

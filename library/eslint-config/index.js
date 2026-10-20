@@ -24,13 +24,15 @@ const booleanParameterSelectors = [
   `${FUNCTION_NODES} > ObjectPattern.params > TSTypeAnnotation > TSBooleanKeyword`,
 ];
 
-const NOT_BOOLEAN_PREFIXED = ':not([name=/^(is|has|can|should)[A-Z]/])';
+// camelCase は isOpen、定数は IS_PROD の形
+const NOT_BOOLEAN_PREFIXED = ':not([name=/^((is|has|can|should)[A-Z]|(IS|HAS|CAN|SHOULD)_)/])';
 const BOOLEAN_NAME_MESSAGE = '真偽値の名前は is / has / can / should で始める (NM-03)';
 
-// 型情報なしで見られる範囲: 真偽値のリテラルで初期化した変数と、boolean と書いた変数・引数
+// 型情報なしで見られる範囲: 真偽値のリテラルで初期化した変数と、boolean と書いた変数・引数・プロパティ
 const booleanNameSelectors = [
   `VariableDeclarator[init.raw=/^(true|false)$/] > Identifier.id${NOT_BOOLEAN_PREFIXED}`,
   `Identifier[typeAnnotation.typeAnnotation.type="TSBooleanKeyword"]${NOT_BOOLEAN_PREFIXED}`,
+  `:matches(TSPropertySignature, PropertyDefinition)[typeAnnotation.typeAnnotation.type="TSBooleanKeyword"] > Identifier.key${NOT_BOOLEAN_PREFIXED}`,
 ];
 
 const ABBREVIATION_ALLOW_LIST = { id: true, db: true, ok: true, err: true, props: true, args: true, env: true };
@@ -60,7 +62,8 @@ export const base = [
       'no-nested-ternary': 'error', // FN-12
       'max-len': ['error', { code: 120 }], // FN-12
       // NM-09 (ok は Result の慣用名)
-      'id-length': ['error', { min: 3, exceptions: ['i', 'id', 'db', 'ok'] }],
+      // object の key (Kysely の up / down など外部の語彙) は対象外にする
+      'id-length': ['error', { min: 3, exceptions: ['i', 'id', 'db', 'ok'], properties: 'never' }],
       '@typescript-eslint/naming-convention': [
         // NM-06
         'error',
@@ -68,7 +71,8 @@ export const base = [
         { selector: 'function', format: ['camelCase'] },
         { selector: 'variable', format: ['camelCase', 'UPPER_CASE'] },
       ],
-      'import/extensions': ['error', 'never'], // MD-07
+      // .css・.json などは拡張子が要るので通す
+      'import/extensions': ['error', 'never', { css: 'always', scss: 'always', json: 'always', svg: 'always' }], // MD-07
       'no-restricted-imports': ['error', { patterns: restrictedImportPatterns }], // MD-07
       'jsdoc/require-jsdoc': [
         // CM-05

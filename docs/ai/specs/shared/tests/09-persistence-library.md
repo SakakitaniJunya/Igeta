@@ -45,8 +45,8 @@ relates_to: []
 | TST-104 | 単体 | document-id | `a-1_B`・1 文字・64 文字 | `isDocumentId` に通す | true | 決定 1 |
 | TST-105 | 単体 | document-id | `.`・`..`・`a/b`・空文字・65 文字・`名前` | `isDocumentId` に通す | すべて false | 決定 1 |
 | TST-106 | 単体 | document-id | `a/b` | `assertDocumentId` を呼ぶ | `invalid` を投げる。message に値を出さない | 決定 1 |
-| TST-107 | 単体 | list-page | 3 件の行・limit 2 | `takePage` | items 2 件・truncated true | 決定 1 |
-| TST-108 | 単体 | list-page | 3 件の行・limit 3 | `takePage` | items 3 件・truncated false | 決定 1 |
+| TST-107 | 単体 | list-page | 3 件の行・limit 2 | `takePage` | items 2 件・isTruncated true | 決定 1 |
+| TST-108 | 単体 | list-page | 3 件の行・limit 3 | `takePage` | items 3 件・isTruncated false | 決定 1 |
 | TST-109 | 単体 | list-page | limit が 0・-1・1.5・NaN | `takePage` | すべて `invalid` | 決定 1 |
 | TST-110 | 単体 | field-filter | 等価 filter `{ state: 'draft' }` と record | 照合する | 一致で true。1 項目でも違えば false。空 filter は true | 決定 1 |
 | TST-111 | 単体 | scope-handle | `createScope(h)` で作った scope | `handleOf` で取り出す | 同じ `h` が返る | 決定 1 |
@@ -60,7 +60,7 @@ relates_to: []
 | TST-203 | 契約 C3 | Repository | first を保存し、同じ id に second を保存 | 読む | second の内容 | 決定 2 |
 | TST-204 | 契約 C4 | Repository | ASCII の id を 3 件保存 | `list` (limit 1000) | id の並びが昇順で、3 件が含まれる | 決定 2 |
 | TST-205 | 契約 C5 | Repository | first を 2 件、second を 1 件保存 | second の filter で `list` | 返る行はすべて second。second の 1 件を含み、first は含まない | 決定 2 |
-| TST-206 | 契約 C6 | Repository | limit + 1 件 (limit は 3) を保存 | `list` (limit 3) | items 3 件・truncated true | 決定 2 |
+| TST-206 | 契約 C6 | Repository | limit + 1 件 (limit は 3) を保存 | `list` (limit 3) | items 3 件・isTruncated true | 決定 2 |
 | TST-207 | 契約 C7 | TransactionRunner | Tx の中で保存してから throw する | `run` を呼ぶ | reject (boom)。後で読むと undefined | 決定 2 |
 | TST-208 | 契約 C8 | TransactionRunner | first を保存済み | Tx の中で読み、second を保存する | Tx の中で読めた。Tx の外で読むと second | 決定 2 |
 | TST-209 | 契約 C9 | Repository | 不変条件を外した保存データ 3 種 (名前が長すぎる・名前が文字列でない・状態が不正)。置いた行は it の後で必ず消す | `findById` と `list` を呼ぶ | 両方とも `unprocessable` で detail が `{ id }` | 決定 2 |
@@ -96,7 +96,7 @@ relates_to: []
 | TST-701 | サイレント縮退 | `REQUIRE_EMULATOR=1` で emulator が無い | Firestore の suite が落ち、題名に理由が出る。skip で緑にならない |
 | TST-702 | サイレント縮退 | `REQUIRE_POSTGRES=1` で `PG_URL` が無い | Postgres の suite が落ちる |
 | TST-703 | 取り違え | Firestore の scope を SqlRepository の `save` へ渡す | 普通の Error を投げる。黙って保存しない |
-| TST-704 | 上限の境界 | limit ちょうどの件数だけ保存 | `list` が truncated false を返す (off-by-one を見る) |
+| TST-704 | 上限の境界 | limit ちょうどの件数だけ保存 | `list` が isTruncated false を返す (off-by-one を見る) |
 | TST-705 | 社内情報 | library の文書に `C-` + 3 桁の制約 ID を書く | `secret-scan --internal-ids` が落ちる |
 | TST-706 | 接続断 | Postgres が止まっている | `findById` は `unavailable`。`unprocessable` や素の Error にならない |
 | TST-707 | 列名の不正 | Postgres の `filterFields` が存在しない列名 `no_such` を返し、`list` を呼ぶ | 普通の Error が上がる。空の一覧を黙って返さない |

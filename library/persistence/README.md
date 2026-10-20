@@ -46,7 +46,7 @@ const memos = new FirestoreRepository({
 const runner = new FirestoreTransactionRunner(db);
 
 await runner.run((scope) => memos.save({ id: 'm-1', title: 'はじめ', state: 'draft' }, scope));
-const page = await memos.list({ filter: { state: 'draft' }, limit: 20 }); // page.truncated: 続きがあれば true
+const page = await memos.list({ filter: { state: 'draft' }, limit: 20 }); // page.isTruncated: 続きがあれば true
 ```
 
 Postgres の使い方は [docs/postgres.md](docs/postgres.md)。

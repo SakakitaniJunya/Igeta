@@ -72,7 +72,7 @@ relates_to: [test-persistence-library]
 | `shared/infrastructure/firestore.ts` (+ spec)・`modules/__context__/infrastructure/firestore-*.ts` | createFirestore・FirestoreRepository・FirestoreTransactionRunner の import。雛形に残るのは Mapper 1 つ。firestore-scope は消える |
 | `domain/ports/__aggregate__.repository.port.ts` | `Repository<Entity, Id, Filter>` を使う 1 行の型 (domain に SDK は出ない) |
 | `shared/test-support/emulator.ts`・契約テストの写し | `@igeta/persistence/testing` の helper と describeRepositoryContract の呼び出し 1 つ |
-| `application/list-__aggregates__.usecase.ts` | `limit + 1` を外す。repository が `truncated` を返す |
+| `application/list-__aggregates__.usecase.ts` | `limit + 1` を外す。repository が `isTruncated` を返す |
 
 nestjs は `modules/`・`shared/` が hono と同一ファイルなので、同じ対応をとる。差は `entries/database/database.module.ts` だけで、`FIRESTORE` トークンの provider が `createFirestore` を出している部分を、FirestoreRepository の組み立てに替える。`shared/presentation/*` は HTTP 層なので library に入れず、雛形に残す。Rust 版 (`library/persistence-rs/`、後続) の見当は Result → `Result<T, AppError>`、Repository → trait。
 

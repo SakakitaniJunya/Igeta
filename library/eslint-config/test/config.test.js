@@ -32,6 +32,8 @@ const VIOLATION_ROWS = [
   ['NM-08', 'unicorn/prevent-abbreviations', 'nm-08-prevent-abbreviations.ts'],
   ['NM-03', 'no-restricted-syntax', 'nm-03-boolean-name-literal.ts'],
   ['NM-03', 'no-restricted-syntax', 'nm-03-boolean-name-annotation.ts'],
+  ['NM-03', 'no-restricted-syntax', 'nm-03-boolean-name-property.ts'],
+  ['NM-09', 'id-length', 'nm-09-id-length-parameter.ts'],
   ['FN-12', 'no-nested-ternary', 'fn-12-no-nested-ternary.ts'],
   ['FN-12', 'max-len', 'fn-12-max-len.ts'],
   ['NM-09', 'id-length', 'nm-09-id-length.ts'],
@@ -107,6 +109,30 @@ describe('規約に沿った書き方は落ちない', () => {
     const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
     const source = '/** 見本。 */\nexport const props = [1];\n/** 見本。 */\nexport const args = [1];\n/** 見本。 */\nexport const env = [1];\n';
     const [result] = await eslint.lintText(source, { filePath: path.join(VIOLATIONS, 'allowed-names.ts') });
+
+    assert.deepEqual(result?.messages, []);
+  });
+
+  it('NM-09 object の key は 2 文字以下でもよい (外部の語彙)', async () => {
+    const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
+    const source = 'export const migration = { up: "create", down: "drop" };\n';
+    const [result] = await eslint.lintText(source, { filePath: path.join(VIOLATIONS, 'keys.ts') });
+
+    assert.deepEqual(result?.messages, []);
+  });
+
+  it('MD-07 .css・.json の import は拡張子つきでよい', async () => {
+    const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
+    const [result] = await eslint.lintText(readFileSync(path.join(VIOLATIONS, 'md-07-allowed-assets.ts'), 'utf8'), {
+      filePath: path.join(VIOLATIONS, 'md-07-allowed-assets.ts'),
+    });
+
+    assert.deepEqual(result?.messages.filter((message) => message.ruleId === 'import/extensions'), []);
+  });
+
+  it('NM-03 定数は IS_PROD の形でよい', async () => {
+    const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
+    const [result] = await eslint.lintText('export const IS_PROD = true;\n', { filePath: path.join(VIOLATIONS, 'const.ts') });
 
     assert.deepEqual(result?.messages, []);
   });
