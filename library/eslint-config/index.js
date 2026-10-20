@@ -1,5 +1,5 @@
 /**
- * Igeta のコーディング規約 (RC / TS / TE) のうち、機械で落とせる規則だけを載せた flat config。
+ * Igeta のコーディング規約 (MD / FN / NM / CM / TS / TE) のうち、機械で落とせる規則だけを載せた flat config。
  * 使い方: `export default [...base, ...tests]`。各規則の横の ID は規約の規則 ID。
  */
 import vitest from '@vitest/eslint-plugin';
@@ -14,7 +14,7 @@ const TEST_FILES = ['**/*.spec.ts', '**/*.test.ts', '**/*.spec.tsx', '**/*.test.
 
 const FUNCTION_NODES =
   ':matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSEmptyBodyFunctionExpression, TSMethodSignature, TSFunctionType, TSConstructorType)';
-const BOOLEAN_PARAMETER_MESSAGE = 'boolean の引数を作らない。union かオブジェクト引数にする (RC-10)';
+const BOOLEAN_PARAMETER_MESSAGE = 'boolean の引数を作らない。union かオブジェクト引数にする (FN-06)';
 
 const booleanParameterSelectors = [
   `${FUNCTION_NODES} > Identifier.params > TSTypeAnnotation > TSBooleanKeyword`,
@@ -25,7 +25,7 @@ const booleanParameterSelectors = [
 ];
 
 const restrictedImportPatterns = [
-  { group: ['../../*'], message: '相対 import は ../ 1 段まで。深い path は index か alias から取る (RC-06)' },
+  { group: ['../../*'], message: '相対 import は ../ 1 段まで。深い path は index か alias から取る (MD-07)' },
 ];
 
 /** 本番コード用。 */
@@ -42,25 +42,25 @@ export const base = [
       unicorn,
     },
     rules: {
-      'max-lines': ['error', { max: 150 }], // RC-01
-      'max-lines-per-function': ['error', { max: 40 }], // RC-02
-      'max-depth': ['error', 3], // RC-02
-      'max-params': ['error', 3], // RC-02, TS-05
-      'no-nested-ternary': 'error', // RC-03
-      'max-len': ['error', { code: 120 }], // RC-03
-      // RC-04 (ok は Result の生成関数と判別用の項目の名前。設計 ADR-0012 の語彙)
+      'max-lines': ['error', { max: 150 }], // MD-01
+      'max-lines-per-function': ['error', { max: 40 }], // FN-07
+      'max-depth': ['error', 3], // FN-07
+      'max-params': ['error', 3], // FN-05
+      'no-nested-ternary': 'error', // FN-12
+      'max-len': ['error', { code: 120 }], // FN-12
+      // NM-09 (ok は Result の慣用名)
       'id-length': ['error', { min: 3, exceptions: ['i', 'id', 'db', 'ok'] }],
       '@typescript-eslint/naming-convention': [
-        // RC-04
+        // NM-06
         'error',
         { selector: 'typeLike', format: ['PascalCase'] },
         { selector: 'function', format: ['camelCase'] },
         { selector: 'variable', format: ['camelCase', 'UPPER_CASE'] },
       ],
-      'import/extensions': ['error', 'never'], // RC-06
-      'no-restricted-imports': ['error', { patterns: restrictedImportPatterns }], // RC-06
+      'import/extensions': ['error', 'never'], // MD-07
+      'no-restricted-imports': ['error', { patterns: restrictedImportPatterns }], // MD-07
       'jsdoc/require-jsdoc': [
-        // RC-07
+        // CM-05
         'error',
         {
           publicOnly: true,
@@ -70,27 +70,27 @@ export const base = [
       ],
       'no-magic-numbers': 'off',
       '@typescript-eslint/no-magic-numbers': [
-        // RC-09
+        // NM-10
         'error',
         { ignore: [0, 1, -1], ignoreEnums: true, ignoreNumericLiteralTypes: true, ignoreReadonlyClassProperties: true },
       ],
       'no-restricted-syntax': [
-        // RC-10
+        // FN-06
         'error',
         ...booleanParameterSelectors.map((selector) => ({ selector, message: BOOLEAN_PARAMETER_MESSAGE })),
       ],
       '@typescript-eslint/no-explicit-any': 'error', // TS-01
       '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }], // TS-02 (as const は常に許される)
       'import/no-default-export': 'error', // TS-03
-      'unicorn/filename-case': ['error', { case: 'kebabCase' }], // TS-06
-      '@typescript-eslint/consistent-type-imports': 'error', // TS-07
-      'promise/prefer-await-to-then': 'error', // TS-08
+      'unicorn/filename-case': ['error', { case: 'kebabCase' }], // TS-05
+      '@typescript-eslint/consistent-type-imports': 'error', // TS-06
+      'promise/prefer-await-to-then': 'error', // TS-07
     },
   },
   {
     name: '@igeta/eslint-config/base-react-components',
     files: ['**/*.tsx'],
-    // TS-06 (React の部品だけ PascalCase)
+    // TS-05 (React の部品だけ PascalCase)
     rules: { 'unicorn/filename-case': ['error', { cases: { kebabCase: true, pascalCase: true } }] },
   },
 ];
@@ -102,8 +102,8 @@ export const tests = [
     files: TEST_FILES,
     plugins: { vitest },
     rules: {
-      '@typescript-eslint/no-magic-numbers': 'off', // RC-09 を緩める (期待値の数字を書く)
-      'max-lines-per-function': 'off', // RC-02 を緩める (describe が 1 関数になる)
+      '@typescript-eslint/no-magic-numbers': 'off', // NM-10 を緩める (期待値の数字を書く)
+      'max-lines-per-function': 'off', // FN-07 を緩める (describe が 1 関数になる)
       'vitest/max-expects': ['error', { max: 3 }], // TE-02
       'vitest/max-nested-describe': ['error', { max: 2 }], // TE-03
       'vitest/no-conditional-tests': 'error', // TE-03

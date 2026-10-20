@@ -19,31 +19,31 @@ async function lint({ file, configs, lintAs }) {
 
 // [規約 ID, 落ちるはずの規則, fixture, 別名で掛ける path (任意)]
 const VIOLATION_ROWS = [
-  ['RC-01', 'max-lines', 'rc-01-max-lines.ts'],
-  ['RC-02', 'max-lines-per-function', 'rc-02-max-lines-per-function.ts'],
-  ['RC-02', 'max-depth', 'rc-02-max-depth.ts'],
-  ['RC-02', 'max-params', 'rc-02-max-params.ts'],
-  ['RC-03', 'no-nested-ternary', 'rc-03-no-nested-ternary.ts'],
-  ['RC-03', 'max-len', 'rc-03-max-len.ts'],
-  ['RC-04', 'id-length', 'rc-04-id-length.ts'],
-  ['RC-04', '@typescript-eslint/naming-convention', 'rc-04-naming-convention-type.ts'],
-  ['RC-04', '@typescript-eslint/naming-convention', 'rc-04-naming-convention-function.ts'],
-  ['RC-04', '@typescript-eslint/naming-convention', 'rc-04-naming-convention-variable.ts'],
-  ['RC-06', 'import/extensions', 'rc-06-import-extensions.ts'],
-  ['RC-06', 'no-restricted-imports', 'rc-06-no-restricted-imports.ts'],
-  ['RC-07', 'jsdoc/require-jsdoc', 'rc-07-require-jsdoc-function.ts'],
-  ['RC-07', 'jsdoc/require-jsdoc', 'rc-07-require-jsdoc-type.ts'],
-  ['RC-07', 'jsdoc/require-jsdoc', 'rc-07-require-jsdoc-class.ts'],
-  ['RC-07', 'jsdoc/require-jsdoc', 'rc-07-require-jsdoc-arrow.ts'],
-  ['RC-09', '@typescript-eslint/no-magic-numbers', 'rc-09-no-magic-numbers.ts'],
-  ['RC-10', 'no-restricted-syntax', 'rc-10-no-restricted-syntax-annotation.ts'],
-  ['RC-10', 'no-restricted-syntax', 'rc-10-no-restricted-syntax-default.ts'],
+  ['MD-01', 'max-lines', 'md-01-max-lines.ts'],
+  ['FN-07', 'max-lines-per-function', 'fn-07-max-lines-per-function.ts'],
+  ['FN-07', 'max-depth', 'fn-07-max-depth.ts'],
+  ['FN-05', 'max-params', 'fn-05-max-params.ts'],
+  ['FN-12', 'no-nested-ternary', 'fn-12-no-nested-ternary.ts'],
+  ['FN-12', 'max-len', 'fn-12-max-len.ts'],
+  ['NM-09', 'id-length', 'nm-09-id-length.ts'],
+  ['NM-06', '@typescript-eslint/naming-convention', 'nm-06-naming-convention-type.ts'],
+  ['NM-06', '@typescript-eslint/naming-convention', 'nm-06-naming-convention-function.ts'],
+  ['NM-06', '@typescript-eslint/naming-convention', 'nm-06-naming-convention-variable.ts'],
+  ['MD-07', 'import/extensions', 'md-07-import-extensions.ts'],
+  ['MD-07', 'no-restricted-imports', 'md-07-no-restricted-imports.ts'],
+  ['CM-05', 'jsdoc/require-jsdoc', 'cm-05-require-jsdoc-function.ts'],
+  ['CM-05', 'jsdoc/require-jsdoc', 'cm-05-require-jsdoc-type.ts'],
+  ['CM-05', 'jsdoc/require-jsdoc', 'cm-05-require-jsdoc-class.ts'],
+  ['CM-05', 'jsdoc/require-jsdoc', 'cm-05-require-jsdoc-arrow.ts'],
+  ['NM-10', '@typescript-eslint/no-magic-numbers', 'nm-10-no-magic-numbers.ts'],
+  ['FN-06', 'no-restricted-syntax', 'fn-06-no-restricted-syntax-annotation.ts'],
+  ['FN-06', 'no-restricted-syntax', 'fn-06-no-restricted-syntax-default.ts'],
   ['TS-01', '@typescript-eslint/no-explicit-any', 'ts-01-no-explicit-any.ts'],
   ['TS-02', '@typescript-eslint/consistent-type-assertions', 'ts-02-consistent-type-assertions.ts'],
   ['TS-03', 'import/no-default-export', 'ts-03-no-default-export.ts'],
-  ['TS-06', 'unicorn/filename-case', 'ts-06-filename-case.ts', 'itemRepository.ts'],
-  ['TS-07', '@typescript-eslint/consistent-type-imports', 'ts-07-consistent-type-imports.ts'],
-  ['TS-08', 'promise/prefer-await-to-then', 'ts-08-prefer-await-to-then.ts'],
+  ['TS-05', 'unicorn/filename-case', 'ts-05-filename-case.ts', 'itemRepository.ts'],
+  ['TS-06', '@typescript-eslint/consistent-type-imports', 'ts-06-consistent-type-imports.ts'],
+  ['TS-07', 'promise/prefer-await-to-then', 'ts-07-prefer-await-to-then.ts'],
   ['TE-02', 'vitest/max-expects', 'te-02-max-expects.spec.ts'],
   ['TE-03', 'vitest/max-nested-describe', 'te-03-max-nested-describe.spec.ts'],
   ['TE-03', 'vitest/no-conditional-tests', 'te-03-no-conditional-tests.spec.ts'],
@@ -64,13 +64,13 @@ describe('違反した fixture は規則で落ちる', () => {
 describe('tests は base の 2 規則だけを緩める', () => {
   const RELAXED = ['max-lines-per-function', '@typescript-eslint/no-magic-numbers'];
 
-  it('RC-02・RC-09 base だけで掛けると、テストの fixture は 2 規則とも落ちる', async () => {
+  it('FN-07・NM-10 base だけで掛けると、テストの fixture は 2 規則とも落ちる', async () => {
     const ruleIds = await lint({ file: 'relaxed-in-tests.spec.ts', configs: base });
 
     assert.deepEqual(RELAXED.filter((ruleId) => !ruleIds.includes(ruleId)), []);
   });
 
-  it('RC-02・RC-09 tests を足すと、同じ fixture で 2 規則とも落ちない', async () => {
+  it('FN-07・NM-10 tests を足すと、同じ fixture で 2 規則とも落ちない', async () => {
     const ruleIds = await lint({ file: 'relaxed-in-tests.spec.ts', configs: [...base, ...tests] });
 
     assert.deepEqual(RELAXED.filter((ruleId) => ruleIds.includes(ruleId)), []);
@@ -87,7 +87,7 @@ describe('規約に沿った書き方は落ちない', () => {
     assert.deepEqual(result?.messages, []);
   });
 
-  it('TS-06 .tsx の部品は PascalCase のファイル名でよい', async () => {
+  it('TS-05 .tsx の部品は PascalCase のファイル名でよい', async () => {
     const eslint = new ESLint({ cwd: ROOT, overrideConfigFile: true, overrideConfig: base });
     const [result] = await eslint.lintText('export {};\n', { filePath: path.join(VIOLATIONS, 'ItemCard.tsx') });
 
