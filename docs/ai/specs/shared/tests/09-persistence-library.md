@@ -32,7 +32,7 @@ relates_to: []
 |---|---|
 | R1 | 1 行 = 1 テスト。判定を 2 つ入れない |
 | R2 | 実行環境が無いときの skip は手元だけ許す。CI は `REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` で落とす (サイレント縮退禁止) |
-| R3 | 契約の fixture (`make`・`filterOf`・`equals`) は実装者が渡す。本文 (C1〜C9) は 3 つの実装で同じ |
+| R3 | 契約の fixture (`createEntity`・`filterByState`・`isSameContent`) は実装者が渡す。本文 (C1〜C9) は 3 つの実装で同じ |
 | R4 | 期待結果は kind・件数・値・終了状態で書く。「正しく動く」は書かない |
 
 ## 1. テストケース一覧
@@ -55,7 +55,7 @@ relates_to: []
 | TST-114 | 単体 | readStored | mapper の `fromRecord` が err を返す | `readStored(mapper, 'id1', record)` | `unprocessable` で detail が `{ id: 'id1' }` | 決定 1 |
 | TST-115 | 単体 | readStored | mapper の `fromRecord` が例外を投げる | 同じ呼び出し | 例外を包まず、そのまま投げる (黙って 422 にしない) | 決定 1 |
 | TST-201 | 契約 C1 | Repository | 保存していない id | `findById` | undefined | 決定 2 |
-| TST-202 | 契約 C2 | Repository | first の状態の entity を保存 | 同じ id で読む | `equals` が true | 決定 2 |
+| TST-202 | 契約 C2 | Repository | first の状態の entity を保存 | 同じ id で読む | `isSameContent` が true | 決定 2 |
 | TST-203 | 契約 C3 | Repository | first を保存し、同じ id に second を保存 | 読む | second の内容 | 決定 2 |
 | TST-204 | 契約 C4 | Repository | ASCII の id を 3 件保存 | `list` (limit 1000) | id の並びが昇順で、3 件が含まれる | 決定 2 |
 | TST-205 | 契約 C5 | Repository | first を 2 件、second を 1 件保存 | second の filter で `list` | 返る行はすべて second。second の 1 件を含み、first は含まない | 決定 2 |

@@ -7,8 +7,13 @@ export type ContractState = 'first' | 'second';
 /** 壊れた保存データを、保存先に生で置く関数。id を受け取る。 */
 export type PlantMalformed = (id: string) => Promise<void>;
 
+/** 契約が扱う entity が最低限持つもの。 */
+export interface ContractEntity {
+  readonly id: string;
+}
+
 /** 契約を通す対象。実装ごとに setup が作る。 */
-export interface ContractSubject<Entity extends { readonly id: string }, Filter> {
+export interface ContractSubject<Entity extends ContractEntity, Filter> {
   readonly repository: Repository<Entity, string, Filter>;
   readonly runner: TransactionRunner;
   /** 他のテストと重ならない id を返す。 */
@@ -18,14 +23,14 @@ export interface ContractSubject<Entity extends { readonly id: string }, Filter>
 }
 
 /** 実装者が渡す fixture。契約の本文は実装ごとに書き換えない。 */
-export interface ContractFixtures<Entity extends { readonly id: string }, Filter> {
+export interface ContractFixtures<Entity extends ContractEntity, Filter> {
   createEntity(id: string, state: ContractState): Entity;
   filterByState(state: ContractState): Filter;
   isSameContent(left: Entity, right: Entity): boolean;
 }
 
 /** describeRepositoryContract の引数。 */
-export interface ContractOptions<Entity extends { readonly id: string }, Filter> {
+export interface ContractOptions<Entity extends ContractEntity, Filter> {
   readonly name: string;
   readonly setup: () => ContractSubject<Entity, Filter>;
   readonly fixtures: ContractFixtures<Entity, Filter>;

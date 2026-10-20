@@ -60,9 +60,9 @@ describeRepositoryContract({
   name: 'memos (Firestore)',
   setup: () => ({ repository: memos, runner, newId: () => crypto.randomUUID(), malformed: [...] }),
   fixtures: {
-    make: (id, state) => ({ id, title: state === 'first' ? '最初' : '次', state: state === 'first' ? 'draft' : 'published' }),
-    filterOf: (state) => ({ state: state === 'first' ? 'draft' : 'published' }),
-    equals: (a, b) => a.title === b.title && a.state === b.state,
+    createEntity: (id, state) => ({ id, title: state === 'first' ? '最初' : '次', state: state === 'first' ? 'draft' : 'published' }),
+    filterByState: (state) => ({ state: state === 'first' ? 'draft' : 'published' }),
+    isSameContent: (left, right) => left.title === right.title && left.state === right.state,
   },
 });
 ```
