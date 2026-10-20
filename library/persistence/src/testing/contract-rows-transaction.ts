@@ -3,13 +3,13 @@ import { expect, it } from 'vitest';
 import type { TransactionScope } from '../core/transaction';
 import { captureThrown } from './capture-thrown';
 import { expectSameContent } from './contract-same-content';
-import type { ContractEntity, ContractOptions } from './contract-types';
+import type { ContractEntity, ContractContext } from './contract-types';
 
 async function checkThrowingTransactionRollsBack<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, runner, newId } = options.setup();
-  const entity = options.fixtures.createEntity(newId(), 'first');
+  const { repository, runner, newId } = context.subject;
+  const entity = context.fixtures.createEntity(newId(), 'first');
   const failure = new Error('boom');
   const saveThenThrow = async (scope: TransactionScope): Promise<void> => {
     await repository.save(entity, scope);
@@ -24,10 +24,10 @@ async function checkThrowingTransactionRollsBack<Entity extends ContractEntity, 
 }
 
 async function checkTransactionReadsAndWrites<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, runner, newId } = options.setup();
-  const { createEntity, isSameContent } = options.fixtures;
+  const { repository, runner, newId } = context.subject;
+  const { createEntity, isSameContent } = context.fixtures;
   const id = newId();
   const initial = createEntity(id, 'first');
   const updated = createEntity(id, 'second');
@@ -48,8 +48,8 @@ async function checkTransactionReadsAndWrites<Entity extends ContractEntity, Fil
 
 /** C7〜C8 の it を登録する。 */
 export function declareTransactionRows<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): void {
-  it('TST-207 契約 C7 Transaction の中で保存して throw したとき保存は残らない', () => checkThrowingTransactionRollsBack(options));
-  it('TST-208 契約 C8 Transaction の中で読んで保存したとき中で読めて外から更新後が読める', () => checkTransactionReadsAndWrites(options));
+  it('TST-207 契約 C7 Transaction の中で保存して throw したとき保存は残らない', () => checkThrowingTransactionRollsBack(context));
+  it('TST-208 契約 C8 Transaction の中で読んで保存したとき中で読めて外から更新後が読める', () => checkTransactionReadsAndWrites(context));
 }

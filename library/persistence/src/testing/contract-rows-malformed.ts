@@ -2,7 +2,8 @@
 import { expect, it } from 'vitest';
 import { AppError } from '../core/app-error';
 import { captureThrown } from './capture-thrown';
-import type { ContractEntity, ContractOptions } from './contract-types';
+import { LIST_ALL_LIMIT } from './contract-types';
+import type { ContractContext, ContractEntity } from './contract-types';
 
 interface FailureSummary {
   readonly kind: string;
@@ -16,33 +17,35 @@ function summarizeFailure(thrown: unknown): FailureSummary {
 }
 
 async function checkMalformedRecordIsUnprocessable<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
-  caseIndex: number,
+  context: ContractContext<Entity, Filter>,
+  kind: string,
 ): Promise<void> {
-  const { repository, newId, malformed } = options.setup();
-  const plantMalformed = malformed[caseIndex];
-  if (plantMalformed === undefined) throw new Error(`壊れた保存データの ${caseIndex} 件目がない`);
+  const { repository, newId, malformed } = context.subject;
+  if (malformed === undefined) throw new Error('malformed がない');
   const id = newId();
-  await plantMalformed(id);
+  await malformed.plant(kind, id);
 
-  const foundFailure = await captureThrown(() => repository.findById(id));
-  const listedFailure = await captureThrown(() => repository.list({ limit: 1 }));
+  try {
+    const foundFailure = await captureThrown(() => repository.findById(id));
+    const listedFailure = await captureThrown(() => repository.list({ limit: LIST_ALL_LIMIT }));
 
-  const expected: FailureSummary = { kind: 'unprocessable', detail: { id } };
-  expect(summarizeFailure(foundFailure), 'findById が unprocessable を投げない').toEqual(expected);
-  expect(summarizeFailure(listedFailure), 'list が unprocessable を投げない').toEqual(expected);
+    const expected: FailureSummary = { kind: 'unprocessable', detail: { id } };
+    expect(summarizeFailure(foundFailure), 'findById が unprocessable を投げない').toEqual(expected);
+    expect(summarizeFailure(listedFailure), 'list が unprocessable を投げない').toEqual(expected);
+  } finally {
+    // 残すと、同じ保存先を読む後続の list が壊れた行で失敗する
+    await malformed.remove(id);
+  }
 }
 
-/** 壊れた保存データ 1 件につき C9 の it を 1 つ登録する。一覧が空なら登録しない。 */
+/** 壊れた保存データの種類ごとに C9 の it を 1 つ登録する。種類が空なら登録しない。 */
 export function declareMalformedRows<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
+  malformedKinds: readonly string[],
 ): void {
-  const caseCount = options.setup().malformed.length;
-
-  for (let caseIndex = 0; caseIndex < caseCount; caseIndex += 1) {
-    const caseNumber = caseIndex + 1;
-    it(`TST-209 契約 C9 壊れた保存データ ${caseNumber} 件目のとき findById と list は unprocessable を投げる`, () =>
-      checkMalformedRecordIsUnprocessable(options, caseIndex),
+  for (const kind of malformedKinds) {
+    it(`TST-209 契約 C9 壊れた保存データ ${kind} のとき findById と list は unprocessable を投げる`, () =>
+      checkMalformedRecordIsUnprocessable(context, kind),
     );
   }
 }

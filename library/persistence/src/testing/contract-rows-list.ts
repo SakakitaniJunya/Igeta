@@ -1,10 +1,9 @@
 /** 契約 C4〜C6: 一覧の並び・絞り込み・limit。 */
 import { expect, it } from 'vitest';
 import type { Repository } from '../core/repository';
-import type { ContractEntity, ContractOptions } from './contract-types';
+import { LIST_ALL_LIMIT } from './contract-types';
+import type { ContractContext, ContractEntity } from './contract-types';
 
-// 共有の DB に他のテストの行が残っていても、自分の行を取りこぼさない大きさにする
-const LIST_ALL_LIMIT = 1000;
 const PAGE_LIMIT = 3;
 
 function toId(entity: ContractEntity): string {
@@ -21,13 +20,13 @@ async function saveAll<Entity extends ContractEntity, Filter>(
 }
 
 async function checkListIsAscendingById<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = options.setup();
+  const { repository, newId } = context.subject;
   // 昇順と逆の順で保存し、並べ替えが効いていることを確かめる
   const prefix = newId();
   const ownIds = [`${prefix}-c`, `${prefix}-a`, `${prefix}-b`];
-  await saveAll(repository, ownIds.map((id) => options.fixtures.createEntity(id, 'first')));
+  await saveAll(repository, ownIds.map((id) => context.fixtures.createEntity(id, 'first')));
 
   const page = await repository.list({ limit: LIST_ALL_LIMIT });
   const listedIds = page.items.map(toId);
@@ -38,10 +37,10 @@ async function checkListIsAscendingById<Entity extends ContractEntity, Filter>(
 }
 
 async function checkFilterSelectsOnlyMatchingState<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = options.setup();
-  const { createEntity, filterByState, isSameContent } = options.fixtures;
+  const { repository, newId } = context.subject;
+  const { createEntity, filterByState, isSameContent } = context.fixtures;
   const firstIds = [newId(), newId()];
   const secondId = newId();
   await saveAll(repository, [...firstIds.map((id) => createEntity(id, 'first')), createEntity(secondId, 'second')]);
@@ -56,11 +55,11 @@ async function checkFilterSelectsOnlyMatchingState<Entity extends ContractEntity
 }
 
 async function checkLimitTruncatesPage<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): Promise<void> {
-  const { repository, newId } = options.setup();
+  const { repository, newId } = context.subject;
   const overLimitIds = Array.from({ length: PAGE_LIMIT + 1 }, () => newId());
-  await saveAll(repository, overLimitIds.map((id) => options.fixtures.createEntity(id, 'first')));
+  await saveAll(repository, overLimitIds.map((id) => context.fixtures.createEntity(id, 'first')));
 
   const page = await repository.list({ limit: PAGE_LIMIT });
 
@@ -70,9 +69,9 @@ async function checkLimitTruncatesPage<Entity extends ContractEntity, Filter>(
 
 /** C4〜C6 の it を登録する。 */
 export function declareListRows<Entity extends ContractEntity, Filter>(
-  options: ContractOptions<Entity, Filter>,
+  context: ContractContext<Entity, Filter>,
 ): void {
-  it('TST-204 契約 C4 id を 3 件保存したとき list は id の昇順で 3 件を含む', () => checkListIsAscendingById(options));
-  it('TST-205 契約 C5 状態の違う行があるとき filter で絞った状態の行だけ返る', () => checkFilterSelectsOnlyMatchingState(options));
-  it('TST-206 契約 C6 limit を超えて保存したとき limit 件で truncated は true', () => checkLimitTruncatesPage(options));
+  it('TST-204 契約 C4 id を 3 件保存したとき list は id の昇順で 3 件を含む', () => checkListIsAscendingById(context));
+  it('TST-205 契約 C5 状態の違う行があるとき filter で絞った状態の行だけ返る', () => checkFilterSelectsOnlyMatchingState(context));
+  it('TST-206 契約 C6 limit を超えて保存したとき limit 件で truncated は true', () => checkLimitTruncatesPage(context));
 }

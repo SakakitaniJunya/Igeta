@@ -42,6 +42,11 @@ export class InMemoryStore<StoredRecord> {
     this.committed.set(id, record);
   }
 
+  /** putRaw で置いた record を消す。 */
+  async remove(id: string): Promise<void> {
+    this.committed.delete(id);
+  }
+
   /** work を 1 つの Transaction で実行する。work が throw したら書き込みを捨てる。 */
   async runInTransaction<Result>(work: (scope: TransactionScope) => Promise<Result>): Promise<Result> {
     const pending = new Map(this.committed);
