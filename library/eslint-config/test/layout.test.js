@@ -1,12 +1,15 @@
 /** check-layout の自己テスト。置き場の違反 (本体が多い・接頭辞の共有・utils) が落ち、許される形は落ちない。 */
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { findLayoutViolations } from '../check-layout.js';
 
 const roots = [];
+const CLI = fileURLToPath(new URL('../check-layout.js', import.meta.url));
 
 function createTree(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'igeta-layout-'));
@@ -71,5 +74,27 @@ describe('MD-11 置き場の検査', () => {
     const violations = findLayoutViolations(root);
 
     assert.equal(violations.length, 1);
+  });
+
+  it('MD-11 CLI は違反があると終了コード 1、無いと 0 で終わる', () => {
+    const violating = createTree(['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts', 'f.ts', 'g.ts', 'h.ts']);
+    const clean = createTree(['a.ts']);
+
+    const violatingResult = spawnSync('node', [CLI, violating]);
+    const cleanResult = spawnSync('node', [CLI, clean]);
+
+    assert.equal(violatingResult.status, 1);
+    assert.equal(cleanResult.status, 0);
+  });
+
+  it('MD-11 bin のリンク経由で呼んでも CLI が走り、違反で終了コード 1 になる', () => {
+    const violating = createTree(['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts', 'f.ts', 'g.ts', 'h.ts']);
+    const linkRoot = createTree([]);
+    const link = path.join(linkRoot, 'igeta-check-layout');
+    symlinkSync(CLI, link);
+
+    const result = spawnSync('node', [link, violating]);
+
+    assert.equal(result.status, 1);
   });
 });

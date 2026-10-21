@@ -4,7 +4,7 @@
  * utils のような置き場は作らない。spec (`*.spec.ts`・`*.test.ts`) は本体に数えない。
  * 使い方: `igeta-check-layout <dir>`。違反があれば一覧を出して終了コード 1 で終わる。
  */
-import { readdirSync } from 'node:fs';
+import { readdirSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,7 +60,8 @@ export function findLayoutViolations(root) {
   return [...findFolderViolations(root, entries), ...nested];
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// bin のリンク経由で呼ばれても、本体と同じファイルとして扱う
+if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const root = process.argv[2];
   if (root === undefined) {
     process.stderr.write('使い方: igeta-check-layout <dir>\n');
