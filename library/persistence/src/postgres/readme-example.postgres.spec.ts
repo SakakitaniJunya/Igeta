@@ -1,13 +1,14 @@
 // README の「Postgres の使い方」と同じ手順を Postgres 16 で流す。table 名だけが README と違う
 import { sql } from 'kysely';
 import { expect, it } from 'vitest';
-import { err, ok, unprocessable } from '../index';
-import type { Mapper } from '../index';
-import { describePostgres } from '../testing/postgres-harness';
-import { createPostgres } from './client';
+import type { Mapper } from '#core/repository/mapper';
+import { unprocessable } from '#core/result/app-error';
+import { err, ok } from '#core/result/result';
+import { describePostgres } from '#testing/harness/postgres';
+import { createPostgres } from '#postgres/client/client';
 import { migrateToLatest } from './migrations';
-import { SqlRepository } from './repository';
-import { SqlTransactionRunner } from './transaction-runner';
+import { SqlRepository } from '#postgres/repository/repository';
+import { SqlTransactionRunner } from '#postgres/transaction/transaction-runner';
 
 interface Memo { readonly id: string; readonly title: string; readonly state: 'draft' | 'published' }
 interface MemoRecord { readonly title: string; readonly state: string }

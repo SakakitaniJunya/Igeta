@@ -1,7 +1,7 @@
 import { sql } from 'kysely';
 import { expect, it } from 'vitest';
-import { describePostgres } from '../testing/postgres-harness';
-import { createPostgres } from './client';
+import { describePostgres } from '#testing/harness/postgres';
+import { createPostgres } from '#postgres/client/client';
 import { migrateToLatest } from './migrations';
 
 describePostgres('migrateToLatest (Postgres 16)', () => {

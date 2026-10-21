@@ -1,11 +1,11 @@
 // README の「Firestore の使い方」と同じ手順を emulator で流す。project 名と collection 名だけが README と違う
 import { expect, it } from 'vitest';
-import { describeEmulator, EMULATOR_PROJECT } from '../testing/emulator';
-import { memoMapper } from '../testing/memo-fixture';
-import type { Memo } from '../testing/memo-fixture';
-import { createFirestore } from './client';
-import { FirestoreRepository } from './repository';
-import { FirestoreTransactionRunner } from './transaction-runner';
+import { describeEmulator, EMULATOR_PROJECT } from '#testing/harness/emulator';
+import { memoMapper } from '#testing/fixtures/memo';
+import type { Memo } from '#testing/fixtures/memo';
+import { createFirestore } from '#firestore/client/client';
+import { FirestoreRepository } from '#firestore/repository/repository';
+import { FirestoreTransactionRunner } from '#firestore/transaction/transaction-runner';
 
 describeEmulator('README の Firestore の例 (Firestore emulator)', () => {
   it('TST-408 README のとおり保存して list すると 1 件が返り、続きは無い', async () => {
