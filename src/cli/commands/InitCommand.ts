@@ -36,7 +36,6 @@ const SCRIPTS: Readonly<Record<string, string>> = {
   'docs:graph': 'igeta docs-graph',
   'docs:check': 'igeta docs-check',
   'docs:template-check': 'igeta template-check --require-kind --require-human-review',
-  scaffold: 'igeta scaffold',
 };
 
 /** 旧い docs がある repo への案内 (I6)。移行は `igeta docs-migrate` で行う */

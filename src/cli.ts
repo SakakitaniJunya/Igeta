@@ -22,7 +22,6 @@ import {
   SourceCoverageCommand,
 } from './cli/commands/ProvenanceCommands.js';
 import { ReviewSheetCommand } from './cli/commands/ReviewSheetCommand.js';
-import { ScaffoldCommand } from './cli/commands/ScaffoldCommand.js';
 import {
   DocsCheckCommand,
   DocsGraphCommand,
@@ -55,7 +54,6 @@ const cli = new Cli()
   .register(new DiscrepancyAddCommand())
   .register(new DiscrepancyReportCommand())
   .register(new MermaidCheckCommand())
-  .register(new ScaffoldCommand())
   .register(new ExpandCommand())
   .register(new CheckTemplatesCommand())
   .register(new ExportCommand())
