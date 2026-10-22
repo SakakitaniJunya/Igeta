@@ -77,11 +77,13 @@ templates/backend/hono/                             = apps/<app>/backend/
             __aggregate__.repository.port.ts        保存の口 (型だけ)
         infrastructure/                             firestore repository
           firestore-__aggregate__.repository.ts     Firestore の読み書き
-          firestore-__aggregate__.repository.emulator.spec.ts  保存・絞り込み・読み戻し
+          firestore-__aggregate__.repository.emulator.spec.ts  契約テストを Firestore で呼ぶ + doc id の行
           firestore-scope.ts                        TransactionScope ⇔ Firestore Transaction の変換
           firestore-scope.spec.ts                   往復で同じ物
           firestore-transaction-runner.ts           1 usecase = 1 Tx
           firestore-transaction-runner.emulator.spec.ts  失敗で巻き戻る
+        test-support/
+          __aggregate__-repository.contract.ts      repository の契約テスト (表 C1〜C9)。実装ごとに呼ぶ
     shared/
       domain/                                       値と形と port だけ。npm も node の組み込みも使わない
         result.ts                                   Result と ok/err
@@ -146,7 +148,7 @@ npm の規則は `(^|/)node_modules/<名前>` から書く (`^hono` と書くと
 |---|---|---|
 | 集約・値オブジェクト・ドメインエラー・shared/domain | 隣の `*.spec.ts` | 偽物なしで直接 |
 | usecase | 隣の `*.usecase.spec.ts` | port をメモリ上の偽物にする |
-| repository・Tx runner | 隣の `*.emulator.spec.ts` | Firestore エミュレータ (`test:emulator` のときだけ。無ければ skip) |
+| repository・Tx runner | 契約テスト (`test-support/__aggregate__-repository.contract.ts`、表 C1〜C9) を実装ごとに呼ぶ | Firestore エミュレータ (`test:emulator` のときだけ。無ければ skip) |
 | 公開面 (`index.ts`) | `__context__-module.emulator.spec.ts` | 本物の部品を組んでエミュレータ越しに |
 | controller・schemas | 隣の `*.spec.ts` | usecase を偽物にし、状態と本文の対応だけ |
 | 入口の routes・middleware | 隣の `*.spec.ts` | `app.request()`。verify と module の公開面は偽物 |
