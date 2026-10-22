@@ -114,6 +114,8 @@ graph LR
   class template-section-audit explanation
   test-approval-gate["テスト仕様 — 人の承認が要る変更の見分け (approval-scope・doctor) (draft)"]
   class test-approval-gate design
+  test-decision-migration["テスト仕様 — 決定の状態の移行・GitHub の差し込み口・実装の割り方 (draft)"]
+  class test-decision-migration design
   test-decision-status["テスト仕様 — 決定の状態・承認の記録・フォルダ (decision コマンドと docs-check) (draft)"]
   class test-decision-status design
   test-doc-graph["テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界) (draft)"]
@@ -169,6 +171,7 @@ graph LR
   audience-directories ==> tasks-v4-rollout
   audience-directories ==> template-section-audit
   adr-0008-human-approval-scope ==> test-approval-gate
+  adr-0013-decision-status-folders ==> test-decision-migration
   adr-0013-decision-status-folders ==> test-decision-status
   adr-0002-role-boundary-invariants ==> test-doc-graph
   adr-0004-folder-internal-structure-and-growth ==> test-doc-graph
@@ -224,6 +227,7 @@ graph LR
   template-section-audit -.- folder-placement
   test-approval-gate -.- adr-0002-role-boundary-invariants
   test-approval-gate -.- test-init-scaffold
+  test-decision-migration -.- test-decision-status
   test-decision-status -.- test-person-form
   test-decision-status -.- test-doc-graph
   test-decision-status -.- test-review-sheet
@@ -266,6 +270,7 @@ graph LR
 - **tasks-persistence-library** _(draft)_ — [実装タスク — DB 層ライブラリ (@igeta/persistence)](ai/specs/tasks/02-persistence-library.md)
 - **tasks-v4-rollout** _(draft)_ — [実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4)](ai/specs/tasks/01-v4-rollout.md)
 - **test-approval-gate** _(draft)_ — [テスト仕様 — 人の承認が要る変更の見分け (approval-scope・doctor)](ai/specs/shared/tests/01-approval-gate.md)
+- **test-decision-migration** _(draft)_ — [テスト仕様 — 決定の状態の移行・GitHub の差し込み口・実装の割り方](ai/specs/shared/tests/12-decision-migration.md)
 - **test-decision-status** _(draft)_ — [テスト仕様 — 決定の状態・承認の記録・フォルダ (decision コマンドと docs-check)](ai/specs/shared/tests/10-decision-status.md)
 - **test-doc-graph** _(draft)_ — [テスト仕様 — 文書のつながり (依存の向き・索引・まとまりの境界)](ai/specs/shared/tests/04-doc-graph.md)
 - **test-docs-migrate** _(draft)_ — [テスト仕様 — 移行コマンド (docs-migrate)](ai/specs/shared/tests/07-docs-migrate.md)
