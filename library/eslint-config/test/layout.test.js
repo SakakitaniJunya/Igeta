@@ -157,11 +157,13 @@ describe('MD-11 置き場の検査', () => {
     assert.throws(() => findLayoutViolations(root, { extensions: ['swift'] }), /--ext は/);
   });
 
-  it('L4 CLI は --ext rs を受け取り、違反で 1、対応外の拡張子で 1 以外 (例外) になる', () => {
+  it('L4 CLI は --ext rs を受け取り、違反で 1、対応外の拡張子で 2 (1 行) になる', () => {
     const violating = createTree(['firestore_a.rs', 'firestore_b.rs', 'firestore_c.rs']);
 
     assert.equal(spawnSync('node', [CLI, violating, '--ext', 'rs']).status, 1);
     assert.equal(spawnSync('node', [CLI, violating]).status, 0);
-    assert.notEqual(spawnSync('node', [CLI, violating, '--ext', 'swift']).status, 0);
+    const unsupported = spawnSync('node', [CLI, violating, '--ext', 'swift'], { encoding: 'utf8' });
+    assert.equal(unsupported.status, 2);
+    assert.equal(unsupported.stderr.trim().split('\n').length, 1);
   });
 });

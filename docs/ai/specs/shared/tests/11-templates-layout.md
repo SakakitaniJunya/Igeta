@@ -39,7 +39,7 @@ relates_to: [test-init-scaffold]
 | L5 | 禁止名 `shared` は、直下の子が層 (domain・application・infrastructure・presentation) と `test-support` (rust は `test_support`) だけで、直下の本体は `index.ts`・`mod.rs` だけのときに許す。他の禁止名は例外なし。rust の `src/shared` は `mod.rs` と層 3 つ + `test_support` で、この形に当たる |
 | L6 | ファイル名に、置かれたフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。接頭辞の共有は L4 が機械で、繰り返しの有無は人が見る |
 | L7 | 退役した名前 (`api-module`・`api-shared-kernel`・`web-feature`・`ios-app`・`store-screenshots`) は `templates/` の直下に戻せない (L1 が落とす)。`scaffold` コマンドと、`igeta init` が書く `scaffold` の npm script も無い |
-| L8 | (補助。機械では落とせない) 雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは PR の説明に理由を書く。主な歯止めは L1・L2 の登録制で、L8 は AGENTS.md に書く |
+| L8 | (補助。機械では落とせない) 雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは PR の説明に理由を書く。主な歯止めは L1・L2 の登録制で、L8 は AGENTS.md に書く (Igeta 自身の `AGENTS.md` と `templates/README.md`。`igeta init` が置く AGENTS.md ではない) |
 
 ## 1. 棚卸し (templates/ 直下 10 個)
 

@@ -58,7 +58,7 @@ flowchart TB
 2. 退役 (削除): `api-module`・`api-shared-kernel`・`web-feature` と `igeta scaffold`。参照は scaffold だけで、現行に代わりがある (`backend/nestjs`・`frontend/admin`)。技術も違う (Prisma・Next.js)。
 3. 移す: `ios-app` → `mobile/ios` (写し先 `apps/<app>/mobile/ios/`)。`store-screenshots` → `tools/store-screenshots` (写し元は雛形でなく道具。npm の `files` に `tools` を足して配布は続ける)。
 4. 雛形の中: `shared/` は「層と test-support (rust は test_support) だけを子に持つ根」だけ許す (禁止名の例外。rust の `mod.rs` は可)。`firestore-*` 3 本は `infrastructure/firestore/` へ。ファイル名にフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。
-5. 再発止め: (a) 足す PR は古いものを同じ PR で退かせる (退かせるものが無いなら理由を書く)。AGENTS.md に書く。(b) 第 1・第 2 階層を登録制にする検査を、Igeta 自身の repo だけで走る npm script (`check:templates-layout`) にし、全 push・PR で走る `ci.yml` の step に足す (`docs:check` は利用 repo でも走るので入れない)。(c) 新しい名前は ADR で足し、登録と検査の matrix を同じ PR で直す。
+5. 再発止め: (a) 足す PR は古いものを同じ PR で退かせる (退かせるものが無いなら理由を書く)。ここでの AGENTS.md は Igeta 自身の `AGENTS.md` と `templates/README.md` で、`igeta init` が置く AGENTS.md ではない。(b) 第 1・第 2 階層を登録制にする検査を、Igeta 自身の repo だけで走る npm script (`check:templates-layout`) にし、全 push・PR で走る `ci.yml` の step に足す (`docs:check` は利用 repo でも走るので入れない)。(c) 新しい名前は ADR で足し、登録と検査の matrix を同じ PR で直す。
 
 | 判断軸 | 採用案での扱い | 理由 |
 |---|---|---|

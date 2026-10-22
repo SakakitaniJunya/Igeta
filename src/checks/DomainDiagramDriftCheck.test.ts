@@ -302,7 +302,7 @@ describe('DomainDiagramDriftCheck', () => {
 
   it('[TST-109] 新しい構成: --docs を省くと docs/ai/specs/*/domain/ の全部のまとまりを順に見る', () => {
     const modelDiagram = (context: string, classNames: readonly string[]): string =>
-      diagram(`apps/api/src/modules/${context}`, classNames).replace('kind: ', 'kind: ').replace('canonical: true', 'kind: domain-model');
+      diagram(`apps/api/src/modules/${context}`, classNames).replace('canonical: true', 'kind: domain-model');
     writeFile(root, 'docs/person/design/shared/00-map.md', '---\nkind: map\n---\n# 地図\n');
     writeFile(root, 'docs/ai/specs/booking/domain/01-reservation.md', modelDiagram('booking', ['Reservation', 'Ghost']));
     writeFile(root, 'docs/ai/specs/billing/domain/01-invoice.md', modelDiagram('billing', ['Invoice', 'Phantom']));

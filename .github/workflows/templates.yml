@@ -1,6 +1,7 @@
 name: templates
 
 # 雛形 (templates/backend・frontend) の自己検査。変種ごとに展開・登録して、型・テスト・層の規則・build を通す。
+# mobile/ios は xcodegen と Xcode が要るので見ない。
 # 動くのは雛形かその検査コードを変えた PR だけ (paths)。そのため必須チェックにはしない (報告だけ)。
 # 必須にすると、paths に当たらない PR が「待ち」で止まる。
 

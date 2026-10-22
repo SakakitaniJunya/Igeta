@@ -105,6 +105,11 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     process.exit(2);
   }
   const extensions = values.ext.split(',').filter((extension) => extension !== '');
+  const unsupported = extensions.filter((extension) => !SUPPORTED_EXTENSIONS.includes(extension));
+  if (unsupported.length > 0) {
+    process.stderr.write(`--ext は ${SUPPORTED_EXTENSIONS.join(',')} のどれか: ${unsupported.join(',')}\n`);
+    process.exit(2);
+  }
   const violations = findLayoutViolations(root, { extensions });
   for (const violation of violations) process.stderr.write(`${violation}\n`);
   process.exit(violations.length === 0 ? 0 : 1);
