@@ -60,7 +60,7 @@ export function registrationFor(
       add('src/index.ts', 'module', [`const ${toCamel(context)} = create${toPascal(context)}Module(db);`]);
     }
     if (unit === 'entry' && entry !== undefined && context !== undefined) {
-      add('src/index.ts', 'import', [`import { create${toPascal(entry)}Routes } from '@/entries/${entry}/${entry}.routes.js';`]);
+      add('src/index.ts', 'import', [`import { create${toPascal(entry)}Routes } from '@/entries/${entry}/routes.js';`]);
       if (withVerify) {
         add('src/index.ts', 'import', ["import { ok } from '@/shared/domain/result.js';"]);
         add('src/index.ts', 'verify', [`const verify = async () => ok({ subject: '${entry}' });`]);

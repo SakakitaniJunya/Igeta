@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { __Context__Module } from '@/modules/__context__/index.js';
 import { unauthorized } from '@/shared/domain/app-error.js';
 import { err, ok } from '@/shared/domain/result.js';
-import { BODY_LIMIT_BYTES, create__Entry__Routes } from './__entry__.routes.js';
-import type { __Entry__Verifier } from './verify-__entry__.middleware.js';
+import { BODY_LIMIT_BYTES, create__Entry__Routes } from './routes.js';
+import type { __Entry__Verifier } from './verify.middleware.js';
 
 const pass: __Entry__Verifier = async () => ok({ subject: 'user-1' });
 const deny: __Entry__Verifier = async () => err(unauthorized('bad signature'));

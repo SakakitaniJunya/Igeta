@@ -31,4 +31,4 @@ Igeta の版に固定した手引き。
 
 - `templates/` の第 1・第 2 階層は登録制 (`src/checks/TemplatesLayoutCheck.ts`、ADR-0014)。登録外の名前は `npm run check:templates-layout` が落とす。ここが主な歯止め
 - 雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは、PR の説明にその理由を書く。これは補助で、機械では落とせない
-- 雛形の中の置き場 (1 フォルダの本体は 7 つまで・接頭辞の共有は 2 本まで・`shared` の形) は `igeta-check-layout` が見る。変種ごとの呼び方は `check:templates-layout` の中に書いてある
+- 雛形の中の置き場 (1 フォルダの本体は 7 つまで・接頭辞の共有は 2 本まで・`shared` の形) は `igeta-check-layout` が見る。変種ごとの呼び方 (rust は `--ext rs`) は `src/checks/TemplatesRegistry.ts` に書いてある

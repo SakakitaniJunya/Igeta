@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
 import { unauthorized, unavailable } from '@/shared/domain/app-error.js';
 import { err, ok } from '@/shared/domain/result.js';
-import { verify__Entry__, type __Entry__Env, type __Entry__Verifier } from './verify-__entry__.middleware.js';
+import { verify__Entry__, type __Entry__Env, type __Entry__Verifier } from './verify.middleware.js';
 
 function appWith(verify: __Entry__Verifier) {
   const app = new Hono<__Entry__Env>();

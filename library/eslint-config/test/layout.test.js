@@ -166,4 +166,26 @@ describe('MD-11 置き場の検査', () => {
     assert.equal(unsupported.status, 2);
     assert.equal(unsupported.stderr.trim().split('\n').length, 1);
   });
+
+  it('L5 走査の根の下でない shared (modules/ctx/shared) は形が合っても落ちる', () => {
+    const root = createTree(['modules/ctx/shared/domain/a.ts']);
+
+    assert.equal(findLayoutViolations(root).filter((message) => message.includes('shared は作らない')).length, 1);
+  });
+
+  it('L5 shared の子の misc は 1 回だけ報告される', () => {
+    const root = createTree(['shared/misc/a.ts']);
+
+    assert.equal(findLayoutViolations(root).length, 1);
+  });
+
+  it('L4 CLI は未知の option (--etx・--help) も 1 行で exit 2 にする', () => {
+    const clean = createTree(['a.ts']);
+
+    for (const option of ['--etx', '--help']) {
+      const result = spawnSync('node', [CLI, clean, option, 'rs'], { encoding: 'utf8' });
+      assert.equal(result.status, 2, option);
+      assert.equal(result.stderr.trim().split('\n').length, 1, option);
+    }
+  });
 });

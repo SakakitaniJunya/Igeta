@@ -9,7 +9,7 @@ import { INVALID_JSON, parseJsonBody, readBody } from '@/entries/http/read-body.
 import { toResponse } from '@/entries/http/to-response.js';
 import type { __Context__Module } from '@/modules/__context__/index.js';
 import { apiError } from '@/shared/presentation/api-response.js';
-import { verify__Entry__, type __Entry__Env, type __Entry__Verifier } from './verify-__entry__.middleware.js';
+import { verify__Entry__, type __Entry__Env, type __Entry__Verifier } from './verify.middleware.js';
 
 /** 本文の上限 (バイト)。これを超えたら読むのをやめて 413。 */
 export const BODY_LIMIT_BYTES = 16 * 1024;

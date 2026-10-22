@@ -5,6 +5,7 @@
 | フォルダ | コピー先 | コピーの仕方 |
 |---|---|---|
 | `docs/` | `your-repo/docs/` | 手でコピー。**フォルダ構成がコピー先と同じ**なので、置きたい場所と同じパスの雛形を選び、`__context__` (まとまり)・`__year__` (年)・`__deliverable__` (提出物) を実際の名前に替える (`templates/docs/person/design/__context__/flows/__flow__.md` → `docs/person/design/reservation/flows/01-<業務名>.md`) |
+| `.github/` | `your-repo/.github/` | 手でコピー (PR テンプレ)。 |
 | `backend/<変種>/` | `your-repo/apps/<アプリ>/backend/` | 土台は手でコピー、1 単位は `igeta expand`。変種は `hono/`・`nestjs/`・`rust/` の 3 つ (Firestore の 4 層モジュラーモノリス)。**鏡**: `templates/backend/<変種>/` の中の path = `apps/<アプリ>/backend/` の中の path。土台 (印の無いファイル) は最初に 1 回、1 単位 (印の付いた `src/entries/__entry__/`・`src/modules/__context__/`) は足すたび。手順は `backend/README.md` から変種の README へ |
 | `frontend/` | `your-repo/apps/<アプリ>/frontend/admin/` | 土台は手でコピー、1 単位は `igeta expand`。**鏡**: `templates/frontend/admin/` の中の path = `apps/<アプリ>/frontend/admin/` の中の path。React + Vite + TypeScript の管理画面 (4 層)。土台は最初に 1 回、1 単位 (印の付いた `src/features/__feature__/`) は足すたび。手順は `frontend/README.md` |
 | `mobile/ios/` | `your-repo/apps/<アプリ>/mobile/ios/` | 手でコピー。`__NAME__` / `__BUNDLE_PREFIX__` を置換して `xcodegen generate` (手順は `mobile/ios/README.md`)。xcodegen + SwiftUI + SwiftData + Share Extension + XCTest の雛形 |
@@ -17,4 +18,4 @@
 
 ## 雛形を足す・替えるとき (Igeta の保守者向け)
 
-`templates/` の第 1・第 2 階層は登録制で、登録外の名前は `npm run check:templates-layout` が落とす (これが主な歯止め)。足す PR では `src/checks/TemplatesLayoutCheck.ts` の登録と `check-templates` の変種を同じ PR で直す。雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは PR の説明に理由を書く (これは補助で、機械では落とせない)。
+`templates/` の第 1・第 2 階層は登録制で、登録外の名前は `npm run check:templates-layout` が落とす (これが主な歯止め)。足す PR では `src/checks/TemplatesRegistry.ts` の登録と `check-templates` の変種を同じ PR で直す。雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは PR の説明に理由を書く (これは補助で、機械では落とせない)。

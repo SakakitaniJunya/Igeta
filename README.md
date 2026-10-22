@@ -246,7 +246,7 @@ Node.js 22 以上が必要。**検査の実体と手引きはコピーしない*
 
 ```bash
 # 1. 置く (既存のファイルは上書きしない)。--owner は、人の承認が要るパスの持ち主 (@user・@org/team・メールアドレス)
-npx github:SakakitaniJunya/Igeta#v0.5.0 init --owner @your-name
+npx github:SakakitaniJunya/Igeta#v0.6.0 init --owner @your-name
 npm install
 
 # 2. 検査する (置いた直後は違反 0 件)
@@ -257,6 +257,8 @@ npm run docs:template-check
 cp node_modules/igeta/templates/docs/person/design/shared/01-function-list.md docs/person/design/shared/
 npm run docs:graph
 ```
+
+`v0.6.0` の tag は、版を publish した後に存在する (それまでは `#main` か commit を指す)。
 
 置いた後に、GitHub で既定ブランチの保護を設定し、`npx igeta doctor` で確かめる (上の「変更から承認まで」)。
 

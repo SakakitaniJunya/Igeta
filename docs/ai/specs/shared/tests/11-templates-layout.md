@@ -85,7 +85,7 @@ relates_to: [test-init-scaffold]
 | TST-105 | 結合 | shared の例外 | 子が domain・infrastructure・presentation・test-support の `src/shared` / rust の `mod.rs` + 層 + `test_support` | check-layout | 落ちない | L5 |
 | TST-106 | 結合 | 退役 | 移行後のツリーと `src` | `check:templates-layout`・`tsc`・`npm test` | `scaffold` の import・コマンド・npm script が 0。`igeta init` の出力に `scaffold` が無い | L7 |
 | TST-107 | 結合 | expand の維持 | 移行後 | `ExpandCommand.test`・`TemplateExpandModule.test`・`TemplatesInstantiation.test` (hooks・ui の import 変更を含む)・`check-templates` | 緑。UNITS の 3 つは同じ path | 決定 4 |
-| TST-108 | 結合 | 移した先 | `mobile/ios` | README の手順どおり置換 → `xcodegen generate` | 手で確認 (macOS)。結果を PR に書く | 決定 3 |
+| TST-108 | 結合 | 移した先 | `mobile/ios` | README の手順どおり置換 → `xcodegen generate` | 手で確認 (macOS)。結果を PR に書く。2026-10-23 実施: README の置換 (`SampleApp`・`com.example`) のあと `xcodegen generate` が通り `SampleApp.xcodeproj` ができた (xcodebuild の build・test は未実施) | 決定 3 |
 
 ## 4. 否定テスト (必須)
 

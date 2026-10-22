@@ -14,6 +14,10 @@ export interface Violation {
   readonly line?: number;
 }
 
+/** 違反 1 件を作る。file は付けるときだけ入る。 */
+export const violation = (message: string, file?: string): Violation =>
+  file === undefined ? { severity: 'violation', message } : { severity: 'violation', message, file };
+
 /** 検査結果の集約。出力整形と終了コード決定をここに一本化する。 */
 export class Report {
   readonly #violations: Violation[] = [];

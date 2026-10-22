@@ -22,13 +22,13 @@ const SUPPORTED_EXTENSIONS = [...DEFAULT_EXTENSIONS, 'rs'];
 
 /** 拡張子ごとの判定。rs は `*_test.rs` を本体に数え、mod.rs を index と同じ扱いにし、接頭辞を `_` でも区切る。 */
 function createKind(extensions) {
-  const group = extensions.join('|');
+  const sourcePattern = new RegExp(`\\.(${extensions.join('|')})$`);
   const isRust = (name) => name.endsWith('.rs');
   return {
-    isSource: (name) => new RegExp(`\\.(${group})$`).test(name),
+    isSource: (name) => sourcePattern.test(name),
     isSpec: (name) => /\.(spec|test)\.tsx?$/.test(name) || /_test\.rs$/.test(name),
     isIndex: (name) => /^index\.tsx?$/.test(name) || name === 'mod.rs',
-    prefixOf: (name) => name.replace(new RegExp(`\\.(${group})$`), '').split(isRust(name) ? /[-._]/ : /[-.]/)[0],
+    prefixOf: (name) => name.replace(sourcePattern, '').split(isRust(name) ? /[-._]/ : /[-.]/)[0],
   };
 }
 
@@ -61,31 +61,36 @@ function findSharedViolations(sharedPath, kind) {
   return [`${sharedPath}: shared の直下は層 (${SHARED_ALLOWED_FOLDERS.join('・')}) と ${SHARED_ALLOWED_BODY_FILES.join('・')} だけ。置けない物: ${strays}`];
 }
 
-function findNamedFolderViolations(folder, entries, kind) {
+/** 禁止名の folder を数える。shared は走査の根の直下にあるものだけ形を見て許し、深い shared は例外なしで落とす。 */
+function findNamedFolderViolations(folder, entries, kind, position) {
   const forbidden = entries.filter((item) => item.isDirectory() && FORBIDDEN_FOLDER_NAMES.includes(item.name));
   return forbidden.flatMap((entry) => {
     const entryPath = path.join(folder, entry.name);
-    if (entry.name === SHARED_FOLDER_NAME) return findSharedViolations(entryPath, kind);
+    if (entry.name === SHARED_FOLDER_NAME && position.isRoot) return findSharedViolations(entryPath, kind);
     return [`${entryPath}: ${entry.name} は作らない。役割の名前のフォルダにする`];
   });
 }
 
-function findFolderViolations(folder, entries, kind) {
+function findFolderViolations(folder, entries, kind, position) {
   const bodyFiles = listBodyFiles(entries, kind);
   const violations = findPrefixViolations(folder, bodyFiles, kind);
   if (bodyFiles.length > MAX_BODY_FILES) {
     violations.push(`${folder}: 本体が ${bodyFiles.length} 本ある (上限 ${MAX_BODY_FILES})。まとまりごとにフォルダを分ける`);
   }
+  // 根の shared は findSharedViolations が子まで裁いたので、同じ子を禁止名で二重に報告しない
+  const named = position.isJudgedShared ? [] : findNamedFolderViolations(folder, entries, kind, position);
 
-  return [...violations, ...findNamedFolderViolations(folder, entries, kind)];
+  return [...violations, ...named];
 }
 
-function walk(root, kind) {
-  const entries = readdirSync(root, { withFileTypes: true });
+function walk(dir, kind, position) {
+  const entries = readdirSync(dir, { withFileTypes: true });
   const subfolders = entries.filter((entry) => entry.isDirectory() && entry.name !== 'node_modules');
-  const nested = subfolders.flatMap((entry) => walk(path.join(root, entry.name), kind));
+  const nested = subfolders.flatMap((entry) =>
+    walk(path.join(dir, entry.name), kind, { isRoot: false, isJudgedShared: position.isRoot && entry.name === SHARED_FOLDER_NAME }),
+  );
 
-  return [...findFolderViolations(root, entries, kind), ...nested];
+  return [...findFolderViolations(dir, entries, kind, position), ...nested];
 }
 
 /** root 以下を調べ、違反を文章の配列で返す。extensions は既定の ts・tsx に足す拡張子 (rs だけ対応)。 */
@@ -93,24 +98,23 @@ export function findLayoutViolations(root, { extensions = [] } = {}) {
   const unsupported = extensions.filter((extension) => !SUPPORTED_EXTENSIONS.includes(extension));
   if (unsupported.length > 0) throw new Error(`--ext は ${SUPPORTED_EXTENSIONS.join(',')} のどれか: ${unsupported.join(',')}`);
 
-  return walk(root, createKind([...new Set([...DEFAULT_EXTENSIONS, ...extensions])]));
+  return walk(root, createKind([...new Set([...DEFAULT_EXTENSIONS, ...extensions])]), { isRoot: true, isJudgedShared: false });
 }
 
 // bin のリンク経由で呼ばれても、本体と同じファイルとして扱う
 if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
-  const { positionals, values } = parseArgs({ allowPositionals: true, options: { ext: { type: 'string', default: '' } } });
-  const [root] = positionals;
-  if (root === undefined) {
-    process.stderr.write('使い方: igeta-check-layout <dir> [--ext rs]\n');
+  const usage = '使い方: igeta-check-layout <dir> [--ext rs]';
+  try {
+    const { positionals, values } = parseArgs({ allowPositionals: true, options: { ext: { type: 'string', default: '' } } });
+    const [root] = positionals;
+    if (root === undefined) throw new Error('<dir> が無い');
+    const extensions = values.ext.split(',').filter((extension) => extension !== '');
+    const violations = findLayoutViolations(root, { extensions });
+    for (const violation of violations) process.stderr.write(`${violation}\n`);
+    process.exit(violations.length === 0 ? 0 : 1);
+  } catch (error) {
+    // 引数の誤りは違反 (exit 1) と区別して exit 2
+    process.stderr.write(`${String(error instanceof Error ? error.message : error).split('\n')[0]}。${usage}\n`);
     process.exit(2);
   }
-  const extensions = values.ext.split(',').filter((extension) => extension !== '');
-  const unsupported = extensions.filter((extension) => !SUPPORTED_EXTENSIONS.includes(extension));
-  if (unsupported.length > 0) {
-    process.stderr.write(`--ext は ${SUPPORTED_EXTENSIONS.join(',')} のどれか: ${unsupported.join(',')}\n`);
-    process.exit(2);
-  }
-  const violations = findLayoutViolations(root, { extensions });
-  for (const violation of violations) process.stderr.write(`${violation}\n`);
-  process.exit(violations.length === 0 ? 0 : 1);
 }

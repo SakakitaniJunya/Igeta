@@ -37,7 +37,7 @@
     "docs:migrate": "node dist/cli.js docs-migrate",
     "expand": "node dist/cli.js expand",
     "check:templates": "node dist/cli.js check-templates",
-    "check:templates-layout": "node dist/cli.js check-templates-layout && node library/eslint-config/check-layout.js templates/backend/hono/src && node library/eslint-config/check-layout.js templates/backend/nestjs/src && node library/eslint-config/check-layout.js templates/backend/rust/src --ext rs && node library/eslint-config/check-layout.js templates/frontend/admin/src",
+    "check:templates-layout": "node dist/cli.js check-templates-layout",
     "secret-scan": "node dist/cli.js secret-scan --internal-ids",
     "test": "npm run test:scripts && npm run test:library",
     "test:scripts": "tsc && node --test \"dist/**/*.test.js\"",
