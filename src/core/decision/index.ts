@@ -1,9 +1,11 @@
 // 決定の状態の検査と索引の公開口 (`#decision/core`)。ここでは索引の 4 つの表 (DS14) と、承認待ちの持ち主・経過 (DS11) を持つ。
 
-import { posix } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join, posix } from 'node:path';
+import { isDirectory, listDocFiles } from '../DocFiles.js';
 import { splitTableRow } from '../MarkdownTable.js';
 import type { DecisionDoc } from './folder.js';
-import { DECISIONS_DIR } from './folder.js';
+import { DECISIONS_DIR, parseDecision } from './folder.js';
 import type { Finding, HistoryRow } from './history.js';
 
 export * from './evidence.js';
@@ -118,3 +120,16 @@ export function checkWaiting(doc: DecisionDoc, context: WaitingContext): { reado
 
 /** 索引 README からの ADR の相対パス */
 export const indexLinkOf = (doc: DecisionDoc): string => posix.relative(DECISIONS_DIR, doc.path);
+
+const LEDGER_FILE_NAME = '01-decisions.md';
+
+/** decisions/ の下の ADR を全部読む (README.md と決定台帳は除く)。frontmatter の id が adr-NNNN の形のものだけ */
+export function loadDecisions(root: string): readonly DecisionDoc[] {
+  if (!isDirectory(join(root, DECISIONS_DIR))) return [];
+  return listDocFiles(join(root, DECISIONS_DIR))
+    .filter((rel) => rel !== LEDGER_FILE_NAME && posix.basename(rel) !== 'README.md')
+    .flatMap((rel) => {
+      const parsed = parseDecision(`${DECISIONS_DIR}/${rel}`, readFileSync(join(root, DECISIONS_DIR, rel), 'utf8'));
+      return 'doc' in parsed ? [parsed.doc] : [];
+    });
+}

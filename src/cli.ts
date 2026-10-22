@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { IGETA_ROOT } from './core/Paths.js';
+import { createDecisionCommands } from '#decision/cli';
 import { Cli } from './cli/Cli.js';
 import { AgreementApproveCommand, AgreementCheckCommand } from './cli/commands/AgreementCommands.js';
 import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
@@ -66,6 +67,7 @@ const cli = new Cli()
   .register(new DoctorCommand())
   .register(new VersionCheckCommand())
   .register(new UpgradeCommand());
+for (const command of createDecisionCommands()) cli.register(command);
 
 const exitCode = await cli.run(process.argv.slice(2), {
   cwd: process.cwd(),

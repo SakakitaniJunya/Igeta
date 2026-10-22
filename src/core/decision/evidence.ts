@@ -135,7 +135,7 @@ export interface FirstSeen {
 export function firstSeen(root: string, path: string): Result<FirstSeen> {
   const shallow = git(root, ['rev-parse', '--is-shallow-repository']);
   if (!shallow.ok || shallow.value.trim() === 'true') return fail('浅い clone か git が無いので、初めて現れた日を辿れない');
-  const log = git(root, ['log', '--follow', '--diff-filter=A', '--format=%cs%x09%s', '--', path]);
+  const log = git(root, ['log', '--follow', '-M90%', '--diff-filter=A', '--format=%cs%x09%s', '--', path]);
   const earliest = log.ok ? log.value.trim().split('\n').at(-1) : undefined;
   const [date = '', subject = ''] = (earliest ?? '').split('\t');
   return date === '' ? fail(`${path} が git の履歴に無い (commit 前)`) : succeed({ date, subject });

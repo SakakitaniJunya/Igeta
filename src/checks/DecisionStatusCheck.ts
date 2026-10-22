@@ -24,12 +24,13 @@ import {
   createGitCommitReader,
   decisionFingerprint,
   firstSeen,
+  loadDecisions,
   originSlug,
   parseDecision,
   readLedger,
 } from '#decision/core';
 import type { Check, CheckContext } from '../core/Check.js';
-import { isDirectory, listDocFiles } from '../core/DocFiles.js';
+import { isDirectory } from '../core/DocFiles.js';
 import { GitError, listFilesAtRef, mergeBase, readFileAtRef } from '../core/GitRef.js';
 import { loadIgetaConfig } from '../core/IgetaConfig.js';
 import type { Violation } from '../core/Report.js';
@@ -86,7 +87,7 @@ export class DecisionStatusCheck implements Check {
     const loaded = loadIgetaConfig(ctx.targetRoot);
     if ('violation' in loaded) return [loaded.violation];
 
-    const docs = this.#readDecisions(ctx.targetRoot, decisionsDir);
+    const docs = loadDecisions(ctx.targetRoot);
     const isStrict = STATE_DIRS.some((dir) => isDirectory(join(decisionsDir, dir)));
     if (!isStrict && docs.length > 0) {
       this.#warnings.push(`DS12 状態のフォルダ (${STATE_DIRS.join('・')}) が無く、<年>/ に ADR が ${docs.length} 本ある。igeta docs-migrate で状態のフォルダへ移す`);
@@ -141,15 +142,6 @@ export class DecisionStatusCheck implements Check {
       }
     }
     return violations;
-  }
-
-  #readDecisions(root: string, decisionsDir: string): readonly DecisionDoc[] {
-    return listDocFiles(decisionsDir)
-      .filter((rel) => rel !== 'README.md' && !rel.endsWith('/README.md') && rel !== LEDGER_FILE)
-      .flatMap((rel) => {
-        const parsed = parseDecision(`${DECISIONS_DIR}/${rel}`, readFileSync(join(root, DECISIONS_DIR, rel), 'utf8'));
-        return 'doc' in parsed ? [parsed.doc] : [];
-      });
   }
 
   /** DS7・DS13 の「消えない」: 対象 branch との枝分かれの点と比べる。読めなければ警告 */
