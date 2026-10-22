@@ -1,0 +1,109 @@
+{
+  "name": "@igeta/persistence",
+  "version": "0.1.0",
+  "description": "DB 層の部品 (Result・AppError・Repository の port・Mapper・Transaction、Firestore と Postgres の実装、契約テスト)",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./firestore": {
+      "import": {
+        "types": "./dist/firestore/index.d.ts",
+        "default": "./dist/firestore/index.js"
+      },
+      "require": {
+        "types": "./dist/firestore/index.d.cts",
+        "default": "./dist/firestore/index.cjs"
+      }
+    },
+    "./postgres": {
+      "import": {
+        "types": "./dist/postgres/index.d.ts",
+        "default": "./dist/postgres/index.js"
+      },
+      "require": {
+        "types": "./dist/postgres/index.d.cts",
+        "default": "./dist/postgres/index.cjs"
+      }
+    },
+    "./testing": {
+      "import": {
+        "types": "./dist/testing/index.d.ts",
+        "default": "./dist/testing/index.js"
+      },
+      "require": {
+        "types": "./dist/testing/index.d.cts",
+        "default": "./dist/testing/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint --max-warnings 0 . && igeta-check-layout src",
+    "test:firestore": "REQUIRE_EMULATOR=1 firebase emulators:exec --only firestore --project demo-igeta \"vitest run src/firestore\"",
+    "test:postgres": "REQUIRE_POSTGRES=1 vitest run src/postgres"
+  },
+  "peerDependencies": {
+    "@google-cloud/firestore": "^7.0.0",
+    "kysely": "^0.29.0",
+    "pg": "^8.11.0",
+    "vitest": "^3.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@google-cloud/firestore": {
+      "optional": true
+    },
+    "kysely": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@google-cloud/firestore": "^7.11.6",
+    "@igeta/eslint-config": "0.1.0",
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "eslint": "^9.39.5",
+    "kysely": "^0.29.7",
+    "pg": "^8.23.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "imports": {
+    "#core/*": "./src/core/*.ts",
+    "#testing/*": "./src/testing/*.ts",
+    "#firestore/*": "./src/firestore/*.ts",
+    "#postgres/*": "./src/postgres/*.ts"
+  }
+}

@@ -24,6 +24,8 @@ jobs:
         run: npx tsc --noEmit
       - name: 検査コードの自己テスト
         run: npm run test:scripts
+      - name: library の自己テストと lint
+        run: npm run test:library
       - name: Markdown 記法
         run: npm run docs:lint
       - name: 索引・参照整合性

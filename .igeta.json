@@ -2,6 +2,7 @@
   "humanPaths": [
     "src/**",
     "templates/**",
+    "library/**",
     "package.json",
     "package-lock.json",
     "tsconfig.json",

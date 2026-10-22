@@ -291,6 +291,7 @@ describe('Igeta 自身の .igeta.json (ADR-0008 決定 1)', () => {
   const EXPECTED = [
     'src/**',
     'templates/**',
+    'library/**',
     'package.json',
     'package-lock.json',
     'tsconfig.json',

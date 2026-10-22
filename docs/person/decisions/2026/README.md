@@ -43,5 +43,6 @@ owners: [eng]
     - [0010-value-ownership.md](0010-value-ownership.md) — **ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く** `adr` _(proposed)_ — いまの雛形は kind の中に人の決定と作り方が混ざる (例: インフラ設計に月額の費用、状態遷移に期限)。
       - [0011-person-diagram-first.md](0011-person-diagram-first.md) — **ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る** `adr` _(proposed)_ — 人が全部読んで承認する文書のうち 16 の kind は、TL;DR の次の節 (最初の表より前) に、kind ごとに決めた
     - [0011-person-diagram-first.md](0011-person-diagram-first.md) — **ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る** `adr` _(proposed)_ — 人が全部読んで承認する文書のうち 16 の kind は、TL;DR の次の節 (最初の表より前) に、kind ごとに決めた
+- [0012-persistence-library.md](0012-persistence-library.md) — **ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト** `adr` _(proposed)_ — 雛形 (hono・nestjs) に写して持っている DB 層を、library/persistence の 1 つの package (@igeta/persistence) に移す。入口は core・firestore・postgre…
 
 <!-- AUTOGEN:dir-index:end -->
