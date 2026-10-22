@@ -21,6 +21,10 @@
   "engines": {
     "node": ">=22"
   },
+  "imports": {
+    "#decision/core": "./dist/core/decision/index.js",
+    "#decision/cli": "./dist/cli/commands/decision/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "prepare": "tsc",

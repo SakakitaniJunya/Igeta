@@ -45,6 +45,21 @@ export interface ReagreementRule {
 /** 既定は requirements の変更を再合意対象にする (何を作るかの根拠が変わったときだけ確実に拾う)。 */
 export const DEFAULT_REAGREEMENT_RULES: readonly ReagreementRule[] = [{ kind: 'requirements' }];
 
+/** 決定を承認できる人。name は履歴の「決めた人」、github は merge・close した人の GitHub 名との照合に使う */
+export interface DecisionApprover {
+  readonly name: string;
+  readonly github: string;
+}
+
+/** 決定の状態の設定 (ADR-0013 決定 3・5)。approvers は人の承認のパスで直す */
+export interface DecisionsConfig {
+  readonly approvers: readonly DecisionApprover[];
+  /** 承認待ちがこの日数を超えたら警告する */
+  readonly staleDays: number;
+}
+
+export const DEFAULT_STALE_DAYS = 14;
+
 export interface IgetaConfig {
   readonly sharedKinds: readonly string[];
   /** 未設定 (無制限) は null */
@@ -64,6 +79,7 @@ export interface IgetaConfig {
    * 当たるかどうかの判定は humanPaths と同じ glob の意味 (src/gate/PathGlob.ts の matchesGlob)。
    */
   readonly nonDocPaths: readonly string[];
+  readonly decisions: DecisionsConfig;
 }
 
 export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
@@ -73,6 +89,7 @@ export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
   reagreementRules: DEFAULT_REAGREEMENT_RULES,
   humanPaths: [],
   nonDocPaths: [],
+  decisions: { approvers: [], staleDays: DEFAULT_STALE_DAYS },
 };
 
 export type LoadIgetaConfigResult = { readonly config: IgetaConfig } | { readonly violation: Violation };
@@ -98,6 +115,30 @@ function readGlobList(
     }
   }
   return { globs: value };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value !== '';
+}
+
+/** `decisions` の項目を読む。形が違えば CannotCheck (承認できる人が読めないのに、黙って空にしない) */
+function readDecisions(value: unknown, path: string): { readonly decisions: DecisionsConfig } | { readonly violation: Violation } {
+  const bad = (reason: string) => ({ violation: { severity: 'cannot-check' as const, message: `${path} の decisions は${reason}` } });
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return bad('オブジェクトでなければならない');
+  const record = value as Record<string, unknown>;
+  const rawApprovers = 'approvers' in record ? record['approvers'] : [];
+  if (!Array.isArray(rawApprovers)) return bad(' approvers を { name, github } の配列で持たなければならない');
+  const approvers: DecisionApprover[] = [];
+  for (const entry of rawApprovers as unknown[]) {
+    const item = typeof entry === 'object' && entry !== null ? (entry as Record<string, unknown>) : {};
+    if (!isNonEmptyString(item['name']) || !isNonEmptyString(item['github'])) {
+      return bad(' approvers の各項目を { name, github } (どちらも空でない文字列) で持たなければならない');
+    }
+    approvers.push({ name: item['name'], github: item['github'] });
+  }
+  const staleDays = 'staleDays' in record ? record['staleDays'] : DEFAULT_STALE_DAYS;
+  if (typeof staleDays !== 'number' || !Number.isInteger(staleDays) || staleDays < 0) return bad(' staleDays が 0 以上の整数でなければならない');
+  return { decisions: { approvers, staleDays } };
 }
 
 /**
@@ -249,5 +290,12 @@ export function parseIgetaConfig(text: string, path: string): LoadIgetaConfigRes
     }
   }
 
-  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules, humanPaths, nonDocPaths } };
+  let decisions = DEFAULT_IGETA_CONFIG.decisions;
+  if ('decisions' in record) {
+    const read = readDecisions(record['decisions'], path);
+    if ('violation' in read) return read;
+    decisions = read.decisions;
+  }
+
+  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules, humanPaths, nonDocPaths, decisions } };
 }

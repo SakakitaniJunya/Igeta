@@ -24,7 +24,7 @@ relates_to: [test-decision-status]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | [ADR-0013](../../../../person/decisions/2026/0013-decision-status-folders.md) (決定 9・10) | — |
-| 下流 | `src/cli/commands/decision/port.ts`・`src/core/decision/`・`DocsMigrate*` の 1 段 とそのテスト | TST-* |
+| 下流 | `src/cli/commands/decision/` (`port.ts` が口、`gh-port.ts` が本番の実装)・`src/core/decision/`・`DocsMigrate*` の 1 段 とそのテスト | TST-* |
 
 ## 1. GitHubPort (差し込み口)
 
@@ -36,7 +36,7 @@ relates_to: [test-decision-status]
 | `pullCommits(repo, number)` | その PR の commit の sha の配列 | `pull/19: ['<sha>', …]` (一時 repo で作った commit) |
 | `issue(repo, number)` | `state`・`closedBy` | `issue/7: { state: 'closed', closedBy: 'ceo-gh' }` |
 
-無い fixture は「見つからない」(検査不能 2)。`gh` が無い環境は、この口が検査不能を返す (TST-321)。
+無い fixture は「見つからない」(検査不能 2)。`gh` が無い環境は、この口が検査不能を返す (test-decision-status/TST-321)。
 
 ## 2. 移行
 
@@ -60,7 +60,7 @@ relates_to: [test-decision-status]
 
 | ID | 層 | 前提 (Given) | 操作 (When) | 期待結果 (Then) | 対応 |
 |---|---|---|---|---|---|
-| TST-401 | 結合 | 旧配置の 3 本 (accepted・rejected・proposed)。根拠の表は accepted だけ | `docs-migrate` | accepted は `accepted/<年>/`、旧 rejected は `proposed/` で `差戻し`・メモ・`awaiting` あり。docs-check 違反 0 | MG2 |
+| TST-401 | 結合 | 旧配置の 5 本 (accepted・rejected・proposed・superseded・deprecated)。根拠の表は accepted だけ。`approvers` の先頭の名前が `awaiting` に入る (TST-508 はこの裏で、`approvers` に無い名前を `awaiting` に置く) | `docs-migrate` | accepted は `accepted/<年>/`、旧 rejected は `proposed/` で `差戻し`・メモ・`awaiting` あり、旧 superseded・deprecated は事象 `移行前` の履歴 1 行 (根拠 `移行前 (未記入)`) を持って `retired/<年>/`。移行前の行は警告として数え、DS4〜DS6 の対象にしない。docs-check 違反 0 | MG2 |
 | TST-402 | 結合 | DEC 15 行・OPEN 17 行 | `docs-migrate` | 列が足り、移行の印の行は警告として数えられ、違反 0 | MG3 |
 | TST-403 | 結合 | 移行済みの repo | `docs-migrate` を 2 回目 | 何も変えない | MG2・MG3 |
 | TST-404 | 結合 | Igeta 自身の 12 本と、`GitHubPort` の fixture (#19・#20・#26) | `decision-accept` を 12 回 | 12 本が `accepted/2026/`、0013 が `proposed/`、2026/ 直下に ADR が残らない。docs-check (終わりに 1 回) の違反 0 | MG1 |
@@ -77,7 +77,7 @@ relates_to: [test-decision-status]
 | TST-505 | 本文が変わった | #19 の後に本文が変わった ADR | accept は拒否 (1)。後の PR を根拠にするか `amend` (MG1) |
 | TST-506 | 既存の repo を赤くしない | 状態のフォルダが無い repo で、手書きの `status: accepted` | DS12 の警告 1 件だけ。DS1・DS3 は効かない。同じ repo の proposed で `awaiting` が無くても、DS11 は警告にとどまる |
 | TST-507 | 台帳の列なし | `状態` の列が無い台帳 | DS13 は効かない。移行後に列を消せば DS7 と同じ比べ方で違反 |
-| TST-508 | 持ち主の補い | 差戻しの ADR の `awaiting` が `approvers` に無い名前 | DS11 の違反 |
+| TST-508 | 持ち主の補い | 差戻しの ADR の `awaiting` が `approvers` に無い名前 (TST-401 は先頭の名前が入る側) | DS11 の違反 |
 
 ## 5. トレーサビリティ
 
@@ -88,14 +88,14 @@ relates_to: [test-decision-status]
 
 ## 6. 実装の割り方
 
-状態のフォルダを持つ repo だけで DS1・3・5・6 が効き (DS12)、DS13 は台帳に `状態` の列がある repo だけで効く。既存の repo は移行するまで赤くならない。
+状態のフォルダを持つ repo だけで DS1・3・5・6・11 が効き (DS12)、DS13 は台帳に `状態` の列がある repo だけで効く。既存の repo は移行するまで赤くならない。
 
 | 本 | 中身 | 入る時点で緑な理由 |
 |---|---|---|
 | 1 | `src/core/decision/` (DS1〜DS14)・索引の 4 つの表・`Role.ts` は旧い `<年>/` と新しい 4 フォルダの両方を許す・要件定義書 02 §7・ガイドを同時に直す | 状態のフォルダが無い repo (Igeta・八ヶ岳) は DS12 の警告だけ。`Role.ts` が両方を許すので雛形の検査は動く。`TaxonomyGuideSync` は同じ PR で揃える |
 | 2 | 雛形 (履歴の節・台帳の列・README・`init` の AGENTS.md・人の承認の手引き)。`templates/` の再構成の後に差分だけ | 雛形は新しい配置に替わり、1 の `Role.ts` が許す。雛形に ADR の実物は無い |
 | 3 | `src/cli/commands/decision/` (4 動詞・`pending`・`GitHubPort`) | 検査を変えず、新しいコードとテストだけ。Igeta の docs は変わらない |
-| 4 | `docs-migrate` の 1 段、Igeta 自身の 12 本 (§2 の順)、利用側の移行 | 12 本は全部根拠付きで入り、DS1・3・5・6 が緑で効き出す。利用側は移行 PR ごとに緑にする |
+| 4 | `docs-migrate` の 1 段、Igeta 自身の 12 本 (§2 の順)、利用側の移行 | 12 本は全部根拠付きで入り、DS1・3・5・6・11 が緑で効き出す。利用側は移行 PR ごとに緑にする |
 
 MD-11 のフォルダ分け: `src/core/decision/` = `history.ts` (履歴の読み書き・遷移)・`fingerprint.ts`・`folder.ts` (置き場所と年)・`evidence.ts` (形と実在)・`ledger.ts` (DEC/OPEN)・`index.ts` の 6 本。検査の入口は、既存の検査と同じ `src/checks/DecisionStatusCheck.ts` (core/decision を呼ぶだけ)。
 `src/cli/commands/decision/` = `verbs.ts` (4 動詞の薄い入口)・`record.ts` (書き込み口)・`pending.ts`・`port.ts`・`gh-port.ts`・`index.ts` の 6 本。

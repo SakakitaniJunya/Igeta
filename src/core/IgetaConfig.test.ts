@@ -328,3 +328,25 @@ describe('Igeta 自身の .igeta.json (ADR-0008 決定 1)', () => {
     }
   });
 });
+
+describe('loadIgetaConfig: decisions (ADR-0013 決定 3・5)', () => {
+  const load = (value: unknown): ReturnType<typeof loadIgetaConfig> => {
+    const root = makeRoot();
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ decisions: value }));
+    return loadIgetaConfig(root);
+  };
+
+  it('approvers ({ name, github }) と staleDays を読む。staleDays の既定は 14', () => {
+    const result = load({ approvers: [{ name: '榊谷 隼也', github: 'ceo-gh' }] });
+    assert.deepEqual(result, { config: { ...DEFAULT_IGETA_CONFIG, decisions: { approvers: [{ name: '榊谷 隼也', github: 'ceo-gh' }], staleDays: 14 } } });
+    assert.deepEqual(load({ staleDays: 3 }), { config: { ...DEFAULT_IGETA_CONFIG, decisions: { approvers: [], staleDays: 3 } } });
+  });
+
+  it('形が違えば検査不能 (黙って空にしない)', () => {
+    for (const value of [[], { approvers: ['x'] }, { approvers: [{ name: 'a' }] }, { staleDays: -1 }, { staleDays: 1.5 }]) {
+      const result = load(value);
+      assert.ok('violation' in result, JSON.stringify(value));
+      assert.equal(result.violation.severity, 'cannot-check');
+    }
+  });
+});

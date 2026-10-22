@@ -209,6 +209,14 @@ describe('matchPlacement', () => {
     ['adr', 'person/decisions/2026/0001-use-postgres.md', true, null],
     ['adr', 'person/decisions/26/0001-use-postgres.md', false, null],
     ['adr', 'person/decisions/0001-use-postgres.md', false, null],
+    // 状態でフォルダを分ける (ADR-0013 決定 1)。proposed/ は年なし、他の 3 つは年あり
+    ['adr', 'person/decisions/proposed/0013-x.md', true, null],
+    ['adr', 'person/decisions/accepted/2026/0001-use-postgres.md', true, null],
+    ['adr', 'person/decisions/rejected/2026/0002-x.md', true, null],
+    ['adr', 'person/decisions/retired/2025/0003-x.md', true, null],
+    ['adr', 'person/decisions/proposed/2026/0013-x.md', false, null],
+    ['adr', 'person/decisions/accepted/0001-use-postgres.md', false, null],
+    ['adr', 'person/decisions/draft/0013-x.md', false, null],
     ['decision-log', 'person/decisions/01-decisions.md', true, null],
     ['decision-log', 'person/decisions/2026/01-decisions.md', false, null],
     // ai: shared と、まとまりの契約・下位フォルダ
@@ -424,10 +432,17 @@ describe('isFolderSizeExempt (15 本の対象外)', () => {
   it('日付の記録 (ADR・提案書) と提出物のフォルダは対象外', () => {
     assert.deepEqual(FOLDER_SIZE_EXEMPT_DIRS, [
       'person/decisions/<year>',
+      'person/decisions/proposed',
+      'person/decisions/accepted/<year>',
+      'person/decisions/rejected/<year>',
+      'person/decisions/retired/<year>',
       'client/proposals/<year>',
       'client/delivery/<deliverable>',
     ]);
     assert.equal(isFolderSizeExempt('person/decisions/2026'), true);
+    for (const dir of ['proposed', 'accepted/2026', 'rejected/2026', 'retired/2025']) {
+      assert.equal(isFolderSizeExempt(`person/decisions/${dir}`), true, dir);
+    }
     assert.equal(isFolderSizeExempt('client/proposals/2026'), true);
     assert.equal(isFolderSizeExempt('client/delivery/spec-v1'), true);
   });

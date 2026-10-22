@@ -41,7 +41,7 @@ id で数えられない相対リンク (画像・コード・docs/ の外) は�
 | DS3 | 履歴と状態: `status` が履歴の最後の「後」と違えば違反 (行が 0 本なら proposed のはず)。proposed でない ADR は行を 1 本以上持つ |
 | DS4 | 証跡の形: 承認・改訂の行は、決めた人が `approvers` の名前、根拠が `https://github.com/<owner>/<repo>/` の後に `pull/<n>` か `commit/<sha>`、根拠 commit が 40 桁の 16 進で、全部が埋まる。却下の行は根拠 commit を空にでき、根拠は PR か Issue の URL (DS5 の対象外)。置換の行の根拠は置いた ADR の id。owner と repo は `origin` と同じ |
 | DS5 | 証跡の実在 (承認・改訂の行。git がある時): 根拠 commit が HEAD の履歴にあり、その commit の中に同じ id の ADR があり、その本文指紋が行の本文指紋と同じ。確かめられない clone (浅い・git 無し) は、この規則だけ検査不能 (2) |
-| DS6 | 承認後に本文を変えない: accepted・amended・rejected の ADR の現在の本文指紋が、最後の承認・改訂・却下の行の本文指紋と同じ。違えば違反 (直し方は `amend`) |
+| DS6 | 承認後に本文を変えない: accepted・amended・rejected の ADR の現在の本文指紋が、最後の承認・改訂・却下の行の本文指紋と同じ。違えば違反 (直し方は `amend`)。最後の行が事象 `移行前` なら対象外 (DS9) |
 | DS7 | 追記のみ: `--base <ref>` (CI は PR の対象 branch) の履歴の行が、1 行も消えず・変わらず・順が同じで、新しい行は末尾だけ。base と `status` が違うのに行が増えていなければ違反。base を読めなければ警告 |
 | DS8 | 覆す: `supersedes: [a]` を持つ X と `superseded_by: X` を持つ a は対。X が accepted・amended で a が accepted のまま、a が retired なのに X が proposed、循環、片側だけ、は違反 |
 | DS9 | 遷移: proposed → accepted・rejected / accepted・amended → amended・superseded / rejected・superseded → なし。例外は事象 `差戻し` (移行だけ。根拠の無い accepted・rejected を proposed に戻す。メモに旧い状態と日付を必須)。`deprecated` は書き込み口が無いので今回は対象外: 新しく付けると DS3 で落ちる。既にある superseded・deprecated は、移行が事象 `移行前` の履歴を 1 行起こして `retired/` に置く (根拠は `移行前 (未記入)`。DS4〜DS6 の対象外で、警告として数える) |
@@ -79,7 +79,7 @@ id で数えられない相対リンク (画像・コード・docs/ の外) は�
 | TST-109 | 結合 | 旧配置 | `<年>/` の ADR だけ | docs-check | 警告 1 件・違反 0 | DS12 |
 | TST-110 | 結合 | リンク | 他の文書が旧パスへ相対リンクを持つ | accept | 全部の追跡している `.md` の相対リンクが新パスへ。docs-check の `[link]` が 0 | DS1 |
 | TST-111 | 結合 | dry-run | proposed 1 本 | accept `--dry-run` | `MOVE`・`APPEND`・`REWRITE`・`SET` の行だけ。作業ツリーは同じ | コマンド |
-| TST-112 | 結合 | 移行 | テスト仕様 12 の TST-404 を参照 (重複させない) | — | — | DS1・3・5 |
+| TST-112 | 結合 | 移行 | test-decision-migration/TST-404 を参照 (重複させない) | — | — | DS1・3・5 |
 
 ## 2. 否定テスト (必須)
 
