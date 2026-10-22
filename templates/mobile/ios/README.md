@@ -1,4 +1,4 @@
-# ios-app — iOS アプリ雛形 (xcodegen + SwiftUI + SwiftData)
+# mobile/ios — iOS アプリ雛形 (xcodegen + SwiftUI + SwiftData)
 
 xcodegen で Xcode プロジェクトを生成する iOS アプリの雛形。SwiftUI + SwiftData、Share Extension、ユニットテスト (`bundle.unit-test`) 込み。設計書を先に書いて TDD で進める開発フローは `WORKFLOW.md` を参照。
 
@@ -25,7 +25,7 @@ xcodegen で Xcode プロジェクトを生成する iOS アプリの雛形。Sw
 1. このフォルダを自分のリポジトリへコピーする:
 
    ```sh
-   cp -R templates/ios-app <your-app-dir>
+   cp -R templates/mobile/ios <your-app-dir>
    cd <your-app-dir>
    ```
 

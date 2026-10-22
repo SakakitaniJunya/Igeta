@@ -15,6 +15,7 @@
   "files": [
     "dist",
     "templates",
+    "tools",
     ".markdownlint.yaml",
     ".markdownlint-cli2.yaml"
   ],

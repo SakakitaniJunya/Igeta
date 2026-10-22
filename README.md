@@ -26,7 +26,7 @@
 | **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **45 種** |
 | **検査スクリプト** (`src/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
 | **コード雛形** (`templates/backend` / `frontend`) | 図と実装を契約でつなぐ参考実装。`backend` は Firestore の 4 層モジュラーモノリスで Hono / NestJS / Rust の 3 変種、`frontend` は React + Vite の管理画面 (4 層) |
-| **ストアスクショの型** (`templates/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
+| **ストアスクショの型** (`tools/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
 
 ## 名前の由来
 
@@ -331,7 +331,9 @@ Igeta/
 │   ├── docs/               設計書の雛形 45 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある (person・ai・client)
 │   ├── .github/            使う人の .github/ にコピーする雛形 (PR テンプレ)
 │   ├── backend/            バックエンド。Firestore の 4 層モジュラーモノリス (hono・nestjs・rust の 3 変種)
-│   └── frontend/           フロントエンド (admin)。React + Vite の管理画面 (4 層)
+│   ├── frontend/           フロントエンド (admin)。React + Vite の管理画面 (4 層)
+│   └── mobile/             モバイル (`ios/`。xcodegen + SwiftUI)
+├── tools/                  雛形でなく道具。パッケージに同梱する (`store-screenshots/`)
 ├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
 ├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
