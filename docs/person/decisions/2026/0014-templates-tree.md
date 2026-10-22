@@ -36,7 +36,7 @@ flowchart TB
 
 ## Status
 
-2026-10-22 提案。決めた人: 設計者 (eng)。CEO の判断が要るのは「決めてほしいこと」の 2 つ。
+2026-10-22 提案。決めた人: 設計者 (eng)。`igeta scaffold` の廃止と `store-screenshots` の配布継続も、設計者が決めた。
 
 ## Context
 
@@ -57,8 +57,8 @@ flowchart TB
 1. 第 1 階層は `backend/`・`frontend/`・`mobile/`・`docs/`・`.github/`・`README.md`。上限 8 エントリ (現在 6)。
 2. 退役 (削除): `api-module`・`api-shared-kernel`・`web-feature` と `igeta scaffold`。参照は scaffold だけで、現行に代わりがある (`backend/nestjs`・`frontend/admin`)。技術も違う (Prisma・Next.js)。
 3. 移す: `ios-app` → `mobile/ios` (写し先 `apps/<app>/mobile/ios/`)。`store-screenshots` → `tools/store-screenshots` (写し元は雛形でなく道具。npm の `files` に `tools` を足して配布は続ける)。
-4. 雛形の中: `shared/` は「層を子に持つ根」だけ許す (禁止名の例外)。`firestore-*` 3 本は `infrastructure/firestore/` へ。ファイル名にフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。
-5. 再発止め: (a) 足す PR は古いものを同じ PR で退かせる (退かせるものが無いなら理由を書く)。AGENTS.md に書く。(b) 第 1・第 2 階層を登録制にする検査を `docs:check` と CI の常時ジョブに掛ける。(c) 新しい名前は ADR で足し、登録と検査の matrix を同じ PR で直す。
+4. 雛形の中: `shared/` は「層と test-support だけを子に持つ根」だけ許す (禁止名の例外。rust の `mod.rs` は可)。`firestore-*` 3 本は `infrastructure/firestore/` へ。ファイル名にフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。
+5. 再発止め: (a) 足す PR は古いものを同じ PR で退かせる (退かせるものが無いなら理由を書く)。AGENTS.md に書く。(b) 第 1・第 2 階層を登録制にする検査を、Igeta 自身の repo だけで走る npm script (`check:templates-layout`) にし、全 push・PR で走る `ci.yml` の step に足す (`docs:check` は利用 repo でも走るので入れない)。(c) 新しい名前は ADR で足し、登録と検査の matrix を同じ PR で直す。
 
 | 判断軸 | 採用案での扱い | 理由 |
 |---|---|---|
@@ -78,13 +78,14 @@ flowchart TB
 ## Consequences
 
 - 良い方向: 第 1 階層が 6 つになり、旧世代の矛盾する案内 (Prisma と Firestore) が消える。足す側は退役か理由を必ず書く。
-- 代償: `igeta scaffold` と `npm run scaffold` (`igeta init` が利用 repo に書く) が無くなる破壊的変更で、版を上げる。`mobile/ios` は CI の自己検査が無い (macOS が要る) まま。
+- 代償: `igeta scaffold` と `npm run scaffold` (`igeta init` が利用 repo に書く) が無くなる破壊的変更で、版を上げる。`.igeta-version` で固定した既存 repo は旧版に留まれば動く。上げるなら README に `scaffold` 削除と `igeta expand` への移行を書く。
+- 代償: `mobile/ios` は CI の自己検査が無い (macOS が要る) まま。
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| 登録制の検査 (`docs:check` と CI の常時ジョブ) | `templates/` の第 1・第 2 階層 | 登録外の名前・8 エントリ超・登録した変種が `check-templates` の matrix に無い |
+| 登録制の検査 (`check:templates-layout`、`ci.yml` の step) | `templates/` の第 1・第 2 階層 | 登録外の名前・8 エントリ超・登録した変種が `check-templates` の matrix に無い |
 | `igeta-check-layout` | 各雛形の中 (`templates/backend/*`・`frontend/admin`) | 本体 8 本以上・接頭辞 3 本以上・`utils` 等・`shared` が層以外を子に持つ |
 | `check-templates` (既存) | hono・nestjs・rust・frontend | 展開・型・テスト・build のどれかが落ちる |
 
@@ -93,8 +94,3 @@ flowchart TB
 - 第 1 階層の登録が 8 に届いたら、原則を見直す
 - `mobile/` に 2 つ目の変種 (Android など) が来たら、変種ごとの自己検査の置き方を決め直す
 - `shared` の例外で、層以外の子を足す要望が 2 件出たら、改名を再検討する
-
-## 決めてほしいこと
-
-- `igeta scaffold` を廃止してよいか (既存の利用 repo の `npm run scaffold` が壊れる)。推奨: 廃止。移行は `igeta expand`
-- `store-screenshots` を npm 配布に残すか (残すなら `files` に `tools` を足す)。推奨: 残す
