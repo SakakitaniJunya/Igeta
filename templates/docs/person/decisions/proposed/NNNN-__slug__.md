@@ -8,6 +8,7 @@ status: proposed
 canonical: true
 owners: [eng]
 created: YYYY-MM-DD
+awaiting: <承認する人の名前 (.igeta.json の decisions.approvers の name)>
 depends_on: []
 relates_to: []
 ---
@@ -25,7 +26,7 @@ relates_to: []
 
 ## Status
 
-<日付> <提案 / 採用 / 変更>。決めた人: <名前>。
+<日付> 提案。状態 (承認・却下・置換) は、この文書に手で書かない。`igeta decision-accept` などが、下の承認の履歴に書く。
 
 ## Context
 
@@ -62,3 +63,10 @@ relates_to: []
 ## 再検討トリガ
 
 - <見直す条件を、観測できる形で>
+
+## 承認の履歴
+
+> `igeta decision-accept|reject|supersede|amend` だけが行を足す。手で書かない (docs-check が落とす)。
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|

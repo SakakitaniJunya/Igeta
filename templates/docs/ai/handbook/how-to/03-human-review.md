@@ -106,3 +106,16 @@ Markdown に「解決できない」と明記され、コマンドは exit 1 で
   exit 2 (検査不能) にする (0 件を緑にしない、原則 8)。一部のファイルだけ一致しない場合は advisory の
   ままなので exit 1/0 になる。タスクの `path` を書く運用を採用していないプロジェクトでは、この機能で
   虚偽報告 (実例 3) を機械的に防ぐことはできない。
+
+## 8. 決定 (ADR) の承認と記録
+
+ADR の状態 (承認待ち・承認済・却下・置換) は、手で書き換えない。`igeta decision-*` だけが、下の手順で履歴 (決めた人・根拠・日付) を書き、フォルダを移し、索引を作り直す。
+
+1. AI が ADR を `proposed/` に `awaiting` (承認する人の名前) 付きで書き、PR を出す。人が PR を読んで merge する
+2. merge したら、AI は `igeta decision-pending` を実行して承認待ちを洗い出す。経過日数と、実行すべき `decision-accept` の候補が出る
+3. AI は `igeta decision-accept <番号> --by <名前> --evidence <merge した PR の URL>` で記録する PR を出す。`gh` で、PR が merge 済みで、merge した人が `.igeta.json` の `decisions.approvers` の `github` と同じことを確かめる。却下は `decision-reject`、置換は `decision-supersede`、承認後の本文の改訂は `decision-amend`
+4. 記録の PR は `docs/person/` を触るので、人がもう一度読んで merge する
+
+人が見るのは、`docs/person/decisions/README.md` の 4 つの表 (承認待ち・承認済・却下・置換) と、承認待ちの警告 (持ち主・経過日数・期限)。承認済の表の根拠リンクから、承認した PR に飛べる。
+
+機械が見ていないのは、merge した人が人であること (AI と同じ GitHub アカウントだと見分けられない) と、根拠の PR がその決定を承認する意図だったことの 2 つ。記録の PR を人が読むことで補う。

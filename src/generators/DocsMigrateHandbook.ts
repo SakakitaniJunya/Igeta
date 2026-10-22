@@ -35,16 +35,17 @@ export const HANDBOOK_BODY_HASHES: ReadonlyMap<string, readonly string[]> = new 
       '606e2219fb3d0642d7ab449fab71b93211d459c1765d057745d2846d7f132af0',
       '4b902891aa04b5090bdfeebdccfc4ad360407b4cc5fdb85a6b3dffab0958aa7c',
       '08f656c01d2b78cf7ef65de8b69545cca786f6a4867e23b1ce344bea7a7ffeae',
-      'bc2f3d9415e5db4dbcda19b43ff90b97c95a2580e8a9c75e81e73adce83ab12e',
+      'ecb7182e3c99a7c199b57ad8b45c0ff04340f4de39890dafc8ef1ffd756f5908',
     ],
   ],
-  // human-review: v0.3.0・v0.4.0・v0.5.0
+  // human-review: v0.3.0・v0.4.0・v0.5.0 と、v0.5.0 の後の変更 (HEAD, 未リリース。決定の承認の節を足した)
   [
     'human-review',
     [
       'd38958905ec89a2981b349416883a2dad65d108a5c139eb1ab6748e173ff019a',
       '4c2e66498a489fb1239a936787c609ba22a1838553e54ce1d64e2f34e5b07e8a',
       '9094f4c8eab950e5b6e8e02a2c4b1dea31c60510954e8143f774b351fee07a9e',
+      'c2932acc196bde173181e2c926267d355706d14352f5ae120159685e4dd14c9f',
     ],
   ],
   // provenance-workflow: v0.3.0・v0.4.0 (同じ本文)・v0.5.0

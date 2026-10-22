@@ -247,7 +247,7 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     const newAgents = read(root, 'AGENTS.md');
     assert.ok(newAgents.startsWith(agents), '既にある内容は変わらない');
     const appended = newAgents.slice(agents.length);
-    for (const heading of ['## 読む順', '## 人の承認', '## 手引きの場所', '## 検査']) assert.ok(appended.includes(heading), `足されていない: ${heading}`);
+    for (const heading of ['## 読む順', '## 人の承認', '## 決定の記録', '## 手引きの場所', '## 検査']) assert.ok(appended.includes(heading), `足されていない: ${heading}`);
 
     const newCodeowners = read(root, '.github/CODEOWNERS');
     assert.ok(newCodeowners.endsWith(codeowners), '既にある行は、そのまま末尾に残る');
@@ -258,14 +258,14 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     assert.deepEqual(new AgentsEntrypointCheck().run({ targetRoot: root, igetaRoot: IGETA_ROOT }), []);
   });
 
-  it('[TST-105] AGENTS.md: 見出しは 4 つ、手引き 3 本のパスはコードスパンでリンクは無い。「人の承認」の節に git fetch origin・origin/・人へ渡す がある', async () => {
+  it('[TST-105] AGENTS.md: 見出しは 5 つ、手引き 3 本のパスはコードスパンでリンクは無い。「人の承認」の節に git fetch origin・origin/・人へ渡す がある', async () => {
     const root = makeRoot();
     assert.equal((await runInit(root, ['--owner', OWNER])).code, ExitCode.Ok);
     const text = read(root, 'AGENTS.md');
 
     assert.deepEqual(
       text.split('\n').filter((line) => line.startsWith('## ')),
-      ['## 読む順', '## 人の承認', '## 手引きの場所', '## 検査'],
+      ['## 読む順', '## 人の承認', '## 決定の記録', '## 手引きの場所', '## 検査'],
     );
     const handbookDir = 'node_modules/igeta/templates/docs/ai/handbook/how-to/';
     for (const name of ['01-document-taxonomy.md', '03-human-review.md', '04-provenance-workflow.md']) {
@@ -275,11 +275,14 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     }
     assert.equal(/\]\(/.test(text), false, 'リンク ([..](..)) がある');
 
-    const approval = text.slice(text.indexOf('## 人の承認'), text.indexOf('## 手引きの場所'));
+    const approval = text.slice(text.indexOf('## 人の承認'), text.indexOf('## 決定の記録'));
     for (const word of ['git fetch origin', 'origin/', '人へ渡す']) assert.ok(approval.includes(word), `「人の承認」の節に無い: ${word}`);
+    // 決定の記録 (ADR-0013 決定 10): merge したら decision-pending を実行し、記録の PR を出す
+    const decisions = text.slice(text.indexOf('## 決定の記録'), text.indexOf('## 手引きの場所'));
+    for (const word of ['igeta decision-pending', 'igeta decision-accept', '記録の PR']) assert.ok(decisions.includes(word), `「決定の記録」の節に無い: ${word}`);
   });
 
-  it('[TST-106] scripts: package.json に I10 の 4 つの script があり、標準出力に次の手順の 3 行がある', async () => {
+  it('[TST-106] scripts: package.json に I10 の 4 つの script があり、標準出力に次の手順の 4 行がある', async () => {
     const root = makeRoot();
     const { code, stdout } = await runInit(root, ['--owner', OWNER]);
     assert.equal(code, ExitCode.Ok);
@@ -292,10 +295,11 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
       scaffold: 'igeta scaffold',
     });
     const next = stdout.split('\n').filter((line) => line.startsWith('NEXT'));
-    assert.equal(next.length, 3, stdout);
+    assert.equal(next.length, 4, stdout);
     assert.ok(next[0]?.includes('npm install && npm run docs:check'));
     assert.ok(next[1]?.includes('igeta doctor') && next[1].includes('GitHub の保護'));
-    assert.ok(next[2]?.includes('.mcp.json') && next[2].includes('.igeta.json') && next[2].includes('humanPaths'));
+    assert.ok(next[2]?.includes('decisions.approvers') && next[2].includes('.igeta.json'));
+    assert.ok(next[3]?.includes('.mcp.json') && next[3].includes('.igeta.json') && next[3].includes('humanPaths'));
   });
 });
 

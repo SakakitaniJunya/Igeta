@@ -125,6 +125,7 @@ const INDEX_PASSES = 2;
 const NEXT_STEPS: readonly string[] = [
   'npm install && npm run docs:check',
   'GitHub の保護の設定 (PR 必須・持ち主のレビュー必須など) と、`igeta doctor` での確認',
+  '決定 (ADR) を承認できる人を、`.igeta.json` の `decisions.approvers` (`{ name, github }` の配列) に書く',
   'AI への指示や実行に効くほかのファイル (`.mcp.json` など) を使うなら、`.igeta.json` の `humanPaths` に足す',
 ];
 
