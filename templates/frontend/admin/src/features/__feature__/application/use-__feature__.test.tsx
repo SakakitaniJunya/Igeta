@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { use__Feature__ } from '@/features/__feature__/application/use-__feature__';
 import { dtoFixture, modelFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
-import { ApiProvider } from '@/shared/application/use-api';
+import { ApiProvider } from '@/shared/application/hooks/api';
 import { fakeApi, type FakeApi, type FakeResponse } from '@/shared/test-support/fake-api';
 
 const GET = 'GET /admin/api/__feature__';

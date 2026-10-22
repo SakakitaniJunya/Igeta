@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { use__Feature__Mutation } from '@/features/__feature__/application/use-__feature__-mutation';
 import { dtoFixture, modelFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
-import { ApiProvider } from '@/shared/application/use-api';
+import { ApiProvider } from '@/shared/application/hooks/api';
 import type { Api } from '@/shared/domain/api';
 import { fakeApi, type FakeApi } from '@/shared/test-support/fake-api';
 

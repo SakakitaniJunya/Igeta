@@ -2,12 +2,12 @@
 // 再取得 (reload) は読み込み中に戻してから読み直す (useResource)。書き込みは use-__feature__-mutation.ts。
 // 他の feature が一覧を読むときは index.ts 経由でこの hook を使う (相手の中を import しない)。
 
-import { useApi } from '@/shared/application/use-api';
-import { useResource, type Resource } from '@/shared/application/use-resource';
+import { useApi } from '@/shared/application/hooks/api';
+import { useResource, type Resource } from '@/shared/application/hooks/resource';
 import type { ApiResult } from '@/shared/domain/api';
-import type { __Feature__ListModel } from '@/features/__feature__/domain/__feature__.model';
-import { list__Feature__ } from '@/features/__feature__/infrastructure/__feature__.endpoint';
-import { toListModel } from '@/features/__feature__/infrastructure/__feature__.mapper';
+import type { __Feature__ListModel } from '@/features/__feature__/domain/model';
+import { list__Feature__ } from '@/features/__feature__/infrastructure/endpoint';
+import { toListModel } from '@/features/__feature__/infrastructure/mapper';
 
 export function use__Feature__(): Resource<__Feature__ListModel> {
   const api = useApi();

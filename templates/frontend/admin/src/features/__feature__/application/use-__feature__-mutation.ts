@@ -4,12 +4,12 @@
 
 import { useCallback } from 'react';
 import { closeConfirmText, NOTICE } from '@/features/__feature__/application/messages';
-import type { __Feature__Draft, __Feature__Model } from '@/features/__feature__/domain/__feature__.model';
-import { canClose } from '@/features/__feature__/domain/__feature__.rules';
-import { close__Feature__, create__Feature__ } from '@/features/__feature__/infrastructure/__feature__.endpoint';
-import { toCreateRequest } from '@/features/__feature__/infrastructure/__feature__.mapper';
-import { useApi } from '@/shared/application/use-api';
-import { useMutationFlow, type FlowOutcome } from '@/shared/application/use-mutation-flow';
+import type { __Feature__Draft, __Feature__Model } from '@/features/__feature__/domain/model';
+import { canClose } from '@/features/__feature__/domain/rules';
+import { close__Feature__, create__Feature__ } from '@/features/__feature__/infrastructure/endpoint';
+import { toCreateRequest } from '@/features/__feature__/infrastructure/mapper';
+import { useApi } from '@/shared/application/hooks/api';
+import { useMutationFlow, type FlowOutcome } from '@/shared/application/hooks/mutation-flow';
 
 /** 流れの結果 (done・failed・cancelled・busy) に、blocked = 規則で操作できない (送らない) を足す。 */
 export type MutationOutcome = FlowOutcome | 'blocked';

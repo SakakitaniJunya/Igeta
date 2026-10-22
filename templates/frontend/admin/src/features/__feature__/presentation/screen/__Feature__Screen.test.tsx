@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { __Feature__Screen } from '@/features/__feature__/presentation/screen/__Feature__Screen';
 import { dtoFixture } from '@/features/__feature__/test-support/__feature__.fixtures';
-import { ApiProvider } from '@/shared/application/use-api';
+import { ApiProvider } from '@/shared/application/hooks/api';
 import { fakeApi, type FakeApi, type FakeResponse } from '@/shared/test-support/fake-api';
 import { findBanner } from '@/shared/test-support/polaris';
 
