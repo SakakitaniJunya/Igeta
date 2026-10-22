@@ -1,0 +1,55 @@
+/** 契約 C7〜C8: Transaction の巻き戻しと、Transaction の中の読み書き。 */
+import { expect, it } from 'vitest';
+import type { TransactionScope } from '#core/transaction/transaction';
+import { captureThrown } from '#testing/harness/capture-thrown';
+import { expectSameContent } from '#testing/contract/same-content';
+import type { ContractEntity, ContractContext } from '#testing/contract/types';
+
+async function checkThrowingTransactionRollsBack<Entity extends ContractEntity, Filter>(
+  context: ContractContext<Entity, Filter>,
+): Promise<void> {
+  const { repository, runner, newId } = context.subject();
+  const entity = context.fixtures.createEntity(newId(), 'draft');
+  const failure = new Error('boom');
+  const saveThenThrow = async (scope: TransactionScope): Promise<void> => {
+    await repository.save(entity, scope);
+    throw failure;
+  };
+
+  const thrown = await captureThrown(() => runner.run(saveThenThrow));
+  const found = await repository.findById(entity.id);
+
+  expect(thrown, 'work の例外がそのまま上がらない').toBe(failure);
+  expect(found, 'throw した Transaction の保存が残っている').toBeUndefined();
+}
+
+async function checkTransactionReadsAndWrites<Entity extends ContractEntity, Filter>(
+  context: ContractContext<Entity, Filter>,
+): Promise<void> {
+  const { repository, runner, newId } = context.subject();
+  const { createEntity, isSameContent } = context.fixtures;
+  const id = newId();
+  const initial = createEntity(id, 'draft');
+  const updated = createEntity(id, 'published');
+  await repository.save(initial);
+  const readThenSave = async (scope: TransactionScope): Promise<Entity | undefined> => {
+    const readInside = await repository.findById(id, scope);
+    await repository.save(updated, scope);
+
+    return readInside;
+  };
+
+  const readInside = await runner.run(readThenSave);
+  const readOutside = await repository.findById(id);
+
+  expectSameContent(readInside, initial, isSameContent);
+  expectSameContent(readOutside, updated, isSameContent);
+}
+
+/** C7〜C8 の it を登録する。 */
+export function declareTransactionRows<Entity extends ContractEntity, Filter>(
+  context: ContractContext<Entity, Filter>,
+): void {
+  it('TST-207 契約 C7 Transaction の中で保存して throw したとき保存は残らない', () => checkThrowingTransactionRollsBack(context));
+  it('TST-208 契約 C8 Transaction の中で読んで保存したとき中で読めて外から更新後が読める', () => checkTransactionReadsAndWrites(context));
+}

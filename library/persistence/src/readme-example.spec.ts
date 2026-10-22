@@ -7,7 +7,7 @@ import {
   InMemoryRepository,
   InMemoryStore,
   InMemoryTransactionRunner,
-} from './testing/index';
+} from '#testing/index';
 
 interface Memo { readonly id: string; readonly title: string; readonly state: 'draft' | 'published' }
 interface MemoRecord { readonly title: string; readonly state: string }

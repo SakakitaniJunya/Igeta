@@ -14,7 +14,7 @@ relates_to: []
 
 # ADR-0012: DB 層は雛形の写しをやめ、ライブラリ `@igeta/persistence` に置く — 受入条件は Firestore と Postgres の同じ契約テスト
 
-> **TL;DR**: 雛形 (hono・nestjs) に写して持っている DB 層を、`library/persistence` の 1 つの package (`@igeta/persistence`) に移す。入口は core・firestore・postgres・testing の 4 つ。Postgres は Kysely を採る。受入条件は、契約 C1〜C10 を InMemory・Firestore emulator・Postgres 16 の全部で通すこと。
+> **TL;DR**: 雛形 (hono・nestjs) に写して持っている DB 層を、`library/persistence` の 1 つの package (`@igeta/persistence`) に移す。入口は core・firestore・postgres・testing の 4 つ。Postgres は Kysely を採る。受入条件は、契約 C1〜C12 を InMemory・Firestore emulator・Postgres 16 の全部で通すこと。
 > - 却下: Firestore と RDB を包む共通 ORM / 雛形に写しを置き続ける
 > - 雛形の書き換え (後続の PR) と npm の公開は、この ADR の範囲に入れない
 
@@ -24,7 +24,7 @@ flowchart TB
   core --> pg[postgres 入口]
   fs --> sdkF[(@google-cloud/firestore)]
   pg --> sdkP[(Kysely + pg)]
-  testing[testing 入口: 契約 C1〜C10・InMemory] -.-> fs
+  testing[testing 入口: 契約 C1〜C12・InMemory] -.-> fs
   testing -.-> pg
 ```
 
@@ -54,9 +54,9 @@ flowchart TB
 **採用: `library/persistence` (npm `@igeta/persistence` 0.1.0) を Igeta に置き、雛形はこれを import する側に後続の PR で変える。**
 
 1. 入口は 4 つ。core (Result・AppError・Repository・Mapper・TransactionRunner・IdGenerator・DocumentId・ListQuery)、`/firestore`、`/postgres`、`/testing` (契約テスト・InMemory・emulator と Postgres の helper)。SDK は peerDependencies。vitest は `/testing` だけが要る。
-2. 受入条件: 契約 C1〜C10 を InMemory・Firestore emulator・Postgres 16 で通す。InMemory も壊れた record を生で置けるので、3 実装とも 10 行すべてを通す。
+2. 受入条件: 契約 C1〜C12 を InMemory・Firestore emulator・Postgres 16 で通す。InMemory も壊れた record を生で置けるので、3 実装とも 12 行すべてを通す。
 3. `library/**` は `.igeta.json` の humanPaths と CODEOWNERS に入れる。公開 API を持つ package なので、`src/**` と `templates/**` と同じく人の承認を要する。
-4. Postgres は Kysely + pg。table の型は利用者が `Database` の型で渡し、変換は Mapper だけが持つ。migration は Kysely の `Migrator` を包む。
+4. Postgres は Kysely + pg。table の型は利用者が `Database` の型で渡し、変換は Mapper だけが持つ。migration は Kysely の `Migrator` を包む。Transaction は `serializable` で実行し、競合のエラーは再試行せず上げる。
 
 | 判断軸 | 採用案での扱い | 理由 |
 |---|---|---|
@@ -77,14 +77,14 @@ flowchart TB
 
 ## Consequences
 
-- 良い方向: DB を替える判断が port と入口の中で閉じる。受入は契約 10 行で測れる。
+- 良い方向: DB を替える判断が port と入口の中で閉じる。受入は契約 12 行で測れる。
 - 代償: 利用 repo は package を入れる。未公開の間は入れ方が決まらない (下記)。雛形の書き換えが後続 PR で要る。Kysely の汎用化が spike で落ちたら、Postgres 入口の形を変える。
 
 ## Confirmation
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| 契約テスト (`describeRepositoryContract`) | InMemory・Firestore emulator・Postgres 16 | C1〜C10 のどれかが落ちる。CI では skip を許さない (REQUIRE_*) |
+| 契約テスト (`describeRepositoryContract`) | InMemory・Firestore emulator・Postgres 16 | C1〜C12 のどれかが落ちる。CI では skip を許さない (REQUIRE_*) |
 | 読みやすさの検査 (src の行数・import・名前・JSDoc) | `library/persistence/src` の全部 | 150 行超・`.js` 付き import・`@/`・印 `__`・JSDoc 無し |
 | `secret-scan --internal-ids` | library の文書とコード | 社内制約 ID が入る |
 

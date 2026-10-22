@@ -1,12 +1,14 @@
 # @igeta/persistence
 
-DB 層の部品 (Result・AppError・Repository の port・Mapper・Transaction、契約テスト、InMemory 実装)。0.1.0 (未公開)。Firestore と Postgres の実装は次の版で入る (実装タスク 02 の T006・T007)。
+DB 層の部品 (Result・AppError・Repository の port・Mapper・Transaction、Firestore と Postgres の実装、契約テスト、InMemory 実装)。0.1.0 (未公開)。
 
 ## 入れ方
 
 ```sh
 npm install @igeta/persistence
-npm install -D vitest   # 契約テストを使う場合
+npm install @google-cloud/firestore   # Firestore を使う場合
+npm install kysely pg                 # Postgres を使う場合
+npm install -D vitest                 # 契約テストを使う場合
 ```
 
 ## 入口
@@ -15,7 +17,8 @@ npm install -D vitest   # 契約テストを使う場合
 |---|---|---|
 | `@igeta/persistence` | Result・AppError・Repository・Mapper・TransactionRunner・DocumentId・ListQuery・IdGenerator | なし |
 | `@igeta/persistence/testing` | describeRepositoryContract・InMemoryStore・InMemoryRepository・InMemoryTransactionRunner | vitest |
-| `@igeta/persistence/firestore`・`/postgres` | 次の版で入る ([docs/postgres.md](docs/postgres.md)) | — |
+| `@igeta/persistence/firestore` | FirestoreRepository・FirestoreTransactionRunner・createFirestore | @google-cloud/firestore |
+| `@igeta/persistence/postgres` | SqlRepository・SqlTransactionRunner・createPostgres・migrateToLatest ([docs/postgres.md](docs/postgres.md)) | kysely・pg |
 
 ## 使い方 (集約 1 つ: memo、InMemory)
 
@@ -48,9 +51,62 @@ await runner.run((scope) => memos.save({ id: 'm-1', title: 'はじめ', state: '
 const page = await memos.list({ filter: { state: 'draft' }, limit: 20 }); // page.isTruncated: 続きがあれば true
 ```
 
+## Firestore の使い方
+
+Mapper と絞り込みの写し方は上と同じ。`InMemoryStore` の代わりに Firestore を渡す。
+
+```ts
+import { createFirestore, FirestoreRepository, FirestoreTransactionRunner } from '@igeta/persistence/firestore';
+
+const db = createFirestore('my-project');
+const memos = new FirestoreRepository({
+  db,
+  collection: 'memos',
+  mapper: memoMapper,
+  filterFields: (filter: { state?: Memo['state'] }) => ({ state: filter.state }),
+});
+const runner = new FirestoreTransactionRunner(db);
+
+await runner.run((scope) => memos.save({ id: 'm-1', title: 'はじめ', state: 'draft' }, scope));
+const page = await memos.list({ filter: { state: 'draft' }, limit: 20 });
+```
+
+## Postgres の使い方
+
+table の型 (`Database`) は自分で書き、`createPostgres` に渡す。詳しくは [docs/postgres.md](docs/postgres.md)。
+
+```ts
+import { createPostgres, migrateToLatest, SqlRepository, SqlTransactionRunner } from '@igeta/persistence/postgres';
+
+interface Database { memos: { id: string; title: string; state: string } }
+
+const database = createPostgres<Database>(process.env.PG_URL ?? '');
+await migrateToLatest(database, {
+  '0001-memos': {
+    up: async (db) => {
+      await db.schema.createTable('memos')
+        .addColumn('id', 'text', (column) => column.primaryKey())
+        .addColumn('title', 'text')
+        .addColumn('state', 'text')
+        .execute();
+    },
+  },
+});
+const memos = new SqlRepository({
+  db: database,
+  table: 'memos',
+  mapper: memoMapper,
+  filterFields: (filter: { state?: Memo['state'] }) => ({ state: filter.state }),
+});
+const runner = new SqlTransactionRunner(database);
+
+await runner.run((scope) => memos.save({ id: 'm-1', title: 'はじめ', state: 'draft' }, scope));
+const page = await memos.list({ filter: { state: 'draft' }, limit: 20 });
+```
+
 ## 契約テスト
 
-上の `store`・`memos`・`runner` を、自分の repository の契約 C1〜C10 に通す。vitest のテストファイルに書く。
+自分の repository を契約 C1〜C12 に通す。vitest のテストファイルに書く。次は InMemory の例で、Firestore・Postgres も `repository`・`runner`・`remove` を差し替えるだけで同じ。
 
 ```ts
 import { describeRepositoryContract } from '@igeta/persistence/testing';
@@ -70,13 +126,18 @@ describeRepositoryContract({
 ```
 
 - `setup` は契約の最初に 1 回だけ呼ぶ。`newId` の id だけを使い、`remove(id)` で最後に全部消す (無い id を消しても失敗しない)。`close` があれば最後に呼ぶ
+- 任意の項目 (値が無いことがある項目) がある集約は、`fixtures.optional` も渡すと契約 C11・C12 が加わる。Mapper の record は、書くときは undefined でよく、保存では null になる。読むときは null が渡るので、Mapper で受ける
 - `malformedKinds` は壊れた保存データの種類で、1 種類につき C9 の 1 行を登録する。種類を書くなら `setup` に `plantMalformed(kind, id)` (壊れた保存データを生で置く) も返す。空なら C9 は表から外れる
 - id は `[A-Za-z0-9_-]` の 1〜64 字で、`__` で始まり `__` で終わる形は使えない
 
 ## 開発と版
 
 ```sh
-npm test    # unit
+npm test                 # unit (emulator・Postgres が無い suite は飛ばす)
+npm run test:firestore   # firebase emulators:exec で Firestore emulator を立てて走らせる (Java が要る)
+PG_URL=postgres://… npm run test:postgres   # Postgres 16 が要る
 ```
+
+`REQUIRE_EMULATOR=1`・`REQUIRE_POSTGRES=1` を付けると、環境が無いときに飛ばさず落ちる (上の 2 つの script は付けてある)。
 
 semver。1.0.0 までは破壊的変更を minor で入れ、CHANGELOG.md に書く。

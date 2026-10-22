@@ -64,7 +64,9 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint --max-warnings 0 ."
+    "lint": "eslint --max-warnings 0 . && igeta-check-layout src",
+    "test:firestore": "REQUIRE_EMULATOR=1 firebase emulators:exec --only firestore --project demo-igeta \"vitest run src/firestore\"",
+    "test:postgres": "REQUIRE_POSTGRES=1 vitest run src/postgres"
   },
   "peerDependencies": {
     "@google-cloud/firestore": "^7.0.0",
@@ -88,7 +90,7 @@
   },
   "devDependencies": {
     "@google-cloud/firestore": "^7.11.6",
-    "@igeta/eslint-config": "file:../eslint-config",
+    "@igeta/eslint-config": "0.1.0",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
     "eslint": "^9.39.5",
@@ -97,5 +99,11 @@
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
+  },
+  "imports": {
+    "#core/*": "./src/core/*.ts",
+    "#testing/*": "./src/testing/*.ts",
+    "#firestore/*": "./src/firestore/*.ts",
+    "#postgres/*": "./src/postgres/*.ts"
   }
 }

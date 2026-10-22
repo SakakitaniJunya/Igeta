@@ -32,23 +32,28 @@ relates_to: [test-persistence-library]
 | `./` | package.json・package-lock.json | 名前・4 入口・peer・scripts / 版の固定 (commit する) |
 | | tsconfig.json・tsup.config.ts・vitest.config.ts | 型検査専用 (noEmit) / 4 入口を esm・cjs・d.ts へ / 全 spec を走らせる |
 | | firebase.json・README.md・CHANGELOG.md・LICENSE | emulator の port / 利用者向け (使い方の例つき) / 0.1.0 / MIT |
-| `src/` | index.ts | core の入口 (再エクスポートだけ) |
-| `src/core/` | result.ts・app-error.ts | ok・err・Result / AppError と 6 種の生成関数 |
-| | repository.ts・list-page.ts | Repository (port)・ListQuery・ListPage / limit + 1 で打ち切り、limit の検査 |
-| | transaction.ts・scope-handle.ts | TransactionScope (不透明)・TransactionRunner / scope と Tx の対応 (WeakMap。キャストを 1 か所に) |
-| | mapper.ts・document-id.ts | Mapper と readStored (err を unprocessable に、id を付ける) / id の形 (1〜64 字。Firestore と Postgres で同じ規則) |
-| | id-generator.ts・field-filter.ts | IdGenerator と UUID 実装 / 等価 filter の型と照合 |
-| `src/firestore/` | index.ts・client.ts | 入口 / createFirestore・firestoreSettings (emulator では preferRest を外す) |
-| | transaction-runner.ts・repository.ts | FirestoreTransactionRunner / FirestoreRepository (collection・Mapper・filterFields を受ける基底) |
-| | errors.ts | code 14 を unavailable へ。他は素通し |
-| `src/postgres/` | index.ts・client.ts | 入口 / createPostgres (Kysely + pg Pool) |
-| | transaction-runner.ts・repository.ts | SqlTransactionRunner / SqlRepository (`ORDER BY id COLLATE "C"`) |
-| | errors.ts・migrations.ts | SQLSTATE class 08 を unavailable へ / migrateToLatest (Kysely の `Migrator` を包む。`kysely/migration`) |
-| `src/testing/` | index.ts・emulator.ts・postgres-harness.ts | 入口 / describeEmulator・uniqueId / describePostgres・テスト用 table (CHECK 制約は置かない。C9 で壊れた行を置くため) |
-| | contract-*.ts・describe-repository-contract.ts | describeRepositoryContract・contract-types・contract-rows-basic (C1〜3)・contract-rows-list (C4〜6)・contract-rows-transaction (C7〜8)・contract-rows-malformed (C9)・contract-same-content。相対 import を `../` 1 段にするため、`contract/` の subdir は作らず `src/testing/` に平らに置く |
-| | in-memory-*.ts (3 files) | InMemoryStore (record を持つ。`putRaw` でテスト用に壊れた record を置く)・InMemoryRepository (Mapper と filterFields を受ける)・InMemoryTransactionRunner |
+| `src/` | index.ts | core の入口 (再エクスポートだけ。公開 API) |
+| `src/core/result/` | result.ts・app-error.ts | ok・err・Result / AppError と 6 種の生成関数 |
+| `src/core/identity/` | document-id.ts・id-generator.ts | id の形 (1〜64 字、`__x__` は不可。Firestore と Postgres で同じ規則) / IdGenerator と UUID 実装 |
+| `src/core/query/` | list-page.ts・field-filter.ts | ListQuery・ListPage・takePage (limit + 1 で打ち切り、limit の検査) / 等価 filter の型と照合 |
+| `src/core/repository/` | repository.ts・mapper.ts・stored-values.ts | Repository (port) / Mapper と readStored (err を unprocessable に、id を付ける) / undefined を null で保存する |
+| `src/core/transaction/` | transaction.ts・scope-handle.ts・work-failure.ts | TransactionScope (不透明)・TransactionRunner / scope と Tx の対応 (WeakMap。キャスト無し) / work の失敗を翻訳しない |
+| `src/firestore/` | index.ts | 入口 |
+| `src/firestore/client/` | client.ts・errors.ts | createFirestore・firestoreSettings (emulator では preferRest を外す) / code 14 を unavailable へ。他は素通し |
+| `src/firestore/repository/` | repository.ts・stored-record.ts | FirestoreRepository (collection・Mapper・filterFields を受ける基底) / 文書と record の境界 |
+| `src/firestore/transaction/` | transaction-runner.ts・transaction-scope.ts | FirestoreTransactionRunner / db ごとの scope の表 |
+| `src/postgres/` | index.ts・migrations.ts | 入口 / migrateToLatest (Kysely の `Migrator` を包む。`kysely/migration`) |
+| `src/postgres/client/` | client.ts・errors.ts | createPostgres (Kysely + pg Pool、onConnectionError) / 接続断を unavailable へ。SQL のエラーは素通し |
+| `src/postgres/repository/` | repository.ts・generic-database.ts | SqlRepository (`ORDER BY id COLLATE "C"`) / 型付きの Kysely と内部の汎用 Kysely の境界 |
+| `src/postgres/transaction/` | transaction-runner.ts・transaction-scope.ts | SqlTransactionRunner (serializable) / db ごとの scope の表 |
+| `src/testing/` | index.ts | 入口 (契約テストと InMemory) |
+| `src/testing/contract/` | describe-repository-contract.ts・types.ts・failure.ts・same-content.ts | describeRepositoryContract (C1〜C12) / 型 / 失敗の要約 / 内容の比較 |
+| `src/testing/contract/rows/` | basic.ts・id.ts・list.ts・malformed.ts・optional.ts・transaction.ts | C1〜3 / C10 / C4〜6 / C9 / C11・12 / C7〜8 |
+| `src/testing/in-memory/` | store.ts・repository.ts・transaction-runner.ts | InMemoryStore (record を持つ。`putRaw` でテスト用に壊れた record を置く)・InMemoryRepository (Mapper と filterFields を受ける)・InMemoryTransactionRunner |
+| `src/testing/fixtures/` | memo.ts・in-memory-memo-parts.ts・firestore-memo-parts.ts・postgres-memo-parts.ts | 契約に渡す memo の fixture と、各実装の部品 (テスト用 table には CHECK 制約を置かない。C9 で壊れた行を置くため) |
+| `src/testing/harness/` | emulator.ts・postgres.ts・integration-suite.ts・capture-thrown.ts | describeEmulator / describePostgres / 走らせる・飛ばす・落とすの判定 / 投げられた値の取得 |
 | `test/` | readability.spec.ts・build.spec.ts・consumer/ | test-persistence-library/TST-604〜609 / test-persistence-library/TST-601〜603 の fixture (bundler・nodenext) |
-| `src/**` | *.spec.ts | 各 .ts の隣。表の行 (test-persistence-library/TST-101〜118・402〜406・504〜506) |
+| `src/**` | *.spec.ts | 各 .ts の隣 (フォルダ構成の規則は MD-11: 本体 7 つまで・接頭辞 3 つ以上でフォルダ・utils を作らない。`igeta-check-layout` が `npm run lint` で検査する。別フォルダは `package.json` の `imports` (`#core/…`) で読む)。表の行 (test-persistence-library/TST-101〜120・402〜406・504〜506) |
 
 ## 2. package.json
 
@@ -84,18 +89,18 @@ nestjs は `modules/`・`shared/` が hono と同一ファイルなので、同�
 
 ## Phase 2 Foundational
 
-- [x] T002 [P] [test-persistence-library/TST-101〜112・116〜118] core の値: result・app-error・document-id・list-page・field-filter・scope-handle・id-generator と各 spec
+- [x] T002 [P] [test-persistence-library/TST-101〜112・116〜120] core の値: result・app-error・document-id・list-page・field-filter・scope-handle・id-generator と各 spec
 - [x] T003 [test-persistence-library/TST-113〜115] core の mapper: readStored。repository.ts・transaction.ts の型
 - [x] T004 [P] spike: Kysely で table を型引数に受ける基底の型が通るかを型検査だけで確かめた。試作は残さない。**T007 の前に終える**。
   - 結論 (U-1): 本体が `Kysely<DB>` を直接叩く素直な基底 (`SqlRepository<DB, TB extends keyof DB & string, Entity>`) は通らない (`where`・`orderBy` が TS2349、`Insertable<DB[TB]>` が TS2322)。Row を型引数にする案も、`Kysely<Database>` が `Kysely<Record<string, Row>>` に入らず不可 (Kysely は DB の型について不変)。`withTables` で cast を避ける案も不可。
   - 通る形 (V4): 公開の型は `SqlRepository<DB, TB extends keyof DB & string, Entity>` で、`db: Kysely<DB>`・`table: TB`・`mapper: Mapper<Entity, Omit<Selectable<DB[TB]>, 'id'>>`。内部は行を `{ id: string }` とする `Kysely<Record<string, { id: string }>>` で持つ。境界の cast は `db as unknown as Kysely<GenericDb>` の 1 か所で、理由付きの eslint-disable (TS-02 の例外)。他の table の Mapper や存在しない table 名は型で落ちる。読み出した行を Mapper の入力へ渡す cast は、`fromRecord` が実行時に検証する前提で 1 関数に集める。
   - 利用側: `createPostgres<Database>()` は利用者が Database 型を渡す generic にする (`Kysely<unknown>` では table 名が `never` になる)。Transaction を直接渡すと型引数の推論が崩れるが、`SqlTransactionRunner` が scope で受けるので利用者は直接渡さない。ADR-0012 の再検討トリガは発動しない。
-- [x] T005 [test-persistence-library/TST-201〜211・301〜307] testing: 契約 (contract-*) と InMemory 3 ファイル。InMemory は Mapper と filterFields を受け、`putRaw` で壊れた record を置いて C1〜C10 の 10 行を通す
+- [x] T005 [test-persistence-library/TST-201〜213・301〜307] testing: 契約 (contract-*) と InMemory 3 ファイル。InMemory は Mapper と filterFields を受け、`putRaw` で壊れた record を置いて C1〜C12 の 12 行を通す
 
 ## Phase 3+ User Story
 
-- [ ] T006 [test-persistence-library/TST-401〜406・708] firestore 入口と emulator helper。client.ts は shared/infrastructure/firestore.ts の挙動 (emulator で preferRest を外す) をそのまま持つ。Firestore で契約を通す。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
-- [ ] T007 [test-persistence-library/TST-501〜502・504〜506・701〜707・709] postgres 入口・harness・migrate。Postgres 16 で契約を通す (T004 の後)。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
+- [x] T006 [test-persistence-library/TST-401〜406・408・708] firestore 入口と emulator helper。client.ts は shared/infrastructure/firestore.ts の挙動 (emulator で preferRest を外す) をそのまま持つ。Firestore で契約を通す。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
+- [x] T007 [test-persistence-library/TST-501〜502・504〜508・701〜707・709] postgres 入口・harness・migrate。Postgres 16 で契約を通す (T004 の後)。契約用の collection / table は実装ごとに名前を分け、契約は `newId` で作った id を `remove` で全部消す (`setup` は `beforeAll` で 1 回だけ呼ばれる)
 - [ ] T008 [test-persistence-library/TST-601〜609] build・consumer fixture・読みやすさの検査・npm pack の確認。tsup の d.ts は共有型を最初の入口 (`firestore/index.d.ts`) に寄せ、cjs は入口ごとに class を持つため、入口をまたぐ型と class (`AppError` の `instanceof`) の同一性を確かめる
 
 ## Polish

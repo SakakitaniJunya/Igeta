@@ -14,7 +14,8 @@
   },
   "files": [
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "check-layout.js"
   ],
   "engines": {
     "node": ">=22"
@@ -38,5 +39,8 @@
   "devDependencies": {
     "eslint": "9.39.5",
     "typescript": "5.9.3"
+  },
+  "bin": {
+    "igeta-check-layout": "./check-layout.js"
   }
 }
