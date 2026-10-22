@@ -70,7 +70,7 @@ export function registrationFor(
   }
 
   if (variant === 'nestjs' && unit === 'entry' && entry !== undefined) {
-    add('src/app.module.ts', 'import', [`import { ${toPascal(entry)}EntryModule } from '@/entries/${entry}/${entry}.entry.module.js';`]);
+    add('src/app.module.ts', 'import', [`import { ${toPascal(entry)}EntryModule } from '@/entries/${entry}/entry.module.js';`]);
     if (withVerify) {
       add('src/app.module.ts', 'import', ["import { ok } from '@/shared/domain/result.js';"]);
       add('src/app.module.ts', 'verify', [`const verify = async () => ok({ subject: '${entry}' });`]);

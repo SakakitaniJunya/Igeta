@@ -3,7 +3,7 @@
 import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '@/app/providers';
-import { useApi } from '@/shared/application/use-api';
+import { useApi } from '@/shared/application/hooks/api';
 import type { Api } from '@/shared/domain/api';
 import { fakeAppBridge } from '@/shared/test-support/fake-app-bridge';
 

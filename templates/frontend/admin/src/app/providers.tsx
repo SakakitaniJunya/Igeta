@@ -2,7 +2,7 @@
 // 試験では App Bridge の偽物を bridge で渡す。
 
 import { useMemo, type ReactNode } from 'react';
-import { ApiProvider } from '@/shared/application/use-api';
+import { ApiProvider } from '@/shared/application/hooks/api';
 import { appBridge, type AppBridge } from '@/shared/infrastructure/app-bridge';
 import { createApi } from '@/shared/infrastructure/create-api';
 

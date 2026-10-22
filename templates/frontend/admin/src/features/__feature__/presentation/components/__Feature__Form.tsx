@@ -3,9 +3,9 @@
 
 import { useState } from 'react';
 import { useBindField } from '@/shared/presentation/bind-field';
-import { FormErrorBanner } from '@/shared/presentation/ui/FormErrorBanner';
-import type { __Feature__Draft } from '@/features/__feature__/domain/__feature__.model';
-import { NAME_MAX, validate__Feature__Form } from '@/features/__feature__/domain/__feature__.validation';
+import { FormErrorBanner } from '@/shared/presentation/ui/state/FormErrorBanner';
+import type { __Feature__Draft } from '@/features/__feature__/domain/model';
+import { NAME_MAX, validate__Feature__Form } from '@/features/__feature__/domain/validation';
 
 export interface __Feature__FormProps {
   readonly saving: boolean;
