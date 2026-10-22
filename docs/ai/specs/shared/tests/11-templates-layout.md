@@ -35,7 +35,7 @@ relates_to: [test-init-scaffold]
 | L1 | `templates/` の直下は登録名 (`.github`・`backend`・`docs`・`frontend`・`mobile`・`README.md`) だけで、8 エントリ以内。登録外・登録して実体の無い名前は違反 |
 | L2 | 第 2 階層も登録制: `backend` = hono・nestjs・rust / `frontend` = admin / `mobile` = ios。登録外は違反 |
 | L3 | 登録した `backend`・`frontend` の変種は、`check-templates` の `ALL_VARIANTS` と過不足なく一致する。自己検査が無い変種 (`mobile/ios`) は、登録に理由 (macOS が要る) を書いた物だけ許す |
-| L4 | 各雛形の中は `igeta-check-layout` を通す (MD-11)。rs・swift・mjs は引数 `--ext rs,swift,mjs` で足す (既定は ts・tsx のまま。`library/eslint-config` は minor 版で出し、既存の利用 repo は版を上げても新しく落ちない)。`*_test.rs`・`*Tests.swift` は本体に数えず、`mod.rs` は `index.ts` と同じ扱い |
+| L4 | 各雛形の中は `igeta-check-layout` を通す (MD-11)。rs は引数 `--ext rs` で足す (swift・mjs は掛ける先が無いので足さない。`--ext` は既定の ts・tsx に足す。`check:templates-layout` が変種ごとに `--ext` 付きで呼ぶ。`library/eslint-config` は minor 版で出し、既存の利用 repo は版を上げても新しく落ちない)。`*_test.rs` は本体に数えず、`mod.rs` は `index.ts` と同じ扱い |
 | L5 | 禁止名 `shared` は、直下の子が層 (domain・application・infrastructure・presentation) と `test-support` (rust は `test_support`) だけで、直下の本体は `index.ts`・`mod.rs` だけのときに許す。他の禁止名は例外なし。rust の `src/shared` は `mod.rs` と層 3 つ + `test_support` で、この形に当たる |
 | L6 | ファイル名に、置かれたフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。接頭辞の共有は L4 が機械で、繰り返しの有無は人が見る |
 | L7 | 退役した名前 (`api-module`・`api-shared-kernel`・`web-feature`・`ios-app`・`store-screenshots`) は `templates/` の直下に戻せない (L1 が落とす)。`scaffold` コマンドと、`igeta init` が書く `scaffold` の npm script も無い |
@@ -81,7 +81,7 @@ relates_to: [test-init-scaffold]
 | TST-101 | 結合 | 根の登録 | 移行後の `templates/` | `npm run check:templates-layout` | 直下 6 エントリで違反 0 | L1 |
 | TST-102 | 結合 | 第 2 階層 | 同上 | 同上 | `backend` の子が hono・nestjs・rust、`frontend` が admin、`mobile` が ios で違反 0 | L2 |
 | TST-103 | 結合 | matrix 一致 | `ALL_VARIANTS` と登録 | 同上 | 過不足 0。`mobile/ios` は理由つきで除外 | L3 |
-| TST-104 | 結合 | 雛形の中 | hono・nestjs・frontend・rust | `igeta-check-layout` を各根に | 全部 exit 0 (今は 2・3・5・1 件) | L4 |
+| TST-104 | 結合 | 雛形の中 | hono・nestjs・frontend・rust | `igeta-check-layout` を各根に (`check:templates-layout` が変種ごとに `--ext` 付きで呼ぶ) | 全部 exit 0 (今は 2・3・5・1 件) | L4 |
 | TST-105 | 結合 | shared の例外 | 子が domain・infrastructure・presentation・test-support の `src/shared` / rust の `mod.rs` + 層 + `test_support` | check-layout | 落ちない | L5 |
 | TST-106 | 結合 | 退役 | 移行後のツリーと `src` | `check:templates-layout`・`tsc`・`npm test` | `scaffold` の import・コマンド・npm script が 0。`igeta init` の出力に `scaffold` が無い | L7 |
 | TST-107 | 結合 | expand の維持 | 移行後 | `ExpandCommand.test`・`TemplateExpandModule.test`・`TemplatesInstantiation.test` (hooks・ui の import 変更を含む)・`check-templates` | 緑。UNITS の 3 つは同じ path | 決定 4 |
@@ -96,7 +96,7 @@ relates_to: [test-init-scaffold]
 | TST-303 | 9 個目 | 登録を 9 個にする | 上限 8 で落ちる |
 | TST-304 | 登録だけ足す | `mobile/android` を登録して実体を置かない | 実体が無くて落ちる (L2) |
 | TST-305 | 変種の matrix 抜け | `backend/go` を登録・実体ありで、`ALL_VARIANTS` に足さない | 落ちる (L3) |
-| TST-306 | shared に袋 | `src/shared/` の直下に `helpers.ts` を置く / 子に `misc/` を置く | 落ちる (L5) |
+| TST-306 | shared に袋 | `src/shared/` の直下に `helpers.ts` を置く / 子に `misc/` を置く / rust の `shared/` の直下に `mod.rs` 以外のファイル (`helpers.rs`) を置く | 落ちる (L5) |
 | TST-307 | 他の禁止名に例外が移る | `src/utils/` を置く | 落ちる (例外は `shared` だけ) |
 | TST-308 | 接頭辞を別の拡張子で隠す | `infrastructure/` に `firestore_a.rs`・`firestore_b.rs`・`firestore_c.rs` | 落ちる (L4) |
 | TST-309 | 名前を変えて隠す | 退役したフォルダを `legacy-api/` に改名して残す | 登録外で落ちる (L1) |
@@ -129,6 +129,6 @@ relates_to: [test-init-scaffold]
 | 確認 | 結果 |
 |---|---|
 | ADR との対応 | 決定 1 = L1・L2 / 決定 2 = L7 / 決定 3 = 5.1 / 決定 4 = L4〜L6・5.2 / 決定 5 = L1〜L3・L8 |
-| 実装の分割 (順序) | PR-1 退役 (scaffold と旧 3 つ。06 を直す) → PR-2 移動 (ios・store-screenshots・README) → PR-3a/3b/3c 雛形の中 (node backend・frontend・check-layout の拡張子と shared 例外) を並行 → PR-4 登録制の検査・CI・AGENTS.md。PR-4 を最後にして緑のまま入れる。検査は `docs:check` に入れない (`docs:check` は利用 repo でも走り、そこに `templates/` は無い)。Igeta 自身の repo だけで走る npm script `check:templates-layout` を作り、`ci.yml` (全 push・PR で走る `check` ジョブ。secret-scan・tsc・test・docs:check の step がある) に step を足す。`templates.yml` は paths 絞りなので必須にしない |
+| 実装の分割 (順序) | PR-1 退役 (scaffold と旧 3 つ。06 を直す) → PR-2 移動 (ios・store-screenshots・README) → PR-3a/3b/3c 雛形の中 (node backend・frontend・check-layout の拡張子と shared 例外) を並行 → PR-4 登録制の検査・CI・AGENTS.md。PR-4 を最後にして緑のまま入れる。検査は `docs:check` に入れない (`docs:check` は利用 repo でも走り、そこに `templates/` は無い)。Igeta 自身の repo だけで走る npm script `check:templates-layout` (登録制の検査のあと、変種ごとに `--ext` 付きで check-layout を呼ぶ) を作り、`ci.yml` (全 push・PR で走る `check` ジョブ。secret-scan・tsc・test・docs:check の step がある) に step を足す。`templates.yml` は paths 絞りなので必須にしない |
 | 機械で確かめないもの | L6 (名前の繰り返し) / L8 (補助。人と AGENTS.md) / `mobile/ios` の動作 (macOS) / 5.1 の store-screenshots 中身の参照 |
 | 前提 | rust・ios・store-screenshots の件数は手計算 (check-layout は ts だけ数える)。`igeta init` が書く `scaffold` の script を使う既存の利用 repo の数は不明 |

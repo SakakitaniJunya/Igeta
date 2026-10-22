@@ -14,3 +14,7 @@
 `backend/`・`frontend/` の 1 単位は全部で 3 つ (`src/entries/__entry__/`・`src/modules/__context__/`・`src/features/__feature__/`)。Igeta には土台も置く (実アプリが無く、雛形だけで組み立てて検査するため)。**利用 repo 側の `templates/` に置くのは 1 単位 3 つだけでよい** (土台はそのアプリ自身)。
 
 `docs/ai/handbook/how-to/` の `01-document-taxonomy.md` (文書体系)・`03-human-review.md` (人間レビュー層)・`04-provenance-workflow.md` (由来の手順) は **Igeta の版ごとに決まる手引きで、利用 repo にはコピーしない**。`AGENTS.md` と `docs/README.md` から、インストールした版のもの (`node_modules/igeta/templates/docs/ai/handbook/how-to/`) を指す。`02-implementation-order.md` (実装順序) は、着手順をプロジェクトが埋める文書なので、利用 repo の `docs/ai/handbook/how-to/` にコピーして使う。Igeta ルートの `docs/` は雛形ではなく、Igeta 自身の背景。ストア提出用スクショの撮影→額装パイプラインは雛形でなく道具なので、`templates/` の外の `tools/store-screenshots/` に置く (手順は `tools/store-screenshots/README.md`)。
+
+## 雛形を足す・替えるとき (Igeta の保守者向け)
+
+`templates/` の第 1・第 2 階層は登録制で、登録外の名前は `npm run check:templates-layout` が落とす (これが主な歯止め)。足す PR では `src/checks/TemplatesLayoutCheck.ts` の登録と `check-templates` の変種を同じ PR で直す。雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは PR の説明に理由を書く (これは補助で、機械では落とせない)。

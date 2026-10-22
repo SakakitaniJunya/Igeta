@@ -57,7 +57,7 @@ flowchart TB
 1. 第 1 階層は `backend/`・`frontend/`・`mobile/`・`docs/`・`.github/`・`README.md`。上限 8 エントリ (現在 6)。
 2. 退役 (削除): `api-module`・`api-shared-kernel`・`web-feature` と `igeta scaffold`。参照は scaffold だけで、現行に代わりがある (`backend/nestjs`・`frontend/admin`)。技術も違う (Prisma・Next.js)。
 3. 移す: `ios-app` → `mobile/ios` (写し先 `apps/<app>/mobile/ios/`)。`store-screenshots` → `tools/store-screenshots` (写し元は雛形でなく道具。npm の `files` に `tools` を足して配布は続ける)。
-4. 雛形の中: `shared/` は「層と test-support だけを子に持つ根」だけ許す (禁止名の例外。rust の `mod.rs` は可)。`firestore-*` 3 本は `infrastructure/firestore/` へ。ファイル名にフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。
+4. 雛形の中: `shared/` は「層と test-support (rust は test_support) だけを子に持つ根」だけ許す (禁止名の例外。rust の `mod.rs` は可)。`firestore-*` 3 本は `infrastructure/firestore/` へ。ファイル名にフォルダが言う名前を繰り返さない (`<feature>/domain/model.ts`)。
 5. 再発止め: (a) 足す PR は古いものを同じ PR で退かせる (退かせるものが無いなら理由を書く)。AGENTS.md に書く。(b) 第 1・第 2 階層を登録制にする検査を、Igeta 自身の repo だけで走る npm script (`check:templates-layout`) にし、全 push・PR で走る `ci.yml` の step に足す (`docs:check` は利用 repo でも走るので入れない)。(c) 新しい名前は ADR で足し、登録と検査の matrix を同じ PR で直す。
 
 | 判断軸 | 採用案での扱い | 理由 |
@@ -86,7 +86,7 @@ flowchart TB
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
 | 登録制の検査 (`check:templates-layout`、`ci.yml` の step) | `templates/` の第 1・第 2 階層 | 登録外の名前・8 エントリ超・登録した変種が `check-templates` の matrix に無い |
-| `igeta-check-layout` | 各雛形の中 (`templates/backend/*`・`frontend/admin`) | 本体 8 本以上・接頭辞 3 本以上・`utils` 等・`shared` が層以外を子に持つ |
+| `igeta-check-layout` (`check:templates-layout` が変種ごとに rust だけ `--ext rs` 付きで呼ぶ) | 各雛形の中 (`templates/backend/*`・`frontend/admin`) | 本体 8 本以上・接頭辞 3 本以上・`utils` 等・`shared` が層以外を子に持つ |
 | `check-templates` (既存) | hono・nestjs・rust・frontend | 展開・型・テスト・build のどれかが落ちる |
 
 ## 再検討トリガ

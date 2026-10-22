@@ -4,6 +4,7 @@ import { Cli } from './cli/Cli.js';
 import { AgreementApproveCommand, AgreementCheckCommand } from './cli/commands/AgreementCommands.js';
 import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
 import { CheckTemplatesCommand } from './cli/commands/CheckTemplatesCommand.js';
+import { CheckTemplatesLayoutCommand } from './cli/commands/CheckTemplatesLayoutCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
 import { DoctorCommand } from './cli/commands/DoctorCommand.js';
@@ -56,6 +57,7 @@ const cli = new Cli()
   .register(new MermaidCheckCommand())
   .register(new ExpandCommand())
   .register(new CheckTemplatesCommand())
+  .register(new CheckTemplatesLayoutCommand())
   .register(new ExportCommand())
   .register(new ReviewSheetCommand())
   .register(new AnalyzeCommand())
