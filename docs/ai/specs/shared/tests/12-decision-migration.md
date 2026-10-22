@@ -42,8 +42,8 @@ relates_to: [test-decision-status]
 
 | 規則 | 内容 |
 |---|---|
-| MG1 | Igeta 自身の 12 本: 下の表の根拠で `decision-accept`。根拠の PR の本文の指紋と今の本文が違えば、後の PR を根拠にするか `amend` (accept は拒否) |
-| MG2 | 利用側の `docs-migrate` の 1 段: `<年>/` の ADR を状態でフォルダへ移す。根拠の表 (id・名前・URL) がある ADR だけ accept。無い旧 accepted・旧 rejected は事象 `差戻し` で `proposed/` に置き、メモに旧い状態と日付、`awaiting` に `approvers` の先頭の名前を入れる |
+| MG1 | Igeta 自身の 12 本: 下の表の根拠で `decision-accept`。根拠の PR の本文の指紋と今の本文が違えば、後の PR を根拠にするか `amend` (accept は拒否)。記録の PR では 0013 自身も `proposed/` へ移す。docs-check は PR の終わりに 1 回だけ見る (1 本ずつ accept する途中の状態は検査しない) |
+| MG2 | 利用側の `docs-migrate` の 1 段: `<年>/` の ADR を状態でフォルダへ移す。根拠の表 (id・名前・URL) がある ADR だけ accept。無い旧 accepted・旧 rejected は事象 `差戻し` で `proposed/` に置き、メモに旧い状態と日付、`awaiting` に `approvers` の先頭の名前を入れる。旧 superseded・deprecated は事象 `移行前` の履歴を 1 行起こして `retired/` に置く |
 | MG3 | 利用側の DEC・OPEN: 列を足す。DEC は状態 `決定`、根拠 `移行前 (未記入)`。OPEN は状態 `未決` (暫定値の列が埋まっていれば `暫定`)、持ち主に `approvers` の先頭の名前、期限 `未定`、根拠 `移行前 (未記入)`。値は移行の PR で人が直す (人の承認のパス)。直るまで DS13 は警告として数え、違反にしない |
 | MG4 | 移行の印は、移行前に在った行だけ。新しい行に書けば DS13 の違反 (DS13 に書いた比べ方) |
 
@@ -54,7 +54,7 @@ relates_to: [test-decision-status]
 | 0012 | PR #26 (2026-10-22) | 引く行を足す。#26 は GitHub のレビューが無い (AI の内部評価のみ) が、他と同じく merge で扱う |
 | 0013 | 無し (proposed のまま) | この PR を CEO が merge した後に accept |
 
-順: ① 引く行を `person/` に足す PR ② 記録の PR (`decision-accept` を 12 本分。状態のフォルダがここで初めて現れ、DS1・3・5・6 が効き出す) ③ 0013 の accept。①②は CEO の merge が要る。
+順: ① 引く行を `person/` に足す PR ② 記録の PR (`decision-accept` を 12 本分。状態のフォルダがここで初めて現れ、DS1・3・5・6・11 が効き出す。0013 は同じ PR で `proposed/` へ移す) ③ 0013 の accept。①②は CEO の merge が要る。
 
 ## 3. テストケース一覧
 
@@ -63,7 +63,7 @@ relates_to: [test-decision-status]
 | TST-401 | 結合 | 旧配置の 3 本 (accepted・rejected・proposed)。根拠の表は accepted だけ | `docs-migrate` | accepted は `accepted/<年>/`、旧 rejected は `proposed/` で `差戻し`・メモ・`awaiting` あり。docs-check 違反 0 | MG2 |
 | TST-402 | 結合 | DEC 15 行・OPEN 17 行 | `docs-migrate` | 列が足り、移行の印の行は警告として数えられ、違反 0 | MG3 |
 | TST-403 | 結合 | 移行済みの repo | `docs-migrate` を 2 回目 | 何も変えない | MG2・MG3 |
-| TST-404 | 結合 | Igeta 自身の 12 本と、`GitHubPort` の fixture (#19・#20・#26) | `decision-accept` を 12 回 | 12 本が `accepted/2026/`。docs-check 違反 0 | MG1 |
+| TST-404 | 結合 | Igeta 自身の 12 本と、`GitHubPort` の fixture (#19・#20・#26) | `decision-accept` を 12 回 | 12 本が `accepted/2026/`、0013 が `proposed/`、2026/ 直下に ADR が残らない。docs-check (終わりに 1 回) の違反 0 | MG1 |
 | TST-405 | 結合 | 暫定値の列が埋まった OPEN | `docs-migrate` | 状態 `暫定`。空の行は `未決` | MG3 |
 
 ## 4. 否定テスト (必須)
@@ -75,7 +75,7 @@ relates_to: [test-decision-status]
 | TST-503 | 手置き | 旧 accepted を根拠なしのまま `accepted/` に手で置く | DS3 の違反 (MG2) |
 | TST-504 | 人の取り違え | 根拠の表の名前が `approvers` に無い | その 1 本を拒否 (1) (MG1) |
 | TST-505 | 本文が変わった | #19 の後に本文が変わった ADR | accept は拒否 (1)。後の PR を根拠にするか `amend` (MG1) |
-| TST-506 | 既存の repo を赤くしない | 状態のフォルダが無い repo で、手書きの `status: accepted` | DS12 の警告 1 件だけ。DS1・DS3 は効かない |
+| TST-506 | 既存の repo を赤くしない | 状態のフォルダが無い repo で、手書きの `status: accepted` | DS12 の警告 1 件だけ。DS1・DS3 は効かない。同じ repo の proposed で `awaiting` が無くても、DS11 は警告にとどまる |
 | TST-507 | 台帳の列なし | `状態` の列が無い台帳 | DS13 は効かない。移行後に列を消せば DS7 と同じ比べ方で違反 |
 | TST-508 | 持ち主の補い | 差戻しの ADR の `awaiting` が `approvers` に無い名前 | DS11 の違反 |
 
@@ -97,8 +97,8 @@ relates_to: [test-decision-status]
 | 3 | `src/cli/commands/decision/` (4 動詞・`pending`・`GitHubPort`) | 検査を変えず、新しいコードとテストだけ。Igeta の docs は変わらない |
 | 4 | `docs-migrate` の 1 段、Igeta 自身の 12 本 (§2 の順)、利用側の移行 | 12 本は全部根拠付きで入り、DS1・3・5・6 が緑で効き出す。利用側は移行 PR ごとに緑にする |
 
-MD-11 のフォルダ分け: `src/core/decision/` = `history.ts` (履歴の読み書き・遷移)・`fingerprint.ts`・`folder.ts` (置き場所と年)・`evidence.ts` (形と実在)・`ledger.ts` (DEC/OPEN)・`check.ts`・`index.ts` の 7 本。
-`src/cli/commands/decision/` = `verbs.ts` (4 動詞の薄い入口)・`record.ts` (書き込み口)・`pending.ts`・`port.ts`・`ghPort.ts`・`index.ts` の 6 本。
+MD-11 のフォルダ分け: `src/core/decision/` = `history.ts` (履歴の読み書き・遷移)・`fingerprint.ts`・`folder.ts` (置き場所と年)・`evidence.ts` (形と実在)・`ledger.ts` (DEC/OPEN)・`index.ts` の 6 本。検査の入口は、既存の検査と同じ `src/checks/DecisionStatusCheck.ts` (core/decision を呼ぶだけ)。
+`src/cli/commands/decision/` = `verbs.ts` (4 動詞の薄い入口)・`record.ts` (書き込み口)・`pending.ts`・`port.ts`・`gh-port.ts`・`index.ts` の 6 本。
 読むのは `#decision/core`・`#decision/cli` (package.json の `imports`)。`cli/commands/` の直下は既に 7 本を超えているが (既存の負債)、足すのは `checkCommands.ts` への登録 1 行だけ。
 
 ## 7. 版の注意

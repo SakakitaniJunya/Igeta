@@ -44,11 +44,11 @@ id で数えられない相対リンク (画像・コード・docs/ の外) は�
 | DS6 | 承認後に本文を変えない: accepted・amended・rejected の ADR の現在の本文指紋が、最後の承認・改訂・却下の行の本文指紋と同じ。違えば違反 (直し方は `amend`) |
 | DS7 | 追記のみ: `--base <ref>` (CI は PR の対象 branch) の履歴の行が、1 行も消えず・変わらず・順が同じで、新しい行は末尾だけ。base と `status` が違うのに行が増えていなければ違反。base を読めなければ警告 |
 | DS8 | 覆す: `supersedes: [a]` を持つ X と `superseded_by: X` を持つ a は対。X が accepted・amended で a が accepted のまま、a が retired なのに X が proposed、循環、片側だけ、は違反 |
-| DS9 | 遷移: proposed → accepted・rejected / accepted・amended → amended・superseded / rejected・superseded → なし。例外は事象 `差戻し` (移行だけ。根拠の無い accepted・rejected を proposed に戻す。メモに旧い状態と日付を必須)。`deprecated` は書き込み口が無いので今回は対象外: 新しく付けると DS3 で落ち、既にある ADR は `retired/` に置くだけ |
+| DS9 | 遷移: proposed → accepted・rejected / accepted・amended → amended・superseded / rejected・superseded → なし。例外は事象 `差戻し` (移行だけ。根拠の無い accepted・rejected を proposed に戻す。メモに旧い状態と日付を必須)。`deprecated` は書き込み口が無いので今回は対象外: 新しく付けると DS3 で落ちる。既にある superseded・deprecated は、移行が事象 `移行前` の履歴を 1 行起こして `retired/` に置く (根拠は `移行前 (未記入)`。DS4〜DS6 の対象外で、警告として数える) |
 | DS10 | 再提案: 却下された ADR は戻さず、新しい番号で出す。`reopens: <id>` は rejected の ADR だけを指す。他を指せば違反 |
-| DS11 | 待ち: proposed は `awaiting` (人名) を持つ。無ければ違反。経過日数 = 今日 − 対象 branch で初めて現れた commit の日付 (浅い clone で辿れなければ `created` に落とし、出力にそう書く)。差戻しの移行は `awaiting` を `approvers` の先頭の名前で埋める (人の承認のパスの PR で直せる)。`decisions.staleDays` (既定 14) を超える・`due` を過ぎる、で警告 1 件 (番号・持ち主・経過日数・期限)。当日は超過にしない |
-| DS12 | 旧配置: `proposed/` などの状態のフォルダが 1 つも無く `<年>/` に ADR がある repo は、警告 1 件だけ (`docs-migrate` を促す)。状態のフォルダが 1 つでもあれば、`<年>/` 直下の ADR は DS1 の違反。**有効化の条件**: DS1・DS3・DS5・DS6 はこの条件 (状態のフォルダが 1 つでもある) の repo だけ。DS13 は台帳の見出しに `状態` の列がある repo だけ。どちらも、移行するまで既存の repo を赤くしない |
-| DS13 | 台帳: DEC・OPEN の表の列は ADR-0013 決定 8 のとおり。状態の語は DEC が 決定・廃、OPEN が 未決・暫定・解決。印と語が合う (✅ 決定・解決 / ⏳ 未決・暫定 / ↪ 廃)。DEC の決定は根拠が空でない (URL・実在する repo 相対パス)。OPEN の未決・暫定は持ち主と期限 (日付) がある。OPEN の解決は根拠に DEC の ID。行は消さない (消えれば DS7 と同じ比べ方で違反)。期限切れは警告。移行の印 `移行前 (未記入)` (根拠) と `未定` (期限) は、対象 branch に既にある行にだけ許し、警告として数える。新しい行に書けば違反 |
+| DS11 | 待ち: proposed は `awaiting` (人名) を持つ。無ければ違反 (DS12 の条件の repo だけ。旧配置では警告にとどめる)。経過日数 = 今日 − 対象 branch で初めて現れた commit の日付 (浅い clone で辿れなければ `created` に落とし、出力にそう書く)。差戻しの移行は `awaiting` を `approvers` の先頭の名前で埋める (人の承認のパスの PR で直せる)。`decisions.staleDays` (既定 14) を超える・`due` を過ぎる、で警告 1 件 (番号・持ち主・経過日数・期限)。当日は超過にしない |
+| DS12 | 旧配置: `proposed/` などの状態のフォルダが 1 つも無く `<年>/` に ADR がある repo は、警告 1 件だけ (`docs-migrate` を促す)。状態のフォルダが 1 つでもあれば、`<年>/` 直下の ADR は DS1 の違反。**有効化の条件**: DS1・DS3・DS5・DS6・DS11 の違反はこの条件 (状態のフォルダが 1 つでもある) の repo だけ。DS13 は台帳の見出しに `状態` の列がある repo だけ。どちらも、移行するまで既存の repo を赤くしない |
+| DS13 | 台帳: DEC・OPEN の表の列は ADR-0013 決定 8 のとおり。状態の語は DEC が 決定・廃、OPEN が 未決・暫定・解決。印と語が合う (✅ 決定・解決 / ⏳ 未決・暫定 / ↪ 廃)。DEC の決定は根拠が空でない (URL・実在する repo 相対パス)。OPEN の未決・暫定は持ち主と期限 (日付) がある。OPEN の解決は根拠に DEC の ID。行は消さない (消えれば DS7 と同じ比べ方で違反)。期限切れは警告。移行の印 `移行前 (未記入)` (根拠) と `未定` (期限) は、対象 branch に既にある行 (ID で突き合わせる。base に状態の列が無ければ全行) にだけ許し、警告として数える。新しい行に書けば違反 |
 | DS14 | 索引: `adr-index` の区間は、承認待ち・承認済・却下・置換の 4 つの表 (0 件の表は `_該当なし_`)。列と順は ADR-0013 決定 7。順は番号。日付で変わる値を入れない。印 (✅⏳❌↪) は語の前に付き、表の見出しの状態と合う (承認待ちの表に ✅ があれば違反。手書きの区間は索引のずれ) |
 
 **コマンド** (全部 `--dry-run` あり。計画を `MOVE`・`APPEND`・`REWRITE`・`SET` の行で出し、何も書かない)
@@ -79,7 +79,7 @@ id で数えられない相対リンク (画像・コード・docs/ の外) は�
 | TST-109 | 結合 | 旧配置 | `<年>/` の ADR だけ | docs-check | 警告 1 件・違反 0 | DS12 |
 | TST-110 | 結合 | リンク | 他の文書が旧パスへ相対リンクを持つ | accept | 全部の追跡している `.md` の相対リンクが新パスへ。docs-check の `[link]` が 0 | DS1 |
 | TST-111 | 結合 | dry-run | proposed 1 本 | accept `--dry-run` | `MOVE`・`APPEND`・`REWRITE`・`SET` の行だけ。作業ツリーは同じ | コマンド |
-| TST-112 | 結合 | 移行 | Igeta 自身の 12 本と証跡の表 | テスト仕様 12 の移行の手順 | 12 本が `accepted/2026/`、docs-check が違反 0 | DS1・3・5 |
+| TST-112 | 結合 | 移行 | テスト仕様 12 の TST-404 を参照 (重複させない) | — | — | DS1・3・5 |
 
 ## 2. 否定テスト (必須)
 
