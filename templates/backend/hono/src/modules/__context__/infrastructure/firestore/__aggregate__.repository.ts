@@ -8,7 +8,7 @@ import { __Aggregate__Name } from '@/modules/__context__/domain/value-objects/__
 import { unprocessable } from '@/shared/domain/app-error.js';
 import { assertValidDocIdSegment, isValidDocIdSegment } from '@/shared/domain/doc-id.js';
 import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
-import { toTransaction } from './firestore-scope.js';
+import { toTransaction } from './scope.js';
 
 const COLLECTION = '__aggregates__';
 

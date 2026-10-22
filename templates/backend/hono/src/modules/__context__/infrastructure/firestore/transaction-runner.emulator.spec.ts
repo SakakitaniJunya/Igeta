@@ -4,8 +4,8 @@
 import { expect, it } from 'vitest';
 import { createFirestore } from '@/shared/infrastructure/firestore.js';
 import { describeEmulator, EMULATOR_PROJECT, uniqueId } from '@/shared/test-support/emulator.js';
-import { toTransaction } from './firestore-scope.js';
-import { FirestoreTransactionRunner } from './firestore-transaction-runner.js';
+import { toTransaction } from './scope.js';
+import { FirestoreTransactionRunner } from './transaction-runner.js';
 
 describeEmulator('FirestoreTransactionRunner (Firestore エミュレータ)', () => {
   const db = createFirestore(EMULATOR_PROJECT);

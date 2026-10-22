@@ -1,7 +1,7 @@
 import type { Firestore } from '@google-cloud/firestore';
 import type { TransactionRunner } from '@/shared/domain/transaction-runner.js';
 import type { TransactionScope } from '@/shared/domain/transaction-scope.js';
-import { toScope } from './firestore-scope.js';
+import { toScope } from './scope.js';
 
 /** 1 usecase = 1 トランザクション。fn が投げれば巻き戻る。 */
 export class FirestoreTransactionRunner implements TransactionRunner {

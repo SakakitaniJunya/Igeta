@@ -8,8 +8,8 @@ import { describe__Aggregate__RepositoryContract } from '@/modules/__context__/t
 import { InvalidDocIdSegment } from '@/shared/domain/doc-id.js';
 import { createFirestore } from '@/shared/infrastructure/firestore.js';
 import { describeEmulator, EMULATOR_PROJECT, uniqueId } from '@/shared/test-support/emulator.js';
-import { Firestore__Aggregate__Repository } from './firestore-__aggregate__.repository.js';
-import { FirestoreTransactionRunner } from './firestore-transaction-runner.js';
+import { Firestore__Aggregate__Repository } from './__aggregate__.repository.js';
+import { FirestoreTransactionRunner } from './transaction-runner.js';
 
 describeEmulator('Firestore__Aggregate__Repository (Firestore エミュレータ)', () => {
   const db = createFirestore(EMULATOR_PROJECT);
