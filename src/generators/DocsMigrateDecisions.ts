@@ -35,6 +35,25 @@ export interface DecisionMigrationRequest {
   readonly isDryRun: boolean;
 }
 
+/** `--decisions-evidence` の JSON を読む。配列で、各行が id・by・evidence (どれも空でない文字列) を持たなければ 1 行の入力エラー */
+export function parseEvidenceTable(text: string): EvidenceRow[] {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error('--decisions-evidence の JSON を読めない');
+  }
+  if (!Array.isArray(raw)) throw new Error('--decisions-evidence は [{ "id", "by", "evidence" }] の配列でなければならない');
+  return (raw as unknown[]).map((entry, index) => {
+    const item = typeof entry === 'object' && entry !== null ? (entry as Record<string, unknown>) : {};
+    const { id, by, evidence } = item;
+    if (typeof id !== 'string' || typeof by !== 'string' || typeof evidence !== 'string' || id === '' || by === '' || evidence === '') {
+      throw new Error(`--decisions-evidence の ${index + 1} 行目は id・by・evidence (空でない文字列) が要る`);
+    }
+    return { id, by, evidence };
+  });
+}
+
 const LEGACY_PATH = /^docs\/person\/decisions\/\d{4}\/[^/]+\.md$/;
 const ACCEPTABLE = ['proposed', 'accepted', 'amended'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -97,6 +116,11 @@ export async function migrateDecisions(request: DecisionMigrationRequest): Promi
   const legacy = prepared.value.docs.filter((doc) => LEGACY_PATH.test(doc.path));
   const ledger = ledgerChange(request.root, prepared.value.config.approvers[0]?.name ?? '');
   if (legacy.length === 0 && ledger === undefined) return { exitCode: ExitCode.Ok, lines: ['決定の段: <年>/ 直下に ADR は無く、決定台帳も移行済み。何も変えない'] };
+  const usable = new Set(legacy.filter((doc) => ACCEPTABLE.includes(doc.status)).map((doc) => doc.id));
+  const unused = request.evidenceRows.filter((candidate) => !usable.has(candidate.id));
+  if (unused.length > 0) {
+    return { exitCode: ExitCode.CannotCheck, lines: [`ERROR 根拠の表に、使われない行がある (id の綴り違いか、承認待ち・承認済でない ADR): ${unused.map((item) => item.id).join(' / ')}`, '何も書いていない'] };
+  }
   const changes: Change[] = ledger === undefined ? [] : [ledger];
   for (const doc of legacy) {
     const change = await changeFor(prepared.value, doc, request.evidenceRows.find((candidate) => candidate.id === doc.id));

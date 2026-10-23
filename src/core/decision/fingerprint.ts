@@ -4,6 +4,7 @@
 import { join } from 'node:path';
 import { CURRENT_NORMALIZATION_VERSION, computeFingerprint } from '../Fingerprint.js';
 import { parseFrontmatter } from '../Frontmatter.js';
+import type { LinkTable } from '../LinkTable.js';
 import { buildLinkTable } from '../LinkTable.js';
 import { buildSourceIndex } from '../SourceResolver.js';
 import type { Finding, HistoryRow } from './history.js';
@@ -19,11 +20,20 @@ export function decisionBody(text: string): string {
     .join('\n');
 }
 
-/** root は repo のルート、relPath は root からの相対パス (リンクの解決の起点)。docs/ の索引と実在するファイルを見る */
-export function decisionFingerprint(root: string, relPath: string, text: string): string {
-  const table = buildLinkTable(root, buildSourceIndex(root, join(root, 'docs')));
-  return computeFingerprint(decisionBody(text), CURRENT_NORMALIZATION_VERSION, table.rewriterFor(relPath));
+/**
+ * root の木で本文指紋を計算する関数。リンクの表 (docs/ の索引と実在するファイル) は、最初に使うときに 1 回だけ作る。
+ * relPath は root からの相対パス (リンクの解決の起点)。木が変わったら作り直す。
+ */
+export function fingerprinter(root: string): (relPath: string, text: string) => string {
+  let table: LinkTable | undefined;
+  return (relPath, text) => {
+    table ??= buildLinkTable(root, buildSourceIndex(root, join(root, 'docs')));
+    return computeFingerprint(decisionBody(text), CURRENT_NORMALIZATION_VERSION, table.rewriterFor(relPath));
+  };
 }
+
+/** 1 回だけ計算するとき。何度も使うなら fingerprinter を使う */
+export const decisionFingerprint = (root: string, relPath: string, text: string): string => fingerprinter(root)(relPath, text);
 
 const SEALED_STATUSES: ReadonlySet<string> = new Set(['accepted', 'amended', 'rejected']);
 

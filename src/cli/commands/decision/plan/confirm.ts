@@ -6,6 +6,7 @@ import { checkIntroducedBy, createGitCommitReader, decisionFingerprint, parseEvi
 import type { Context, Step } from './types.js';
 import { cannotCheck, proceed, refuse } from './types.js';
 
+/** --by が approvers の名前にあり、その github を返す */
 export function approverGithub(context: Context, by: string | undefined): Step<string> {
   const approver = context.config.approvers.find((candidate) => candidate.name === by);
   return approver === undefined ? refuse(`--by "${by ?? ''}" が .igeta.json の decisions.approvers の名前に無い`) : proceed(approver.github);
@@ -74,11 +75,11 @@ async function closureOf(context: Context, url: { readonly kind: string; readonl
   if (url.kind === 'pull') {
     const pull = await port.pull(context.slug, number);
     if (!pull.ok) return cannotCheck(pull.reason);
-    const { state, mergedBy, closedBy, mergedAt } = pull.value;
-    return proceed({ isOpen: state === 'open', who: state === 'merged' ? mergedBy : closedBy, date: mergedAt });
+    const { state, mergedBy, closedBy, mergedAt, closedAt } = pull.value;
+    return proceed({ isOpen: state === 'open', who: state === 'merged' ? mergedBy : closedBy, date: state === 'merged' ? mergedAt : closedAt });
   }
   const issue = await port.issue(context.slug, number);
-  return issue.ok ? proceed({ isOpen: issue.value.state === 'open', who: issue.value.closedBy }) : cannotCheck(issue.reason);
+  return issue.ok ? proceed({ isOpen: issue.value.state === 'open', who: issue.value.closedBy, date: issue.value.closedAt }) : cannotCheck(issue.reason);
 }
 
 export async function confirmRejection(context: Context): Promise<Step<{ url: string; date: string }>> {

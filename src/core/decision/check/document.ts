@@ -2,9 +2,10 @@
 // 状態のフォルダが 1 つも無い repo (DS12) では、DS1・3・5・6 は当てず、DS11 は警告にとどめる。
 
 import type { DecisionDoc } from '../decision.js';
-import type { CommitReader } from '../evidence.js';
-import { checkEvidenceShape, firstSeen } from '../evidence.js';
-import { decisionFingerprint, checkBodyUnchanged } from '../fingerprint.js';
+import { checkEvidenceShape } from '../evidence.js';
+import { checkBodyUnchanged } from '../fingerprint.js';
+import type { CommitReader } from '../git/commit-reader.js';
+import { firstSeen } from '../git/repo.js';
 import { checkPlacement } from '../folder.js';
 import type { Finding, HistoryRow, Result } from '../history.js';
 import { checkStatusMatchesHistory, checkTransitions } from './history-rules.js';
@@ -20,6 +21,8 @@ export interface DocumentEnvironment {
   /** `origin` の `owner/repo`。読めなければ失敗 */
   readonly slug: Result<string>;
   readonly reader: CommitReader;
+  /** 木 (root) ごとに 1 回だけリンクの表を作る本文指紋の計算 */
+  readonly fingerprint: (relPath: string, text: string) => string;
 }
 
 export interface DocumentResult {
@@ -77,9 +80,9 @@ function checkEvidenceForm(doc: DecisionDoc, env: DocumentEnvironment): { findin
 export function checkDocument(doc: DecisionDoc, env: DocumentEnvironment): DocumentResult {
   const form = checkEvidenceForm(doc, env);
   const placement = env.isStrict ? [...checkPlacement(doc), ...checkStatusMatchesHistory(doc.status, doc.rows)] : [];
-  const body = env.isStrict ? checkBodyUnchanged({ status: doc.status, rows: doc.rows, fingerprint: decisionFingerprint(env.root, doc.path, doc.text) }) : [];
+  const body = env.isStrict ? checkBodyUnchanged({ status: doc.status, rows: doc.rows, fingerprint: env.fingerprint(doc.path, doc.text) }) : [];
   const exists = env.isStrict ? checkEvidenceExists(doc, env.reader) : { findings: [], unverifiable: [] };
-  const seen = doc.status === 'proposed' ? firstSeen(env.root, doc.path) : undefined;
+  const seen = doc.status === 'proposed' ? firstSeen(env.root, doc.path, env.reader.isShallow()) : undefined;
   const waitingSince = seen?.ok === true ? { date: seen.value.date, isFromGit: true } : { date: doc.created || env.today, isFromGit: false };
   const waiting = checkWaiting(doc, { isStrict: env.isStrict, approverNames: env.approverNames, staleDays: env.staleDays, today: env.today, waitingSince });
   return {

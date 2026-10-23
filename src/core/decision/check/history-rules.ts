@@ -1,5 +1,6 @@
 // 履歴の行の並びが許されるかの規則 (テスト仕様 10 の DS3・DS7・DS9)。履歴の読み書きは ../history.ts。
 
+import type { DecisionDoc } from '../decision.js';
 import type { Finding, HistoryRow } from '../history.js';
 import { isPreMigrationRow, serializeRow } from '../history.js';
 
@@ -59,4 +60,14 @@ export function checkAppendOnly(base: { readonly status: string; readonly rows: 
     return [{ rule: 'DS7', line: 1, message: `status が ${base.status} から ${current.status} に変わったのに、履歴の行が増えていない` }];
   }
   return [];
+}
+
+/** DS7: 対象 branch (base) にあった ADR が消えていない・履歴が追記のみ。ADR は id で突き合わせる (移動しても同じ) */
+export function checkAgainstBase(baseDocs: readonly DecisionDoc[], docs: readonly DecisionDoc[]): Finding[] {
+  const current = new Map(docs.map((doc) => [doc.id, doc]));
+  return baseDocs.flatMap((before) => {
+    const now = current.get(before.id);
+    if (now === undefined) return [{ rule: 'DS7', line: 1, path: before.path, message: `${before.id}: 対象 branch にあった ADR が消えている (却下の履歴も消せない。置換は retired/ へ移す)` }];
+    return checkAppendOnly(before, now).map((finding) => ({ ...finding, path: now.path }));
+  });
 }

@@ -11,6 +11,7 @@ import { adrText, pullUrl } from '#core/decision/adr.test-support.js';
 import { ExitCode } from '#core/ExitCode.js';
 import { disposeAllRepos } from '#core/decision/decision.test-support.js';
 import { legacyPath, legacyRepo, run, checkOf } from './DocsMigrateDecisions.test-support.js';
+import { migrateLedgerText } from './DocsMigrateLedger.js';
 
 after(disposeAllRepos);
 
@@ -99,5 +100,16 @@ describe('docs-migrate の決定の段: 台帳 (MG3・MG4)', () => {
     const found = checkOf(repo, 'base').messages().filter((m) => m.includes('[DS13]'));
     assert.equal(found.length, 1);
     assert.match(found[0] ?? '', /DEC-099/);
+  });
+});
+
+describe('決定台帳の列の移行: 既にある列の値', () => {
+  it('旧い表に既に 持ち主・期限・根拠 の列があれば、その値を残し、空のセルだけ移行の仮値にする', () => {
+    const text = ['| ID | 論点 | 推奨案 | 仮置き値 | 持ち主 | 期限 | 根拠 | 影響する文書 |', '|---|---|---|---|---|---|---|---|', '| OPEN-001 | 論点 | 案 |  | 山田 | 2026-12-01 | [Issue](https://example.com/1) | A |', '| OPEN-002 | 論点 | 案 |  |  |  |  | A |'].join('\n');
+    const out = migrateLedgerText(text, 'CEO');
+    const rows = readLedger(out).rows;
+    assert.deepEqual([rows[0]?.cells['持ち主'], rows[0]?.cells['期限'], rows[0]?.cells['根拠']], ['山田', '2026-12-01', '[Issue](https://example.com/1)']);
+    assert.deepEqual([rows[1]?.cells['持ち主'], rows[1]?.cells['期限'], rows[1]?.cells['根拠']], ['CEO', '未定', '移行前 (未記入)']);
+    assert.equal(out.split('\n')[0]?.split('|').filter((cell) => cell.trim() === '持ち主').length, 1, '列が重複しない');
   });
 });

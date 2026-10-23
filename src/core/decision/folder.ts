@@ -63,7 +63,7 @@ function pairProblem(doc: DecisionDoc, byId: ReadonlyMap<string, DecisionDoc>): 
   for (const oldId of doc.supersedes) {
     const old = byId.get(oldId);
     if (old === undefined || old.supersededBy !== doc.id) problems.push(`supersedes: ${oldId} の側に superseded_by: ${doc.id} が無い (片側だけ)`);
-    else if (isInForce(doc.status) && old.status === 'accepted') problems.push(`${oldId} が accepted のまま (decision-supersede で retired へ)`);
+    else if (isInForce(doc.status) && isInForce(old.status)) problems.push(`${oldId} が ${old.status} のまま (decision-supersede で retired へ)`);
   }
   if (doc.supersededBy !== '') {
     const next = byId.get(doc.supersededBy);

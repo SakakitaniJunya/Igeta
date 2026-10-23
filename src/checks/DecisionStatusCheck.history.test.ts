@@ -89,4 +89,16 @@ describe('DecisionStatusCheck: 履歴と関係', () => {
     repo.commit('one side');
     assert.ok(hasRule(run(repo).messages, 'DS8'));
   });
+
+  it('[TST-308] base にあった ADR を branch で消す (却下の履歴を消す) と DS7 の違反', () => {
+    const repo = makeRepo();
+    landAccepted(repo, { number: '0001', slug: 'a' });
+    repo.write(`${DECISIONS}/rejected/2026/0002-b.md`, adrText({ number: '0002', slug: 'b', status: 'rejected' }));
+    repo.commit('rejected');
+    repo.git('branch', 'base');
+    repo.git('rm', '-q', `${DECISIONS}/rejected/2026/0002-b.md`);
+    repo.commit('却下を消す');
+    const messages = run(repo, 'base').messages;
+    assert.ok(messages.some((m) => m.includes('[DS7]') && m.includes('adr-0002-b') && m.includes('消えている')));
+  });
 });

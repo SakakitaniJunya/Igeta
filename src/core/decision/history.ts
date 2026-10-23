@@ -85,12 +85,16 @@ export function serializeRow(row: NewHistoryRow): string {
 
 /** 履歴の末尾に 1 行足した本文を返す。節が無ければ、本文の末尾に節ごと足す */
 export function appendHistoryRow(text: string, row: NewHistoryRow): string {
+  const header = `| ${HISTORY_COLUMNS.join(' | ')} |`;
+  const separator = `|${HISTORY_COLUMNS.map(() => '---').join('|')}|`;
   const lines = text.split('\n');
   const section = parseHistory(lines);
-  if (section.startIndex === -1) {
-    const header = `| ${HISTORY_COLUMNS.join(' | ')} |`;
-    const separator = `|${HISTORY_COLUMNS.map(() => '---').join('|')}|`;
-    return `${text.replace(/\n*$/, '\n')}\n${HISTORY_HEADING}\n\n${header}\n${separator}\n${serializeRow(row)}\n`;
+  if (section.startIndex === -1) return `${text.replace(/\n*$/, '\n')}\n${HISTORY_HEADING}\n\n${header}\n${separator}\n${serializeRow(row)}\n`;
+  if (section.lastTableIndex === -1) {
+    // 見出しはあるが表が無い: 見出しの直後に表を作る (frontmatter の前に入れない)
+    const isFollowedByBlank = (lines[section.startIndex + 1] ?? '').trim() === '';
+    lines.splice(section.startIndex + 1, 0, '', header, separator, serializeRow(row), ...(isFollowedByBlank ? [] : ['']));
+    return lines.join('\n');
   }
   lines.splice(section.lastTableIndex + 1, 0, serializeRow(row));
   return lines.join('\n');

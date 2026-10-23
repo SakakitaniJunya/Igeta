@@ -2,7 +2,7 @@
 // 書き直す段 (人の型への書き直し) は人と AI の作業。ここは作業の列と報告を出すだけ。
 // 終了コード: 0 = 完了 (作業の列があっても) / 1 = 完了条件が 1 つ欠けた (作業ツリーを戻す手順を出す) / 2 = 止める条件 (何も書かない)。
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createGhPort } from '#decision/cli';
 import { isoDateInTokyo } from '#decision/core';
@@ -15,7 +15,7 @@ import { applyPlan, rollbackCommand } from '../../generators/DocsMigrateApply.js
 import { completion, measure } from '../../generators/DocsMigrateVerify.js';
 import { splitReportLines } from '../../generators/DocsMigrateSplit.js';
 import type { EvidenceRow } from '../../generators/DocsMigrateDecisions.js';
-import { migrateDecisions } from '../../generators/DocsMigrateDecisions.js';
+import { migrateDecisions, parseEvidenceTable } from '../../generators/DocsMigrateDecisions.js';
 
 export class DocsMigrateCommand extends Command {
   readonly name = 'docs-migrate';
@@ -91,10 +91,19 @@ export class DocsMigrateCommand extends Command {
     return ExitCode.Ok;
   }
 
+  #readEvidence(path: string): EvidenceRow[] {
+    if (!existsSync(path)) throw new ArgParseError(`--decisions-evidence のファイルが無い: ${path}`);
+    try {
+      return parseEvidenceTable(readFileSync(path, 'utf8'));
+    } catch (error) {
+      throw new ArgParseError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   /** 決定の段。移す段が空 (構成が新しい) のときだけ走る。作業ツリーが clean であることは、この段が確かめる */
   async #decisionStage(root: string, args: ReturnType<typeof parseArgs>, ctx: CommandContext, isDryRun: boolean): Promise<ExitCode> {
     const table = args.get('decisions-evidence');
-    const evidenceRows: EvidenceRow[] = table === undefined ? [] : (JSON.parse(readFileSync(resolve(ctx.cwd, table), 'utf8')) as EvidenceRow[]);
+    const evidenceRows: EvidenceRow[] = table === undefined ? [] : this.#readEvidence(resolve(ctx.cwd, table));
     const outcome = await migrateDecisions({ root, igetaRoot: ctx.igetaRoot, evidenceRows, port: createGhPort(), today: isoDateInTokyo(new Date()), isDryRun });
     for (const line of outcome.lines) (outcome.exitCode === ExitCode.Ok ? ctx.stdout : ctx.stderr)(line);
     return outcome.exitCode;

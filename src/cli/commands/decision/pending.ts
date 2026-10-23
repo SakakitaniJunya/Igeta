@@ -3,7 +3,7 @@
 
 import { resolve } from 'node:path';
 import type { DecisionDoc } from '#decision/core';
-import { daysBetween, isoDateInTokyo, firstSeen, loadDecisions, originSlug } from '#decision/core';
+import { daysBetween, firstSeen, isoDateInTokyo, loadDecisions, originSlug, readIsShallow } from '#decision/core';
 import { ExitCode } from '#core/ExitCode.js';
 import { loadIgetaConfig } from '#core/IgetaConfig.js';
 import { parseArgs } from '#cli/Args.js';
@@ -28,8 +28,8 @@ export interface PendingEntry {
   readonly candidate: string;
 }
 
-function entryOf(doc: DecisionDoc, env: { readonly root: string; readonly today: string; readonly staleDays: number; readonly slug: string; readonly fallbackBy: string }): PendingEntry {
-  const seen = firstSeen(env.root, doc.path);
+function entryOf(doc: DecisionDoc, env: { readonly root: string; readonly today: string; readonly staleDays: number; readonly slug: string; readonly fallbackBy: string; readonly isShallow: boolean }): PendingEntry {
+  const seen = firstSeen(env.root, doc.path, env.isShallow);
   const since = seen.ok ? seen.value.date : doc.created || env.today;
   const pullNumber = seen.ok ? /\(#(\d+)\)/.exec(seen.value.subject)?.[1] : undefined;
   const by = doc.awaiting || env.fallbackBy;
@@ -54,12 +54,14 @@ export function collectPending(args: { readonly root: string; readonly today: st
   const loaded = loadIgetaConfig(args.root);
   if ('violation' in loaded) return { entries: [], problem: loaded.violation.message };
   const slug = originSlug(args.root);
+  const shallow = readIsShallow(args.root);
   const env = {
     root: args.root,
     today: args.today,
     staleDays: args.staleDays ?? loaded.config.decisions.staleDays,
     slug: slug.ok ? slug.value : '',
     fallbackBy: loaded.config.decisions.approvers[0]?.name ?? '<承認する人の名前>',
+    isShallow: !shallow.ok || shallow.value,
   };
   const entries = loadDecisions(args.root)
     .filter((doc) => doc.status === 'proposed')

@@ -14,13 +14,14 @@ export interface PullInfo {
   readonly mergeCommit?: string;
   /** merge した日 (YYYY-MM-DD)。履歴の日付に使う。無ければ記録した日 */
   readonly mergedAt?: string;
-  /** PR の head の repo (`owner/repo`) */
-  readonly headRepo?: string;
+  /** 閉じた日 (YYYY-MM-DD)。却下の履歴の日付に使う。無ければ記録した日 */
+  readonly closedAt?: string;
 }
 
 export interface IssueInfo {
   readonly state: 'open' | 'closed';
   readonly closedBy?: string;
+  readonly closedAt?: string;
 }
 
 export interface GitHubPort {

@@ -49,7 +49,7 @@ async function pull(repo: string, number: number): Promise<Result<PullInfo>> {
     closedBy: loginOf(issue.value['closed_by']),
     mergeCommit: text(pr.value['merge_commit_sha']),
     mergedAt: dateOf(text(pr.value['merged_at'])),
-    headRepo: text(record(record(pr.value['head'])['repo'])['full_name']),
+    closedAt: dateOf(text(pr.value['closed_at'])),
   });
 }
 
@@ -61,7 +61,7 @@ async function pullCommits(repo: string, number: number): Promise<Result<readonl
 async function issue(repo: string, number: number): Promise<Result<IssueInfo>> {
   const body = await readJson(`repos/${repo}/issues/${number}`);
   if (!body.ok) return body;
-  return succeed({ state: body.value['state'] === 'open' ? 'open' : 'closed', closedBy: loginOf(body.value['closed_by']) });
+  return succeed({ state: body.value['state'] === 'open' ? 'open' : 'closed', closedBy: loginOf(body.value['closed_by']), closedAt: dateOf(text(body.value['closed_at'])) });
 }
 
 /** `gh api` で読む GitHubPort */

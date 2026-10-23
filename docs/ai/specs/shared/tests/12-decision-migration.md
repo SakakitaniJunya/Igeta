@@ -32,9 +32,9 @@ relates_to: [test-decision-status]
 
 | メソッド | 返す値 | fixture の書き方 |
 |---|---|---|
-| `pull(repo, number)` | `state` (`open`・`closed`・`merged`)・`author`・`mergedBy`・`closedBy`・`mergeCommit`・`mergedAt` (任意。履歴の日付に使う。無ければ記録した日)・`headRepo` | `pull/19: { state: 'merged', mergedBy: 'ceo-gh', mergeCommit: '<一時 repo の sha>' }` |
+| `pull(repo, number)` | `state` (`open`・`closed`・`merged`)・`author`・`mergedBy`・`closedBy`・`mergeCommit`・`mergedAt`・`closedAt` (どちらも任意。履歴の日付に使う。無ければ記録した日) | `pull/19: { state: 'merged', mergedBy: 'ceo-gh', mergeCommit: '<一時 repo の sha>' }` |
 | `pullCommits(repo, number)` | その PR の commit の sha の配列 | `pull/19: ['<sha>', …]` (一時 repo で作った commit) |
-| `issue(repo, number)` | `state`・`closedBy` | `issue/7: { state: 'closed', closedBy: 'ceo-gh' }` |
+| `issue(repo, number)` | `state`・`closedBy`・`closedAt` (任意) | `issue/7: { state: 'closed', closedBy: 'ceo-gh' }` |
 
 無い fixture は「見つからない」(検査不能 2)。`gh` が無い環境は、この口が検査不能を返す (test-decision-status/TST-321)。
 
@@ -110,4 +110,4 @@ MD-11 のフォルダ分け (本体は 1 フォルダ 7 本まで、1 ファイ�
 
 - `ADR_STATUSES` (旧い構成) は変えず、`amended` は `ADR_STATUSES_V4` だけが持つ。新しい規則は新しい構成の repo だけに当たる
 - `.igeta-version` で版を固定した repo は、固定を上げるまで DS1〜DS14 と `decision-*` を使えない。出力は、固定した版が新しい規則を持たないことを 1 行で知らせる
-- 利用 repo の移行の順序: 版を上げ、`docs-migrate` を 2 回かける。1 回目は構成 (`person`・`ai`・`client`)、commit したあと、`.igeta.json` に `decisions.approvers` (`{ name, github }`) を先に足してから 2 回目 (決定の段: `<年>/` の ADR と台帳の列。根拠の表は `--decisions-evidence`)。`decisions.approvers` が無い repo では 2 回目は案内だけを出して何も変えない。状態のフォルダが 1 つでもある repo から、DS1・3・5・6・11 が違反として効く (README の「既存の repo を移す」にも書く)
+- 利用 repo の移行の順序: 版を上げ、`docs-migrate` を 2 回かける。1 回目は構成 (`person`・`ai`・`client`)、commit したあと、`.igeta.json` に `decisions.approvers` (`{ name, github }`) を先に足してから 2 回目 (決定の段: `<年>/` の ADR と台帳の列。根拠の表は `--decisions-evidence`)。`decisions.approvers` が無い repo では 2 回目は案内だけを出して何も変えない。状態のフォルダが 1 つでもある repo から、DS1・3・5・6・11 が違反として効く (README の「既存の repo を移す」にも書く)。移した repo の CI は `actions/checkout` に `fetch-depth: 0` を付け、`docs-check` に PR の宛先を `--base origin/<宛先>` で渡す (浅い checkout は DS5 が検査不能 (終了 2) になり、`--base` が無いと DS7・DS13 の「消えない」が CI で走らない)

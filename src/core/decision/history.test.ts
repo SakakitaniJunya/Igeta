@@ -24,6 +24,16 @@ describe('履歴の読み書き', () => {
   });
 });
 
+describe('履歴の節', () => {
+  it('見出しはあるが表が無いとき、frontmatter を壊さず見出しの直後に表を作る', () => {
+    const text = '---\nid: adr-0001-x\nstatus: proposed\n---\n\n# 題\n\n## 承認の履歴\n\n後ろの文章。\n';
+    const out = appendHistoryRow(text, row());
+    assert.ok(out.startsWith('---\nid: adr-0001-x\nstatus: proposed\n---\n'));
+    assert.equal(parse(out).rows.length, 1);
+    assert.ok(out.indexOf('| 日付 |') > out.indexOf('## 承認の履歴') && out.indexOf('| 日付 |') < out.indexOf('後ろの文章'));
+  });
+});
+
 describe('DS3 / DS9 / DS7', () => {
   const rows = (...patches: Partial<NewHistoryRow>[]) => parse(patches.reduce((text, patch) => appendHistoryRow(text, row(patch)), '# 題\n')).rows;
   it('DS3: 行が無い proposed は通り、行が無い accepted と、最後の「後」が違う status は違反', () => {

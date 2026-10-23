@@ -14,6 +14,8 @@ export * from './check/history-rules.js';
 export * from './check/waiting.js';
 export * from './decision.js';
 export * from './evidence.js';
+export * from './git/commit-reader.js';
+export * from './git/repo.js';
 export * from './fingerprint.js';
 export * from './folder.js';
 export * from './history.js';

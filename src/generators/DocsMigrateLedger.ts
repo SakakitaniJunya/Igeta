@@ -32,7 +32,8 @@ function rewriteTable(table: MarkdownTable, kind: Kind, owner: string): string[]
       kind === 'DEC'
         ? { 状態: '✅ 決定', 根拠: MIGRATION_EVIDENCE }
         : { 状態: (old.get('暫定値') ?? '') === '' ? '⏳ 未決' : '⏳ 暫定', 持ち主: owner, 期限: MIGRATION_DUE, 根拠: MIGRATION_EVIDENCE };
-    return cellsLine(headers.map((name) => added[name] ?? old.get(name) ?? ''));
+    // 旧い表に既にある列 (根拠・持ち主・期限など) の値は残し、空か無い列だけ移行の仮値にする
+    return cellsLine(headers.map((name) => ((old.get(name) ?? '') !== '' ? (old.get(name) ?? '') : (added[name] ?? ''))));
   });
   return [cellsLine(headers), `|${headers.map(() => '---').join('|')}|`, ...body];
 }

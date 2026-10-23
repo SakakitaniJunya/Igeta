@@ -39,6 +39,11 @@ describe('置換・再提案・待ち', () => {
     const next = doc(`${D}/accepted/2026/0002-b.md`, adrText({ number: '0002', slug: 'b', status: 'accepted', extra: { supersedes: '[adr-0001-a]' } }));
     assert.equal(checkSupersession([old, next]).length, 1);
   });
+  it('DS8: 新が承認済なのに旧が amended のままでも違反 (まだ効いている)', () => {
+    const old = doc(`${D}/accepted/2026/0001-a.md`, adrText({ number: '0001', slug: 'a', status: 'amended', extra: { superseded_by: 'adr-0002-b' } }));
+    const next = doc(`${D}/accepted/2026/0002-b.md`, adrText({ number: '0002', slug: 'b', status: 'accepted', extra: { supersedes: '[adr-0001-a]' } }));
+    assert.equal(checkSupersession([old, next]).length, 1);
+  });
   it('DS10: 存在しない・rejected でない相手を指す reopens は違反', () => {
     const lonely = doc(`${D}/proposed/0003-c.md`, adrText({ number: '0003', slug: 'c', extra: { reopens: 'adr-0009-z' } }));
     assert.equal(checkReopens([lonely]).length, 1);

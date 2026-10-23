@@ -34,8 +34,7 @@ export function prepare(request: RecordRequest): Step<Context> {
   return proceed({ request, config: loaded.config.decisions, slug: slug.value, docs: loadDecisions(request.root) });
 }
 
-/** --by が approvers の名前にあり、その github を返す */
-
+/** 履歴の日付の年 (フォルダの年) */
 export const yearOf = (date: string): string => date.slice(0, 4);
 
 export function row(fields: Omit<NewHistoryRow, 'memo'> & { readonly memo?: string }): NewHistoryRow {

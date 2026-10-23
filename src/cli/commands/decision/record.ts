@@ -35,13 +35,22 @@ function writeAtomically(root: string, path: string, content: string): void {
   renameSync(temporary, absolute);
 }
 
-/** ADR を全部動かして空になった元のフォルダを消す。残るのが生成索引 (dir-index) の README.md だけならそれも消す */
+/** 手を入れていない生成索引か (目的の行が `(要記入)` のまま)。手書きの目的行があれば false */
+const isUntouchedIndex = (text: string): boolean => text.includes('AUTOGEN:dir-index:start') && /^> このディレクトリの目的: \(要記入\)$/m.test(text);
+
+/**
+ * ADR を全部動かして空になった元のフォルダを片付ける。残るのが手を入れていない生成索引の README.md だけなら、README ごと消す。
+ * 手書きの目的行がある README.md は残し、索引の区間だけ空にする (古い行が壊れたリンクにならないように)。
+ */
 function removeEmptiedFolder(root: string, oldPath: string): void {
   const dir = join(root, dirname(oldPath));
   if (!existsSync(dir)) return;
   const readme = join(dir, 'README.md');
-  const isOnlyGeneratedIndex = readdirSync(dir).join() === 'README.md' && readFileSync(readme, 'utf8').includes('AUTOGEN:dir-index:start');
-  if (isOnlyGeneratedIndex) rmSync(readme);
+  if (readdirSync(dir).join() === 'README.md') {
+    const text = readFileSync(readme, 'utf8');
+    if (isUntouchedIndex(text)) rmSync(readme);
+    else writeFileSync(readme, text.replace(/(AUTOGEN:dir-index:start[^\n]*\n)[\s\S]*?(<!-- AUTOGEN:dir-index:end)/, '$1\n$2'));
+  }
   if (readdirSync(dir).length === 0) rmdirSync(dir);
 }
 

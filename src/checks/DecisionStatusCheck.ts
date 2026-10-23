@@ -8,7 +8,7 @@ import type { DecisionDoc, DocumentEnvironment, Finding, Ledger } from '#decisio
 import {
   DECISIONS_DIR,
   STATE_DIRS,
-  checkAppendOnly,
+  checkAgainstBase,
   checkDocument,
   checkIndexMarks,
   checkLedgerRows,
@@ -17,6 +17,7 @@ import {
   checkSupersession,
   checkUnique,
   createGitCommitReader,
+  fingerprinter,
   isoDateInTokyo,
   loadDecisions,
   originSlug,
@@ -80,11 +81,11 @@ export class DecisionStatusCheck implements Check {
     const today = isoDateInTokyo(this.#now());
     const reader = createGitCommitReader(ctx.targetRoot);
     const { approvers, staleDays } = loaded.config.decisions;
-    const env: DocumentEnvironment = { root: ctx.targetRoot, isStrict, today, approverNames: approvers.map((a) => a.name), staleDays, slug: originSlug(ctx.targetRoot), reader };
+    const env: DocumentEnvironment = { root: ctx.targetRoot, isStrict, today, approverNames: approvers.map((a) => a.name), staleDays, slug: originSlug(ctx.targetRoot), reader, fingerprint: fingerprinter(ctx.targetRoot) };
     try {
       const perDoc = docs.flatMap((doc) => this.#checkDocument(doc, env));
       const crossDoc = [...checkUnique(docs), ...checkSupersession(docs), ...checkReopens(docs)].map((finding) => toViolation(finding.path ?? '', finding));
-      const violations = [...perDoc, ...crossDoc, ...this.#compareWithBase(base, docs), ...this.#checkLedger(ctx.targetRoot, decisionsDir, today, base), ...this.#checkIndex(decisionsDir)];
+      const violations = [...perDoc, ...crossDoc, ...(base === undefined ? [] : checkAgainstBase(base.docs, docs)).map((finding) => toViolation(finding.path ?? '', finding)), ...this.#checkLedger(ctx.targetRoot, decisionsDir, today, base), ...this.#checkIndex(decisionsDir)];
       return violations.sort((a, b) => (a.file ?? '').localeCompare(b.file ?? '') || (a.line ?? 0) - (b.line ?? 0));
     } finally {
       reader.dispose();
@@ -96,16 +97,6 @@ export class DecisionStatusCheck implements Check {
     this.#warnings.push(...result.warnings);
     const unverifiable = result.unverifiable.map((finding): Violation => ({ ...toViolation(doc.path, finding), severity: 'cannot-check' }));
     return [...unverifiable, ...result.findings.map((finding) => toViolation(doc.path, finding))];
-  }
-
-  /** DS7・DS13 の「消えない」: 対象 branch との枝分かれの点と比べる。読めなければ警告 */
-  #compareWithBase(base: BaseSnapshot | undefined, docs: readonly DecisionDoc[]): Violation[] {
-    if (base === undefined) return [];
-    const byId = new Map(base.docs.map((doc) => [doc.id, doc]));
-    return docs.flatMap((doc) => {
-      const before = byId.get(doc.id);
-      return before === undefined ? [] : checkAppendOnly(before, doc).map((finding) => toViolation(doc.path, finding));
-    });
   }
 
   #readBase(root: string): BaseSnapshot | undefined {
