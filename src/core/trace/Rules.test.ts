@@ -46,6 +46,20 @@ describe('TraceCheck: 規則 T1〜T6', () => {
     assert.deepEqual(found.map((f) => [f.level, f.id]), [['violation', 'FN-999']]);
   });
 
+  it('大文字の doc-id やパス形式の修飾 (Auth/FN-010・docs/ai/FN-010) は黙って落とさず、引けなければ T10', () => {
+    for (const cell of ['Auth/FN-010', 'docs/ai/FN-010', 'fn-nodoc/FN-010']) {
+      const found = byRule(findAll(makeWorld({ scr: [['SCR-101', cell]] })), 'T10');
+      assert.deepEqual(found.map((f) => f.id), ['FN-010'], cell);
+      assert.match(found[0]?.message ?? '', new RegExp(cell.replace('/', '\\/')));
+    }
+  });
+
+  it('doc-id が実在すれば、大文字の doc-id の修飾でも引ける', () => {
+    const fn = makeDoc({ path: 'docs/fn.md', id: 'Auth', columns: ['上流 REQ:up'], headers: ['ID', '上流 REQ'], rows: [['FN-010', '']] });
+    const scr = makeDoc({ path: 'docs/scr.md', columns: ['上流 FN:up'], headers: ['ID', '上流 FN'], rows: [['SCR-101', 'Auth/FN-010']] });
+    assert.deepEqual(byRule(findAll([fn, scr]), 'T10'), []);
+  });
+
   it('[TST-908] T1(a): 同じ文書の表で FN-010 を 2 回採番すれば違反 (2 回目の行で出る)', () => {
     const rows = [['FN-010', 'REQ-101', 'SCR-101', 'API-001'], ['FN-010', 'REQ-101', '', '']];
     const found = byRule(findAll(makeWorld({ fn: rows })), 'T1');

@@ -37,6 +37,8 @@ export interface Edge {
 /** 欄に書いてあるが、定義の無い ID (T10) */
 export interface Dangling {
   readonly token: string;
+  /** 欄に書いてあった形 (`doc-id/ID` か ID)。読めない修飾もここに残る */
+  readonly reference: string;
   readonly fromKey: string;
   readonly path: string;
   readonly docRef: string;

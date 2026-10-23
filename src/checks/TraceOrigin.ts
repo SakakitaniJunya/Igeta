@@ -5,34 +5,43 @@ import { BASELINE_FILE, parseBaseline } from '../core/trace/Baseline.js';
 import type { TraceDocInput } from '../core/trace/TraceIndex.js';
 import { isListedDoc, toDocInput } from './TraceLoad.js';
 
-/** ref の時点の、`trace_columns` を宣言した設計書 (候補) と基準 */
+/** ref の時点の、`trace_columns` を宣言した設計書 (候補) */
 interface Snapshot {
   readonly inputs: readonly TraceDocInput[];
-  /** 基準ファイルが無ければ undefined (初めて基準を入れる変更) */
+}
+
+/** merge-base の時点の設計書と基準。基準ファイルが無ければ baseline は undefined (初めて基準を入れる変更) */
+interface BaseSnapshot extends Snapshot {
   readonly baseline: readonly string[] | undefined;
 }
 
 /** origin の先端と、自分の branch との merge-base。比べ先は用途で分ける (T1(b) は両方、基準の増加は merge-base) */
 export interface TraceOrigin {
   readonly tip: Snapshot;
-  readonly mergeBase: Snapshot;
+  readonly mergeBase: BaseSnapshot;
 }
 
 function readSnapshot(root: string, ref: string, isV4: boolean): Snapshot {
   const paths = grepFilesAtRef(root, ref, 'docs', 'trace_columns').filter((path) => path.endsWith('.md') && isListedDoc(path.slice('docs/'.length)));
   const texts = readFilesAtRef(root, ref, paths);
   const inputs = paths.flatMap((path) => toDocInput(path.slice('docs/'.length), texts.get(path) ?? '', isV4) ?? []);
-  if (listFilesAtRef(root, ref, BASELINE_FILE).length === 0) return { inputs, baseline: undefined };
+  return { inputs };
+}
+
+/** merge-base の基準だけを読む (先端の基準は使わない。main に壊れた基準が入っても、ほかの branch を止めない) */
+function readBaseSnapshot(root: string, ref: string, isV4: boolean): BaseSnapshot {
+  const snapshot = readSnapshot(root, ref, isV4);
+  if (listFilesAtRef(root, ref, BASELINE_FILE).length === 0) return { ...snapshot, baseline: undefined };
   const parsed = parseBaseline(readFileAtRef(root, ref, BASELINE_FILE));
   if ('error' in parsed) throw new GitError(`${ref}:${BASELINE_FILE} が読めない: ${parsed.error}`);
-  return { inputs, baseline: parsed.fingerprints };
+  return { ...snapshot, baseline: parsed.fingerprints };
 }
 
 /** ref と HEAD の merge-base の時点・ref の先端の時点を読む。git が読めなければ error (読めないのに「問題なし」にしない) */
 export function readOrigin(root: string, ref: string, isV4: boolean): { readonly origin: TraceOrigin } | { readonly error: string } {
   try {
     const base = mergeBase(root, ref, 'HEAD');
-    return { origin: { tip: readSnapshot(root, ref, isV4), mergeBase: readSnapshot(root, base, isV4) } };
+    return { origin: { tip: readSnapshot(root, ref, isV4), mergeBase: readBaseSnapshot(root, base, isV4) } };
   } catch (error) {
     if (error instanceof GitError) return { error: error.message };
     throw error;

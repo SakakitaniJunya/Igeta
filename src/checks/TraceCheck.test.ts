@@ -181,6 +181,30 @@ describe('TraceCheck: コードと登録', () => {
     assert.equal(violations.some((v) => v.message.includes('.igeta.json') && !v.message.includes('trace')), false);
   });
 
+  it('T8: trace.tests に当たるテストは trace.code の外 (tests/) にあっても読む。trace.code の外の @trace 無しは違反にしない', () => {
+    const tst = makeDoc({ path: 'docs/tst.md', columns: ['対象 FN:up'], headers: ['ID', '対象 FN'], rows: [['TST-001', 'FN-010']] });
+    const root = makeRepo([...makeWorld(), tst]);
+    write(root, '.igeta.json', JSON.stringify({ trace: { code: ['src/**/*.ts'] } }));
+    write(root, 'src/a.ts', '// 概要 @trace FN-010\n');
+    write(root, 'tests/a.test.ts', '// テスト @trace TST-001\n');
+    write(root, 'tests/b.test.ts', '// 概要だけ\n');
+    const found = check.analyze(root).findings;
+    assert.deepEqual(found.filter((f) => f.rule === 'T8' || f.rule === 'T10'), []);
+  });
+
+  it('origin の先端の基準が壊れていても、ほかの branch は止まらない (使うのは merge-base の基準だけ)', () => {
+    const root = makeRepo(brokenWorld());
+    git(root, 'checkout', '-q', '-b', 'feature');
+    git(root, 'checkout', '-q', 'main');
+    write(root, BASELINE_FILE, '{');
+    git(root, 'add', '-A');
+    git(root, 'commit', '-qm', 'main breaks baseline');
+    git(root, 'checkout', '-q', 'feature');
+    const violations = check.run({ targetRoot: root, igetaRoot: root });
+    assert.equal(violations.some((v) => v.severity === 'cannot-check'), false);
+    assert.deepEqual(check.analyze(root).growth, []);
+  });
+
   it('基準ファイルは読み戻せる JSON', () => {
     const root = makeRepo(brokenWorld());
     write(root, BASELINE_FILE, formatBaseline(['a']));

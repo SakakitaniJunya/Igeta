@@ -79,7 +79,7 @@ export class TraceCheck implements Check {
     const originIndexes = 'origin' in origin
       ? { tip: buildIndex(origin.origin.tip.inputs, config), mergeBase: buildIndex(origin.origin.mergeBase.inputs, config) }
       : undefined;
-    const tags = scanTags(loadCodeFiles(root, config.code));
+    const tags = scanTags(config.code.length === 0 ? [] : loadCodeFiles(root, [...config.code, ...config.tests]));
     const findings = [...checkRulesA(index, originIndexes), ...checkRulesB(index, tags, config)];
     const baseline = this.#readBaseline(root);
     if ('problem' in baseline) return { ...emptyResult(index, [baseline.problem]), findings };

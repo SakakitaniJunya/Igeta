@@ -11,9 +11,13 @@ const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/
 /** 種類の接頭辞を `(?:A|B)` に束ねる */
 export const kindsPattern = (kinds: readonly string[]): string => `(?:${kinds.map(escapeRegExp).join('|')})`;
 
-/** 欄の中の ID。`doc-id/` の修飾つきも読む。全角・3 桁でないものは ID の形ではない */
+/**
+ * 欄の中の ID。`doc-id/` の修飾つきも読む。全角・3 桁でないものは ID の形ではない。
+ * DocReferences の qualified-id (小文字の doc-id だけ) より広く拾う: 大文字の doc-id やパス形式 (`docs/ai/REQ-001`) を
+ * 黙って落とさず、doc-id として引けなければ T10 (定義が無い) として出すため。
+ */
 export function findTokens(cell: string, kinds: readonly string[]): { readonly token: string; readonly docId: string | undefined }[] {
-  const pattern = new RegExp(`(?<![A-Za-z0-9/-])(?:([a-z][a-z0-9-]*)/)?(${kindsPattern(kinds)}-\\d{3})(?!\\d)`, 'g');
+  const pattern = new RegExp(`(?<![A-Za-z0-9/_.-])(?:([A-Za-z0-9][A-Za-z0-9._/-]*)/)?(${kindsPattern(kinds)}-\\d{3})(?!\\d)`, 'g');
   return [...cell.matchAll(pattern)].map((matched) => ({ token: matched[2] ?? '', docId: matched[1] }));
 }
 
@@ -66,7 +70,7 @@ export function collectDocEdges(parsed: ParsedDoc, kinds: readonly string[], res
       for (const { token, docId } of findTokens(row.cells[column] ?? '', kinds)) {
         const target = resolve(token, docId, input.context);
         const position = { path: input.path, line: row.line };
-        if (target === undefined) dangling.push({ token, fromKey: ownKey, docRef: input.id === null ? input.path : `${input.context}/${input.id}`, ...position });
+        if (target === undefined) dangling.push({ token, fromKey: ownKey, reference: docId === undefined ? token : `${docId}/${token}`, docRef: input.id === null ? input.path : `${input.context}/${input.id}`, ...position });
         else if (direction === 'up') edges.push({ up: target, down: ownKey, declaredBy: 'down', ...position });
         else edges.push({ up: ownKey, down: target, declaredBy: 'up', ...position });
       }

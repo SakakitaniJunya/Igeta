@@ -55,11 +55,14 @@ function oneSidedEdges(index: TraceIndex, config: TraceConfig): Finding[] {
 function unknownIds(index: TraceIndex, tags: readonly CodeTag[], config: TraceConfig): Finding[] {
   const defined = new Set(index.definitions.map((definition) => definition.token));
   const isKind = (token: string): boolean => config.kinds.includes(token.slice(0, token.lastIndexOf('-')));
+  const inCode = (path: string): boolean => config.code.some((glob) => matchesGlob(path, glob));
   const fromColumns = index.dangling.map((entry): Finding => ({
-    rule: 'T10', level: 'violation', id: entry.token, path: entry.path, docRef: entry.docRef, line: entry.line, message: `欄の ${entry.token} に対応する定義が無い`, detail: entry.fromKey,
+    rule: 'T10', level: 'violation', id: entry.token, path: entry.path, docRef: entry.docRef, line: entry.line, message: `欄の ${entry.reference} に対応する定義が無い (修飾 ID は <doc-id>/ID の形で、doc-id が実在すること)`, detail: entry.fromKey,
   }));
   const fromCode = tags.flatMap((tag): Finding[] => {
     const where = { rule: 'T10', path: tag.path, line: 1 } as const;
+    // 先頭行の @trace を要求するのは trace.code の範囲だけ。trace.tests だけに当たるテストのファイルは、書いてあれば読む
+    if (!inCode(tag.path)) return tag.tokens.filter((token) => isKind(token) && !defined.has(token)).map((token): Finding => ({ ...where, level: 'violation', id: token, message: `@trace の ${token} に対応する定義が無い` }));
     if (tag.state === 'absent') return [{ ...where, level: 'violation', id: '-', message: '先頭行に @trace が無い (trace.code の対象)' }];
     if (tag.state === 'empty') return [{ ...where, level: 'warning', id: '-', message: '@trace に ID が書かれていない (未記入)' }];
     return tag.tokens.filter((token) => isKind(token) && !defined.has(token)).map((token): Finding => ({ ...where, level: 'violation', id: token, message: `@trace の ${token} に対応する定義が無い` }));

@@ -30,7 +30,7 @@ relates_to: [test-doc-graph]
 ## 0. 規則
 
 **定義**: 行頭セルが ID の形 (`trace.kinds` の接頭辞) の行。数えるのは `trace_columns` を宣言した文書の表だけ。OPEN- など `trace.kinds` に無い接頭辞は数えない。
-**参照**: `trace_columns` で上流・下流と宣言された欄の ID。本文・引用・否定の文は数えない。修飾 ID は `DocReferences` の `qualified-id` で読む。
+**参照**: `trace_columns` で上流・下流と宣言された欄の ID。本文・引用・否定の文は数えない。修飾 ID は `DocReferences` の `qualified-id` で読む。欄では、大文字の doc-id やパス形式の修飾も黙って落とさず拾い、doc-id として引けなければ T10 にする。
 **context**: T1 の重複は同じ context の中だけ。`ContextGraph` の context が違えば、同じ ID があっても違反にしない。
 
 | # | 規則 (上流 → 下流) | 違反の重さ |
@@ -49,7 +49,7 @@ relates_to: [test-doc-graph]
 
 **種類**: 既定は DEC・REQ・FN・SCR・API・TBL・TST。`trace.kinds` で上書きする。その種類の定義が 0 件の repo では、その種類に関わる規則を検査しない。
 
-**コードの `@trace`**: ファイルの先頭行 (MD-09 の概要の行) に `@trace` の後ろで ID を空白区切りで書く。例 (架空): `// 在庫の単位を表す部品。 @trace SCR-101 FN-010`。1 行目が shebang (`#!`) のファイルだけは 2 行目を見る。それ以降は見ない。対象は `trace.code` の glob。そのうちテストのコード(T8)は `trace.tests` の glob で見分ける(既定は `**/*.test.*`・`**/*.spec.*`・`**/*_test.*`・`**/test_*.*`・`**/tests/**`・`**/__tests__/**`)。どちらも書き間違いは `cannot-check`。glob に入るのに `@trace` が無いファイルは違反。`@trace` だけで ID が 0 件のものは未記入の警告 (基準には入れない)。
+**コードの `@trace`**: ファイルの先頭行 (MD-09 の概要の行) に `@trace` の後ろで ID を空白区切りで書く。例 (架空): `// 在庫の単位を表す部品。 @trace SCR-101 FN-010`。1 行目が shebang (`#!`) のファイルだけは 2 行目を見る。それ以降は見ない。対象は `trace.code` の glob。そのうちテストのコード(T8)は `trace.tests` の glob で見分ける(既定は `**/*.test.*`・`**/*.spec.*`・`**/*_test.*`・`**/test_*.*`・`**/tests/**`・`**/__tests__/**`)。どちらも書き間違いは `cannot-check`。`trace.tests` に当たるファイルは `trace.code` の外(`tests/` など)にあっても読む。先頭行の `@trace` を要求するのは `trace.code` の範囲だけ。glob に入るのに `@trace` が無いファイルは違反。`@trace` だけで ID が 0 件のものは未記入の警告 (基準には入れない)。
 
 **基準**: repo 直下の `.igeta-trace-baseline.json` に、**違反だけ**の指紋 (規則・ID・文書の名前 `context/frontmatter の id`。id が無い文書はパス。行番号とパスは入れず、文書を動かしても変わらない) を記録する。指紋には違反の種類 (欠けている向き・相手の ID・重複の相手と出現の順番。3 つ目以降の重複が記録済みの 1 件に隠れない) も入れ、同じ規則・ID・ファイルの別の違反を隠さない。基準に残っているが、もう出ない指紋は警告に出す。警告は入れない。基準に有る違反は `baselined` と表示して落とさない。減らすのは `igeta trace --update-baseline` だけ。増やすのは禁止し、origin の基準より指紋が増えていたら違反にする。origin が無いときは `cannot-check`。
 
