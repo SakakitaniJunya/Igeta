@@ -16,6 +16,7 @@
     "dist",
     "templates",
     "tools",
+    "library/eslint-config/check-layout.js",
     ".markdownlint.yaml",
     ".markdownlint-cli2.yaml"
   ],

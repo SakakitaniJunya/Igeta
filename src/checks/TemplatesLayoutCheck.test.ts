@@ -112,4 +112,22 @@ describe('TemplatesLayoutCheck (L1〜L3)', () => {
     assert.equal(messages.filter((item) => item.startsWith('[hono]') && item.includes('本体が 8 本')).length, 1);
     assert.equal(messages.filter((item) => item.startsWith('[nestjs]') && item.includes('本体が 8 本')).length, 1);
   });
+
+  it('[L3] backend/constructor のような Object の名前は、除外に書いていなければ除外扱いにならない', () => {
+    const root = { ...TEMPLATES_REGISTRY.root, backend: ['hono', 'nestjs', 'rust', 'constructor'] };
+    const messages = messagesOf(makeTemplates([...VALID, 'backend/constructor/a']), { ...TEMPLATES_REGISTRY, root });
+    assert.ok(messages.some((item) => item.includes('templates/backend/constructor: check-templates の変種にも除外にも登録が無い')));
+  });
+
+  it('[L2] 登録した名前がファイルだと、実体が無いとして落ちる', () => {
+    const messages = messagesOf(makeTemplates([...VALID.filter((item) => item !== 'mobile/ios/a'), 'mobile/ios']));
+    assert.ok(messages.some((item) => item.includes('templates/mobile/ios: 登録してあるが実体が無い')));
+  });
+
+  it('[L4] check-layout の script が無いときは違反でなく cannot-check になる', () => {
+    const dir = makeTemplates(VALID);
+    const found = new TemplatesLayoutCheck({ templatesDir: dir }).run({ targetRoot: dir, igetaRoot: dir });
+    assert.ok(found.length > 0);
+    assert.ok(found.every((item) => item.severity === 'cannot-check'));
+  });
 });

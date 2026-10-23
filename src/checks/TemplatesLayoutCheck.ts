@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
+import type { Dirent } from 'node:fs';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
-import { violation } from '../core/Report.js';
+import { cannotCheck, violation } from '../core/Report.js';
 import { ALL_VARIANTS } from './TemplatesCheck.js';
 import type { TemplatesRegistry } from './TemplatesRegistry.js';
 import { TEMPLATES_REGISTRY } from './TemplatesRegistry.js';
@@ -20,9 +21,11 @@ const SECOND_TIER_FILES = ['README.md'];
 /** OS が作る残骸。登録外として数えない */
 const OS_JUNK = /^(\.DS_Store|Thumbs\.db|desktop\.ini|\._.*)$/;
 
-function listNames(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).filter((entry) => !OS_JUNK.test(entry.name)).map((entry) => entry.name);
+function listEntries(dir: string): Dirent[] {
+  return readdirSync(dir, { withFileTypes: true }).filter((entry) => !OS_JUNK.test(entry.name));
 }
+
+const listNames = (dir: string): string[] => listEntries(dir).map((entry) => entry.name);
 
 function findRootViolations(templatesDir: string, registry: TemplatesRegistry): Violation[] {
   const registered = Object.keys(registry.root);
@@ -45,9 +48,12 @@ function findRootViolations(templatesDir: string, registry: TemplatesRegistry): 
 function findSecondTierViolations(templatesDir: string, registry: TemplatesRegistry): Violation[] {
   return Object.entries(registry.root).flatMap(([name, children]) => {
     if (children === undefined || !existsSync(join(templatesDir, name))) return [];
-    const found = listNames(join(templatesDir, name));
+    const entries = listEntries(join(templatesDir, name));
+    const found = entries.map((entry) => entry.name);
+    const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
     const unregistered = found.filter((item) => !children.includes(item) && !SECOND_TIER_FILES.includes(item));
-    const missing = children.filter((item) => !found.includes(item));
+    // 登録した名前は、ファイルでなくフォルダであること
+    const missing = children.filter((item) => !folders.includes(item));
     return [
       ...unregistered.map((item) => violation(`templates/${name}/${item}: 登録外`)),
       ...missing.map((item) => violation(`templates/${name}/${item}: 登録してあるが実体が無い`)),
@@ -60,7 +66,7 @@ function findMatrixViolations(registry: TemplatesRegistry): Violation[] {
   const folders = Object.entries(registry.root).flatMap(([name, children]) => (children ?? []).map((child) => `${name}/${child}`));
   const variantFolders = registry.variants.map((item) => item.folder);
   const violations: Violation[] = [];
-  for (const folder of folders.filter((item) => !variantFolders.includes(item) && !(item in registry.exempt))) {
+  for (const folder of folders.filter((item) => !variantFolders.includes(item) && !Object.hasOwn(registry.exempt, item))) {
     violations.push(violation(`templates/${folder}: check-templates の変種にも除外にも登録が無い。matrix に足すか、除外の理由を書く`));
   }
   for (const item of registry.variants.filter((entry) => !folders.includes(entry.folder))) {
@@ -81,9 +87,15 @@ function findInnerViolations(igetaRoot: string, templatesDir: string, registry: 
   return registry.variants.flatMap((item) => {
     const srcDir = join(templatesDir, item.folder, 'src');
     const extArgs = item.extensions.length === 0 ? [] : ['--ext', item.extensions.join(',')];
-    const result = spawnSync('node', [join(igetaRoot, CHECK_LAYOUT_SCRIPT), srcDir, ...extArgs], { encoding: 'utf8' });
+    const script = join(igetaRoot, CHECK_LAYOUT_SCRIPT);
+    if (!existsSync(script)) return [cannotCheck(`[${item.variant}] igeta-check-layout が無い: ${script}`)];
+
+    const result = spawnSync(process.execPath, [script, srcDir, ...extArgs], { encoding: 'utf8' });
+    if (result.error !== undefined) return [cannotCheck(`[${item.variant}] igeta-check-layout を起動できない: ${result.error.message}`)];
     if (result.status === 0) return [];
-    const lines = `${result.stderr}${result.error?.message ?? ''}`.split('\n').filter((line) => line !== '');
+    if (result.status === 2) return [cannotCheck(`[${item.variant}] ${result.stderr.trim()}`)];
+
+    const lines = result.stderr.split('\n').filter((line) => line !== '');
     return (lines.length === 0 ? [`終了コード ${String(result.status)}`] : lines).map((line) => violation(`[${item.variant}] ${line}`));
   });
 }

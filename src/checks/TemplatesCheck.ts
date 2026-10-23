@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, relative } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
-import { violation } from '../core/Report.js';
+import { cannotCheck, violation } from '../core/Report.js';
 import type { ExpandNames, TemplateVariant } from '../generators/TemplateExpandModule.js';
 import { sideOf, TemplateExpandModule, templateBaseDir, UNITS } from '../generators/TemplateExpandModule.js';
 import { insertAtMarker, registrationFor } from '../generators/TemplateRegistration.js';
@@ -45,7 +45,6 @@ export interface TemplatesCheckOptions {
   readonly log: (line: string) => void;
 }
 
-const cannotCheck = (message: string): Violation => ({ severity: 'cannot-check', message });
 
 const tail = (output: string): string => output.trimEnd().split('\n').slice(-TAIL_LINES).join('\n');
 

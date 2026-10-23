@@ -28,7 +28,8 @@ function createKind(extensions) {
     isSource: (name) => sourcePattern.test(name),
     isSpec: (name) => /\.(spec|test)\.tsx?$/.test(name) || /_test\.rs$/.test(name),
     isIndex: (name) => /^index\.tsx?$/.test(name) || name === 'mod.rs',
-    prefixOf: (name) => name.replace(sourcePattern, '').split(isRust(name) ? /[-._]/ : /[-.]/)[0],
+    // rust の `__aggregate__.rs` は先頭の `_` を落としてから割る (落とさないと接頭辞が空になる)
+    prefixOf: (name) => (isRust(name) ? name.replace(sourcePattern, '').replace(/^_+/, '').split(/[-._]/)[0] : name.replace(sourcePattern, '').split(/[-.]/)[0]),
   };
 }
 
@@ -72,15 +73,16 @@ function findNamedFolderViolations(folder, entries, kind, position) {
 }
 
 function findFolderViolations(folder, entries, kind, position) {
+  // 根の shared は findSharedViolations が本体も子も裁いたので、ここでは何も数えない
+  if (position.isJudgedShared) return [];
+
   const bodyFiles = listBodyFiles(entries, kind);
   const violations = findPrefixViolations(folder, bodyFiles, kind);
   if (bodyFiles.length > MAX_BODY_FILES) {
     violations.push(`${folder}: 本体が ${bodyFiles.length} 本ある (上限 ${MAX_BODY_FILES})。まとまりごとにフォルダを分ける`);
   }
-  // 根の shared は findSharedViolations が子まで裁いたので、同じ子を禁止名で二重に報告しない
-  const named = position.isJudgedShared ? [] : findNamedFolderViolations(folder, entries, kind, position);
 
-  return [...violations, ...named];
+  return [...violations, ...findNamedFolderViolations(folder, entries, kind, position)];
 }
 
 function walk(dir, kind, position) {
@@ -106,8 +108,9 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
   const usage = '使い方: igeta-check-layout <dir> [--ext rs]';
   try {
     const { positionals, values } = parseArgs({ allowPositionals: true, options: { ext: { type: 'string', default: '' } } });
-    const [root] = positionals;
+    const [root, ...extras] = positionals;
     if (root === undefined) throw new Error('<dir> が無い');
+    if (extras.length > 0) throw new Error(`余分な引数: ${extras.join(' ')} (拡張子は --ext rs)`);
     const extensions = values.ext.split(',').filter((extension) => extension !== '');
     const violations = findLayoutViolations(root, { extensions });
     for (const violation of violations) process.stderr.write(`${violation}\n`);

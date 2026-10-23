@@ -14,7 +14,7 @@ on:
       - 'templates/frontend/**'
       - 'src/generators/TemplateExpand*'
       - 'src/generators/TemplateRegistration*'
-      - 'src/checks/Templates*'
+      - 'src/checks/TemplatesCheck*'
       - 'src/checks/templates*'
       - 'src/checks/CommandRunner*'
       - 'src/core/Naming*'

@@ -18,6 +18,9 @@ export interface Violation {
 export const violation = (message: string, file?: string): Violation =>
   file === undefined ? { severity: 'violation', message } : { severity: 'violation', message, file };
 
+/** 検査そのものが成立しない (道具が無い等) ことを 1 件作る。 */
+export const cannotCheck = (message: string): Violation => ({ severity: 'cannot-check', message });
+
 /** 検査結果の集約。出力整形と終了コード決定をここに一本化する。 */
 export class Report {
   readonly #violations: Violation[] = [];

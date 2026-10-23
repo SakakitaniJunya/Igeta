@@ -188,4 +188,27 @@ describe('MD-11 置き場の検査', () => {
       assert.equal(result.stderr.trim().split('\n').length, 1, option);
     }
   });
+
+  it('L4 CLI は余分な位置引数 (--ext を忘れた rs) を exit 2 にする', () => {
+    const clean = createTree(['a.ts']);
+
+    const result = spawnSync('node', [CLI, clean, 'rs'], { encoding: 'utf8' });
+
+    assert.equal(result.status, 2);
+    assert.equal(result.stderr.trim().split('\n').length, 1);
+  });
+
+  it('L4 rust の __aggregate__*.rs が 3 本あると、接頭辞が空でなく aggregate で報告される', () => {
+    const root = createTree(['__aggregate__.rs', '__aggregate___id.rs', '__aggregate___repo.rs']);
+
+    const violations = findLayoutViolations(root, { extensions: ['rs'] });
+
+    assert.equal(violations.filter((message) => message.includes('接頭辞 aggregate を 3 本')).length, 1);
+  });
+
+  it('L5 根の shared のはぐれ物は 1 回だけ報告される (本体と子で二重にならない)', () => {
+    const root = createTree(['shared/a.ts', 'shared/b.ts', 'shared/c.ts', 'shared/d.ts', 'shared/e.ts', 'shared/f.ts', 'shared/g.ts', 'shared/h.ts']);
+
+    assert.equal(findLayoutViolations(root).length, 1);
+  });
 });

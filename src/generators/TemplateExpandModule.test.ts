@@ -116,6 +116,8 @@ describe('TemplateExpandModule: 実 templates', () => {
       tpl('backend', 'hono'),
       tpl('backend', 'unknown', 'src', 'modules', '__context__'),
       tpl('frontend', 'admin', 'src', 'app'),
+      tpl('mobile', 'ios'),
+      tpl('docs'),
       join(root, 'elsewhere'),
     ]) {
       const plan = expand.prepare({ templatePath: path, app: 'a', names: NAMES });
