@@ -173,6 +173,14 @@ describe('TraceCheck: コードと登録', () => {
     assert.ok(violations.some((v) => v.message.startsWith('[T3]')));
   });
 
+  it('trace の節の誤りは TraceCheck だけの cannot-check で、docs-check の中で 1 度しか出ず、ほかの検査を止めない', async () => {
+    const root = makeRepo(makeWorld());
+    write(root, '.igeta.json', JSON.stringify({ trace: { kinds: ['fn'] } }));
+    const violations = await new DocsCheck().run({ targetRoot: root, igetaRoot: root });
+    assert.equal(violations.filter((v) => v.message.includes('trace の kinds')).length, 1);
+    assert.equal(violations.some((v) => v.message.includes('.igeta.json') && !v.message.includes('trace')), false);
+  });
+
   it('基準ファイルは読み戻せる JSON', () => {
     const root = makeRepo(brokenWorld());
     write(root, BASELINE_FILE, formatBaseline(['a']));

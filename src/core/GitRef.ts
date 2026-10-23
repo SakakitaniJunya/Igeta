@@ -57,7 +57,7 @@ export function readFileAtRef(root: string, ref: string, relPath: string): strin
 export function grepFilesAtRef(root: string, ref: string, pathspec: string, text: string): readonly string[] {
   assertSafeRef(ref);
   try {
-    const output = execFileSync('git', ['-C', root, 'grep', '-l', '-z', '-F', '-e', text, ref, '--', pathspec], {
+    const output = execFileSync('git', ['-C', root, 'grep', '--no-full-name', '-l', '-z', '-F', '-e', text, ref, '--', pathspec], {
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASELINE_FILE } from '../../core/trace/Baseline.js';
+import { BASELINE_FILE, formatBaseline } from '../../core/trace/Baseline.js';
 import { makeWorld } from '../../core/trace/testing/Fixtures.test-support.js';
 import type { TraceDocInput } from '../../core/trace/TraceIndex.js';
 import { Cli } from '../Cli.js';
@@ -88,6 +88,17 @@ describe('igeta trace', () => {
     const regress = await run(root, '--update-baseline');
     assert.equal(regress.code, 1);
     assert.deepEqual(JSON.parse(readFileSync(join(root, BASELINE_FILE), 'utf8')).fingerprints, []);
+  });
+
+  it('--update-baseline: 定義が 0 件なら、既存の基準を上書きせず 1 で止まる', async () => {
+    const root = makeRepo(makeWorld());
+    const existing = formatBaseline(['T3|REQ-101|shared/req|down:FN']);
+    writeFileSync(join(root, BASELINE_FILE), existing);
+    writeFileSync(join(root, '.igeta.json'), JSON.stringify({ trace: { kinds: ['ZZ'] } }));
+    const result = await run(root, '--update-baseline');
+    assert.equal(result.code, 1);
+    assert.match(result.err, /定義が 0 件/);
+    assert.equal(readFileSync(join(root, BASELINE_FILE), 'utf8'), existing);
   });
 
   it('余分な位置引数は検査不能 (2)', async () => {

@@ -73,12 +73,12 @@ function textLines(nodes: readonly TreeNode[], depth: number): string[] {
   ]);
 }
 
-function mermaidEdges(parent: string, nodes: readonly TreeNode[], direction: 'up' | 'down'): { edges: string[]; labels: Map<string, string> } {
-  const edges: string[] = [];
+function mermaidEdges(parent: string, nodes: readonly TreeNode[], direction: 'up' | 'down'): { edges: MermaidEdge[]; labels: Map<string, string> } {
+  const edges: MermaidEdge[] = [];
   const labels = new Map<string, string>();
   for (const node of nodes) {
     const [from, to] = direction === 'up' ? [node.key, parent] : [parent, node.key];
-    edges.push(`  ${nodeName(from)} ${node.mark === 'ok' ? '-->' : '-.->'} ${nodeName(to)}`);
+    edges.push({ from, to, isMutual: node.mark === 'ok' });
     labels.set(node.key, node.label.split(' ')[0] ?? node.key);
     const below = mermaidEdges(node.key, node.children, direction);
     edges.push(...below.edges);
@@ -87,7 +87,14 @@ function mermaidEdges(parent: string, nodes: readonly TreeNode[], direction: 'up
   return { edges, labels };
 }
 
-const nodeName = (key: string): string => `n_${key.replace(/[^A-Za-z0-9]/g, '_')}`;
+/** key は `context:ID`。文字を替えると別の context の同じ番号が 1 つにまとまるので、節の名前は通し番号にする */
+const nodeNames = (keys: Iterable<string>): ReadonlyMap<string, string> => new Map([...keys].map((key, i) => [key, `n${i + 1}`] as const));
+
+interface MermaidEdge {
+  readonly from: string;
+  readonly to: string;
+  readonly isMutual: boolean;
+}
 
 /** 木を文字にする。text は ○△✗ の字下げ、mermaid は `flowchart TB` (△ は点線) */
 export function render(tree: Tree, mode: 'text' | 'mermaid'): string {
@@ -106,6 +113,9 @@ export function render(tree: Tree, mode: 'text' | 'mermaid'): string {
   const parts = tree.roots.flatMap((root) => [mermaidEdges(root.definition.key, root.up, 'up'), mermaidEdges(root.definition.key, root.down, 'down')]);
   const labels = new Map(tree.roots.map((root) => [root.definition.key, root.definition.token] as const));
   parts.forEach((part) => part.labels.forEach((label, key) => labels.set(key, label)));
-  const declarations = [...labels].map(([key, label]) => `  ${nodeName(key)}["${label}"]`);
-  return ['flowchart TB', ...declarations, ...new Set(parts.flatMap((part) => part.edges))].join('\n');
+  const names = nodeNames(labels.keys());
+  const nameOf = (key: string): string => names.get(key) ?? key;
+  const declarations = [...labels].map(([key, label]) => `  ${nameOf(key)}["${label}"]`);
+  const edges = parts.flatMap((part) => part.edges).map((edge) => `  ${nameOf(edge.from)} ${edge.isMutual ? '-->' : '-.->'} ${nameOf(edge.to)}`);
+  return ['flowchart TB', ...declarations, ...new Set(edges)].join('\n');
 }

@@ -29,8 +29,16 @@ describe('IgetaConfig の trace', () => {
     assert.deepEqual(read, { config: { kinds: ['REQ'], code: ['src/**'], tests: ['t/**'], columns: ['上流 X:up'], bands: ['機能要件:1'], strictEdges: true, tblRule: 'error', base: 'develop' } });
   });
 
+  it('trace の誤りは .igeta.json 全体を無効にしない: ほかの設定は読め、誤りは traceProblem に残る', () => {
+    const loaded = loadIgetaConfig(rootWith({ humanPaths: ['a/**'], trace: { kinds: 'FN' } }));
+    assert.ok('config' in loaded);
+    assert.deepEqual(loaded.config.humanPaths, ['a/**']);
+    assert.equal(loaded.config.traceProblem?.severity, 'cannot-check');
+    assert.deepEqual(loaded.config.trace, {});
+  });
+
   it('形が不正な trace は CannotCheck (黙って既定値に倒さない)', () => {
-    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }, { base: '' }, { code: ['src/{a'] }, { tests: ['**/[x'] }]) {
+    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }, { base: '' }, { code: ['src/{a'] }, { tests: ['**/[x'] }, { kinds: [] }, { kinds: [''] }, { kinds: ['fn'] }]) {
       const read = readTraceConfig(rootWith({ trace }));
       assert.ok('violation' in read && read.violation.severity === 'cannot-check', JSON.stringify(trace));
     }

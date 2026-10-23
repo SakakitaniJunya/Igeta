@@ -68,6 +68,15 @@ describe('木', () => {
     assert.ok(lines.some((line) => line.endsWith('(上と同じ)')));
   });
 
+  it('Mermaid の節の名前は通し番号: context が a-b と a_b や日本語 2 つでも、節が 1 つにまとまらない', () => {
+    const doc = (context: string) => makeDoc({ path: `docs/${context}.md`, context, columns: ['上流 FN:up'], headers: ['ID', '上流 FN'], rows: [['FN-010', '']] });
+    const mermaid = (contexts: string[]) => render(buildTree(indexOf(contexts.map(doc)), 'FN-010', []), 'mermaid');
+    for (const contexts of [['a-b', 'a_b'], ['顧客', '在庫']]) {
+      const declared = mermaid(contexts).split('\n').filter((line) => line.includes('["FN-010"]'));
+      assert.equal(new Set(declared.map((line) => line.trim().split('[')[0])).size, 2, contexts.join());
+    }
+  });
+
   it('[TST-924] 定義の無い ID は roots が空 (command が終了コード 2 にする)', () => {
     assert.deepEqual(buildTree(indexOf(makeWorld()), 'DEC-901', []).roots, []);
   });

@@ -64,6 +64,7 @@ export function resolveTraceConfig(settings: TraceSettings): TraceConfig {
 export function readTraceConfig(root: string): { readonly config: TraceConfig } | { readonly violation: Violation } {
   const loaded = loadIgetaConfig(root);
   if ('violation' in loaded) return loaded;
+  if (loaded.config.traceProblem !== undefined) return { violation: loaded.config.traceProblem };
   return { config: resolveTraceConfig(loaded.config.trace) };
 }
 

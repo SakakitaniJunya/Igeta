@@ -1,6 +1,6 @@
 // `igeta trace [ID]`: ID を渡すと上流・下流の木、渡さないと設計書のつながりの検査 (ADR-0015)。
 
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { summarizeBaselined, TraceCheck } from '../../checks/TraceCheck.js';
 import type { TraceResult } from '../../checks/TraceCheck.js';
@@ -58,10 +58,15 @@ export class TraceCommand extends Command {
       for (const violation of result.fatal) ctx.stderr(violation.message);
       return ExitCode.CannotCheck;
     }
+    if (result.index.definitions.length === 0) {
+      ctx.stderr('定義が 0 件なので基準を更新しない (trace_columns を宣言した文書の表の行頭セルに ID が無い)');
+      return ExitCode.Violation;
+    }
+    const exists = existsSync(join(root, BASELINE_FILE));
     const violations = result.findings.filter((finding) => finding.level === 'violation');
-    const next = result.baseline === undefined ? violations.map(fingerprint) : shrinkBaseline(result.baseline, result.findings);
+    const next = result.baseline === undefined || !exists ? violations.map(fingerprint) : shrinkBaseline(result.baseline, result.findings);
     writeFileSync(join(root, BASELINE_FILE), formatBaseline(next));
-    ctx.stdout(`${next.length} 件を基準に記録した (${BASELINE_FILE}。${result.baseline === undefined ? '新規作成' : `${result.baseline.length} 件から更新`})`);
+    ctx.stdout(`${next.length} 件を基準に記録した (${BASELINE_FILE}。${exists ? `${result.baseline?.length ?? 0} 件から更新` : '新規作成'})`);
     // 書いた基準で数え直す。記録した直後の違反を、まだ落ちる違反として出さない
     const after = check.analyze(root);
     const fresh = after.fresh.filter((finding) => finding.level === 'violation');
