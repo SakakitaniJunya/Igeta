@@ -42,7 +42,7 @@ function createKind(extensions) {
 /** 1 フォルダぶんの走査の文脈。isJudgedShared は、src 直下の shared で、findSharedViolations が裁いた物。 */
 function createScan({ kind, dir, isJudgedShared }) {
   const entries = readdirSync(dir, { withFileTypes: true });
-  return { kind, dir, entries, isJudgedShared, isSharedAllowed: path.basename(dir) === SHARED_PARENT_NAME };
+  return { kind, dir, entries, isJudgedShared, isSharedAllowed: path.basename(path.resolve(dir)) === SHARED_PARENT_NAME };
 }
 
 function listBodyFiles(entries, kind) {

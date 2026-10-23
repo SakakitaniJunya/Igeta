@@ -10,7 +10,7 @@ export class CheckTemplatesLayoutCommand extends CheckCommand {
   override readonly usage = [
     '  入力は Igeta の templates/ で、--root は使わない。Igeta 自身の repo だけで走らせる。',
     '  雛形の中の置き場は、変種ごとに igeta-check-layout (rust は --ext rs) を回して全変種を 1 回で報告する。',
-    '  exit 0 = 登録どおり / 1 = 違反',
+    '  exit 0 = 登録どおり / 1 = 違反 / 2 = 検査不能 (templates/ が無い、Igeta 自身の repo ではない)',
   ];
 
   protected createCheck(args: ParsedArgs): Check {

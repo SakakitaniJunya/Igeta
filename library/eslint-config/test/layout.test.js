@@ -236,4 +236,24 @@ describe('MD-11 置き場の検査', () => {
     assert.equal(rustMessages.filter((message) => message.includes('置けない物: test-support/')).length, 1);
     assert.equal(tsMessages.filter((message) => message.includes('置けない物: test_support/')).length, 1);
   });
+
+  it('L5 `.` (cwd が src) で呼んでも shared の例外が効く', () => {
+    const root = createTree(['src/shared/index.ts', 'src/shared/domain/a.ts']);
+
+    const result = spawnSync('node', [CLI, '.'], { cwd: path.join(root, 'src'), encoding: 'utf8' });
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+
+  it('TST-310 node_modules の中は数えない (走査と shared の両方)', () => {
+    const deep = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((name) => `${name}.ts`);
+    const root = createTree([
+      ...deep.map((file) => `src/node_modules/pkg/${file}`),
+      'src/shared/index.ts',
+      'src/shared/node_modules/x.ts',
+      'src/shared/domain/node_modules/utils/y.ts',
+    ]);
+
+    assert.deepEqual(findLayoutViolations(root), []);
+  });
 });

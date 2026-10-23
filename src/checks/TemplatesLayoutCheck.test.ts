@@ -139,4 +139,14 @@ describe('TemplatesLayoutCheck (L1〜L3)', () => {
     assert.ok(found.length > 0);
     assert.ok(found.every((item) => item.severity === 'cannot-check'));
   });
+
+  it('[検査不能] templates/ が無い・利用 repo で打ったときは、例外や空振りの OK でなく cannot-check', () => {
+    const empty = makeTemplates([]);
+    const missing = new TemplatesLayoutCheck().run({ targetRoot: empty, igetaRoot: empty });
+    const foreign = new TemplatesLayoutCheck().run({ targetRoot: empty, igetaRoot: IGETA_ROOT });
+    assert.deepEqual(missing.map((item) => item.severity), ['cannot-check']);
+    assert.match(missing[0]?.message ?? '', /templates\/ が無い/);
+    assert.deepEqual(foreign.map((item) => item.severity), ['cannot-check']);
+    assert.match(foreign[0]?.message ?? '', /Igeta 自身の repo でだけ/);
+  });
 });

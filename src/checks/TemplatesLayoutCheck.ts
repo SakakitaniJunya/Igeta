@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import type { Dirent } from 'node:fs';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
@@ -21,19 +21,17 @@ const SECOND_TIER_FILES = ['README.md'];
 /** OS が作る残骸。登録外として数えない */
 const OS_JUNK = /^(\.DS_Store|Thumbs\.db|desktop\.ini|\._.*)$/;
 
-function listEntries(dir: string): Dirent[] {
-  return readdirSync(dir, { withFileTypes: true }).filter((entry) => !OS_JUNK.test(entry.name));
+/** フォルダの中身を、名前の一覧とフォルダだけの一覧にして返す (OS の残骸は除く)。 */
+function describeDir(dir: string): { readonly found: string[]; readonly folders: string[] } {
+  const entries: Dirent[] = readdirSync(dir, { withFileTypes: true }).filter((entry) => !OS_JUNK.test(entry.name));
+  return { found: entries.map((entry) => entry.name), folders: entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name) };
 }
 
 const isFolder = (path: string): boolean => existsSync(path) && statSync(path).isDirectory();
 
-const listNames = (dir: string): string[] => listEntries(dir).map((entry) => entry.name);
-
 function findRootViolations(templatesDir: string, registry: TemplatesRegistry): Violation[] {
   const registered = Object.keys(registry.root);
-  const entries = listEntries(templatesDir);
-  const found = entries.map((entry) => entry.name);
-  const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const { found, folders } = describeDir(templatesDir);
   const violations: Violation[] = [];
   if (registered.length > MAX_ROOT_ENTRIES) {
     violations.push(violation(`templates/ の登録が ${registered.length} 個ある (上限 ${MAX_ROOT_ENTRIES})。足すなら同じ PR で退かす`));
@@ -55,9 +53,7 @@ function findSecondTierViolations(templatesDir: string, registry: TemplatesRegis
   return Object.entries(registry.root).flatMap(([name, children]) => {
     // フォルダでない登録名は findRootViolations が落とすので、ここでは中を読まない
     if (children === undefined || !isFolder(join(templatesDir, name))) return [];
-    const entries = listEntries(join(templatesDir, name));
-    const found = entries.map((entry) => entry.name);
-    const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+    const { found, folders } = describeDir(join(templatesDir, name));
     const unregistered = found.filter((item) => !children.includes(item) && !SECOND_TIER_FILES.includes(item));
     // 登録した名前は、ファイルでなくフォルダであること
     const missing = children.filter((item) => !folders.includes(item));
@@ -128,7 +124,13 @@ export class TemplatesLayoutCheck implements Check {
   }
 
   run(ctx: CheckContext): readonly Violation[] {
+    // 入力は Igeta 自身の templates/。利用 repo で打つと node_modules の中を見て空振りの OK になるので、検査不能にする
+    if (this.#templatesDir === undefined && realpathSync(ctx.targetRoot) !== realpathSync(ctx.igetaRoot)) {
+      return [cannotCheck(`Igeta 自身の repo でだけ使う (targetRoot ${ctx.targetRoot} は Igeta のルート ${ctx.igetaRoot} ではない)`)];
+    }
     const templatesDir = this.#templatesDir ?? join(ctx.igetaRoot, 'templates');
+    if (!isFolder(templatesDir)) return [cannotCheck(`templates/ が無い: ${templatesDir}`)];
+
     return [
       ...findRootViolations(templatesDir, this.#registry),
       ...findSecondTierViolations(templatesDir, this.#registry),
