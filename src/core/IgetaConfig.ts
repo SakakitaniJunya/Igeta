@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { globCanMatchUnder, validateGlob } from '../gate/PathGlob.js';
 import { ROLE_FOLDERS } from '../gate/RoleFolders.js';
 import type { Violation } from './Report.js';
+import type { TraceSettings } from './trace/TraceConfig.js';
 
 export const DEFAULT_SHARED_KINDS: readonly string[] = [
   'glossary',
@@ -64,6 +65,8 @@ export interface IgetaConfig {
    * 当たるかどうかの判定は humanPaths と同じ glob の意味 (src/gate/PathGlob.ts の matchesGlob)。
    */
   readonly nonDocPaths: readonly string[];
+  /** 設計書のつながりの検査 (TraceCheck) の設定。書いてない項目の既定値は core/trace/TraceConfig.ts が足す (ADR-0015) */
+  readonly trace: TraceSettings;
 }
 
 export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
@@ -73,6 +76,7 @@ export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
   reagreementRules: DEFAULT_REAGREEMENT_RULES,
   humanPaths: [],
   nonDocPaths: [],
+  trace: {},
 };
 
 export type LoadIgetaConfigResult = { readonly config: IgetaConfig } | { readonly violation: Violation };
@@ -98,6 +102,26 @@ function readGlobList(
     }
   }
   return { globs: value };
+}
+
+const TRACE_LIST_KEYS = ['kinds', 'code', 'columns', 'bands'] as const;
+
+/** `trace` の値 (JSON を読んだもの) の形を検査して TraceSettings にする。undefined は「書いてない」 */
+function parseTraceSettings(value: unknown, path: string): { readonly settings: TraceSettings } | { readonly violation: Violation } {
+  const fail = (message: string) => ({ violation: { severity: 'cannot-check', message: `${path} の trace ${message}` } as const });
+  if (value === undefined) return { settings: {} };
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return fail('はオブジェクトでなければならない');
+  const record = value as Record<string, unknown>;
+  for (const key of TRACE_LIST_KEYS) {
+    const list = record[key];
+    if (list !== undefined && (!Array.isArray(list) || !list.every((item): item is string => typeof item === 'string'))) {
+      return fail(`の ${key} は文字列の配列でなければならない`);
+    }
+  }
+  if (record['strictEdges'] !== undefined && typeof record['strictEdges'] !== 'boolean') return fail('の strictEdges は true か false でなければならない');
+  const tblRule = record['tblRule'];
+  if (tblRule !== undefined && tblRule !== 'warn' && tblRule !== 'error') return fail('の tblRule は "warn" か "error" でなければならない');
+  return { settings: record as TraceSettings };
 }
 
 /**
@@ -249,5 +273,8 @@ export function parseIgetaConfig(text: string, path: string): LoadIgetaConfigRes
     }
   }
 
-  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules, humanPaths, nonDocPaths } };
+  const trace = parseTraceSettings(record['trace'], path);
+  if ('violation' in trace) return trace;
+
+  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules, humanPaths, nonDocPaths, trace: trace.settings } };
 }

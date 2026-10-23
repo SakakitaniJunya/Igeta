@@ -48,7 +48,7 @@ const OUTSIDE_BOUNDARY_PREFIXES: readonly string[] = ['person/decisions/', 'ai/h
  * 新しい構成のまとまり (B1): 置き場所の型にまとまりの階層がある文書は、フォルダ名から導く (`shared` のフォルダも
  * まとまり shared)。階層の無い場所 (person/requirements/・ai/specs/tasks/ の直下) は frontmatter の context (無記入は shared)。
  */
-function contextOfV4(kind: string | null, docsRel: string, data: FrontmatterData): string {
+export function contextOfV4(kind: string | null, docsRel: string, data: FrontmatterData): string {
   const fromFolder = kind === null ? null : matchPlacement(kind, docsRel).context;
   return fromFolder ?? readContext(kind, data);
 }

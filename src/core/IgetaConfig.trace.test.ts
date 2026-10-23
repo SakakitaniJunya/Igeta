@@ -1,0 +1,38 @@
+// node --test dist/core/IgetaConfig.trace.test.js
+// `.igeta.json` の trace の読み取り (ADR-0015)。設定ファイルを開くのは loadIgetaConfig だけ。
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { DEFAULT_IGETA_CONFIG, loadIgetaConfig } from './IgetaConfig.js';
+import { DEFAULT_TRACE_KINDS, readTraceConfig } from './trace/TraceConfig.js';
+
+const roots: string[] = [];
+function rootWith(content: unknown): string {
+  const root = mkdtempSync(join(tmpdir(), 'igeta-traceconfig-'));
+  roots.push(root);
+  if (content !== undefined) writeFileSync(join(root, '.igeta.json'), JSON.stringify(content));
+  return root;
+}
+after(() => roots.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+
+describe('IgetaConfig の trace', () => {
+  it('trace が無ければ既定値 (空の設定)。readTraceConfig が既定の種類・warn・strictEdges なしを足す', () => {
+    assert.deepEqual(loadIgetaConfig(rootWith({})), { config: DEFAULT_IGETA_CONFIG });
+    const read = readTraceConfig(rootWith(undefined));
+    assert.deepEqual(read, { config: { kinds: DEFAULT_TRACE_KINDS, code: [], columns: [], bands: [], strictEdges: false, tblRule: 'warn' } });
+  });
+
+  it('trace の項目を読む', () => {
+    const read = readTraceConfig(rootWith({ trace: { kinds: ['REQ'], code: ['src/**'], strictEdges: true, tblRule: 'error', bands: ['機能要件:1'], columns: ['上流 X:up'] } }));
+    assert.deepEqual(read, { config: { kinds: ['REQ'], code: ['src/**'], columns: ['上流 X:up'], bands: ['機能要件:1'], strictEdges: true, tblRule: 'error' } });
+  });
+
+  it('形が不正な trace は CannotCheck (黙って既定値に倒さない)', () => {
+    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }]) {
+      const read = readTraceConfig(rootWith({ trace }));
+      assert.ok('violation' in read && read.violation.severity === 'cannot-check', JSON.stringify(trace));
+    }
+  });
+});
