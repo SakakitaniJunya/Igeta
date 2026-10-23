@@ -41,11 +41,11 @@ relates_to: [test-trace-check, test-doc-graph]
 
 | # | パス | 直し方 |
 |---|---|---|
-| D1 | `templates/docs/person/requirements/01-requirements.md` | `trace_bands` を置く。業務・機能の表の例の行 (REQ-001・REQ-101・REQ-102・REQ-201) を消し、ヘッダだけにする |
+| D1 | `templates/docs/person/requirements/01-requirements.md` | `trace_bands` を置く。業務・機能の表の例の行 (REQ の 001・101・102・201 番) を消し、ヘッダだけにする |
 | D2 | `templates/docs/person/design/shared/01-function-list.md` | 例の行 (FN-001) を消す。`trace_columns` を置く |
 | D3 | `templates/docs/person/design/__context__/screens/__screen-group__.md` | 例の行 (SCR-001・101・201・301・401) を消す。`trace_columns` を置く |
 | D4 | `templates/docs/ai/specs/__context__/api/__resource__.md` | AUTOGEN 区間と区間の外の表の例の行 (API-001) を消す |
-| D5 | `templates/docs/ai/specs/__context__/tests/__feature__.md` | 例の行 (TST-201・202・301・302) を消す。`trace_columns` を置く |
+| D5 | `templates/docs/ai/specs/__context__/tests/__feature__.md` | 例の行 (TST の 201・202・301・302 番) を消す。`trace_columns` を置く |
 | D6 | `templates/docs/person/decisions/01-decisions.md` | 決定台帳の merge 後。「影響の種類」列 (`作る物`・`方針のみ`) を足し、例の行 (DEC-001・OPEN-001) を消す |
 | C1 | `templates/frontend/admin/src/features/__feature__/presentation/screen/__Feature__Screen.tsx` | 先頭行を `// __Feature__ の画面。 @trace` にする (SCR) |
 | C2 | 同 `presentation/components/__Feature__{Form,Row,Toolbar}.tsx` | `// __Feature__ の画面部品。 @trace` (SCR) |

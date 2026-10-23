@@ -81,7 +81,7 @@ flowchart TB
 
 | 手段 | 対象 | 落ちる条件 |
 |---|---|---|
-| テスト仕様 13 のケース (TST-901〜) | `TraceCheck`・`core/trace/` | T1〜T11 のどれかが期待と違う |
+| テスト仕様 13 のケース (901 番〜) | `TraceCheck`・`core/trace/` | T1〜T11 のどれかが期待と違う |
 | 基準の検査 | `.igeta-trace-baseline.json` | origin の基準より指紋が増えている |
 | 利用 repo での実行 | 利用 repo の全文書 | 基準に無い違反が 1 件でもある |
 
