@@ -11,9 +11,10 @@ const EVENT_RULES: Readonly<Record<string, { readonly from: readonly string[]; r
   改訂: { from: ['accepted', 'amended'], to: ['amended'] },
   置換: { from: ['accepted', 'amended'], to: ['superseded'] },
   差戻し: { from: ['accepted', 'rejected'], to: ['proposed'] },
-  移行前: { from: [], to: ['superseded', 'deprecated'] },
+  移行前: { from: [], to: ['superseded', 'deprecated', 'amended'] },
 };
 
+const MIGRATION_ONLY_EVENTS: readonly string[] = ['差戻し', '移行前'];
 
 function checkRowTransition(row: HistoryRow, previousAfter: string | undefined): Finding[] {
   const rule = EVENT_RULES[row.event];
@@ -27,13 +28,19 @@ function checkRowTransition(row: HistoryRow, previousAfter: string | undefined):
     findings.push({ rule: 'DS9', line: row.line, message: `前の状態 ${row.before} が、一つ前の行の後 ${previousAfter} と続いていない` });
   }
   if (row.event === '差戻し' && row.memo === '') findings.push({ rule: 'DS9', line: row.line, message: '差戻しの行は、メモに旧い状態と日付が要る' });
-  if (row.after === 'deprecated' && !isPreMigration) findings.push({ rule: 'DS9', line: row.line, message: 'deprecated にする書き込み口は無い (移行前の行だけが持てる)' });
   return findings;
 }
 
-/** DS9: 行ごとの遷移と、行の連なり */
+/**
+ * DS9: 行ごとの遷移と、行の連なり。差戻し・移行前は移行の書き手 (docs-migrate) だけが書くので、履歴の 1 行目にだけ許す。
+ * 2 行目以降にあれば、承認済の ADR を手書きの行で proposed や retired へ落とす改ざんなので違反にする。
+ */
 export function checkTransitions(rows: readonly HistoryRow[]): Finding[] {
-  return rows.flatMap((row, index) => checkRowTransition(row, rows[index - 1]?.after));
+  return rows.flatMap((row, index) => {
+    const misplaced = index > 0 && MIGRATION_ONLY_EVENTS.includes(row.event);
+    const placement = misplaced ? [{ rule: 'DS9', line: row.line, message: `事象 "${row.event}" は移行の書き手だけが、履歴の 1 行目に書ける (${index + 1} 行目にある)` }] : [];
+    return [...placement, ...checkRowTransition(row, rows[index - 1]?.after)];
+  });
 }
 
 /** DS3: status は履歴の最後の「後」と同じ。行が 0 本なら proposed。proposed 以外は 1 本以上 */

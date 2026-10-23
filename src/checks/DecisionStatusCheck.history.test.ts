@@ -2,6 +2,7 @@
 // 決定の状態の検査 (テスト仕様 10): 承認後の本文・一意・遷移・置換・再提案 (DS2・DS6〜DS10)。
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { appendHistoryRow, editFrontmatter } from '#decision/core';
 import { APPROVER, DECISIONS, disposeAllRepos, makeRepo } from '#core/decision/decision.test-support.js';
 import { adrText, approvalRow, landAccepted } from '#core/decision/adr.test-support.js';
 import { run, hasRule, proposed } from './DecisionStatusCheck.test-support.js';
@@ -100,5 +101,34 @@ describe('DecisionStatusCheck: 履歴と関係', () => {
     repo.commit('却下を消す');
     const messages = run(repo, 'base').messages;
     assert.ok(messages.some((m) => m.includes('[DS7]') && m.includes('adr-0002-b') && m.includes('消えている')));
+  });
+
+  it('[TST-509] 承認済の ADR に手書きで 差戻し の行を足し、proposed/ へ動かしても、DS9 の違反 (差戻しは履歴の 1 行目にだけ)', () => {
+    const repo = makeRepo();
+    const info = landAccepted(repo, { number: '0001', slug: 'a' });
+    repo.git('branch', 'base');
+    repo.git('checkout', '-q', '-b', 'work');
+    const row = { date: '2026-10-22', event: '差戻し', before: 'accepted', after: 'proposed', by: '', evidence: '', commit: '', fingerprint: '', memo: '旧い状態 accepted (2026-10-05)' };
+    const moved = `${DECISIONS}/proposed/0001-a.md`;
+    repo.write(moved, appendHistoryRow(editFrontmatter(repo.read(info.path), { status: 'proposed', awaiting: APPROVER.name }), row));
+    repo.git('rm', '-q', info.path);
+    repo.commit('承認済を差し戻す');
+    const messages = run(repo, 'base').messages;
+    assert.ok(messages.some((m) => m.includes('[DS9]') && m.includes('1 行目')), messages.join('\n'));
+  });
+
+  it('[TST-510] 承認済の ADR に手書きで 移行前 の行を足し、retired/ へ落としても、DS9 と DS8 の違反 (superseded_by が無い)', () => {
+    const repo = makeRepo();
+    const info = landAccepted(repo, { number: '0001', slug: 'a' });
+    repo.git('branch', 'base');
+    repo.git('checkout', '-q', '-b', 'work');
+    const row = { date: '2026-10-05', event: '移行前', before: '未記入', after: 'superseded', by: '', evidence: '移行前 (未記入)', commit: '', fingerprint: '', memo: '' };
+    const moved = `${DECISIONS}/retired/2026/0001-a.md`;
+    repo.write(moved, appendHistoryRow(editFrontmatter(repo.read(info.path), { status: 'superseded' }), row));
+    repo.git('rm', '-q', info.path);
+    repo.commit('承認済を置換済にする');
+    const messages = run(repo, 'base').messages;
+    assert.ok(messages.some((m) => m.includes('[DS9]') && m.includes('1 行目')), messages.join('\n'));
+    assert.ok(messages.some((m) => m.includes('[DS8]') && m.includes('superseded_by')), messages.join('\n'));
   });
 });

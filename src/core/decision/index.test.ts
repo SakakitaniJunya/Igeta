@@ -48,6 +48,13 @@ describe('置換・再提案・待ち', () => {
     const lonely = doc(`${D}/proposed/0003-c.md`, adrText({ number: '0003', slug: 'c', extra: { reopens: 'adr-0009-z' } }));
     assert.equal(checkReopens([lonely]).length, 1);
   });
+  it('DS11: created が無い・形式違いでも NaN を出さず、起点を辿れない警告 1 行にする', () => {
+    const d = doc(`${D}/proposed/0003-c.md`, adrText({ number: '0003', slug: 'c', extra: { awaiting: 'A', created: '来週' } }));
+    const result = checkWaiting(d, { isStrict: true, approverNames: ['A'], staleDays: 14, today: '2026-10-22', waitingSince: { date: d.created, isFromGit: false } });
+    assert.equal(result.warnings.length, 1);
+    assert.doesNotMatch(result.warnings[0] ?? '', /NaN/);
+    assert.match(result.warnings[0] ?? '', /起点を辿れない/);
+  });
   it('DS11: ちょうど staleDays は警告にならず、超えれば警告。差戻し直後の持ち主が無いと strict では違反', () => {
     const d = doc(`${D}/proposed/0003-c.md`, adrText({ number: '0003', slug: 'c', extra: { awaiting: 'A' } }));
     const context = { isStrict: true, approverNames: ['A'], staleDays: 14, today: '2026-10-22', waitingSince: { date: '2026-10-08', isFromGit: true } };

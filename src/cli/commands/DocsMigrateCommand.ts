@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createGhPort } from '#decision/cli';
-import { isoDateInTokyo } from '#decision/core';
+import { todayInTokyo } from '#decision/core';
 import { ExitCode } from '../../core/ExitCode.js';
 import { ArgParseError, parseArgs } from '../Args.js';
 import type { CommandContext } from '../Command.js';
@@ -104,7 +104,7 @@ export class DocsMigrateCommand extends Command {
   async #decisionStage(root: string, args: ReturnType<typeof parseArgs>, ctx: CommandContext, isDryRun: boolean): Promise<ExitCode> {
     const table = args.get('decisions-evidence');
     const evidenceRows: EvidenceRow[] = table === undefined ? [] : this.#readEvidence(resolve(ctx.cwd, table));
-    const outcome = await migrateDecisions({ root, igetaRoot: ctx.igetaRoot, evidenceRows, port: createGhPort(), today: isoDateInTokyo(new Date()), isDryRun });
+    const outcome = await migrateDecisions({ root, igetaRoot: ctx.igetaRoot, evidenceRows, port: createGhPort(), today: todayInTokyo(), isDryRun });
     for (const line of outcome.lines) (outcome.exitCode === ExitCode.Ok ? ctx.stdout : ctx.stderr)(line);
     return outcome.exitCode;
   }

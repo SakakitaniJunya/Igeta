@@ -20,7 +20,8 @@ function kindOf(table: MarkdownTable): Kind | undefined {
   return prefixes.size === 1 && prefixes.has('DEC') ? 'DEC' : prefixes.size === 1 && prefixes.has('OPEN') ? 'OPEN' : undefined;
 }
 
-const cellsLine = (cells: readonly string[]): string => `| ${cells.map((cell) => cell.replace(/\|/g, '\\|')).join(' | ')} |`;
+/** 既に `\|` と書かれたセルは、一度戻してから書き直す (二重にエスケープして列が増えないように) */
+const cellsLine = (cells: readonly string[]): string => `| ${cells.map((cell) => cell.replace(/\\\|/g, '|').replace(/\|/g, '\\|')).join(' | ')} |`;
 
 function rewriteTable(table: MarkdownTable, kind: Kind, owner: string): string[] {
   const fixed = kind === 'DEC' ? DEC_COLUMNS : OPEN_COLUMNS;

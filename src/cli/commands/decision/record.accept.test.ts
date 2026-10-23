@@ -60,6 +60,13 @@ describe('decision-accept', () => {
     assert.doesNotMatch(readme, /0003-cache/);
   });
 
+  it('owner・repo・merge した人の GitHub 名は大文字小文字を区別せず比べる', async () => {
+    const repo = newRepo();
+    const { sha } = seedProposed(repo);
+    const outcome = await recordDecision(request(repo, mergedPort(sha, { mergedBy: APPROVER.github.toUpperCase() }), { evidence: 'https://github.com/ACME/Widgets/pull/7' }));
+    assert.equal(outcome.exitCode, ExitCode.Ok, outcome.lines.join('\n'));
+  });
+
   it('[TST-111] --dry-run は MOVE・APPEND・REWRITE・SET の行だけを出し、作業ツリーは同じ', async () => {
     const repo = newRepo();
     const { port } = seedProposed(repo);

@@ -12,8 +12,8 @@ export const TODAY = '2026-10-22';
 export const legacyPath = (number: string, slug: string): string => `${DECISIONS}/2026/${number}-${slug}.md`;
 
 /** ADR を旧配置 (<年>/) に置く。frontmatter の accepted は 2026-10-03 */
-export function legacyAdr(repo: TestRepo, number: string, slug: string, status: string): void {
-  repo.write(legacyPath(number, slug), adrText({ number, slug, status, extra: { accepted: '2026-10-03' } }));
+export function legacyAdr(repo: TestRepo, number: string, slug: string, status: string, more: Record<string, string> = {}): void {
+  repo.write(legacyPath(number, slug), adrText({ number, slug, status, extra: { accepted: '2026-10-03', ...more } }));
 }
 
 export function legacyRepo(): TestRepo {

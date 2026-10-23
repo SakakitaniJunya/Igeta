@@ -112,4 +112,11 @@ describe('決定台帳の列の移行: 既にある列の値', () => {
     assert.deepEqual([rows[1]?.cells['持ち主'], rows[1]?.cells['期限'], rows[1]?.cells['根拠']], ['CEO', '未定', '移行前 (未記入)']);
     assert.equal(out.split('\n')[0]?.split('|').filter((cell) => cell.trim() === '持ち主').length, 1, '列が重複しない');
   });
+
+  it('既に \\| を含むセルを二重にエスケープせず、列が増えない', () => {
+    const text = ['| ID | 日付 | 決めた人 | 原文 | 決定 | 影響する文書 |', '|---|---|---|---|---|---|', '| DEC-001 | 2026-10-01 | CEO | a\\|b | 決めた | A |'].join('\n');
+    const rows = readLedger(migrateLedgerText(text, 'CEO')).rows;
+    assert.equal(rows[0]?.cells['原文'], 'a\\|b');
+    assert.equal(rows[0]?.cells['決定'], '決めた');
+  });
 });

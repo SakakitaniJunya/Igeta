@@ -17,6 +17,9 @@ export function parseEvidenceUrl(url: string): Result<EvidenceUrl> {
   return succeed({ slug: matched[1] ?? '', kind: matched[2] as EvidenceUrl['kind'], ref: matched[3] ?? '' });
 }
 
+/** GitHub の owner・repo・ユーザー名は大文字小文字を区別しない */
+export const sameGithubName = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
 
@@ -32,7 +35,7 @@ function shapeProblems(row: HistoryRow, context: ShapeContext): string[] {
   const url = parseEvidenceUrl(row.evidence);
   const allowedKinds = row.event === '却下' ? ['pull', 'issues'] : ['pull', 'commit'];
   if (!url.ok) problems.push(url.reason);
-  else if (url.value.slug !== context.slug) problems.push(`根拠 ${row.evidence} は origin (${context.slug}) の repo ではない`);
+  else if (!sameGithubName(url.value.slug, context.slug)) problems.push(`根拠 ${row.evidence} は origin (${context.slug}) の repo ではない`);
   else if (!allowedKinds.includes(url.value.kind)) problems.push(`${row.event}の根拠は ${allowedKinds.join('・')} の URL (${row.evidence})`);
   const isCommitOptional = row.event === '却下' && row.commit === '';
   if (!isCommitOptional && !FULL_SHA.test(row.commit)) problems.push(`根拠 commit "${row.commit}" が 40 桁の 16 進ではない`);

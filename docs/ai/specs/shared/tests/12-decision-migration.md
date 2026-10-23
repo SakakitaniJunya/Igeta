@@ -43,7 +43,7 @@ relates_to: [test-decision-status]
 | 規則 | 内容 |
 |---|---|
 | MG1 | Igeta 自身の 12 本: 下の表の根拠で `decision-accept`。根拠の PR は、その ADR を追加または変更した PR (第 1 親の木に同じ本文が無い。DS5)。根拠の PR の本文の指紋と今の本文が違えば、後の PR を根拠にするか `amend` (accept は拒否)。記録の PR では 0013 自身も `proposed/` へ移す。docs-check は PR の終わりに 1 回だけ見る (1 本ずつ accept する途中の状態は検査しない) |
-| MG2 | 利用側の `docs-migrate` の 1 段: `<年>/` の ADR を状態でフォルダへ移す。根拠の表 (id・名前・URL) がある ADR だけ accept。無い旧 accepted・旧 rejected は事象 `差戻し` で `proposed/` に置き、メモに旧い状態と日付、`awaiting` に `approvers` の先頭の名前を入れる。旧 superseded・deprecated は事象 `移行前` の履歴を 1 行起こして `retired/` に置く |
+| MG2 | 利用側の `docs-migrate` の 1 段: `<年>/` の ADR を状態でフォルダへ移す。根拠の表 (id・名前・URL) がある ADR だけ accept。無い旧 accepted・旧 rejected は事象 `差戻し` で `proposed/` に置き、メモに旧い状態と日付、`awaiting` に `approvers` の先頭の名前を入れる。旧 superseded・deprecated は事象 `移行前` の履歴を 1 行起こして `retired/` に置く。旧 amended は経緯が分からないので `accepted` に格下げせず、`移行前` (未記入→amended) の 1 行で `accepted/` に置く。「A が B に置換され、B は accepted だが根拠が無い」組は、A は `retired/` のまま、B は差戻しで `proposed/` になる (DS8 は `移行前` の A を咎めない) |
 | MG3 | 利用側の DEC・OPEN: 列を足す。DEC は状態 `決定`、根拠 `移行前 (未記入)`。OPEN は状態 `未決` (暫定値の列が埋まっていれば `暫定`)、持ち主に `approvers` の先頭の名前、期限 `未定`、根拠 `移行前 (未記入)`。値は移行の PR で人が直す (人の承認のパス)。直るまで DS13 は警告として数え、違反にしない |
 | MG4 | 移行の印は、移行前に在った行だけ。新しい行に書けば DS13 の違反 (DS13 に書いた比べ方) |
 
@@ -79,6 +79,8 @@ relates_to: [test-decision-status]
 | TST-506 | 既存の repo を赤くしない | 状態のフォルダが無い repo で、手書きの `status: accepted` | DS12 の警告 1 件だけ。DS1・DS3 は効かない。同じ repo の proposed で `awaiting` が無くても、DS11 は警告にとどまる |
 | TST-507 | 台帳の列なし | `状態` の列が無い台帳 | DS13 は効かない。移行後に列を消せば DS7 と同じ比べ方で違反 |
 | TST-508 | 持ち主の補い | 差戻しの ADR の `awaiting` が `approvers` に無い名前 (TST-401 は先頭の名前が入る側) | DS11 の違反 |
+| TST-509 | 差戻しの悪用 | 承認済の ADR に手書きで `差戻し` の行を足し、status を proposed にして `proposed/` へ動かす (`docs-check --base`) | DS9 の違反 (差戻しは履歴の 1 行目にだけ) |
+| TST-510 | 移行前の悪用 | 承認済の ADR に手書きで `移行前` の行を足し、status を superseded にして `retired/` へ動かす。`superseded_by` は空 | DS9 と DS8 の違反 |
 
 ## 5. トレーサビリティ
 

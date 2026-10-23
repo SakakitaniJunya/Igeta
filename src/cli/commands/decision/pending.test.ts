@@ -2,6 +2,7 @@
 // decision-pending (テスト仕様 10 の TST-105)。経過日数は、ADR が初めて現れた commit の日付から数える。
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { appendHistoryRow } from '#decision/core';
 import { APPROVER, DECISIONS, disposeAllRepos, makeRepo } from '#core/decision/decision.test-support.js';
 import { adrText } from '#core/decision/adr.test-support.js';
 import { ExitCode } from '#core/ExitCode.js';
@@ -56,5 +57,15 @@ describe('decision-pending', () => {
     const lines: string[] = [];
     await new DecisionPendingCommand().run(['--root', repo.root], { cwd: repo.root, igetaRoot: IGETA_ROOT, stdout: (l) => lines.push(l), stderr: () => undefined });
     assert.deepEqual(lines, ['承認待ちの ADR は無い', `NOTE ${PENDING_LIMIT_NOTE}`]);
+  });
+
+  it('移行の差戻しで proposed/ に置かれた ADR は、承認した PR の候補を出さず、待ちを差戻しの日から数える', () => {
+    const repo = makeRepo();
+    const row = { date: '2026-10-20', event: '差戻し', before: 'accepted', after: 'proposed', by: '', evidence: '', commit: '', fingerprint: '', memo: '旧い状態 accepted (2026-10-01)' };
+    repo.write(`${DECISIONS}/proposed/0001-moved.md`, appendHistoryRow(adrText({ number: '0001', slug: 'moved', extra: { awaiting: APPROVER.name } }), row));
+    repo.commit('移行 (#30)', '2026-10-21T09:00:00Z');
+    const { entries } = collectPending({ root: repo.root, today: '2026-10-22', staleDays: 14 });
+    assert.deepEqual([entries[0]?.waitedDays, entries[0]?.pull], [2, '']);
+    assert.match(entries[0]?.candidate ?? '', /<承認した PR の URL>/);
   });
 });

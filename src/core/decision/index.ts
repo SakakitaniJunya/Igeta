@@ -115,3 +115,6 @@ export function loadDecisions(root: string): readonly DecisionDoc[] {
 
 /** 日付 (YYYY-MM-DD) を Asia/Tokyo で取る。履歴の日付と待ち日数が、実行した人の手元の日付とずれないようにする */
 export const isoDateInTokyo = (date: Date): string => date.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+
+/** 今日の日付 (Asia/Tokyo)。履歴の記録日に使う */
+export const todayInTokyo = (): string => isoDateInTokyo(new Date());

@@ -46,8 +46,12 @@ export interface LedgerContext {
 }
 
 const targetsOf = (cell: string): string[] => [...[...cell.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1] ?? ''), ...(cell.match(/https?:\/\/[^\s)|]+/g) ?? [])];
-const isReachable = (cell: string, pathExists: (path: string) => boolean): boolean =>
-  targetsOf(cell).some((target) => /^https?:\/\//.test(target) || pathExists(target.split('#')[0] ?? ''));
+/** 根拠: リンク・URL・裸の repo 相対パス (`fd.md#2026-10-21`)。URL 以外は実在するパスでなければならない */
+const isReachable = (cell: string, pathExists: (path: string) => boolean): boolean => {
+  const targets = targetsOf(cell);
+  const bare = targets.length === 0 ? cell.split(/\s+/).filter((token) => token !== '') : [];
+  return [...targets, ...bare].some((target) => /^https?:\/\//.test(target) || pathExists(target.split('#')[0] ?? ''));
+};
 
 function stateProblems(row: LedgerRow, kind: string): string[] {
   const [mark = '', word = ''] = (row.cells['状態'] ?? '').split(/\s+/);

@@ -3,7 +3,7 @@
 
 import { resolve } from 'node:path';
 import type { DecisionDoc } from '#decision/core';
-import { daysBetween, firstSeen, isoDateInTokyo, loadDecisions, originSlug, readIsShallow } from '#decision/core';
+import { daysBetween, fail, firstSeen, todayInTokyo, loadDecisions, originSlug, readIsShallow } from '#decision/core';
 import { ExitCode } from '#core/ExitCode.js';
 import { loadIgetaConfig } from '#core/IgetaConfig.js';
 import { parseArgs } from '#cli/Args.js';
@@ -29,11 +29,15 @@ export interface PendingEntry {
 }
 
 function entryOf(doc: DecisionDoc, env: { readonly root: string; readonly today: string; readonly staleDays: number; readonly slug: string; readonly fallbackBy: string; readonly isShallow: boolean }): PendingEntry {
-  const seen = firstSeen(env.root, doc.path, env.isShallow);
-  const since = seen.ok ? seen.value.date : doc.created || env.today;
+  // 移行 (docs-migrate) の差戻しで proposed/ に置かれた ADR は、path を足した commit が移行の PR になる。
+  // 承認した PR の候補は出さず (--evidence は承認した PR を手で指定する)、待ちは差戻しの日から数える。
+  const sentBack = doc.rows[0]?.event === '差戻し' ? doc.rows[0] : undefined;
+  const seen = sentBack === undefined ? firstSeen(env.root, doc.path, env.isShallow) : fail('差戻しの行から数える');
+  const rawSince = sentBack?.date ?? (seen.ok ? seen.value.date : doc.created);
+  const since = /^\d{4}-\d{2}-\d{2}$/.test(rawSince) ? rawSince : env.today;
   const pullNumber = seen.ok ? /\(#(\d+)\)/.exec(seen.value.subject)?.[1] : undefined;
   const by = doc.awaiting || env.fallbackBy;
-  const evidence = pullNumber !== undefined && env.slug !== '' ? `https://github.com/${env.slug}/pull/${pullNumber}` : '<merge した PR の URL>';
+  const evidence = pullNumber !== undefined && env.slug !== '' ? `https://github.com/${env.slug}/pull/${pullNumber}` : '<承認した PR の URL>';
   const waitedDays = daysBetween(since, env.today);
   return {
     number: doc.number,
@@ -42,7 +46,7 @@ function entryOf(doc: DecisionDoc, env: { readonly root: string; readonly today:
     awaiting: doc.awaiting,
     due: doc.due,
     waitedDays,
-    isFromGit: seen.ok,
+    isFromGit: seen.ok || sentBack !== undefined,
     isStale: waitedDays > env.staleDays || (doc.due !== '' && doc.due < env.today),
     pull: pullNumber === undefined ? '' : `#${pullNumber}`,
     candidate: `igeta decision-accept ${doc.number} --by "${by}" --evidence ${evidence}`,
@@ -76,7 +80,6 @@ function lineOf(entry: PendingEntry): string {
   return `${staleMark}${entry.number} ${entry.title} | 持ち主 ${entry.awaiting || '—'} | 期限 ${entry.due || '—'} | ${entry.waitedDays} 日待ち${since} | PR ${entry.pull || '—'} | ${entry.candidate}`;
 }
 
-const todayOf = (): string => isoDateInTokyo(new Date());
 
 export class DecisionPendingCommand extends Command {
   readonly name = 'decision-pending';
@@ -97,7 +100,7 @@ export class DecisionPendingCommand extends Command {
       ctx.stderr('ERROR --stale-days は 0 以上の整数');
       return ExitCode.CannotCheck;
     }
-    const { entries, problem } = collectPending({ root: resolve(ctx.cwd, args.get('root') ?? '.'), today: todayOf(), staleDays });
+    const { entries, problem } = collectPending({ root: resolve(ctx.cwd, args.get('root') ?? '.'), today: todayInTokyo(), staleDays });
     if (problem !== undefined) {
       ctx.stderr(`ERROR ${problem}`);
       return ExitCode.CannotCheck;

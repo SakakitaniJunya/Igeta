@@ -4,13 +4,14 @@
 //   根拠が無い旧 accepted・旧 rejected        → 事象 差戻し で proposed/ へ (メモに旧い状態と日付、awaiting は approvers の先頭の名前)
 //   旧 proposed                                → proposed/ へ (awaiting が無ければ approvers の先頭の名前)
 //   旧 superseded・deprecated                  → 事象 移行前 の履歴を 1 行起こして retired/<年>/ へ (根拠は 移行前 (未記入))
+//   旧 amended                                 → 事象 移行前 (未記入→amended) の 1 行で accepted/<年>/ へ。accepted に格下げしない
 // 根拠を作って承認済にしない。1 本でも確かめられなければ、全部書かずに止める。終わりに docs-check の決定の検査を 1 回かける。
 // .igeta.json に decisions.approvers が無い repo は、何も変えず案内だけを出す (既存の repo を黙って動かさない)。
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DecisionDoc } from '#decision/core';
-import { DECISIONS_DIR, editFrontmatter } from '#decision/core';
+import { DECISIONS_DIR, MIGRATION_EVIDENCE, editFrontmatter } from '#decision/core';
 import type { Change, Context, GitHubPort, RecordOutcome, RecordRequest, Step } from '#decision/cli';
 import { build, commitChanges, planAccept, prepare, proceed, refuse, row, yearOf } from '#decision/cli';
 import { DecisionStatusCheck } from '../checks/DecisionStatusCheck.js';
@@ -55,7 +56,9 @@ export function parseEvidenceTable(text: string): EvidenceRow[] {
 }
 
 const LEGACY_PATH = /^docs\/person\/decisions\/\d{4}\/[^/]+\.md$/;
-const ACCEPTABLE = ['proposed', 'accepted', 'amended'];
+/** 根拠の表で承認済にできる旧い状態。amended は承認と改訂の経緯が分からないので、移行前の行で accepted/ に置く */
+const ACCEPTABLE = ['proposed', 'accepted'];
+const RECORDED_BEFORE_MIGRATION = ['amended', 'superseded', 'deprecated'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function sendBack(doc: DecisionDoc, today: string, owner: string): Change {
@@ -66,8 +69,9 @@ function sendBack(doc: DecisionDoc, today: string, owner: string): Change {
 function recordBeforeMigration(doc: DecisionDoc): Step<Change> {
   const date = [doc.accepted, doc.created].find((candidate) => DATE.test(candidate));
   if (date === undefined) return refuse(`${doc.id}: 移行前の行の日付にする accepted か created (YYYY-MM-DD) が無い`);
-  const newRow = row({ date, event: '移行前', before: '未記入', after: doc.status, by: '', evidence: '移行前 (未記入)', commit: '', fingerprint: '' });
-  return proceed(build(doc, { newRow, folder: `retired/${yearOf(date)}`, frontmatter: { status: doc.status } }));
+  const newRow = row({ date, event: '移行前', before: '未記入', after: doc.status, by: '', evidence: MIGRATION_EVIDENCE, commit: '', fingerprint: '' });
+  const state = doc.status === 'amended' ? 'accepted' : 'retired';
+  return proceed(build(doc, { newRow, folder: `${state}/${yearOf(date)}`, frontmatter: { status: doc.status } }));
 }
 
 function keepProposed(doc: DecisionDoc, owner: string): Change {
@@ -88,9 +92,9 @@ async function changeFor(context: Context, doc: DecisionDoc, evidence: EvidenceR
     const planned = await planAccept({ ...context, request }, doc, ACCEPTABLE);
     return planned.ok && planned.value[0] !== undefined ? proceed(planned.value[0]) : planned.ok ? refuse(`${doc.id}: 変更を作れない`) : planned;
   }
-  if (['superseded', 'deprecated'].includes(doc.status)) return recordBeforeMigration(doc);
+  if (RECORDED_BEFORE_MIGRATION.includes(doc.status)) return recordBeforeMigration(doc);
   if (doc.status === 'proposed') return proceed(keepProposed(doc, owner));
-  if (['accepted', 'amended', 'rejected'].includes(doc.status)) return proceed(sendBack(doc, context.request.today, owner));
+  if (['accepted', 'rejected'].includes(doc.status)) return proceed(sendBack(doc, context.request.today, owner));
   return refuse(`${doc.id}: status: ${doc.status} は移行できない`);
 }
 

@@ -62,4 +62,15 @@ describe('DecisionStatusCheck: 台帳 (DS13)', () => {
     assert.deepEqual(run(repo).messages, []);
     assert.ok(hasRule(run(repo, 'base').messages, 'DS13'));
   });
+
+  it('[TST-108] DEC の根拠は、裸の repo 相対パス (fd.md#2026-10-21) でもよい。実在しなければ違反', () => {
+    const repo = makeRepo();
+    repo.write('fd.md', '# fd\n');
+    repo.write(`${DECISIONS}/01-decisions.md`, DEC_TABLE('| DEC-001 | ✅ 決定 | 2026-10-01 | CEO | 原文 | fd.md#2026-10-21 | 決めた | A |'));
+    repo.commit('bare path');
+    assert.deepEqual(run(repo).messages, []);
+    repo.write(`${DECISIONS}/01-decisions.md`, DEC_TABLE('| DEC-001 | ✅ 決定 | 2026-10-01 | CEO | 原文 | missing.md#x | 決めた | A |'));
+    repo.commit('missing path');
+    assert.ok(hasRule(run(repo).messages, 'DS13'));
+  });
 });

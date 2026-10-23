@@ -4,6 +4,7 @@ import type { DecisionDoc } from '../decision.js';
 import type { Finding } from '../history.js';
 
 const NO_VALUE = '—';
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** 経過日数 = to − from (日)。どちらも `YYYY-MM-DD` */
 export const daysBetween = (from: string, to: string): number => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
@@ -24,6 +25,9 @@ export function checkWaiting(doc: DecisionDoc, context: WaitingContext): { reado
   const problems: string[] = [];
   if (doc.awaiting === '') problems.push('proposed の ADR は awaiting (持ち主) が要る');
   else if (context.approverNames.length > 0 && !context.approverNames.includes(doc.awaiting)) problems.push(`awaiting "${doc.awaiting}" が approvers の名前に無い`);
+  if (!ISO_DATE.test(context.waitingSince.date)) {
+    return { findings: context.isStrict ? problems.map((message) => ({ rule: 'DS11', line: 1, message })) : [], warnings: [`DS11 ADR-${doc.number}: 待ち日数の起点を辿れない (初めて現れた日が取れず、created も YYYY-MM-DD でない)`] };
+  }
   const waited = daysBetween(context.waitingSince.date, context.today);
   const source = context.waitingSince.isFromGit ? '' : ' (初めて現れた日を辿れず、created から数えた)';
   const isOverdue = doc.due !== '' && doc.due < context.today;

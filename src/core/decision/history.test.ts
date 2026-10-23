@@ -46,7 +46,7 @@ describe('DS3 / DS9 / DS7', () => {
     assert.equal(checkTransitions(rows({ event: '承認', before: 'rejected' })).length, 1);
     assert.equal(checkTransitions(rows({ event: '差戻し', before: 'accepted', after: 'proposed', memo: '' })).length, 1);
     assert.deepEqual(checkTransitions(rows({ event: '差戻し', before: 'accepted', after: 'proposed', memo: 'accepted 2026-10-01' })), []);
-    assert.equal(checkTransitions(rows({ event: '置換', before: 'accepted', after: 'deprecated' })).length, 2);
+    assert.equal(checkTransitions(rows({ event: '置換', before: 'accepted', after: 'deprecated' })).length, 1);
     assert.deepEqual(checkTransitions(rows({ event: '移行前', before: '未記入', after: 'deprecated' })), []);
   });
   it('DS7: 末尾の追加は通り、過去の行の変更・消去・行なしの状態変更は違反', () => {

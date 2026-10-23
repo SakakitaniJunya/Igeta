@@ -58,6 +58,9 @@ export const checkUnique = (docs: readonly DecisionDoc[]): Finding[] => [...dupl
 
 const isInForce = (status: string): boolean => status === 'accepted' || status === 'amended';
 
+/** 1 行目が移行前の ADR (移行の書き手が retired に置いたもの)。置いた側が差戻しで proposed になっていても、DS8 は咎めない */
+const isMigrated = (doc: DecisionDoc): boolean => doc.rows[0]?.event === '移行前';
+
 function pairProblem(doc: DecisionDoc, byId: ReadonlyMap<string, DecisionDoc>): string[] {
   const problems: string[] = [];
   for (const oldId of doc.supersedes) {
@@ -65,10 +68,11 @@ function pairProblem(doc: DecisionDoc, byId: ReadonlyMap<string, DecisionDoc>): 
     if (old === undefined || old.supersededBy !== doc.id) problems.push(`supersedes: ${oldId} の側に superseded_by: ${doc.id} が無い (片側だけ)`);
     else if (isInForce(doc.status) && isInForce(old.status)) problems.push(`${oldId} が ${old.status} のまま (decision-supersede で retired へ)`);
   }
+  if (doc.status === 'superseded' && doc.supersededBy === '' && !isMigrated(doc)) problems.push('status: superseded だが superseded_by が無い (置換は decision-supersede で記録する)');
   if (doc.supersededBy !== '') {
     const next = byId.get(doc.supersededBy);
     if (next === undefined || !next.supersedes.includes(doc.id)) problems.push(`superseded_by: ${doc.supersededBy} の側に supersedes: ${doc.id} が無い (片側だけ)`);
-    else if (doc.status === 'superseded' && next.status === 'proposed') problems.push(`${doc.supersededBy} がまだ proposed なのに retired になっている`);
+    else if (doc.status === 'superseded' && next.status === 'proposed' && !isMigrated(doc)) problems.push(`${doc.supersededBy} がまだ proposed なのに retired になっている`);
   }
   return problems;
 }

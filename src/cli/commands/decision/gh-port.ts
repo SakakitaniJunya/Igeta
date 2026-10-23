@@ -14,7 +14,8 @@ async function api(path: string, extra: readonly string[] = []): Promise<Result<
     const { stdout } = await run('gh', ['api', ...extra, path], { maxBuffer: MAX_BUFFER_BYTES });
     return succeed(stdout);
   } catch (error) {
-    const detail = error instanceof Error ? error.message.split('\n')[0] ?? '' : String(error);
+    const stderr = typeof (error as { stderr?: unknown }).stderr === 'string' ? (error as { stderr: string }).stderr.trim() : '';
+    const detail = [error instanceof Error ? error.message.split('\n')[0] ?? '' : String(error), stderr].filter((part) => part !== '').join(' / ');
     return fail(`gh api ${path} に失敗した: ${detail}`);
   }
 }

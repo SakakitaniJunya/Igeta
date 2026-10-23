@@ -2,7 +2,7 @@
 // PR の commit のどれかに今の本文の ADR があること。gh は GitHubPort 越しにだけ読む。
 
 import type { DecisionDoc } from '#decision/core';
-import { checkIntroducedBy, createGitCommitReader, decisionFingerprint, parseEvidenceUrl } from '#decision/core';
+import { checkIntroducedBy, sameGithubName, createGitCommitReader, decisionFingerprint, parseEvidenceUrl } from '#decision/core';
 import type { Context, Step } from './types.js';
 import { cannotCheck, proceed, refuse } from './types.js';
 
@@ -24,14 +24,14 @@ export async function confirmMergedPull(context: Context, doc: DecisionDoc, by: 
   const url = parseEvidenceUrl(evidence);
   if (!url.ok) return refuse(url.reason);
   if (url.value.kind !== 'pull') return refuse(`根拠は merge 済みの PR の URL (${evidence})`);
-  if (url.value.slug !== context.slug) return refuse(`根拠 ${evidence} は origin (${context.slug}) の repo ではない`);
+  if (!sameGithubName(url.value.slug, context.slug)) return refuse(`根拠 ${evidence} は origin (${context.slug}) の repo ではない`);
   const github = approverGithub(context, by);
   if (!github.ok) return github;
   const number = Number(url.value.ref);
   const pull = await context.request.port.pull(context.slug, number);
   if (!pull.ok) return cannotCheck(pull.reason);
   if (pull.value.state !== 'merged') return refuse(`PR #${number} は merge されていない (${pull.value.state})`);
-  if (pull.value.mergedBy !== github.value) return refuse(`PR #${number} を merge した人 (${pull.value.mergedBy ?? '不明'}) が --by "${by ?? ''}" の github (${github.value}) と違う`);
+  if (!sameGithubName(pull.value.mergedBy ?? '', github.value)) return refuse(`PR #${number} を merge した人 (${pull.value.mergedBy ?? '不明'}) が --by "${by ?? ''}" の github (${github.value}) と違う`);
   const commits = await context.request.port.pullCommits(context.slug, number);
   if (!commits.ok) return cannotCheck(commits.reason);
   const candidates = [...new Set([pull.value.mergeCommit ?? '', ...[...commits.value].reverse()].filter((sha) => sha !== ''))];
@@ -88,10 +88,10 @@ export async function confirmRejection(context: Context): Promise<Step<{ url: st
   if (!github.ok) return github;
   const url = parseEvidenceUrl(evidence);
   if (!url.ok) return refuse(url.reason);
-  if (url.value.slug !== context.slug || url.value.kind === 'commit') return refuse(`却下の根拠は origin (${context.slug}) の PR か Issue の URL (${evidence})`);
+  if (!sameGithubName(url.value.slug, context.slug) || url.value.kind === 'commit') return refuse(`却下の根拠は origin (${context.slug}) の PR か Issue の URL (${evidence})`);
   const closure = await closureOf(context, url.value);
   if (!closure.ok) return closure;
   if (closure.value.isOpen) return refuse(`${evidence} はまだ閉じていない`);
-  if (closure.value.who !== github.value) return refuse(`${evidence} を閉じた・merge した人 (${closure.value.who ?? '不明'}) が --by の github (${github.value}) と違う`);
+  if (!sameGithubName(closure.value.who ?? '', github.value)) return refuse(`${evidence} を閉じた・merge した人 (${closure.value.who ?? '不明'}) が --by の github (${github.value}) と違う`);
   return proceed({ url: evidence, date: closure.value.date ?? context.request.today });
 }

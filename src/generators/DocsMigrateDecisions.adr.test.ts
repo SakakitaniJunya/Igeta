@@ -118,29 +118,3 @@ describe('docs-migrate の決定の段: ADR', () => {
     assert.equal(repo.git('status', '--porcelain'), '');
   });
 });
-
-describe('docs-migrate の決定の段: 根拠の表の入力', () => {
-  it('使われない行 (id の綴り違い・rejected の ADR) が 1 つでもあれば、何も書かずに拒否 (2) して列挙する', async () => {
-    const repo = legacyRepo();
-    legacyAdr(repo, '0001', 'acc', 'accepted');
-    legacyAdr(repo, '0002', 'rej', 'rejected');
-    const sha = repo.commit('旧配置 (#7)');
-    const port = fixturePort({ pulls: { 7: { state: 'merged', author: 'ai', mergedBy: APPROVER.github, mergeCommit: sha } }, commits: { 7: [sha] } });
-    const rows = [
-      { id: 'adr-0001-acc', by: APPROVER.name, evidence: pullUrl(7) },
-      { id: 'adr-0001-acd', by: APPROVER.name, evidence: pullUrl(7) },
-      { id: 'adr-0002-rej', by: APPROVER.name, evidence: pullUrl(7) },
-    ];
-    const outcome = await run(repo, port, rows);
-    assert.equal(outcome.exitCode, ExitCode.CannotCheck);
-    assert.match(outcome.lines.join('\n'), /adr-0001-acd \/ adr-0002-rej/);
-    assert.equal(repo.git('status', '--porcelain'), '');
-  });
-
-  it('parseEvidenceTable: 配列でない・JSON でない・by か evidence が欠けた行は 1 行の入力エラー', () => {
-    assert.deepEqual(parseEvidenceTable('[{"id":"a","by":"b","evidence":"c"}]'), [{ id: 'a', by: 'b', evidence: 'c' }]);
-    for (const bad of ['{}', 'not json', '[{"id":"a","by":"b"}]', '[1]', '[{"id":"a","by":"","evidence":"c"}]']) {
-      assert.throws(() => parseEvidenceTable(bad), /--decisions-evidence/, bad);
-    }
-  });
-});
