@@ -29,6 +29,7 @@ function parseDoc(input: TraceDocInput, config: TraceConfig, notices: Notice[]):
     kind: token.slice(0, token.lastIndexOf('-')),
     context: input.context,
     path: input.path,
+    docRef: input.id === null ? input.path : `${input.context}/${input.id}`,
     line,
     impact: impacts.get(line) ?? '',
   }));

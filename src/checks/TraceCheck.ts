@@ -109,7 +109,7 @@ export class TraceCheck implements Check {
    */
   #checkGrowth(base: string, current: readonly string[] | undefined, origin: ReturnType<typeof readOrigin>): Violation[] {
     if ('error' in origin) {
-      return [{ severity: 'cannot-check', message: `${base} と照合できない (T1(b) と基準の増加を確かめられない): ${origin.error}` }];
+      return [{ severity: 'cannot-check', message: `${base} と照合できない (T1(b) と基準の増加を確かめられない): ${origin.error}。CI の浅い checkout (fetch-depth: 1) では起きる。actions/checkout に fetch-depth: 0 を付けるか、git fetch origin main をしてから流す。trace.base で比べる先を変えられる` }];
     }
     const before = origin.origin.mergeBase.baseline;
     if (current === undefined || before === undefined || !grew(current, before)) return [];

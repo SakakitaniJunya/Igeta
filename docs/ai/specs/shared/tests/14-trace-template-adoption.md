@@ -51,6 +51,7 @@ relates_to: [test-trace-check, test-doc-graph]
 | C2 | 同 `presentation/components/__Feature__{Form,Row,Toolbar}.tsx` | `// __Feature__ の画面部品。 @trace` (SCR) |
 | C3 | 同 `infrastructure/endpoint.ts` | `// __Feature__ の API の呼び出し口。 @trace` (API) |
 | C4 | 同 `*.test.ts(x)` のうち screen・components・endpoint のテスト | `// __Feature__ のテスト。 @trace` (TST) |
+| W1 | 利用 repo の `.github` の CI (workflow) | `actions/checkout` に `fetch-depth: 0` を付ける(浅い checkout では origin と照合できず cannot-check)。#28 の後 |
 
 - 印 `__Feature__` などは MD-08 のとおり、1 単位のフォルダの中だけで使い、展開後のファイルには残らない。
 

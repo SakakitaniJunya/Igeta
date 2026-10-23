@@ -1,17 +1,17 @@
 // T7〜T11: コードの `@trace`、辺の片方向、定義の無い ID、番号の帯 (テスト仕様 13 の §0)。
 
+import { matchesGlob } from '../../gate/PathGlob.js';
 import type { CodeTag } from './CodeTags.js';
 import { edgeSides } from './model/Graph.js';
 import type { Definition, Finding, RuleId, TraceDocIndex, TraceIndex } from './model/Types.js';
 import type { TraceConfig } from './TraceConfig.js';
-
-const TEST_FILE = /\.(test|spec)\.[^/]+$|_test\.[^/]+$/;
 
 const finding = (rule: RuleId, level: Finding['level'], definition: Definition, message: string, detail = ''): Finding => ({
   rule,
   level,
   id: definition.token,
   path: definition.path,
+  docRef: definition.docRef,
   line: definition.line,
   message,
   detail,
@@ -20,7 +20,7 @@ const finding = (rule: RuleId, level: Finding['level'], definition: Definition, 
 /** T7 (TBL がコードの @trace から参照される) と T8 (TST が文書とテストのコードの両方に現れる) */
 function codeCoverage(index: TraceIndex, tags: readonly CodeTag[], config: TraceConfig): Finding[] {
   const tagged = (testsOnly: boolean): Set<string> =>
-    new Set(tags.filter((tag) => !testsOnly || TEST_FILE.test(tag.path)).flatMap((tag) => tag.tokens));
+    new Set(tags.filter((tag) => !testsOnly || config.tests.some((glob) => matchesGlob(tag.path, glob))).flatMap((tag) => tag.tokens));
   const anyCode = tagged(false);
   const testCode = tagged(true);
   const level = config.tblRule === 'error' ? 'violation' : 'warning';
@@ -56,7 +56,7 @@ function unknownIds(index: TraceIndex, tags: readonly CodeTag[], config: TraceCo
   const defined = new Set(index.definitions.map((definition) => definition.token));
   const isKind = (token: string): boolean => config.kinds.includes(token.slice(0, token.lastIndexOf('-')));
   const fromColumns = index.dangling.map((entry): Finding => ({
-    rule: 'T10', level: 'violation', id: entry.token, path: entry.path, line: entry.line, message: `欄の ${entry.token} に対応する定義が無い`, detail: entry.fromKey,
+    rule: 'T10', level: 'violation', id: entry.token, path: entry.path, docRef: entry.docRef, line: entry.line, message: `欄の ${entry.token} に対応する定義が無い`, detail: entry.fromKey,
   }));
   const fromCode = tags.flatMap((tag): Finding[] => {
     const where = { rule: 'T10', path: tag.path, line: 1 } as const;

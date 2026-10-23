@@ -2,6 +2,7 @@
 // テスト仕様 13 の T1〜T6・T9・T10 とその誤検知。名前の TST-9nn がテストケースの ID。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { fingerprint } from './Baseline.js';
 import { byRule, findAll, indexOf, makeDoc, makeWorld } from './testing/Fixtures.test-support.js';
 
 describe('TraceCheck: 規則 T1〜T6', () => {
@@ -56,6 +57,22 @@ describe('TraceCheck: 規則 T1〜T6', () => {
       makeDoc({ path, context, columns: ['上流 DEC:up'], headers: ['ID', '上流 DEC'], rows: [['REQ-120', '']] });
     const found = byRule(findAll([...makeWorld(), extra('docs/new.md', 'shared')], { origin: [...makeWorld(), extra('docs/old.md', 'shared')], mergeBase: makeWorld() }), 'T1');
     assert.deepEqual(found.map((f) => [f.id, f.path]), [['REQ-120', 'docs/new.md']]);
+  });
+
+  it('同じファイルの 3 つ目の重複は、2 つ目とは別の指紋になる (基準の 1 件に隠れない)', () => {
+    const rows = [['FN-010', 'REQ-101', 'SCR-101', 'API-001'], ['FN-010', '', '', ''], ['FN-010', '', '', '']];
+    const prints = byRule(findAll(makeWorld({ fn: rows })), 'T1').map(fingerprint);
+    assert.equal(new Set(prints).size, 2);
+  });
+
+  it('基準の指紋は文書の動かしに強い: パスが変わっても (id が同じなら) 同じ指紋', () => {
+    const fingerprintsAt = (path: string): string[] => {
+      const docs = makeWorld().map((doc) => (doc.path === 'docs/fn.md' ? makeDoc({ path, id: 'fn-doc', columns: ['上流 REQ:up'], headers: ['ID', '上流 REQ'], rows: [['FN-010', ''], ['FN-010', '']] }) : doc));
+      return findAll(docs).filter((found) => found.level === 'violation').map(fingerprint).sort();
+    };
+    const before = fingerprintsAt('docs/fn.md');
+    assert.ok(before.length > 0);
+    assert.deepEqual(fingerprintsAt('docs/moved/fn.md'), before);
   });
 
   it('[TST-909] T1(b): origin にもある自分の文書の定義 (差分で増えていない) は衝突にしない', () => {

@@ -49,9 +49,11 @@ relates_to: [test-doc-graph]
 
 **種類**: 既定は DEC・REQ・FN・SCR・API・TBL・TST。`trace.kinds` で上書きする。その種類の定義が 0 件の repo では、その種類に関わる規則を検査しない。
 
-**コードの `@trace`**: ファイルの先頭行 (MD-09 の概要の行) に `@trace` の後ろで ID を空白区切りで書く。例 (架空): `// 在庫の単位を表す部品。 @trace SCR-101 FN-010`。1 行目が shebang (`#!`) のファイルだけは 2 行目を見る。それ以降は見ない。対象は `trace.code` の glob。glob に入るのに `@trace` が無いファイルは違反。`@trace` だけで ID が 0 件のものは未記入の警告 (基準には入れない)。
+**コードの `@trace`**: ファイルの先頭行 (MD-09 の概要の行) に `@trace` の後ろで ID を空白区切りで書く。例 (架空): `// 在庫の単位を表す部品。 @trace SCR-101 FN-010`。1 行目が shebang (`#!`) のファイルだけは 2 行目を見る。それ以降は見ない。対象は `trace.code` の glob。そのうちテストのコード(T8)は `trace.tests` の glob で見分ける(既定は `**/*.test.*`・`**/*.spec.*`・`**/*_test.*`・`**/test_*.*`・`**/tests/**`・`**/__tests__/**`)。どちらも書き間違いは `cannot-check`。glob に入るのに `@trace` が無いファイルは違反。`@trace` だけで ID が 0 件のものは未記入の警告 (基準には入れない)。
 
-**基準**: repo 直下の `.igeta-trace-baseline.json` に、**違反だけ**の指紋 (規則・ID・ファイル。行番号は入れない) を記録する。指紋には違反の種類 (欠けている向き・相手の ID・重複の相手) も入れ、同じ規則・ID・ファイルの別の違反を隠さない。基準に残っているが、もう出ない指紋は警告に出す。警告は入れない。基準に有る違反は `baselined` と表示して落とさない。減らすのは `igeta trace --update-baseline` だけ。増やすのは禁止し、origin の基準より指紋が増えていたら違反にする。origin が無いときは `cannot-check`。
+**基準**: repo 直下の `.igeta-trace-baseline.json` に、**違反だけ**の指紋 (規則・ID・文書の名前 `context/frontmatter の id`。id が無い文書はパス。行番号とパスは入れず、文書を動かしても変わらない) を記録する。指紋には違反の種類 (欠けている向き・相手の ID・重複の相手と出現の順番。3 つ目以降の重複が記録済みの 1 件に隠れない) も入れ、同じ規則・ID・ファイルの別の違反を隠さない。基準に残っているが、もう出ない指紋は警告に出す。警告は入れない。基準に有る違反は `baselined` と表示して落とさない。減らすのは `igeta trace --update-baseline` だけ。増やすのは禁止し、origin の基準より指紋が増えていたら違反にする。origin が無いときは `cannot-check`。
+
+**CI**: 比べる先を読むため、浅い checkout (GitHub Actions の既定 `fetch-depth: 1`) では照合できず `cannot-check` になる。CI は merge 結果で回し、`actions/checkout` に `fetch-depth: 0` を付ける(例: `- uses: actions/checkout@v4` の下に `with: { fetch-depth: 0 }`)。または `git fetch origin main` をしてから流す。
 
 **比べる先**: T1(b) と基準の増加は、`.igeta.json` の `trace.base` (既定 `origin/main`) の先端と、自分の branch との merge-base を読んで比べる。基準の増加は merge-base の基準と比べる (main が基準を減らしただけでは落ちない)。照合できなければ `cannot-check`。docs-check と `igeta trace` は同じ値を使う。
 

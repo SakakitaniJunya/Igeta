@@ -104,7 +104,7 @@ function readGlobList(
   return { globs: value };
 }
 
-const TRACE_LIST_KEYS = ['kinds', 'code', 'columns', 'bands'] as const;
+const TRACE_LIST_KEYS = ['kinds', 'code', 'tests', 'columns', 'bands'] as const;
 
 /** `trace` の値 (JSON を読んだもの) の形を検査して TraceSettings にする。undefined は「書いてない」 */
 function parseTraceSettings(value: unknown, path: string): { readonly settings: TraceSettings } | { readonly violation: Violation } {
@@ -116,6 +116,12 @@ function parseTraceSettings(value: unknown, path: string): { readonly settings: 
     const list = record[key];
     if (list !== undefined && (!Array.isArray(list) || !list.every((item): item is string => typeof item === 'string'))) {
       return fail(`の ${key} は文字列の配列でなければならない`);
+    }
+  }
+  for (const key of ['code', 'tests'] as const) {
+    for (const glob of (record[key] as readonly string[] | undefined) ?? []) {
+      const reason = validateGlob(glob);
+      if (reason !== null) return fail(`の ${key} の ${JSON.stringify(glob)} は glob として使えない: ${reason}`);
     }
   }
   if (record['strictEdges'] !== undefined && typeof record['strictEdges'] !== 'boolean') return fail('の strictEdges は true か false でなければならない');

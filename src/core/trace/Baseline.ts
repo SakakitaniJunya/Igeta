@@ -4,8 +4,8 @@ import type { Finding } from './model/Types.js';
 
 export const BASELINE_FILE = '.igeta-trace-baseline.json';
 
-/** 指摘の指紋 (規則・ID・ファイル・違反の種類)。行番号は入れない (行が動いても同じ違反として扱う) */
-export const fingerprint = (finding: Finding): string => `${finding.rule}|${finding.id}|${finding.path}|${finding.detail ?? ''}`;
+/** 指摘の指紋 (規則・ID・文書の名前 `context/id`・違反の種類)。行番号とパスは入れない (行や文書を動かしても同じ違反として扱う) */
+export const fingerprint = (finding: Finding): string => `${finding.rule}|${finding.id}|${finding.docRef ?? finding.path}|${finding.detail ?? ''}`;
 
 /** 基準の中身を読む。形が違えば error */
 export function parseBaseline(text: string): { readonly fingerprints: readonly string[] } | { readonly error: string } {

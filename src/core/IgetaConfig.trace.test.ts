@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_IGETA_CONFIG, loadIgetaConfig } from './IgetaConfig.js';
-import { DEFAULT_TRACE_KINDS, readTraceConfig } from './trace/TraceConfig.js';
+import { DEFAULT_TEST_GLOBS, DEFAULT_TRACE_KINDS, readTraceConfig } from './trace/TraceConfig.js';
 
 const roots: string[] = [];
 function rootWith(content: unknown): string {
@@ -21,16 +21,16 @@ describe('IgetaConfig の trace', () => {
   it('trace が無ければ既定値 (空の設定)。readTraceConfig が既定の種類・warn・strictEdges なしを足す', () => {
     assert.deepEqual(loadIgetaConfig(rootWith({})), { config: DEFAULT_IGETA_CONFIG });
     const read = readTraceConfig(rootWith(undefined));
-    assert.deepEqual(read, { config: { kinds: DEFAULT_TRACE_KINDS, code: [], columns: [], bands: [], strictEdges: false, tblRule: 'warn', base: 'origin/main' } });
+    assert.deepEqual(read, { config: { kinds: DEFAULT_TRACE_KINDS, code: [], tests: DEFAULT_TEST_GLOBS, columns: [], bands: [], strictEdges: false, tblRule: 'warn', base: 'origin/main' } });
   });
 
   it('trace の項目を読む', () => {
-    const read = readTraceConfig(rootWith({ trace: { kinds: ['REQ'], code: ['src/**'], strictEdges: true, tblRule: 'error', base: 'develop', bands: ['機能要件:1'], columns: ['上流 X:up'] } }));
-    assert.deepEqual(read, { config: { kinds: ['REQ'], code: ['src/**'], columns: ['上流 X:up'], bands: ['機能要件:1'], strictEdges: true, tblRule: 'error', base: 'develop' } });
+    const read = readTraceConfig(rootWith({ trace: { kinds: ['REQ'], code: ['src/**'], tests: ['t/**'], strictEdges: true, tblRule: 'error', base: 'develop', bands: ['機能要件:1'], columns: ['上流 X:up'] } }));
+    assert.deepEqual(read, { config: { kinds: ['REQ'], code: ['src/**'], tests: ['t/**'], columns: ['上流 X:up'], bands: ['機能要件:1'], strictEdges: true, tblRule: 'error', base: 'develop' } });
   });
 
   it('形が不正な trace は CannotCheck (黙って既定値に倒さない)', () => {
-    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }, { base: '' }]) {
+    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }, { base: '' }, { code: ['src/{a'] }, { tests: ['**/[x'] }]) {
       const read = readTraceConfig(rootWith({ trace }));
       assert.ok('violation' in read && read.violation.severity === 'cannot-check', JSON.stringify(trace));
     }

@@ -70,6 +70,15 @@ describe('TraceCheck: コードの規則', () => {
     assert.deepEqual(found.map((f) => f.level), ['warning']);
   });
 
+  it('trace.tests の glob で、テストのコードを見分ける (既定は tests/ や test_*.* も含む)', () => {
+    const docs = [...makeWorld(), tables, tests];
+    const at = (path: string, settings = withCode) => byRule(findAll(docs, { settings, tags: tagOf(path, '// @trace TST-007') }), 'T8');
+    assert.deepEqual(at('src/tests/a.ts'), []);
+    assert.deepEqual(at('src/test_a.py'), []);
+    assert.equal(at('src/check_a.ts').length, 1);
+    assert.deepEqual(at('src/check_a.ts', { code: ['src/**'], tests: ['src/check_*'] } as typeof withCode), []);
+  });
+
   it('trace.code が空なら、コードの規則 (T7・T8・先頭行) は見ない', () => {
     const found = findAll([...makeWorld(), tables, tests], { tags: tagOf('src/a.ts', 'なし') });
     assert.deepEqual([...byRule(found, 'T7'), ...byRule(found, 'T8'), ...byRule(found, 'T10')], []);

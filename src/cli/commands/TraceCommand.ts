@@ -31,7 +31,7 @@ export class TraceCommand extends Command {
     const check = new TraceCheck(base === undefined ? {} : { base });
     const id = args.positional[0];
     if (id !== undefined) return this.#showTree(check.analyze(root), id, args.has('mermaid'), ctx);
-    if (args.has('update-baseline')) return this.#updateBaseline(check.analyze(root), root, ctx);
+    if (args.has('update-baseline')) return this.#updateBaseline(check, root, ctx);
 
     const report = new Report();
     report.addAll(check.run({ targetRoot: root, igetaRoot: ctx.igetaRoot }));
@@ -52,7 +52,8 @@ export class TraceCommand extends Command {
     return ExitCode.Ok;
   }
 
-  #updateBaseline(result: TraceResult, root: string, ctx: CommandContext): ExitCode {
+  #updateBaseline(check: TraceCheck, root: string, ctx: CommandContext): ExitCode {
+    const result = check.analyze(root);
     if (result.fatal.length > 0) {
       for (const violation of result.fatal) ctx.stderr(violation.message);
       return ExitCode.CannotCheck;
@@ -60,10 +61,12 @@ export class TraceCommand extends Command {
     const violations = result.findings.filter((finding) => finding.level === 'violation');
     const next = result.baseline === undefined ? violations.map(fingerprint) : shrinkBaseline(result.baseline, result.findings);
     writeFileSync(join(root, BASELINE_FILE), formatBaseline(next));
-    ctx.stdout(`${BASELINE_FILE}: ${result.baseline === undefined ? '作成' : `${result.baseline.length} 件から更新`}、${next.length} 件`);
-    const fresh = result.fresh.filter((finding) => finding.level === 'violation');
+    ctx.stdout(`${next.length} 件を基準に記録した (${BASELINE_FILE}。${result.baseline === undefined ? '新規作成' : `${result.baseline.length} 件から更新`})`);
+    // 書いた基準で数え直す。記録した直後の違反を、まだ落ちる違反として出さない
+    const after = check.analyze(root);
+    const fresh = after.fresh.filter((finding) => finding.level === 'violation');
     for (const finding of fresh) ctx.stderr(`VIOLATION [${finding.rule}] ${finding.path}:${finding.line ?? 0} ${finding.id} ${finding.message}`);
-    for (const line of summarizeBaselined(result.baselined)) ctx.stdout(line);
-    return result.baseline !== undefined && fresh.length > 0 ? ExitCode.Violation : ExitCode.Ok;
+    for (const line of summarizeBaselined(after.baselined)) ctx.stdout(line);
+    return fresh.length > 0 ? ExitCode.Violation : ExitCode.Ok;
   }
 }

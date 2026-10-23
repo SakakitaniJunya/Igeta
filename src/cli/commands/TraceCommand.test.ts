@@ -67,7 +67,10 @@ describe('igeta trace', () => {
 
   it('--update-baseline は、基準が無ければ今の違反を全部記録して Ok', async () => {
     const root = makeRepo(broken());
-    assert.equal((await run(root, '--update-baseline')).code, 0);
+    const created = await run(root, '--update-baseline');
+    assert.equal(created.code, 0);
+    assert.match(created.out, /件を基準に記録した/);
+    assert.doesNotMatch(created.err, /VIOLATION/);
     const written = JSON.parse(readFileSync(join(root, BASELINE_FILE), 'utf8')) as { fingerprints: string[] };
     assert.ok(written.fingerprints.some((item) => item.startsWith('T3|REQ-101|')));
     assert.equal((await run(root)).code, 0);

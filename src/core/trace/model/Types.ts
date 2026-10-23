@@ -18,6 +18,8 @@ export interface Definition {
   readonly kind: string;
   readonly context: string;
   readonly path: string;
+  /** 基準の指紋に使う文書の名前 `context/frontmatter の id`。文書を動かしても変わらない。id が無ければ path */
+  readonly docRef: string;
   readonly line: number;
   /** DEC の表の「影響の種類」の値。列が無ければ空 */
   readonly impact: string;
@@ -37,6 +39,7 @@ export interface Dangling {
   readonly token: string;
   readonly fromKey: string;
   readonly path: string;
+  readonly docRef: string;
   readonly line: number;
 }
 
@@ -44,8 +47,6 @@ export interface Dangling {
 export interface Notice {
   readonly path: string;
   readonly message: string;
-  /** 同じ規則・ID・ファイルの別の違反を見分ける印 (欠けている向き・相手の ID・重複の相手)。基準の指紋に入る */
-  readonly detail?: string;
 }
 
 export interface Heading {
@@ -91,6 +92,8 @@ export interface Finding {
   /** 対象の ID。ID が無い指摘 (コードの先頭行の欠落など) は `-` */
   readonly id: string;
   readonly path: string;
+  /** 指紋に使う文書の名前 (Definition.docRef)。コードなど文書でない指摘は無く、path を使う */
+  readonly docRef?: string;
   readonly line?: number;
   readonly message: string;
   /** 同じ規則・ID・ファイルの別の違反を見分ける印 (欠けている向き・相手の ID・重複の相手)。基準の指紋に入る */

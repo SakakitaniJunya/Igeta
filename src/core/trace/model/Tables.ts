@@ -66,7 +66,7 @@ export function collectDocEdges(parsed: ParsedDoc, kinds: readonly string[], res
       for (const { token, docId } of findTokens(row.cells[column] ?? '', kinds)) {
         const target = resolve(token, docId, input.context);
         const position = { path: input.path, line: row.line };
-        if (target === undefined) dangling.push({ token, fromKey: ownKey, ...position });
+        if (target === undefined) dangling.push({ token, fromKey: ownKey, docRef: input.id === null ? input.path : `${input.context}/${input.id}`, ...position });
         else if (direction === 'up') edges.push({ up: target, down: ownKey, declaredBy: 'down', ...position });
         else edges.push({ up: ownKey, down: target, declaredBy: 'up', ...position });
       }

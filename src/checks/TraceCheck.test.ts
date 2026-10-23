@@ -125,7 +125,7 @@ describe('TraceCheck: T1(b) と旧い構成', () => {
     git(root, 'checkout', '-q', 'feature');
     writeDocs(root, [reqDoc('docs/new.md', 'REQ-120')]);
     const found = check.analyze(root).findings.filter((f) => f.rule === 'T1');
-    assert.deepEqual(found.map((f) => [f.id, f.path, f.detail]), [['REQ-120', 'docs/new.md', 'origin:docs/old.md']]);
+    assert.deepEqual(found.map((f) => [f.id, f.path, f.detail]), [['REQ-120', 'docs/new.md', 'origin:shared/docs/old.md']]);
   });
 
   it('[TST-909] 文書の移動 (merge-base に有る ID を別の文書へ動かす) は T1(b) の違反にしない', () => {
@@ -139,6 +139,7 @@ describe('TraceCheck: T1(b) と旧い構成', () => {
     const root = makeRepo(makeWorld());
     const violations = new TraceCheck({ base: 'no-such-ref' }).run({ targetRoot: root, igetaRoot: root });
     assert.deepEqual(violations.map((v) => v.severity), ['cannot-check']);
+    assert.match(violations[0]?.message ?? '', /fetch-depth: 0/);
   });
 
   it('比べる先は .igeta.json の trace.base で決まる (既定は origin/main。docs-check と trace が同じ値)', () => {

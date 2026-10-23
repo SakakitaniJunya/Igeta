@@ -15,6 +15,7 @@ const violation = (rule: RuleId, definition: Definition, message: string, detail
   level: 'violation',
   id: definition.token,
   path: definition.path,
+  docRef: definition.docRef,
   line: definition.line,
   message,
   detail,
@@ -23,11 +24,15 @@ const violation = (rule: RuleId, definition: Definition, message: string, detail
 /** (a) 同じ context の中の重複。2 件目以降を指摘する */
 function duplicates(index: TraceIndex): Finding[] {
   const first = new Map<string, Definition>();
+  const counts = new Map<string, number>();
   const found: Finding[] = [];
   for (const definition of index.definitions) {
     const earlier = first.get(definition.key);
+    const occurrence = (counts.get(definition.key) ?? 0) + 1;
+    counts.set(definition.key, occurrence);
+    // 詳細に出現の順番を入れ、3 つ目以降の重複が基準に記録された 1 件に隠れないようにする
     if (earlier === undefined) first.set(definition.key, definition);
-    else found.push(violation('T1', definition, `${definition.token} が同じ context に 2 回定義されている (最初は ${earlier.path}:${earlier.line})`, earlier.path));
+    else found.push(violation('T1', definition, `${definition.token} が同じ context に ${occurrence} 回定義されている (最初は ${earlier.path}:${earlier.line})`, `${earlier.docRef}#${occurrence}`));
   }
   return found;
 }
@@ -40,7 +45,7 @@ function collisions(index: TraceIndex, origin: OriginIndexes): Finding[] {
   return index.definitions.flatMap((definition) => {
     const earlier = origin.tip.nodes.get(definition.key);
     if (origin.mergeBase.nodes.has(definition.key) || earlier === undefined) return [];
-    return [violation('T1', definition, `${definition.token} は origin に ${earlier.path}:${earlier.line} で定義済み (別 branch の採番と衝突)`, `origin:${earlier.path}`)];
+    return [violation('T1', definition, `${definition.token} は origin に ${earlier.path}:${earlier.line} で定義済み (別 branch の採番と衝突)`, `origin:${earlier.docRef}`)];
   });
 }
 

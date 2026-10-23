@@ -6,12 +6,15 @@ import type { Violation } from '../Report.js';
 
 export const DEFAULT_TRACE_BASE = 'origin/main';
 
+export const DEFAULT_TEST_GLOBS: readonly string[] = ['**/*.test.*', '**/*.spec.*', '**/*_test.*', '**/test_*.*', '**/tests/**', '**/__tests__/**'];
+
 export const DEFAULT_TRACE_KINDS: readonly string[] = ['DEC', 'REQ', 'FN', 'SCR', 'API', 'TBL', 'TST'];
 
 /** `.igeta.json` の trace に書いてあった項目。書いてない項目は undefined */
 export interface TraceSettings {
   readonly kinds?: readonly string[];
   readonly code?: readonly string[];
+  readonly tests?: readonly string[];
   readonly columns?: readonly string[];
   readonly bands?: readonly string[];
   readonly strictEdges?: boolean;
@@ -24,6 +27,8 @@ export interface TraceConfig {
   readonly kinds: readonly string[];
   /** `@trace` を要求するコードの glob。空ならコードの規則 (T7・T8・先頭行の有無) を検査しない */
   readonly code: readonly string[];
+  /** code のうち、テストのコードを見分ける glob (T8) */
+  readonly tests: readonly string[];
   /** 空でなければ、文書の `trace_columns` の代わりに使う ("欄の名前:up|down") */
   readonly columns: readonly string[];
   /** 空でなければ、文書の `trace_bands` の代わりに使う ("節の見出し:百の位") */
@@ -46,6 +51,7 @@ export function resolveTraceConfig(settings: TraceSettings): TraceConfig {
   return {
     kinds: settings.kinds ?? DEFAULT_TRACE_KINDS,
     code: settings.code ?? [],
+    tests: settings.tests ?? DEFAULT_TEST_GLOBS,
     columns: settings.columns ?? [],
     bands: settings.bands ?? [],
     strictEdges: settings.strictEdges ?? false,
