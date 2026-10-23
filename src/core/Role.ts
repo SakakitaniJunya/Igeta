@@ -80,7 +80,20 @@ export const PLACEMENTS: readonly Placement[] = [
   place('screen-spec', 'person', ['person/design/<c>/screens/*.md'], 'full', ['flowchart', 'stateDiagram']),
   place('feature-brief', 'person', ['person/design/<c>/features/*.md'], 'none', []),
   place('glossary', 'person', ['person/design/shared/NN-glossary.md'], 'none', ['flowchart', 'mindmap']),
-  place('adr', 'person', ['person/decisions/<year>/*.md'], 'none', []),
+  // 状態でフォルダを分ける (ADR-0013 決定 1)。旧い `<year>/` は、移行するまで許す (テスト仕様 10 の DS12 が警告にする)
+  place(
+    'adr',
+    'person',
+    [
+      'person/decisions/proposed/*.md',
+      'person/decisions/accepted/<year>/*.md',
+      'person/decisions/rejected/<year>/*.md',
+      'person/decisions/retired/<year>/*.md',
+      'person/decisions/<year>/*.md',
+    ],
+    'none',
+    [],
+  ),
   place('decision-log', 'person', ['person/decisions/01-decisions.md'], 'none', ['flowchart', 'timeline']),
 
   // ai: AI が書き、評価する AI が確定させる
@@ -309,6 +322,10 @@ export function isGeneratedIndex(docsRelPath: string): boolean {
 /** §7 の「15 本の対象外」。日付のある記録と提出物の章は、束で読まず 1 本ずつ承認するか 1 冊に束ねる */
 export const FOLDER_SIZE_EXEMPT_DIRS: readonly string[] = [
   'person/decisions/<year>',
+  'person/decisions/proposed',
+  'person/decisions/accepted/<year>',
+  'person/decisions/rejected/<year>',
+  'person/decisions/retired/<year>',
   'client/proposals/<year>',
   'client/delivery/<deliverable>',
 ];

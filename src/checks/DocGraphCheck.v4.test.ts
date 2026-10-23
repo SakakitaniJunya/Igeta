@@ -203,10 +203,11 @@ describe('DocGraphCheck v4: ADR 索引は docs/person/decisions/README.md に出
   it('[TST-104] ADR の表は decisions/README.md に、仮・未決の行は決定台帳に、パスの順で出る。0 件なら _該当なし_', async () => {
     // G5: 年をまたぐ ADR が、decisions/ からの相対パスのリンクで 1 つの表に並ぶ。docs/adr/ は作らない
     const readme = read(root, 'docs/person/decisions/README.md');
-    assert.match(readme, /\| \[0001\]\(2025\/0001-use-postgres\.md\) \| adr-0001-use-postgres の題名 \| accepted \|/);
-    assert.match(readme, /\| \[0002\]\(2026\/0002-queue\.md\) \| adr-0002-queue の題名 \| amended \|/);
-    assert.match(readme, /\| \[0003\]\(2026\/0003-cache\.md\) \| adr-0003-cache の題名 \| proposed \|/);
-    assert.ok(readme.indexOf('[0001]') < readme.indexOf('[0002]') && readme.indexOf('[0002]') < readme.indexOf('[0003]'));
+    assert.match(readme, /\| \[0001\]\(2025\/0001-use-postgres\.md\) \| adr-0001-use-postgres の題名 \| ✅ 承認済 \|/);
+    assert.match(readme, /\| \[0002\]\(2026\/0002-queue\.md\) \| adr-0002-queue の題名 \| ✅ 承認済 \(改訂\) \|/);
+    assert.match(readme, /\| \[0003\]\(2026\/0003-cache\.md\) \| adr-0003-cache の題名 \| ⏳ 承認待ち \|/);
+    // 状態の表は 承認待ち → 承認済 → 却下 → 置換 の順で、表の中は番号の順
+    assert.ok(readme.indexOf('[0003]') < readme.indexOf('[0001]') && readme.indexOf('[0001]') < readme.indexOf('[0002]'));
     assert.equal(existsSync(join(root, 'docs', 'adr')), false, 'docs/adr/ を勝手に作っている');
 
     // G6: 仮の行と未決の行を持つ人の文書 2 本。台帳の一覧は、docs/ からのパスの順 (design/ が requirements/ より前)
@@ -275,7 +276,7 @@ describe('DocGraphCheck v4: ADR 索引は docs/person/decisions/README.md に出
     writeRequirements(root, ['0001', '0002', '0004']);
     await converge(root);
     const after = read(root, 'docs/person/decisions/README.md');
-    assert.match(after, /\| \[0004\]\(2026\/0004-search\.md\) \| adr-0004-search の題名 \| accepted \|/);
+    assert.match(after, /\| \[0004\]\(2026\/0004-search\.md\) \| adr-0004-search の題名 \| ✅ 承認済 \|/);
     assert.match(after, /AUTOGEN:dir-index:start[\s\S]*\[2026\/\]\(2026\/README\.md\)/);
     // 年のフォルダの README にも、その年の ADR が出る
     assert.match(read(root, 'docs/person/decisions/2026/README.md'), /\[0004-search\.md\]\(0004-search\.md\)/);
@@ -637,7 +638,7 @@ describe('DocGraphCheck v4: 文書のつながり (依存の向き・届く・AD
     write(root, 'docs/person/decisions/2026/0001-use-postgres.md', adr('0001', 'use-postgres', 'proposed'));
     const added = await runCommand(new DocsGraphCommand(), root);
     assert.equal(added.code, ExitCode.Ok, added.stderr.join('\n'));
-    assert.match(read(root, 'docs/person/decisions/README.md'), /\| \[0001\]\(2026\/0001-use-postgres\.md\) \| adr-0001-use-postgres の題名 \| proposed \|/);
+    assert.match(read(root, 'docs/person/decisions/README.md'), /\| \[0001\]\(2026\/0001-use-postgres\.md\) \| adr-0001-use-postgres の題名 \| ⏳ 承認待ち \|/);
   });
 
   it('[TST-301] person の文書が ai の文書を、depends_on・relates_to・本文のリンク・参照の形の定義・修飾 ID のどれで指しても違反 (参照元の行)。frontmatter の行末にコメントがあっても、値のある項目の次の行の字下げした配列でも、修飾 ID を斜体・太字・インラインコードで囲んでも同じ', async () => {

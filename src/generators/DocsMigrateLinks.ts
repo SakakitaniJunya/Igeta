@@ -161,3 +161,30 @@ export function bodyShapeForCompare(body: string): string {
     .join('\n')
     .replace(/\n+$/, '');
 }
+
+/**
+ * 文書を動かしたときのリンクの書き換え (decision-* と docs-migrate の決定の段が使う)。files は repo 相対パス → 本文、
+ * moves は旧パス → 新パス。動かす文書の中のリンクも、動かされた先を指すリンクも、新しい場所から見た相対パスに直す。
+ * 戻り値の rewritten は旧パス → 書き換えた本文 (変わったものだけ)。コードスパン・コードフェンスの中の旧パスは直さず、notices に出す。
+ */
+export function rewriteLinksForMoves(
+  files: ReadonlyMap<string, string>,
+  moves: ReadonlyMap<string, string>,
+): { readonly rewritten: ReadonlyMap<string, string>; readonly notices: readonly string[] } {
+  const rewritten = new Map<string, string>();
+  const notices: string[] = [];
+  for (const [path, text] of files) {
+    const newPath = moves.get(path) ?? path;
+    const edited = applyLinkEdits(text, (hit) => {
+      const target = localTarget(path, hit.dest);
+      if (target === null) return null;
+      const newTarget = moves.get(target.path) ?? target.path;
+      if (newTarget === target.path && newPath === path) return null;
+      return `${hit.head}${relativeDest(hit.dest, newPath, newTarget, target.fragment)}${hit.tail}`;
+    });
+    if (edited.text !== text) rewritten.set(path, edited.text);
+    const remaining = [...moves.keys()].filter((from) => withoutAutogen(edited.text).includes(from));
+    for (const from of remaining) notices.push(`NOTICE ${newPath}: 旧パス ${from} の文字列が残っている (コードスパンなど。書き換えていない)`);
+  }
+  return { rewritten, notices };
+}

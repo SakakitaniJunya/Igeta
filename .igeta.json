@@ -7,5 +7,13 @@
     "package-lock.json",
     "tsconfig.json",
     "docs/ai/handbook/explanation/0[3-9]-*.md"
-  ]
+  ],
+  "decisions": {
+    "approvers": [
+      {
+        "name": "CEO",
+        "github": "SakakitaniJunya"
+      }
+    ]
+  }
 }

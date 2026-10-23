@@ -23,7 +23,7 @@ relates_to: []
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ADR-0012](../../../../person/decisions/2026/0012-persistence-library.md) 決定 1〜4 | ADR-0012 |
+| 上流 (depends_on) | [ADR-0012](../../../../person/decisions/accepted/2026/0012-persistence-library.md) 決定 1〜4 | ADR-0012 |
 | 下流 | `library/persistence/src/**/*.spec.ts`・`library/persistence/test/*.spec.ts` / [実装タスク 02](../../tasks/02-persistence-library.md) | TST-* / T* |
 
 ## 0. 規則

@@ -118,12 +118,26 @@ docs/
 │   ├── requirements/          要件
 │   ├── design/shared/         全体共通 (地図・機能一覧・解決戦略・非機能・権限・用語集 ほか)
 │   ├── design/<まとまり>/     業務のまとまりごと (地図・業務フロー・画面・機能ブリーフ)
-│   └── decisions/             決定台帳と、年ごとの ADR
+│   └── decisions/             決定台帳と、状態ごとの ADR (proposed/ accepted/<年>/ rejected/<年>/ retired/<年>/)
 ├── ai/
 │   ├── specs/                 shared/・<まとまり>/ (API・テーブル・ドメイン・シーケンス ほか)・tasks/
 │   └── handbook/              how-to/・explanation/・runbooks/
 └── client/                    delivery/<提出物名>/・proposals/<年>/
 ```
+
+### 決定 (ADR) の状態
+
+ADR の状態は、フォルダで見分ける。状態を変えられるのは `igeta decision-*` だけで、承認・却下・置換のたびに、決めた人・日付・根拠 (merge 済みの PR) を ADR の「承認の履歴」に追記する。手書きで `accepted` にすると `docs-check` が落ちる。索引 (`docs/person/decisions/README.md`) は、承認待ち・承認済・却下・置換の 4 つの表で出る。
+
+```mermaid
+flowchart LR
+  P["proposed/ 承認待ち"] -- "decision-accept" --> A["accepted/年/ 承認済"]
+  P -- "decision-reject" --> R["rejected/年/ 却下"]
+  A -- "decision-amend (本文を直す)" --> A
+  A -- "decision-supersede (新しい ADR が承認済)" --> T["retired/年/ 置換"]
+```
+
+PR を merge したら `igeta decision-pending` で承認待ちを洗い出し、承認された ADR を `igeta decision-accept` で記録する PR を出す。記録の PR は `docs/person/` を触るので、人がもう一度 merge する。承認できる人は `.igeta.json` の `decisions.approvers` (`{ name, github }`) に書く。
 
 参照の向きも決まっている。破ると `docs-check` が落ちる。
 
@@ -265,11 +279,14 @@ npm run docs:graph
 
 ### 既存の repo を移す
 
-旧い構成 (`docs/product`・`docs/design` など) か、v3 の構成 (`docs/common/` がある) の repo は、移す段と書き直す段の 2 段で移す。両方を 1 本の PR で済ませてから merge する ([ADR-0003](docs/person/decisions/2026/0003-docs-model-migration-and-dogfooding.md))。
+旧い構成 (`docs/product`・`docs/design` など) か、v3 の構成 (`docs/common/` がある) の repo は、移す段と書き直す段の 2 段で移す。両方を 1 本の PR で済ませてから merge する ([ADR-0003](docs/person/decisions/accepted/2026/0003-docs-model-migration-and-dogfooding.md))。
 
 1. **移す段 (機械)**: Igeta の版を上げ、作業ツリーを clean にしてから `npx igeta docs-migrate --owner <持ち主> --dry-run` を実行する。止める条件 (`STOP S<番号>`) が出たら、その行の文書や画像を直すか、`.igeta.json` の `nonDocPaths` に足してから、もう一度実行する。止まらなければ `npx igeta docs-migrate --owner <持ち主>` で適用する。commit はしない。
 2. **書き直す段 (人と AI)**: 適用の最後に出る `WORK` の行が、書き直す作業の一覧。`person/` の文書は人の型 (状態の列・図・量) へ書き直し、`person/` から `ai/`・`client/` への参照は外す。`ai/` の文書の未決の節は、人の決めが要るものを `person/` の「決めてほしいこと」に移す。`npx igeta docs-check` と `npm run docs:template-check` が通ったら、PR にする。
 3. **承認の取り直し**: 書き直しで由来が指す正本の行を変えたら、その由来は承認し直す。`npx igeta docs-migrate --split-report` で、取り直しが要る由来を一覧にできる (何も書かない)。
+4. **決定 (ADR) の段 (機械)**: 1 の移す段を commit したあと、`.igeta.json` に `decisions.approvers` (`{ name, github }`) を先に足し、もう一度 `docs-migrate` を実行する (版を上げて `docs-migrate` を 2 回: 1 回目が構成、2 回目が決定)。2 回目は `<年>/` 直下の ADR を状態のフォルダへ移し、決定台帳に状態・根拠・持ち主・期限の列を足す。承認済にできるのは、`--decisions-evidence <file>` の根拠の表 (`[{ "id", "by", "evidence" }]`、merge 済みの PR の URL) にある ADR だけで、`gh` で確かめる。表に無い旧 accepted・旧 rejected は `proposed/` に差し戻し、台帳の移行の印 (`移行前 (未記入)`・`未定`) は移行の PR で人が直す。
+
+**破壊的変更**: `docs/person/decisions/<年>/` に置く ADR は、移行するまで `docs-check` の警告 1 件で済むが、状態のフォルダが 1 つでもある repo では `<年>/` 直下の ADR は違反になる。版を上げただけでは赤くならず、上の 4 で移した repo から効く。 移した repo の CI は、`actions/checkout` に `fetch-depth: 0` を付け、`docs-check` に PR の宛先を `--base origin/<宛先>` で渡す (浅い checkout だと、根拠 commit を辿れず検査不能 (終了 2) になる)。
 
 適用の完了条件 (リンク・置き場所・索引・由来と合意の状態・文書の集合) が 1 つでも欠けたら、適用は終了 1 で止まり、作業ツリーを戻す手順を出す。
 版の固定は `.igeta-version` (semver 1 行)。`npx igeta check` が追従遅れを検出し、`npx igeta upgrade --to <ver>` で書き換える。
@@ -280,7 +297,7 @@ npm run docs:graph
 |---|---|---|
 | `npm run docs:template-check` | テンプレ適合 | kind 未登録 / 必須節の欠落 / `## 関連` に上流・下流が無い / ID 形式違反 / `depends_on` が実在しない / EARS 記法でない機能要件 / 行数上限超過 (`line_limit` を持つ kind のみ)。**新しい構成の `docs/person/**`・`docs/client/**` では加えて (人の文書の型)**: 決まりの表 (最後の列が `状態`) の行の最初のセルが ID の形でない・列の数が見出しと違う・状態が `決定`・`仮`・`未決`・`廃` 以外 / 型の検査が要る kind に、自分の接頭辞の決まりの行が無い / 図が要る kind に mermaid の図が無い / 100 行 (要件は 150 行) 超 / HTML コメント、決まった 3 種以外の生成区間 / `廃` の ID の使い直し。`--base <宛先>` を付けると、宛先で `廃` だった行を消した変更も違反。まとまりの合計字数の超過は警告 |
 | `npm run docs:template-check -- --require-human-review` | 人間レビュー層 (既定 OFF・段階導入・**試験中**、既知の取りこぼしは人間レビュー層の手引き §7) | `kind: requirements` が地図からリンクされていない / まとまりの地図が地図からリンクされていない / `feature-brief` がまとまりの地図からリンクされていない / 決定の帰属主張に `DEC-nnn` が無いか台帳に無い / 「仮置き」に `OPEN-nnn` が無いか台帳に無い / 他ファイルの ID を修飾形式 `<doc-id>/PREFIX-nnn` で書いていない |
-| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い / `docs/common/` が残っている (v3 の構成)。**新しい構成 (`docs/person`・`ai`・`client` のどれかがある repo) では加えて**: kind から導く置き場所と実際のパスの食い違い / フォルダ名のまとまりと `context` の食い違い / `docs/` 直下の 3 フォルダに属さないもの (`.igeta.json` の `nonDocPaths` を除く) / 参照の向きの違反 (`person/` が `ai/`・`client/` を指す、`ai/` が `client/` を指す) / `ai/specs/` の文書が `depends_on` をたどっても `person/` に届かない / 承認済みの ADR を、`person/` のどの決まりの行も `ADR-NNNN` で引いていない / `ai/` の文書の未決の節 / 1 フォルダ 16 本以上 / `AGENTS.md` の欠落 / `.github/CODEOWNERS` の欠落、または人の承認が要るパス (「変更から承認まで」の表。`humanPaths` に当たる、いまあるファイルを含む) に持ち主が付いていない (GitHub と同じく最後に当たる行を見る。`docs/person/*` は直下のファイルにしか当たらない)。旧い構成の repo は、移行を促す警告 1 件が出るだけ |
+| `npm run docs:check` | 索引と参照 | frontmatter スキーマ違反 / 参照切れ / 本文の相対リンク切れ / 自動生成索引が古い / 上流も下流も無い文書 (`depends_on` の木に繋がらない) / `depends_on` の循環 / 決定台帳の仮置き一覧 (AUTOGEN) が古い / `docs/common/` が残っている (v3 の構成)。**新しい構成 (`docs/person`・`ai`・`client` のどれかがある repo) では加えて**: kind から導く置き場所と実際のパスの食い違い / フォルダ名のまとまりと `context` の食い違い / `docs/` 直下の 3 フォルダに属さないもの (`.igeta.json` の `nonDocPaths` を除く) / 参照の向きの違反 (`person/` が `ai/`・`client/` を指す、`ai/` が `client/` を指す) / `ai/specs/` の文書が `depends_on` をたどっても `person/` に届かない / 承認済みの ADR を、`person/` のどの決まりの行も `ADR-NNNN` で引いていない / `ai/` の文書の未決の節 / 1 フォルダ 16 本以上 / `AGENTS.md` の欠落 / `.github/CODEOWNERS` の欠落、または人の承認が要るパス (「変更から承認まで」の表。`humanPaths` に当たる、いまあるファイルを含む) に持ち主が付いていない (GitHub と同じく最後に当たる行を見る。`docs/person/*` は直下のファイルにしか当たらない)。**決定 (ADR) の状態**: 状態でフォルダが分かれた repo では、置き場所・履歴と `status` の一致・根拠の実在 (`.igeta.json` の `decisions.approvers` と `origin`。根拠 commit がその ADR を追加・変更していること)・承認後の本文変更・置換の対を検査する。`--base <ref>` を付けると、履歴が追記のみ・ADR と台帳の行が消えていないことも見る (PR の CI は宛先の branch を渡す)。根拠 commit を履歴から辿るので、CI の checkout は全履歴 (`fetch-depth: 0`) にする。状態のフォルダが無い repo は警告 1 件だけ。旧い構成の repo は、移行を促す警告 1 件が出るだけ |
 | `npx igeta context-boundary-check` | まとまり (context) の境界 (既定 OFF、[詳細](docs/ai/handbook/explanation/07-context-boundaries.md)) | `context: A` の文書が `context: B` (A と違い shared でも B の `context-contract` でもない) の文書を depends_on・本文リンク・修飾 ID で直接参照している |
 | `npx igeta context-size [<context>]` | まとまりの量の上限 (既定 OFF、`.igeta.json` の `contextSizeLimit` 未設定なら無制限) | 指定したまとまり (省略時は全部一覧) の「自分の文書 + 参照している隣の `context-contract`」の総行数が上限を超えている |
 | `npx igeta context-files <context>` | (生成) | AI が読むべきファイル一覧を 1 行 1 パスで出す (既定は共有文書のうち `map`/`glossary`/自分の地図だけ、`--with-shared` で全部、`--json` で JSON 配列) |
@@ -289,8 +306,11 @@ npm run docs:graph
 | `npx igeta provenance-check [<chapter> ...]` | 由来の鮮度 (既定 OFF) | `pending`/`stale`/`orphan`/`orphan-content`/`self-approved`/`source-missing`/`open-stated-as-final` (`needs-recompute` は既定警告、`--strict-normalization` で違反) |
 | `npx igeta provenance-coverage [<chapter> ...]` | 由来の順方向網羅 (既定 OFF) | delivery-chapter の H2 節 (「関連」除く) に由来が 1 件も無い |
 | `npx igeta source-coverage` | 由来の逆方向網羅 (既定 OFF) | 正本の行定義がどの章の由来にも現れない (`clientExempt`/`.igeta.json` の `coverageExemptions` で対象外にできる) |
-| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/person/decisions/2026/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
-| `npx igeta docs-migrate --owner <持ち主> [--dry-run]` | (生成・移す段、[詳細](docs/ai/specs/shared/tests/07-docs-migrate.md)) | 旧い構成・v3 の構成の `docs/` を 3 フォルダ (`person`・`ai`・`client`) へ移し、リンクと索引と承認の割り当て (`AGENTS.md`・CODEOWNERS) を作る。作業ツリーが clean であること・kind の無い文書など止める条件 (S1〜S9) があれば何も書かず終了 2。完了条件 (C1〜C5) が欠けたら終了 1 で作業ツリーを戻す手順を出す。commit はしない。`--dry-run` は計画だけを出す |
+| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/person/decisions/accepted/2026/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
+| `npx igeta docs-migrate --owner <持ち主> [--dry-run] [--decisions-evidence <file>]` | (生成・移す段、[詳細](docs/ai/specs/shared/tests/07-docs-migrate.md)) | 旧い構成・v3 の構成の `docs/` を 3 フォルダ (`person`・`ai`・`client`) へ移し、リンクと索引と承認の割り当て (`AGENTS.md`・CODEOWNERS) を作る。作業ツリーが clean であること・kind の無い文書など止める条件 (S1〜S9) があれば何も書かず終了 2。完了条件 (C1〜C5) が欠けたら終了 1 で作業ツリーを戻す手順を出す。commit はしない。`--dry-run` は計画だけを出す |
+| `npx igeta decision-accept <id\|番号> --by <名前> --evidence <PR の URL> [--dry-run]` | (生成・書き込み口、[詳細](docs/ai/specs/shared/tests/10-decision-status.md)) | proposed の ADR を承認済として記録する。`gh` で PR が merge 済みで、merge した人が `--by` の GitHub 名であり、根拠 commit に今の本文があることを確かめ、履歴の追記・`accepted/<年>/` への移動・リンクと索引の更新を一度に行う。確かめられなければ何も書かない |
+| `npx igeta decision-reject` / `decision-supersede` / `decision-amend` | (生成・書き込み口) | 却下 (`--reason` 付き。根拠は PR か Issue) / 置換 (`--by-adr <新>`。旧を `retired/` へ) / 承認後の本文の改訂 (新しい PR を根拠に、移動しない) |
+| `npx igeta decision-pending [--json] [--stale-days N]` | (読むだけ) | 承認待ちの ADR を経過日数の降順で出し、実行すべき `decision-accept` の候補を添える。merge した人が人かは確かめられない限界も毎回出す |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |

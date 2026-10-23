@@ -1,5 +1,5 @@
 // 門の判定 (approval-scope) と設定 (.igeta.json の humanPaths・nonDocPaths) が使う glob。
-// Spec: docs/person/decisions/2026/0008-human-approval-scope.md (humanPaths)、docs/person/decisions/2026/0003-docs-model-migration-and-dogfooding.md 決定 6 (nonDocPaths)
+// Spec: docs/person/decisions/accepted/2026/0008-human-approval-scope.md (humanPaths)、docs/person/decisions/accepted/2026/0003-docs-model-migration-and-dogfooding.md 決定 6 (nonDocPaths)
 //
 // Node の path.matchesGlob は実験的で版ごとに挙動が違い、先頭が `.` の名前に `*` が当たらない。
 // 門の判定は「見落とすより多く拾う」側に倒す必要があり、設定の書き間違い (どのパスにも当たらない glob)

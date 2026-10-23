@@ -1,6 +1,6 @@
 // 顧客との合意台帳 (`agreements.ledger.jsonl`) の形と読み書き。追記のみ。
-// Spec: docs/ai/handbook/explanation/08-agreement-ledger.md、docs/person/decisions/2026/0006-provenance-migration-handling.md (決定 7・8)、
-//       docs/person/decisions/2026/0007-fingerprint-link-normalization.md (決定 2)
+// Spec: docs/ai/handbook/explanation/08-agreement-ledger.md、docs/person/decisions/accepted/2026/0006-provenance-migration-handling.md (決定 7・8)、
+//       docs/person/decisions/accepted/2026/0007-fingerprint-link-normalization.md (決定 2)
 //
 // 置き場所は「提出物のディレクトリ」(章・sidecar と同じディレクトリ) 直下。事前に manifest から
 // 一意に決められない (manifest 自身は 1 段浅いことが多い設計) ため、呼び出し側が決めて渡す。

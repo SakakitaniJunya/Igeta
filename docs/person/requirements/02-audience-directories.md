@@ -103,7 +103,7 @@ kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009�
 | person | function-list / solution-strategy / nonfunctional / permission-matrix / data-management / as-is-overview / risks-tech-debt / operations / migration-plan | `person/design/shared/NN-*.md` (固定番号)。100 行を超えたら `person/design/<c>/NN-<kind>.md` にも置ける | ○ |
 | person | business-flow / screen-spec / feature-brief | `person/design/<c>/{flows,screens,features}/NN-slug.md` | ○ / ○ / — |
 | person | glossary | `person/design/shared/NN-glossary.md` | — |
-| person | adr / decision-log | `person/decisions/<year>/NNNN-slug.md` / `person/decisions/01-decisions.md` | — |
+| person | adr / decision-log | `person/decisions/{proposed/NNNN-slug.md,accepted/<year>/NNNN-slug.md,rejected/<year>/NNNN-slug.md,retired/<year>/NNNN-slug.md}` (状態でフォルダを分ける。旧い `person/decisions/<year>/NNNN-slug.md` は移行するまで許し、docs-check が警告にする) / `person/decisions/01-decisions.md` | — |
 | ai | crosscutting / code-definitions / messages / i18n / infra-design / secrets-management / external-integration / test-plan / domain-overview / aggregate-map | `ai/specs/shared/NN-*.md` (固定番号) | — |
 | ai | context-contract | `ai/specs/<c>/contract.md` | — |
 | ai | api-spec / table-spec / domain-model / sequence-spec / state-machine / module-spec / job / test-spec | `ai/specs/<c>/{api,tables,domain,sequences,state-machines,modules,jobs,tests}/NN-slug.md` | — |
@@ -117,7 +117,7 @@ kind → 置き場所の対応の正本 (REQ-102)。決定の記録は ADR-0009�
 | 決まり | 内容 |
 |---|---|
 | 置ける場所 | 上の表のパスと、生成索引 (docs/ 直下の 2 本、各フォルダの README.md) だけ |
-| 15 本の対象外 | `person/decisions/<year>/`・`client/proposals/<year>/`・`client/delivery/<提出物名>/` |
+| 15 本の対象外 | `person/decisions/{proposed,accepted/<year>,rejected/<year>,retired/<year>,<year>}/`・`client/proposals/<year>/`・`client/delivery/<提出物名>/` |
 | `person/design/<c>/` と `ai/specs/<c>/` の下が 15 本を超えた | まとまりを分ける合図。下位フォルダは足さない |
 | `person/design/shared/` の固定の文書が 100 行を超えた | 行を、属するまとまりの `person/design/<c>/NN-<kind>.md` へ移す (行の移動の扱いは ADR-0006 決定 7) |
 | `person/requirements/01-requirements.md` が 150 行を超えた | まとまりごとに `person/requirements/NN-<c>.md` へ分ける (同上) |

@@ -15,6 +15,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { HISTORY_HEADING } from '#decision/core';
 import type { Check, CheckContext } from '../core/Check.js';
 import { readContext, SHARED_CONTEXT } from '../core/Context.js';
 import type { Frontmatter, FrontmatterData } from '../core/Frontmatter.js';
@@ -29,6 +30,7 @@ import { detectLayout, kindOfPath, placementOf, roleOfPath } from '../core/Role.
 import { PersonFormCheck } from './PersonFormCheck.js';
 
 const OPTIONAL_SUFFIX = '(任意)';
+const HISTORY_SECTION_TEXT = HISTORY_HEADING.replace(/^##\s+/, '');
 const SKIP_DIR = new Set(['node_modules', 'dist', 'coverage']);
 
 export interface DocTemplateOptions {
@@ -227,7 +229,8 @@ function loadTemplates(dir: string): { registry: Map<string, TemplateEntry>; err
       idPattern: scalar(parsed.data, 'id_pattern') ?? 'numeric',
       lineLimit: lineLimitRaw === undefined ? null : Number(lineLimitRaw),
       required: sections
-        .filter((section) => !section.text.endsWith(OPTIONAL_SUFFIX))
+        // 承認の履歴は decision-* が足す節なので、書き込み口を通る前の ADR には要らない (テスト仕様 10)
+        .filter((section) => !section.text.endsWith(OPTIONAL_SUFFIX) && section.text !== HISTORY_SECTION_TEXT)
         .map((section) => section.text),
     });
   }

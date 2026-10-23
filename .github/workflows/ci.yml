@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 決定 (ADR) の根拠 commit が履歴にあること (DS5) と、PR の宛先との比較 (--base) に、全履歴が要る
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -29,6 +32,14 @@ jobs:
       - name: Markdown 記法
         run: npm run docs:lint
       - name: 索引・参照整合性
-        run: npm run docs:check
+        # PR は宛先の branch、main への push は前の commit と比べる (履歴は追記のみ・ADR と台帳の行が消えない)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npm run docs:check -- --base "origin/${{ github.base_ref }}"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            npm run docs:check -- --base "${{ github.event.before }}"
+          else
+            npm run docs:check
+          fi
       - name: テンプレ適合
         run: npm run docs:template-check

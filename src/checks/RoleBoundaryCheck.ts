@@ -1,5 +1,5 @@
 // 確定させる人 (person / ai / client) の境界の検査。
-// Spec: docs/person/decisions/2026/0002-role-boundary-invariants.md の条件 2・11・15、ADR-0005 決定 1。
+// Spec: docs/person/decisions/accepted/2026/0002-role-boundary-invariants.md の条件 2・11・15、ADR-0005 決定 1。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) の repo では、次を違反にする:
 //   - kind から導く置き場所と、実際のパスが食い違う (要件定義書 02 §7 の表のどのパターンにも当たらない)。

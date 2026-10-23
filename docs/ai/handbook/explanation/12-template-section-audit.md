@@ -102,7 +102,7 @@ relates_to: [adr-0010-value-ownership, folder-placement]
 | runbook | エスカレーション | 変わらない | 連絡先・期限は operations (OPS-1xx) の行を引く |
 | implementation-order | コンテキストの着手順 — 図から機械的に決める ; 1 コンテキスト内の順番と DoD ; 進む条件と戻る条件 ; 並列化できる単位 ; 各ステップで叩くコマンド | 変わらない | 作る順番。ドメイン総論の図から機械的に決まる |
 | document-taxonomy | 3 つのフォルダ — 確定させる人で分ける ; kind の置き場所 (正本は Igeta の要件定義書 02 §7) ; 名前の付け方 ; person の文書の型 ; kind の内容・ID 接頭辞・arc42 の章・上限 ; 依存の向き ; 書き方の指示 (person・client の雛形から移した) ; Igeta の手引きの置き場所 | 変わらない | Igeta の版に固定した手引き (利用 repo の AI は書き換えない)。置き場所は要件 02 §7 の転記で、`TaxonomyGuideSync.test.ts` が見る |
-| human-review | 読む順 (5〜10 分) ; 機能ブリーフと未決の関門 ; 要件を直すときの手順 ; レビューシートの出し方 ; 整合レポート (`igeta analyze`) ; 段階導入・移行の実測 ; 検査の限界 (機械が見ていないもの) | 変わらない | Igeta の版に固定した手引き (利用 repo の AI は書き換えない) |
+| human-review | 読む順 (5〜10 分) ; 機能ブリーフと未決の関門 ; 要件を直すときの手順 ; レビューシートの出し方 ; 整合レポート (`igeta analyze`) ; 段階導入・移行の実測 ; 検査の限界 (機械が見ていないもの) ; 決定 (ADR) の承認と記録 | 変わらない | Igeta の版に固定した手引き (利用 repo の AI は書き換えない) |
 | provenance-workflow | 手順 ; 由来を付け終えたら | 変わらない | Igeta の版に固定した手引き (利用 repo の AI は書き換えない) |
 
 ## 3. 表 B — 変わるので person へ移した値

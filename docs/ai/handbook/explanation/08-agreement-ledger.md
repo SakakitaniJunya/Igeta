@@ -43,10 +43,10 @@ relates_to: [coverage-and-learning, export-deliverable]
 | `omitSections` | 記録した時点の設定。検査のときに同じ除去を再現するために持つ |
 
 `export` と `approve` のほかに、中身を変えない操作の記録として `fingerprint-rebase` (指紋の正規化の版の載せ替えの対応表。
-[ADR-0007](../../../person/decisions/2026/0007-fingerprint-link-normalization.md)) の行を追記することがある。承認の記録ではない。
+[ADR-0007](../../../person/decisions/accepted/2026/0007-fingerprint-link-normalization.md)) の行を追記することがある。承認の記録ではない。
 `export` の行は指紋を計算した正規化の版 `normalizationVersion` を持つ (無い行は 2)。`agreement-check` は、その版で計算した
 指紋が保存値と一致するか、`fingerprint-rebase` の対応表がその保存値に対応づけた値と一致すれば「変わっていない」とする。
-この版は付け替えを持たない。行を移すと、その行を指す由来は要確認になる ([ADR-0006](../../../person/decisions/2026/0006-provenance-migration-handling.md) 決定 7)。
+この版は付け替えを持たない。行を移すと、その行を指す由来は要確認になる ([ADR-0006](../../../person/decisions/accepted/2026/0006-provenance-migration-handling.md) 決定 7)。
 
 壊れた行が 1 つでもあれば、読む側は検査不能で止まる (黙って読み飛ばさない)。末尾が改行で終わっていない台帳には
 追記しない (前の追記が途中で切れた疑いがあり、続けて書くと 2 行が繋がって両方が壊れる)。

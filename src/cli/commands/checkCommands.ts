@@ -20,10 +20,16 @@ export class DocsGraphCommand extends CheckCommand {
 export class DocsCheckCommand extends CheckCommand {
   readonly name = 'docs-check';
   readonly summary = '索引と参照の整合性、新しい構成 (person・ai・client) の置き場所・本数・AI の入口を検査する (書き出さない)';
-  override readonly usage = ['  --root <dir>   対象リポジトリ (既定: カレントディレクトリ)'];
+  override readonly usage = [
+    '  --root <dir>   対象リポジトリ (既定: カレントディレクトリ)',
+    '  --base <ref>   変更を入れる先のブランチ。決定の履歴が追記のみ (DS7)・決定台帳の行が消えない (DS13) を、HEAD との枝分かれの点と比べる。',
+    '                 省略すると、この 2 つは確かめない',
+  ];
 
-  protected createCheck(): Check {
-    return new DocsCheck();
+  protected override readonly argSpec = { valueOptions: ['base'] };
+
+  protected createCheck(args: ParsedArgs): Check {
+    return new DocsCheck({ base: args.get('base') });
   }
 }
 

@@ -1,5 +1,5 @@
 // 承認の割り当てのファイル (`AGENTS.md` と `.github/CODEOWNERS`) の作り手。`init` と `docs-migrate` が、同じこの作り手で置く。
-// Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I5・I8・I9、docs/person/decisions/2026/0008-human-approval-scope.md 決定 1・5・7。
+// Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I5・I8・I9、docs/person/decisions/accepted/2026/0008-human-approval-scope.md 決定 1・5・7。
 //
 // 何も書かず、書く内容 (書いた後のファイルの全文) を返す。ほかのファイルの衝突と合わせて、書くか止めるかは呼び出し側が決める。
 //   AGENTS.md        無ければ雛形から作る。あって docs/person・docs/ai に触れていなければ、入口の節 (雛形の節) を末尾に足す
@@ -31,6 +31,16 @@ export const isOwnerForm = (owner: string): boolean => OWNER_FORMS.some((form) =
 /** Igeta の手引きの置き場所。利用 repo の docs/ には写さず、AGENTS.md から版に固定した手引きを指す (ADR-0005 決定 4) */
 const HANDBOOK_DIR = 'node_modules/igeta/templates/docs/ai/handbook/how-to/';
 
+/** 決定 (ADR) の記録の節 (ADR-0013 決定 10)。AGENTS.md の雛形の、独立した塊 */
+const AGENTS_DECISION_SECTION: readonly string[] = [
+  '## 決定の記録',
+  '',
+  '- PR を merge したら `igeta decision-pending` を実行し、承認待ちの ADR を洗い出す',
+  '- 承認された ADR は `igeta decision-accept` で状態と根拠を記録する PR を出す。ADR の状態を手で書き換えない',
+  '- 記録の PR は `docs/person/` を触るので、人がもう一度 merge する',
+  '',
+];
+
 /** AGENTS.md の雛形の節 (I9)。入口の節として、あるファイルの末尾にも足す */
 const AGENTS_SECTIONS: string = [
   '## 読む順',
@@ -45,6 +55,7 @@ const AGENTS_SECTIONS: string = [
   '- 結果が `human` か検査不能なら、AI は取り込まずに人へ渡す',
   '- `docs/person/` の新しい決まりは、状態 `仮` で起案する。人が承認したら `決定` に変わる。この決まりは機械では強制されない',
   '',
+  ...AGENTS_DECISION_SECTION,
   '## 手引きの場所',
   '',
   'Igeta の版に固定した手引き。',

@@ -1,5 +1,5 @@
 // 由来の指紋 (SHA256) を計算する。設計 (docs/ai/handbook/explanation/04-provenance-and-agreement.md §6、
-// docs/person/decisions/2026/0007-fingerprint-link-normalization.md) の正規化を実装する。目的は「整形だけの変更では
+// docs/person/decisions/accepted/2026/0007-fingerprint-link-normalization.md) の正規化を実装する。目的は「整形だけの変更では
 // 指紋が変わらない」こと。
 //
 // 正規化は版ごとの実装を残す。保存値は「保存した版」で計算し直して比べる (版が違うだけで stale にしない) ので、
