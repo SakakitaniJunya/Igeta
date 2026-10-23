@@ -2,9 +2,10 @@
 // decision-pending (テスト仕様 10 の TST-105)。経過日数は、ADR が初めて現れた commit の日付から数える。
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { APPROVER, DECISIONS, adrText, disposeAllRepos, makeRepo } from '../../../core/decision/decision.test-support.js';
-import { ExitCode } from '../../../core/ExitCode.js';
-import { IGETA_ROOT } from '../../../core/Paths.js';
+import { APPROVER, DECISIONS, disposeAllRepos, makeRepo } from '#core/decision/decision.test-support.js';
+import { adrText } from '#core/decision/adr.test-support.js';
+import { ExitCode } from '#core/ExitCode.js';
+import { IGETA_ROOT } from '#core/Paths.js';
 import { DecisionPendingCommand, PENDING_LIMIT_NOTE, collectPending } from './pending.js';
 
 after(disposeAllRepos);

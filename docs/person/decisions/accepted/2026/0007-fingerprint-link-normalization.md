@@ -103,4 +103,4 @@ v3 はその同じ本文から計算するので、承認した内容と指紋�
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:f1f54821bcd6f6c2c786920c56077daf8f6b7453ae4c96cda9cbf9e8452ec4d0 | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:f1f54821bcd6f6c2c786920c56077daf8f6b7453ae4c96cda9cbf9e8452ec4d0 | — |

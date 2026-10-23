@@ -99,4 +99,4 @@ kind 47 種の置き場所は要件定義書 02 §7 (決定は ADR-0009)、型�
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:3d605e617ff9d3978cc223640e212e1072a75dbb01bcb376d187d0bbe9c8c477 | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:3d605e617ff9d3978cc223640e212e1072a75dbb01bcb376d187d0bbe9c8c477 | — |

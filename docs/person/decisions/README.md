@@ -16,24 +16,24 @@ owners: [eng]
 
 | # | タイトル | 状態 | 起案日 | 持ち主 | 期限 |
 |---|---|---|---|---|---|
-| [0013](proposed/0013-decision-status-folders.md) | ADR-0013 決定の状態は承認の記録だけが変える — 状態でフォルダを分け、索引に印・根拠・持ち主を出す | ⏳ 承認待ち | 2026-10-22 | 榊谷 隼也 | — |
+| [0013](proposed/0013-decision-status-folders.md) | ADR-0013 決定の状態は承認の記録だけが変える — 状態でフォルダを分け、索引に印・根拠・持ち主を出す | ⏳ 承認待ち | 2026-10-22 | CEO | — |
 
 ## ✅ 承認済 (12)
 
 | # | タイトル | 状態 | 承認日 | 決めた人 | 根拠 | 覆す先 |
 |---|---|---|---|---|---|---|
-| [0001](accepted/2026/0001-document-role-directories.md) | ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに分ける | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0002](accepted/2026/0002-role-boundary-invariants.md) | ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応 | ✅ 承認済 | 2026-10-08 | 榊谷 隼也 | [PR #20](https://github.com/SakakitaniJunya/Igeta/pull/20) | — |
-| [0003](accepted/2026/0003-docs-model-migration-and-dogfooding.md) | ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段で、1 本の PR にする | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0004](accepted/2026/0004-folder-internal-structure-and-growth.md) | ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0005](accepted/2026/0005-enforcement-rollout-and-canonical-sync.md) | ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0006](accepted/2026/0006-provenance-migration-handling.md) | ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0007](accepted/2026/0007-fingerprint-link-normalization.md) | ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0008](accepted/2026/0008-human-approval-scope.md) | ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0009](accepted/2026/0009-kind-placement.md) | ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0010](accepted/2026/0010-value-ownership.md) | ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く | ✅ 承認済 | 2026-10-05 | 榊谷 隼也 | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
-| [0011](accepted/2026/0011-person-diagram-first.md) | ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る | ✅ 承認済 | 2026-10-20 | 榊谷 隼也 | [PR #24](https://github.com/SakakitaniJunya/Igeta/pull/24) | — |
-| [0012](accepted/2026/0012-persistence-library.md) | ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト | ✅ 承認済 | 2026-10-22 | 榊谷 隼也 | [PR #26](https://github.com/SakakitaniJunya/Igeta/pull/26) | — |
+| [0001](accepted/2026/0001-document-role-directories.md) | ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに分ける | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0002](accepted/2026/0002-role-boundary-invariants.md) | ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応 | ✅ 承認済 | 2026-10-08 | CEO | [PR #20](https://github.com/SakakitaniJunya/Igeta/pull/20) | — |
+| [0003](accepted/2026/0003-docs-model-migration-and-dogfooding.md) | ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段で、1 本の PR にする | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0004](accepted/2026/0004-folder-internal-structure-and-growth.md) | ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0005](accepted/2026/0005-enforcement-rollout-and-canonical-sync.md) | ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0006](accepted/2026/0006-provenance-migration-handling.md) | ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0007](accepted/2026/0007-fingerprint-link-normalization.md) | ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0008](accepted/2026/0008-human-approval-scope.md) | ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0009](accepted/2026/0009-kind-placement.md) | ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0010](accepted/2026/0010-value-ownership.md) | ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く | ✅ 承認済 | 2026-10-05 | CEO | [PR #19](https://github.com/SakakitaniJunya/Igeta/pull/19) | — |
+| [0011](accepted/2026/0011-person-diagram-first.md) | ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る | ✅ 承認済 | 2026-10-20 | CEO | [PR #24](https://github.com/SakakitaniJunya/Igeta/pull/24) | — |
+| [0012](accepted/2026/0012-persistence-library.md) | ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト | ✅ 承認済 | 2026-10-22 | CEO | [PR #26](https://github.com/SakakitaniJunya/Igeta/pull/26) | — |
 
 ## ❌ 却下 (0)
 

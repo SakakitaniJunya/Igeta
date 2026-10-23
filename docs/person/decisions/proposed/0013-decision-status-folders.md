@@ -9,7 +9,7 @@ canonical: true
 owners: [eng]
 created: 2026-10-22
 proposed: 2026-10-22
-awaiting: 榊谷 隼也
+awaiting: CEO
 depends_on: [adr-0007-fingerprint-link-normalization, adr-0008-human-approval-scope]
 relates_to: [adr-0009-kind-placement]
 ---
@@ -61,8 +61,8 @@ Igeta 自身の 12 本は全部 `proposed` で、索引の日付は全部 `—`�
 | 9 移行 | 12 本は、下の根拠で `decision-accept` を通す。根拠の無い旧 `accepted`・`rejected` は、記録の上で `proposed/` へ差し戻す (履歴に旧い状態を残す)。利用側は `docs-migrate` に 1 段を足す | 根拠を作って承認済にしない |
 | 10 再発防止 | `init` の AGENTS.md と人の承認の手引きに「PR を merge したら `decision-pending` を実行し、記録の PR を出す」を置く。記録の PR は `person/` を触るので、CEO がもう一度 merge する | 手順と担当を文章にする |
 
-**Igeta 自身の 12 本の根拠** (merge は全部 SakakitaniJunya。実行時に `gh` が再確認する): 0001〜0010 は PR #19 (2026-10-05)、0011 は PR #20 (2026-10-08)、0012 は PR #26 (2026-10-22)。
-承認済にする前に、要件か設計の決まりの行が `ADR-NNNN` を引いていること (docs-check の引用の検査)。0006・0007・0010・0012 は引く行がまだ見当たらないので、先に足す。
+**Igeta 自身の 12 本の根拠** (merge は全部 SakakitaniJunya。実行時に `gh` が再確認する): 0001・0003〜0010 は PR #19 (2026-10-05)、0002 は PR #20 (2026-10-08)、0011 は PR #24 (2026-10-20)、0012 は PR #26 (2026-10-22)。0002・0011 は、#19・#20 の時点の本文が今の本文と指紋が違うので、後の PR を根拠にした。
+承認済にする前に、要件か設計の決まりの行が `ADR-NNNN` を引いていること (docs-check の引用の検査)。0006・0007・0010・0011・0012 は引く行がまだ見当たらないので、先に足した。
 
 ## 却下した選択肢
 

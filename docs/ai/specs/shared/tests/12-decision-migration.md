@@ -32,7 +32,7 @@ relates_to: [test-decision-status]
 
 | メソッド | 返す値 | fixture の書き方 |
 |---|---|---|
-| `pull(repo, number)` | `state` (`open`・`closed`・`merged`)・`author`・`mergedBy`・`closedBy`・`mergeCommit`・`headRepo` | `pull/19: { state: 'merged', mergedBy: 'ceo-gh', mergeCommit: '<一時 repo の sha>' }` |
+| `pull(repo, number)` | `state` (`open`・`closed`・`merged`)・`author`・`mergedBy`・`closedBy`・`mergeCommit`・`mergedAt` (任意。履歴の日付に使う。無ければ記録した日)・`headRepo` | `pull/19: { state: 'merged', mergedBy: 'ceo-gh', mergeCommit: '<一時 repo の sha>' }` |
 | `pullCommits(repo, number)` | その PR の commit の sha の配列 | `pull/19: ['<sha>', …]` (一時 repo で作った commit) |
 | `issue(repo, number)` | `state`・`closedBy` | `issue/7: { state: 'closed', closedBy: 'ceo-gh' }` |
 
@@ -49,8 +49,9 @@ relates_to: [test-decision-status]
 
 | ADR | 根拠 (`gh` が実行時に再確認) | 先に要る作業 |
 |---|---|---|
-| 0001〜0010 | PR #19 (2026-10-05、`docs/adr/` に 10 本) | 0006・0007・0010 を、決まりの行から `ADR-NNNN` で引く (G4)。本文の指紋が違えば MG1 |
-| 0011 | PR #20 (2026-10-08、99 行を追加) | なし (要件定義書 02 の行が引いている) |
+| 0001・0003〜0010 | PR #19 (2026-10-05、`docs/adr/` に 10 本) | 0006・0007・0010 を、決まりの行から `ADR-NNNN` で引く (G4) |
+| 0002 | PR #20 (2026-10-08)。#19 の時点の本文は今の本文と指紋が違う (MG1 で後の PR を根拠にした) | なし |
+| 0011 | PR #24 (2026-10-20、#22・#23 を main へ入れた)。#20 の時点の本文は今の本文と指紋が違う (MG1) | 決まりの行から `ADR-0011` で引く (G4) |
 | 0012 | PR #26 (2026-10-22) | 引く行を足す。#26 は GitHub のレビューが無い (AI の内部評価のみ) が、他と同じく merge で扱う |
 | 0013 | 無し (proposed のまま) | この PR を CEO が merge した後に accept |
 
@@ -97,9 +98,13 @@ relates_to: [test-decision-status]
 | 3 | `src/cli/commands/decision/` (4 動詞・`pending`・`GitHubPort`) | 検査を変えず、新しいコードとテストだけ。Igeta の docs は変わらない |
 | 4 | `docs-migrate` の 1 段、Igeta 自身の 12 本 (§2 の順)、利用側の移行 | 12 本は全部根拠付きで入り、DS1・3・5・6・11 が緑で効き出す。利用側は移行 PR ごとに緑にする |
 
-MD-11 のフォルダ分け: `src/core/decision/` = `history.ts` (履歴の読み書き・遷移)・`fingerprint.ts`・`folder.ts` (置き場所と年)・`evidence.ts` (形と実在)・`ledger.ts` (DEC/OPEN)・`index.ts` の 6 本。検査の入口は、既存の検査と同じ `src/checks/DecisionStatusCheck.ts` (core/decision を呼ぶだけ)。
-`src/cli/commands/decision/` = `verbs.ts` (4 動詞の薄い入口)・`record.ts` (書き込み口)・`pending.ts`・`port.ts`・`gh-port.ts`・`index.ts` の 6 本。
-読むのは `#decision/core`・`#decision/cli` (package.json の `imports`)。`cli/commands/` の直下は既に 7 本を超えているが (既存の負債)、足すのは `checkCommands.ts` への登録 1 行だけ。
+MD-11 のフォルダ分け (本体は 1 フォルダ 7 本まで、1 ファイル 150 行以内):
+
+- `src/core/decision/` = `history.ts` (履歴の読み書き)・`decision.ts` (ADR 1 本の読み取りと frontmatter の書き換え)・`folder.ts` (置き場所・一意・置換・再提案)・`fingerprint.ts`・`evidence.ts` (形と実在)・`ledger.ts` (DEC/OPEN)・`index.ts` (索引の 4 表と公開口) の 7 本。規則の組み立ては `check/` に分ける: `document.ts` (ADR 1 本の DS1・3・4・5・6・9・11)・`waiting.ts` (DS11)・`history-rules.ts` (DS3・7・9)。
+- 検査の入口は、既存の検査と同じ `src/checks/DecisionStatusCheck.ts` (ADR を集めて `check/` を当て、base と台帳と索引を足す)。
+- `src/cli/commands/decision/` = `verbs.ts` (4 動詞の薄い入口)・`record.ts` (書き込み口)・`plan.ts` (動詞ごとの変更の計画)・`pending.ts`・`port.ts`・`gh-port.ts`・`index.ts` の 7 本。計画の型と根拠の確かめは `plan/` (`types.ts`・`confirm.ts`) に分ける。書き込み前後の保存と復元は `src/core/TreeSnapshot.ts`。
+- `docs-migrate` の 1 段は `src/generators/DocsMigrateDecisions.ts` (`<年>/` の ADR) と `DocsMigrateLedger.ts` (台帳の列)。呼ぶのは `DocsMigrateCommand` で、根拠の表は `--decisions-evidence <file>` (JSON)。`.igeta.json` に `decisions.approvers` が無い repo では走らず、案内だけを出す。
+- 読むのは `#decision/core`・`#decision/cli` と、`#core/*`・`#checks/*`・`#generators/*`・`#cli/*` (package.json の `imports`。相対の `../../` を避ける)。`cli/commands/` の直下は既に 7 本を超えているが (既存の負債)、コマンドの登録は `src/cli.ts` の 1 行 (`createDecisionCommands()`) だけ。
 
 ## 7. 版の注意
 

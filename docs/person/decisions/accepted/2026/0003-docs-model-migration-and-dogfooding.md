@@ -103,4 +103,4 @@ docs/
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:95d05f15b008792bb78e9cad9ff642c4fff2bbd939ad218eb12ed2c8a1d8fc0f | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:95d05f15b008792bb78e9cad9ff642c4fff2bbd939ad218eb12ed2c8a1d8fc0f | — |

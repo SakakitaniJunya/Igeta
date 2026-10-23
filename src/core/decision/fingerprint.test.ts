@@ -1,7 +1,8 @@
 // node --test dist/core/decision/fingerprint.test.js
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { DECISIONS, adrText, approvalRow, disposeAllRepos, makeRepo } from './decision.test-support.js';
+import { DECISIONS, disposeAllRepos, makeRepo } from './decision.test-support.js';
+import { adrText, approvalRow } from './adr.test-support.js';
 import { checkBodyUnchanged, decisionBody, decisionFingerprint } from './fingerprint.js';
 
 after(disposeAllRepos);

@@ -1,7 +1,7 @@
 // decision-accept・reject・supersede・amend の入口。引数を読んで recordDecision に渡すだけ (書き込みは record.ts の 1 か所)。
 
 import { resolve } from 'node:path';
-import { ExitCode } from '../../../core/ExitCode.js';
+import { ExitCode } from '#core/ExitCode.js';
 import { ArgParseError, parseArgs } from '../../Args.js';
 import type { CommandContext } from '../../Command.js';
 import { Command } from '../../Command.js';

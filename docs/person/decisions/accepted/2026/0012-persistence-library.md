@@ -102,4 +102,4 @@ flowchart TB
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-22 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/26> | 43f1831fbb9eff3b24fcbfcd847adc34f77ec27a | sha256:efd739688d2c949278dc387f9dc902b0d735b700f4ba0d115baa0b888ecbbc00 | — |
+| 2026-10-22 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/26> | 43f1831fbb9eff3b24fcbfcd847adc34f77ec27a | sha256:efd739688d2c949278dc387f9dc902b0d735b700f4ba0d115baa0b888ecbbc00 | — |

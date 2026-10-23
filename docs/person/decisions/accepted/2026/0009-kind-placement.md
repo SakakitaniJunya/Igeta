@@ -76,4 +76,4 @@ ID の行を持たない kind (地図・用語集・ADR など) が必ず落ち�
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:c17a9d74176364190ed617394505eb86115ba264f44808192be549f9ec3d6943 | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:c17a9d74176364190ed617394505eb86115ba264f44808192be549f9ec3d6943 | — |

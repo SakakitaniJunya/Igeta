@@ -103,4 +103,4 @@ ai の文書に「未決」「未確定」の節を置かない (人の決めが
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:5a9384e5766f0682619c60e0e87f5ca5edb8550297cd9e2d35148abc3d2d9bb6 | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:5a9384e5766f0682619c60e0e87f5ca5edb8550297cd9e2d35148abc3d2d9bb6 | — |

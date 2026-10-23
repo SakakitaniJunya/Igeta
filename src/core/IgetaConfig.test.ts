@@ -337,8 +337,8 @@ describe('loadIgetaConfig: decisions (ADR-0013 決定 3・5)', () => {
   };
 
   it('approvers ({ name, github }) と staleDays を読む。staleDays の既定は 14', () => {
-    const result = load({ approvers: [{ name: '榊谷 隼也', github: 'ceo-gh' }] });
-    assert.deepEqual(result, { config: { ...DEFAULT_IGETA_CONFIG, decisions: { approvers: [{ name: '榊谷 隼也', github: 'ceo-gh' }], staleDays: 14 } } });
+    const result = load({ approvers: [{ name: 'CEO', github: 'ceo-gh' }] });
+    assert.deepEqual(result, { config: { ...DEFAULT_IGETA_CONFIG, decisions: { approvers: [{ name: 'CEO', github: 'ceo-gh' }], staleDays: 14 } } });
     assert.deepEqual(load({ staleDays: 3 }), { config: { ...DEFAULT_IGETA_CONFIG, decisions: { approvers: [], staleDays: 3 } } });
   });
 

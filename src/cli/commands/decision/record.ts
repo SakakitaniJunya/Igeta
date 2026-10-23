@@ -4,11 +4,11 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DECISIONS_DIR } from '#decision/core';
-import { DocGraphCheck } from '../../../checks/DocGraphCheck.js';
-import { ExitCode } from '../../../core/ExitCode.js';
-import { restoreTree, snapshotTree } from '../../../core/TreeSnapshot.js';
-import { rewriteLinksForMoves } from '../../../generators/DocsMigrateLinks.js';
-import { gitOrNull, trackedFiles } from '../../../generators/DocsMigrateRepo.js';
+import { DocGraphCheck } from '#checks/DocGraphCheck.js';
+import { ExitCode } from '#core/ExitCode.js';
+import { restoreTree, snapshotTree } from '#core/TreeSnapshot.js';
+import { rewriteLinksForMoves } from '#generators/DocsMigrateLinks.js';
+import { gitOrNull, trackedFiles } from '#generators/DocsMigrateRepo.js';
 import type { Change, RecordOutcome, RecordRequest, Step } from './plan.js';
 import { cannotCheck, plan, prepare, proceed, refuse } from './plan.js';
 

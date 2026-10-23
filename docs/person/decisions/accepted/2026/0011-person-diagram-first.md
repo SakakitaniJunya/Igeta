@@ -102,4 +102,4 @@ PersonFormCheck が `~~~mermaid` を数え、MermaidCheck は ` ``` ` だけを�
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-20 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/24> | 6c3d73da1398070548f0514f36709d3667183945 | sha256:7fbc3f815a61b9aaf624fe69ed2a5339dab5d64e2638cbb55cb4790de37885c9 | — |
+| 2026-10-20 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/24> | 6c3d73da1398070548f0514f36709d3667183945 | sha256:7fbc3f815a61b9aaf624fe69ed2a5339dab5d64e2638cbb55cb4790de37885c9 | — |

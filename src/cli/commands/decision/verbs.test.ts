@@ -2,9 +2,10 @@
 // decision-* の入口: 必須の引数、port の差し込み、終了コード。書き込みの中身は record.test.ts。
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { APPROVER, DECISIONS, DECISIONS_README, adrText, disposeAllRepos, makeRepo, pullUrl } from '../../../core/decision/decision.test-support.js';
-import { ExitCode } from '../../../core/ExitCode.js';
-import { IGETA_ROOT } from '../../../core/Paths.js';
+import { APPROVER, DECISIONS, disposeAllRepos, makeRepo } from '#core/decision/decision.test-support.js';
+import { DECISIONS_README, adrText, pullUrl } from '#core/decision/adr.test-support.js';
+import { ExitCode } from '#core/ExitCode.js';
+import { IGETA_ROOT } from '#core/Paths.js';
 import { ArgParseError } from '../../Args.js';
 import { createDecisionCommands } from './index.js';
 import { fixturePort } from './port.test-support.js';

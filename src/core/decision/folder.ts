@@ -1,87 +1,13 @@
-// 決定 (ADR) 1 本の読み取りと、置き場所・一意・覆す・再提案の規則 (テスト仕様 10 の DS1・DS2・DS8・DS10)。
+// 置き場所・一意・覆す・再提案の規則 (テスト仕様 10 の DS1・DS2・DS8・DS10)。
 // フォルダは状態で分ける: proposed/ (年なし)・accepted/<年>/・rejected/<年>/・retired/<年>/。
 
 import { posix } from 'node:path';
-import { parseFrontmatter, scalar, stringList } from '../Frontmatter.js';
+import type { DecisionDoc } from './decision.js';
 import type { Finding, HistoryRow } from './history.js';
-import { isPreMigrationRow, parseHistory } from './history.js';
+import { isPreMigrationRow } from './history.js';
 
 export const DECISIONS_DIR = 'docs/person/decisions';
 export const STATE_DIRS = ['proposed', 'accepted', 'rejected', 'retired'] as const;
-
-export interface DecisionDoc {
-  /** repo ルートからの相対パス (`/` 区切り) */
-  readonly path: string;
-  readonly id: string;
-  readonly number: string;
-  readonly title: string;
-  readonly status: string;
-  readonly awaiting: string;
-  readonly due: string;
-  readonly created: string;
-  /** frontmatter の proposed・accepted (履歴の無い旧い ADR の日付。索引の代わりの値) */
-  readonly proposed: string;
-  readonly accepted: string;
-  readonly supersedes: readonly string[];
-  readonly supersededBy: string;
-  readonly reopens: string;
-  readonly rows: readonly HistoryRow[];
-  readonly text: string;
-}
-
-/** ADR の本文を読む。frontmatter が読めない・id が無いものは ADR として扱わない (空の id を返さず、呼び出し側が除く) */
-export function parseDecision(path: string, text: string): { readonly doc: DecisionDoc } | { readonly reason: string } {
-  const lines = text.split('\n');
-  const meta = parseFrontmatter(lines);
-  const id = meta === null ? '' : (scalar(meta.data, 'id') ?? '');
-  const number = /^adr-(\d{4})/.exec(id)?.[1] ?? '';
-  if (meta === null || id === '' || number === '') return { reason: `${path}: frontmatter の id が adr-NNNN-… の形ではない` };
-  const field = (key: string): string => scalar(meta.data, key) ?? '';
-  return {
-    doc: {
-      path,
-      id,
-      number,
-      title: field('title'),
-      status: field('status'),
-      awaiting: field('awaiting'),
-      due: field('due'),
-      created: field('created'),
-      proposed: field('proposed'),
-      accepted: field('accepted') === 'null' ? '' : field('accepted'),
-      supersedes: stringList(meta.data, 'supersedes'),
-      supersededBy: field('superseded_by'),
-      reopens: field('reopens'),
-      rows: parseHistory(lines).rows,
-      text,
-    },
-  };
-}
-
-/** frontmatter の項目を足す・直す・消す (undefined で消す)。他の行は触らない */
-export function editFrontmatter(text: string, changes: Readonly<Record<string, string | undefined>>): string {
-  const lines = text.split('\n');
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
-  const head = lines.slice(1, end);
-  const kept: string[] = [];
-  const pending = new Map(Object.entries(changes));
-  let skipItems = false;
-  for (const line of head) {
-    const key = /^([A-Za-z_][A-Za-z0-9_-]*):/.exec(line)?.[1] ?? '';
-    if (skipItems && /^\s+-\s/.test(line)) continue;
-    skipItems = false;
-    if (!pending.has(key)) {
-      kept.push(line);
-      continue;
-    }
-    const value = pending.get(key);
-    skipItems = true;
-    pending.delete(key);
-    if (value !== undefined) kept.push(`${key}: ${value}`);
-  }
-  for (const [key, value] of pending) if (value !== undefined) kept.push(`${key}: ${value}`);
-  return ['---', ...kept, ...lines.slice(end)].join('\n');
-}
 
 const FOLDER_OF_STATUS: Readonly<Record<string, (typeof STATE_DIRS)[number]>> = {
   proposed: 'proposed',

@@ -99,4 +99,4 @@ relates_to: [adr-0007-fingerprint-link-normalization]
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:4dec99aa173a3868446d62f0cbe986f97f611229137374dca0f9c6ad42dcfbec | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:4dec99aa173a3868446d62f0cbe986f97f611229137374dca0f9c6ad42dcfbec | — |

@@ -4,36 +4,29 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { DecisionDoc, Finding, Ledger } from '#decision/core';
+import type { DecisionDoc, DocumentEnvironment, Finding, Ledger } from '#decision/core';
 import {
   DECISIONS_DIR,
   STATE_DIRS,
   checkAppendOnly,
-  checkBodyUnchanged,
-  checkEvidenceShape,
+  checkDocument,
   checkIndexMarks,
   checkLedgerRows,
   checkNoRowRemoved,
-  checkPlacement,
   checkReopens,
-  checkStatusMatchesHistory,
   checkSupersession,
-  checkTransitions,
   checkUnique,
-  checkWaiting,
   createGitCommitReader,
-  decisionFingerprint,
-  firstSeen,
   loadDecisions,
   originSlug,
   parseDecision,
   readLedger,
 } from '#decision/core';
-import type { Check, CheckContext } from '../core/Check.js';
-import { isDirectory } from '../core/DocFiles.js';
-import { GitError, listFilesAtRef, mergeBase, readFileAtRef } from '../core/GitRef.js';
-import { loadIgetaConfig } from '../core/IgetaConfig.js';
-import type { Violation } from '../core/Report.js';
+import type { Check, CheckContext } from '#core/Check.js';
+import { isDirectory } from '#core/DocFiles.js';
+import { GitError, listFilesAtRef, mergeBase, readFileAtRef } from '#core/GitRef.js';
+import { loadIgetaConfig } from '#core/IgetaConfig.js';
+import type { Violation } from '#core/Report.js';
 
 export interface DecisionStatusOptions {
   /** 変更を入れる先の ref。履歴が追記のみ (DS7) と台帳の行が消えない (DS13) を、この ref との枝分かれの点と比べる */
@@ -46,16 +39,6 @@ const LEDGER_FILE = '01-decisions.md';
 interface BaseSnapshot {
   readonly docs: readonly DecisionDoc[];
   readonly ledger: Ledger;
-}
-
-/** ADR 1 本の検査が共有する、repo 全体の前提 */
-interface DocEnvironment {
-  readonly root: string;
-  readonly isStrict: boolean;
-  readonly today: string;
-  readonly config: { readonly approvers: readonly { readonly name: string }[]; readonly staleDays: number };
-  readonly slug: ReturnType<typeof originSlug>;
-  readonly reader: ReturnType<typeof createGitCommitReader>;
 }
 
 const toViolation = (path: string, finding: Finding): Violation => ({
@@ -95,9 +78,10 @@ export class DecisionStatusCheck implements Check {
     const base = this.#readBase(ctx.targetRoot);
     const today = this.#now().toISOString().slice(0, 10);
     const reader = createGitCommitReader(ctx.targetRoot);
-    const env: DocEnvironment = { root: ctx.targetRoot, isStrict, today, config: loaded.config.decisions, slug: originSlug(ctx.targetRoot), reader };
+    const { approvers, staleDays } = loaded.config.decisions;
+    const env: DocumentEnvironment = { root: ctx.targetRoot, isStrict, today, approverNames: approvers.map((a) => a.name), staleDays, slug: originSlug(ctx.targetRoot), reader };
     try {
-      const perDoc = docs.flatMap((doc) => this.#checkDecision(doc, env));
+      const perDoc = docs.flatMap((doc) => this.#checkDocument(doc, env));
       const crossDoc = [...checkUnique(docs), ...checkSupersession(docs), ...checkReopens(docs)].map((finding) => toViolation(finding.path ?? '', finding));
       const violations = [...perDoc, ...crossDoc, ...this.#compareWithBase(base, docs), ...this.#checkLedger(ctx.targetRoot, decisionsDir, today, base), ...this.#checkIndex(decisionsDir)];
       return violations.sort((a, b) => (a.file ?? '').localeCompare(b.file ?? '') || (a.line ?? 0) - (b.line ?? 0));
@@ -106,42 +90,11 @@ export class DecisionStatusCheck implements Check {
     }
   }
 
-  /** ADR 1 本に当てる規則 (DS1・3・4・5・6・9・11) */
-  #checkDecision(doc: DecisionDoc, env: DocEnvironment): Violation[] {
-    const names = env.config.approvers.map((approver) => approver.name);
-    const decided = doc.rows.filter((row) => ['承認', '改訂', '却下'].includes(row.event));
-    const findings: Finding[] = [...checkTransitions(doc.rows), ...(env.isStrict ? [...checkPlacement(doc), ...checkStatusMatchesHistory(doc.status, doc.rows)] : [])];
-    const violations: Violation[] = [];
-    if (decided.length > 0 && !env.slug.ok) {
-      violations.push({ severity: 'cannot-check', file: doc.path, message: `[DS4] ${env.slug.reason} (根拠の owner と repo を origin と照合できない)` });
-    } else if (env.slug.ok) {
-      findings.push(...decided.flatMap((row) => checkEvidenceShape(row, { slug: env.slug.ok ? env.slug.value : '', approverNames: names }).map((message) => ({ rule: 'DS4', line: row.line, message }))));
-    }
-    if (env.isStrict) {
-      findings.push(...checkBodyUnchanged({ status: doc.status, rows: doc.rows, fingerprint: decisionFingerprint(env.root, doc.path, doc.text) }));
-      violations.push(...this.#checkEvidenceExists(doc, decided, env, findings));
-    }
-    const seen = doc.status === 'proposed' ? firstSeen(env.root, doc.path) : undefined;
-    const waitingSince = seen?.ok === true ? { date: seen.value.date, isFromGit: true } : { date: doc.created || env.today, isFromGit: false };
-    const waiting = checkWaiting(doc, { isStrict: env.isStrict, approverNames: names, staleDays: env.config.staleDays, today: env.today, waitingSince });
-    this.#warnings.push(...waiting.warnings);
-    return [...violations, ...[...findings, ...waiting.findings].map((finding) => toViolation(doc.path, finding))];
-  }
-
-  /** DS5: 承認・改訂の行の根拠 commit が HEAD の履歴にあり、そこにこの ADR と同じ本文指紋がある。浅い clone などで辿れなければ検査不能 */
-  #checkEvidenceExists(doc: DecisionDoc, decided: DecisionDoc['rows'], env: DocEnvironment, findings: Finding[]): Violation[] {
-    const violations: Violation[] = [];
-    for (const row of decided.filter((candidate) => candidate.event !== '却下' && /^[0-9a-f]{40}$/.test(candidate.commit))) {
-      const found = env.reader.fingerprintAt(row.commit, doc.id);
-      if (found.status === 'found') {
-        if (found.fingerprint !== row.fingerprint) findings.push({ rule: 'DS5', line: row.line, message: `根拠 commit の本文指紋が行の指紋と違う (commit ${found.fingerprint.slice(0, 19)}… / 行 ${row.fingerprint.slice(0, 19)}…)` });
-      } else if (found.status === 'unverifiable') {
-        violations.push({ severity: 'cannot-check', file: doc.path, line: row.line, message: `[DS5] ${found.reason}` });
-      } else {
-        findings.push({ rule: 'DS5', line: row.line, message: found.reason });
-      }
-    }
-    return violations;
+  #checkDocument(doc: DecisionDoc, env: DocumentEnvironment): Violation[] {
+    const result = checkDocument(doc, env);
+    this.#warnings.push(...result.warnings);
+    const unverifiable = result.unverifiable.map((finding): Violation => ({ ...toViolation(doc.path, finding), severity: 'cannot-check' }));
+    return [...unverifiable, ...result.findings.map((finding) => toViolation(doc.path, finding))];
   }
 
   /** DS7・DS13 の「消えない」: 対象 branch との枝分かれの点と比べる。読めなければ警告 */

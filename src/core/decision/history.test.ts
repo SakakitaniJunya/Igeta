@@ -1,11 +1,12 @@
 // node --test dist/core/decision/history.test.js
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendHistoryRow, checkAppendOnly, checkStatusMatchesHistory, checkTransitions, parseHistory } from './history.js';
+import { checkAppendOnly, checkStatusMatchesHistory, checkTransitions } from './check/history-rules.js';
+import { appendHistoryRow, parseHistory } from './history.js';
 import type { NewHistoryRow } from './history.js';
 
 const row = (patch: Partial<NewHistoryRow> = {}): NewHistoryRow => ({
-  date: '2026-10-05', event: '承認', before: 'proposed', after: 'accepted', by: '榊谷 隼也',
+  date: '2026-10-05', event: '承認', before: 'proposed', after: 'accepted', by: 'CEO',
   evidence: 'https://github.com/a/b/pull/1', commit: 'a'.repeat(40), fingerprint: `sha256:${'b'.repeat(64)}`, memo: '', ...patch,
 });
 const parse = (text: string) => parseHistory(text.split('\n'));

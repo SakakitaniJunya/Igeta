@@ -4,8 +4,8 @@
 import { resolve } from 'node:path';
 import type { DecisionDoc } from '#decision/core';
 import { daysBetween, firstSeen, loadDecisions, originSlug } from '#decision/core';
-import { ExitCode } from '../../../core/ExitCode.js';
-import { loadIgetaConfig } from '../../../core/IgetaConfig.js';
+import { ExitCode } from '#core/ExitCode.js';
+import { loadIgetaConfig } from '#core/IgetaConfig.js';
 import { parseArgs } from '../../Args.js';
 import type { CommandContext } from '../../Command.js';
 import { Command } from '../../Command.js';

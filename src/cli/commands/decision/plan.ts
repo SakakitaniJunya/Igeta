@@ -1,69 +1,17 @@
 // 決定の状態を変える変更の計画 (ADR-0013 決定 2・3)。accept・reject・supersede・amend が書く内容を、何も書かずに作る。
-// 遷移・approvers・gh (GitHubPort)・根拠 commit の本文指紋を、ここで全部確かめる。書くのは record.ts。
+// 型は plan/types.ts、根拠の確かめは plan/confirm.ts。書くのは record.ts。
 
 import { basename } from 'node:path';
 import type { DecisionDoc, HistoryRow, NewHistoryRow } from '#decision/core';
-import {
-  DECISIONS_DIR,
-  appendHistoryRow,
-  createGitCommitReader,
-  decisionFingerprint,
-  editFrontmatter,
-  loadDecisions,
-  originSlug,
-  parseEvidenceUrl,
-} from '#decision/core';
-import { ExitCode } from '../../../core/ExitCode.js';
-import { loadIgetaConfig } from '../../../core/IgetaConfig.js';
-import type { DecisionsConfig } from '../../../core/IgetaConfig.js';
-import { dirtyProblem, gitRepoProblem } from '../../../generators/DocsMigrateRepo.js';
-import type { GitHubPort } from './port.js';
+import { DECISIONS_DIR, appendHistoryRow, decisionFingerprint, editFrontmatter, loadDecisions, originSlug } from '#decision/core';
+import { loadIgetaConfig } from '#core/IgetaConfig.js';
+import { dirtyProblem, gitRepoProblem } from '#generators/DocsMigrateRepo.js';
+import { confirmMergedPull, confirmRejection } from './plan/confirm.js';
+import type { Change, Context, RecordRequest, Step } from './plan/types.js';
+import { cannotCheck, proceed, refuse } from './plan/types.js';
 
-export type DecisionVerb = 'accept' | 'reject' | 'supersede' | 'amend';
-
-export interface RecordRequest {
-  readonly root: string;
-  readonly igetaRoot: string;
-  readonly verb: DecisionVerb;
-  /** ADR の id か番号 (`0013`・`13`・`ADR-0013`) */
-  readonly target: string;
-  readonly by?: string;
-  readonly evidence?: string;
-  readonly reason?: string;
-  /** supersede の、置いた方の ADR (id か番号) */
-  readonly byAdr?: string;
-  readonly isDryRun: boolean;
-  readonly port: GitHubPort;
-  /** 記録の日 (YYYY-MM-DD) */
-  readonly today: string;
-}
-
-export interface RecordOutcome {
-  readonly exitCode: ExitCode;
-  readonly lines: readonly string[];
-}
-
-/** 1 つの文書の変更。newPath が path と違えば移動。edit は、リンクを書き換えた後の本文に履歴と frontmatter を重ねる */
-export interface Change {
-  /** 変える文書。ADR のほか、移行では決定台帳も入る */
-  readonly doc: Pick<DecisionDoc, 'path' | 'text'>;
-  readonly newPath: string;
-  readonly edit: (text: string) => string;
-  readonly appended: string;
-  readonly settings: readonly string[];
-}
-
-export type Step<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly exitCode: ExitCode; readonly reason: string };
-export const proceed = <T>(value: T): Step<T> => ({ ok: true, value });
-export const refuse = (reason: string): Step<never> => ({ ok: false, exitCode: ExitCode.Violation, reason });
-export const cannotCheck = (reason: string): Step<never> => ({ ok: false, exitCode: ExitCode.CannotCheck, reason });
-
-export interface Context {
-  readonly request: RecordRequest;
-  readonly config: DecisionsConfig;
-  readonly slug: string;
-  readonly docs: readonly DecisionDoc[];
-}
+export type { Change, Context, DecisionVerb, RecordOutcome, RecordRequest, Step } from './plan/types.js';
+export { cannotCheck, proceed, refuse } from './plan/types.js';
 
 const SHORT_FINGERPRINT_LENGTH = 19;
 
@@ -87,55 +35,6 @@ export function prepare(request: RecordRequest): Step<Context> {
 }
 
 /** --by が approvers の名前にあり、その github を返す */
-export function approverGithub(context: Context, by: string | undefined): Step<string> {
-  const approver = context.config.approvers.find((candidate) => candidate.name === by);
-  return approver === undefined ? refuse(`--by "${by ?? ''}" が .igeta.json の decisions.approvers の名前に無い`) : proceed(approver.github);
-}
-
-interface Confirmed {
-  readonly commit: string;
-  readonly date: string;
-  readonly fingerprint: string;
-  readonly url: string;
-}
-
-/** merge 済みの PR の、merge した人と、PR の commit のどれかに今の本文があること */
-async function confirmMergedPull(context: Context, doc: DecisionDoc, by: string | undefined, evidence: string): Promise<Step<Confirmed>> {
-  const url = parseEvidenceUrl(evidence);
-  if (!url.ok) return refuse(url.reason);
-  if (url.value.kind !== 'pull') return refuse(`根拠は merge 済みの PR の URL (${evidence})`);
-  if (url.value.slug !== context.slug) return refuse(`根拠 ${evidence} は origin (${context.slug}) の repo ではない`);
-  const github = approverGithub(context, by);
-  if (!github.ok) return github;
-  const number = Number(url.value.ref);
-  const pull = await context.request.port.pull(context.slug, number);
-  if (!pull.ok) return cannotCheck(pull.reason);
-  if (pull.value.state !== 'merged') return refuse(`PR #${number} は merge されていない (${pull.value.state})`);
-  if (pull.value.mergedBy !== github.value) return refuse(`PR #${number} を merge した人 (${pull.value.mergedBy ?? '不明'}) が --by "${by ?? ''}" の github (${github.value}) と違う`);
-  const commits = await context.request.port.pullCommits(context.slug, number);
-  if (!commits.ok) return cannotCheck(commits.reason);
-  const candidates = [...new Set([pull.value.mergeCommit ?? '', ...[...commits.value].reverse()].filter((sha) => sha !== ''))];
-  const found = findCommitWithBody(context, doc, candidates);
-  if (!found.ok) return found;
-  return proceed({ ...found.value, date: pull.value.mergedAt ?? context.request.today, url: evidence });
-}
-
-function findCommitWithBody(context: Context, doc: DecisionDoc, candidates: readonly string[]): Step<{ commit: string; fingerprint: string }> {
-  const fingerprint = decisionFingerprint(context.request.root, doc.path, doc.text);
-  const reader = createGitCommitReader(context.request.root);
-  try {
-    const reasons: string[] = [];
-    for (const commit of candidates) {
-      const found = reader.fingerprintAt(commit, doc.id);
-      if (found.status === 'found' && found.fingerprint === fingerprint) return proceed({ commit, fingerprint });
-      reasons.push(found.status === 'found' ? `${commit.slice(0, 12)}: 本文の指紋が今の本文と違う` : found.reason);
-      if (found.status === 'unverifiable') return cannotCheck(found.reason);
-    }
-    return refuse(`PR の commit に、今の本文の ${doc.id} が無い (${reasons.join(' / ')})`);
-  } finally {
-    reader.dispose();
-  }
-}
 
 export const yearOf = (date: string): string => date.slice(0, 4);
 
@@ -173,39 +72,6 @@ async function planAmend(context: Context, doc: DecisionDoc): Promise<Step<Chang
   if (!confirmed.ok) return confirmed;
   const newRow = row({ date: confirmed.value.date, event: '改訂', before: doc.status, after: 'amended', by: by ?? '', evidence: confirmed.value.url, commit: confirmed.value.commit, fingerprint: confirmed.value.fingerprint });
   return proceed([build(doc, { newRow, folder: '', frontmatter: { status: 'amended' } })]);
-}
-
-interface Closure {
-  readonly isOpen: boolean;
-  readonly who?: string;
-  readonly date?: string;
-}
-
-async function closureOf(context: Context, url: { readonly kind: string; readonly ref: string }): Promise<Step<Closure>> {
-  const number = Number(url.ref);
-  const { port } = context.request;
-  if (url.kind === 'pull') {
-    const pull = await port.pull(context.slug, number);
-    if (!pull.ok) return cannotCheck(pull.reason);
-    const { state, mergedBy, closedBy, mergedAt } = pull.value;
-    return proceed({ isOpen: state === 'open', who: state === 'merged' ? mergedBy : closedBy, date: mergedAt });
-  }
-  const issue = await port.issue(context.slug, number);
-  return issue.ok ? proceed({ isOpen: issue.value.state === 'open', who: issue.value.closedBy }) : cannotCheck(issue.reason);
-}
-
-async function confirmRejection(context: Context): Promise<Step<{ url: string; date: string }>> {
-  const { by, evidence = '' } = context.request;
-  const github = approverGithub(context, by);
-  if (!github.ok) return github;
-  const url = parseEvidenceUrl(evidence);
-  if (!url.ok) return refuse(url.reason);
-  if (url.value.slug !== context.slug || url.value.kind === 'commit') return refuse(`却下の根拠は origin (${context.slug}) の PR か Issue の URL (${evidence})`);
-  const closure = await closureOf(context, url.value);
-  if (!closure.ok) return closure;
-  if (closure.value.isOpen) return refuse(`${evidence} はまだ閉じていない`);
-  if (closure.value.who !== github.value) return refuse(`${evidence} を閉じた・merge した人 (${closure.value.who ?? '不明'}) が --by の github (${github.value}) と違う`);
-  return proceed({ url: evidence, date: closure.value.date ?? context.request.today });
 }
 
 async function planReject(context: Context, doc: DecisionDoc): Promise<Step<Change[]>> {

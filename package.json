@@ -23,7 +23,11 @@
   },
   "imports": {
     "#decision/core": "./dist/core/decision/index.js",
-    "#decision/cli": "./dist/cli/commands/decision/index.js"
+    "#decision/cli": "./dist/cli/commands/decision/index.js",
+    "#core/*": "./dist/core/*",
+    "#checks/*": "./dist/checks/*",
+    "#generators/*": "./dist/generators/*",
+    "#cli/*": "./dist/cli/*"
   },
   "scripts": {
     "build": "tsc",

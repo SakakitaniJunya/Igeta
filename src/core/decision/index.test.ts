@@ -1,7 +1,7 @@
 // node --test dist/core/decision/index.test.js
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { adrText, approvalRow } from './decision.test-support.js';
+import { adrText, approvalRow } from './adr.test-support.js';
 import { checkIndexMarks, checkReopens, checkSupersession, checkWaiting, daysBetween, editFrontmatter, indexLinkOf, parseDecision, renderDecisionIndex } from './index.js';
 import type { DecisionDoc } from './index.js';
 
@@ -14,7 +14,7 @@ const D = 'docs/person/decisions';
 
 describe('索引の 4 つの表 (DS14)', () => {
   const docs = [
-    doc(`${D}/proposed/0002-b.md`, adrText({ number: '0002', slug: 'b', extra: { awaiting: '榊谷 隼也', due: '2026-12-01' } })),
+    doc(`${D}/proposed/0002-b.md`, adrText({ number: '0002', slug: 'b', extra: { awaiting: 'CEO', due: '2026-12-01' } })),
     doc(`${D}/accepted/2026/0001-a.md`, adrText({ number: '0001', slug: 'a', status: 'accepted', rows: [approvalRow({ commit: 'a'.repeat(40), fingerprint: 'sha256:x' })] })),
   ];
   it('[TST-107] 同じ集合は同じ出力で、経過日数を入れない。0 件の表は _該当なし_', () => {
@@ -22,7 +22,7 @@ describe('索引の 4 つの表 (DS14)', () => {
     assert.equal(first, renderDecisionIndex([...docs].reverse(), indexLinkOf));
     assert.ok(first.includes('| [0002](proposed/0002-b.md)'));
     assert.ok(first.includes('PR #7'));
-    assert.ok(first.includes('榊谷 隼也'));
+    assert.ok(first.includes('CEO'));
     assert.equal((first.match(/_該当なし_/g) ?? []).length, 2);
     assert.ok(!/日待ち|経過/.test(first));
     assert.deepEqual(checkIndexMarks(first.split('\n')), []);

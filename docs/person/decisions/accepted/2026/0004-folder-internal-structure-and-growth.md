@@ -86,4 +86,4 @@ ADR 35 本など)。問題の無い repo は最大 10 本だった。人も AI �
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:02d3c8f1d4ec5904bd3f35568c271fc7bf08a76d3fbb60c523d3e69b73f22124 | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:02d3c8f1d4ec5904bd3f35568c271fc7bf08a76d3fbb60c523d3e69b73f22124 | — |

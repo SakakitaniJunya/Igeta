@@ -102,4 +102,4 @@ igeta の行)。門のコード・版・設定を変更の作者が書き換え�
 
 | 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
 |---|---|---|---|---|---|---|---|
-| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:a50736fc696c58db74fe2b3eac3aa31a53763d81ce1c6fb9510fbf1bdc68760f | — |
+| 2026-10-05 | 承認 | proposed→accepted | CEO | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:a50736fc696c58db74fe2b3eac3aa31a53763d81ce1c6fb9510fbf1bdc68760f | — |
