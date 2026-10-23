@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { globCanMatchUnder, validateGlob } from '../gate/PathGlob.js';
 import { ROLE_FOLDERS } from '../gate/RoleFolders.js';
 import type { Violation } from './Report.js';
+import type { TraceSettings } from './trace/TraceConfig.js';
 
 export const DEFAULT_SHARED_KINDS: readonly string[] = [
   'glossary',
@@ -64,6 +65,10 @@ export interface IgetaConfig {
    * 当たるかどうかの判定は humanPaths と同じ glob の意味 (src/gate/PathGlob.ts の matchesGlob)。
    */
   readonly nonDocPaths: readonly string[];
+  /** 設計書のつながりの検査 (TraceCheck) の設定。書いてない項目の既定値は core/trace/TraceConfig.ts が足す (ADR-0015) */
+  readonly trace: TraceSettings;
+  /** trace の節の誤り。ほかの設定を無効にせず、TraceCheck だけが cannot-check にする。誤りが無ければ無い */
+  readonly traceProblem?: Violation;
 }
 
 export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
@@ -73,6 +78,7 @@ export const DEFAULT_IGETA_CONFIG: IgetaConfig = {
   reagreementRules: DEFAULT_REAGREEMENT_RULES,
   humanPaths: [],
   nonDocPaths: [],
+  trace: {},
 };
 
 export type LoadIgetaConfigResult = { readonly config: IgetaConfig } | { readonly violation: Violation };
@@ -98,6 +104,37 @@ function readGlobList(
     }
   }
   return { globs: value };
+}
+
+const TRACE_LIST_KEYS = ['kinds', 'code', 'tests', 'columns', 'bands'] as const;
+
+/** `trace` の値 (JSON を読んだもの) の形を検査して TraceSettings にする。undefined は「書いてない」 */
+function parseTraceSettings(value: unknown, path: string): { readonly settings: TraceSettings } | { readonly violation: Violation } {
+  const fail = (message: string) => ({ violation: { severity: 'cannot-check', message: `${path} の trace ${message}` } as const });
+  if (value === undefined) return { settings: {} };
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return fail('はオブジェクトでなければならない');
+  const record = value as Record<string, unknown>;
+  for (const key of TRACE_LIST_KEYS) {
+    const list = record[key];
+    if (list !== undefined && (!Array.isArray(list) || !list.every((item): item is string => typeof item === 'string'))) {
+      return fail(`の ${key} は文字列の配列でなければならない`);
+    }
+  }
+  const kinds = record['kinds'] as readonly string[] | undefined;
+  if (kinds !== undefined && (kinds.length === 0 || !kinds.every((kind) => /^[A-Z][A-Z0-9]*$/.test(kind)))) {
+    return fail('の kinds は、大文字の接頭辞 (例 "FN") の空でない配列でなければならない');
+  }
+  for (const key of ['code', 'tests'] as const) {
+    for (const glob of (record[key] as readonly string[] | undefined) ?? []) {
+      const reason = validateGlob(glob);
+      if (reason !== null) return fail(`の ${key} の ${JSON.stringify(glob)} は glob として使えない: ${reason}`);
+    }
+  }
+  if (record['strictEdges'] !== undefined && typeof record['strictEdges'] !== 'boolean') return fail('の strictEdges は true か false でなければならない');
+  if (record['base'] !== undefined && (typeof record['base'] !== 'string' || record['base'] === '')) return fail('の base は空でない文字列でなければならない');
+  const tblRule = record['tblRule'];
+  if (tblRule !== undefined && tblRule !== 'warn' && tblRule !== 'error') return fail('の tblRule は "warn" か "error" でなければならない');
+  return { settings: record as TraceSettings };
 }
 
 /**
@@ -249,5 +286,8 @@ export function parseIgetaConfig(text: string, path: string): LoadIgetaConfigRes
     }
   }
 
-  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules, humanPaths, nonDocPaths } };
+  const trace = parseTraceSettings(record['trace'], path);
+  const traceFields = 'violation' in trace ? { trace: {}, traceProblem: trace.violation } : { trace: trace.settings };
+
+  return { config: { sharedKinds, contextSizeLimit, coverageExemptions, reagreementRules, humanPaths, nonDocPaths, ...traceFields } };
 }

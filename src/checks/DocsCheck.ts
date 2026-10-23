@@ -13,6 +13,7 @@ import { AgentsEntrypointCheck } from './AgentsEntrypointCheck.js';
 import { DocGraphCheck } from './DocGraphCheck.js';
 import { FolderSizeCheck } from './FolderSizeCheck.js';
 import { RoleBoundaryCheck } from './RoleBoundaryCheck.js';
+import { TraceCheck } from './TraceCheck.js';
 
 export class DocsCheck implements Check {
   readonly name = 'docs-check';
@@ -21,6 +22,7 @@ export class DocsCheck implements Check {
   readonly #roleBoundary = new RoleBoundaryCheck();
   readonly #folderSize = new FolderSizeCheck();
   readonly #agentsEntrypoint = new AgentsEntrypointCheck();
+  readonly #trace = new TraceCheck();
   #warnings: string[] = [];
 
   /** 直近の run() が出した非ブロッキング警告 (索引の未解決参照・旧い構成の移行の促し) */
@@ -35,6 +37,8 @@ export class DocsCheck implements Check {
     if (!existsSync(join(ctx.targetRoot, 'docs'))) return violations;
     violations.push(...this.#roleBoundary.run(ctx), ...this.#folderSize.run(ctx), ...this.#agentsEntrypoint.run(ctx));
     this.#warnings.push(...this.#roleBoundary.warnings);
+    violations.push(...this.#trace.run(ctx));
+    this.#warnings.push(...this.#trace.warnings);
     return violations;
   }
 }

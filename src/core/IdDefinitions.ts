@@ -13,6 +13,28 @@
 
 import { classifyLines } from './LineClassifier.js';
 
+/** 行頭セルの定義 1 件。line は 1 始まりの行番号 */
+export interface RowDefinition {
+  readonly token: string;
+  readonly line: number;
+}
+
+/**
+ * collectRowDefinedTokens と同じ判定 (行頭セル・AUTOGEN 等を除く) で、重複を残したまま行番号つきで返す。
+ * 同じ ID が 2 回採番されたことを見つけたい検査 (TraceCheck の T1) が使う。prefix は `(?:A|B)` のように束ねてよい。
+ */
+export function collectRowDefinitions(lines: readonly string[], prefix: string): readonly RowDefinition[] {
+  const rowRe = new RegExp(`^\\|\\s*(${prefix}-\\d{3})\\s*\\|`);
+  const kinds = classifyLines(lines);
+  const definitions: RowDefinition[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (kinds[i] !== 'body') continue;
+    const token = rowRe.exec((lines[i] ?? '').trim())?.[1];
+    if (token !== undefined) definitions.push({ token, line: i + 1 });
+  }
+  return definitions;
+}
+
 /**
  * 行頭が `| PREFIX-nnn |` の行だけを「定義」として集める (1 doc 内の重複は 1 件に数える)。
  * 順序は出現順。AUTOGEN 区間は除外する (code-reviewer 実バグ #3)。decision-log の
@@ -22,17 +44,5 @@ import { classifyLines } from './LineClassifier.js';
  * 無い違反が消えてしまう。
  */
 export function collectRowDefinedTokens(lines: readonly string[], prefix: string): string[] {
-  const rowRe = new RegExp(`^\\|\\s*(${prefix}-\\d{3})\\s*\\|`);
-  const seen = new Set<string>();
-  const tokens: string[] = [];
-  const kinds = classifyLines(lines);
-  for (let i = 0; i < lines.length; i += 1) {
-    if (kinds[i] !== 'body') continue;
-    const matched = rowRe.exec((lines[i] ?? '').trim());
-    const token = matched?.[1];
-    if (token === undefined || seen.has(token)) continue;
-    seen.add(token);
-    tokens.push(token);
-  }
-  return tokens;
+  return [...new Set(collectRowDefinitions(lines, prefix).map((definition) => definition.token))];
 }

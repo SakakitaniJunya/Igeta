@@ -26,6 +26,7 @@ owners: [eng]
 | [0010](2026/0010-value-ownership.md) | ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く | proposed | — | — |
 | [0011](2026/0011-person-diagram-first.md) | ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る | proposed | — | — |
 | [0012](2026/0012-persistence-library.md) | ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト | proposed | — | — |
+| [0015](2026/0015-trace-check.md) | ADR-0015 設計書のつながり (ID の上流・下流) を検査する — 新設の TraceCheck が既存の部品を import し、基準ファイルで段階的に厳しくする | proposed | — | — |
 
 <!-- AUTOGEN:adr-index:end -->
 

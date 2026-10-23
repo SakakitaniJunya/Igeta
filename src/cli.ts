@@ -21,6 +21,7 @@ import {
   ProvenanceCoverageCommand,
   SourceCoverageCommand,
 } from './cli/commands/ProvenanceCommands.js';
+import { TraceCommand } from './cli/commands/TraceCommand.js';
 import { ReviewSheetCommand } from './cli/commands/ReviewSheetCommand.js';
 import { ScaffoldCommand } from './cli/commands/ScaffoldCommand.js';
 import {
@@ -62,6 +63,7 @@ const cli = new Cli()
   .register(new ReviewSheetCommand())
   .register(new AnalyzeCommand())
   .register(new FixIdsCommand())
+  .register(new TraceCommand())
   .register(new ApprovalScopeCommand())
   .register(new DoctorCommand())
   .register(new VersionCheckCommand())
