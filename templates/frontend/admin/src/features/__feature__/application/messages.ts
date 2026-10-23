@@ -2,7 +2,7 @@
 // 複数の feature で使う文言の置き場は作らない (共通の文は、使う側で書く)。
 // code の一覧は API 仕様に合わせる。ここに無い code は保存失敗の文になる。
 
-import type { __Feature__Status } from '@/features/__feature__/domain/__feature__.model';
+import type { __Feature__Status } from '@/features/__feature__/domain/model';
 import type { ApiError } from '@/shared/domain/api';
 
 export const ERROR_CODES = ['NOT_FOUND', 'CONFLICT'] as const;

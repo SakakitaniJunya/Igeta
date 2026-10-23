@@ -8,7 +8,7 @@
 
 - `templates/frontend/admin/` の中の path = `apps/<app>/frontend/admin/` の中の path。展開先を別に指定しない
 - 土台 = 印の無いファイル (`shared/`・`app/`・`main.tsx`・package.json・tsconfig・vite 設定・`.dependency-cruiser.cjs`)。Igeta に土台も置くのは、実アプリが無い Igeta が雛形だけで組み立てて検査するためで、利用 repo が最初にコピーする骨格でもある
-- 1 単位 = `src/features/__feature__/` だけ。`__Component__` の印は無い。共通の部品は `shared/presentation/ui/` に直接置く
+- 1 単位 = `src/features/__feature__/` だけ。`__Component__` の印は無い。共通の部品は `shared/presentation/ui/` の state・control・label に分けて置く
 - 展開は `igeta expand templates/frontend/admin/src/features/__feature__ --app <app> --feature <kebab>`。展開先は path から決まり、既存は上書きしない
 - 展開したあと、`src/app/routes.ts` の目印 `// @igeta:register-import` の上に `import { <Feature>Screen } from '@/features/<feature>';`、`// @igeta:register-route` の上に `{ path: '/<feature>', screen: <Feature>Screen },` を足す。**目印は消さない**。`igeta check-templates --variant frontend` が登録後の形を型・テスト・層の規則・`vite build` まで検査する (Node は `engines` の 22 か 24 で走らせる。Node 25 は組み込みの `localStorage` が jsdom のものを隠して `session.test.ts` が落ちることを実測した)
 - 利用 repo 側の `templates/` には 1 単位 (`src/features/__feature__/`) だけ置けばよい。土台はそのアプリ自身
@@ -66,18 +66,18 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
           messages.ts                               この feature の文言 (code → 文)
           messages.test.ts                          全 code を網羅
         domain/
-          __feature__.model.ts                      画面側の型と絞り込み
-          __feature__.model.test.ts                 絞り込みの表
-          __feature__.validation.ts                 入力の検証 (項目ごとの規則、誤りの集約)
-          __feature__.validation.test.ts            境界値の表
-          __feature__.rules.ts                      判断だけの純関数 (閉じる確認が要る条件など)
-          __feature__.rules.test.ts                 条件ごとの真偽
+          model.ts                      画面側の型と絞り込み
+          model.test.ts                 絞り込みの表
+          validation.ts                 入力の検証 (項目ごとの規則、誤りの集約)
+          validation.test.ts            境界値の表
+          rules.ts                      判断だけの純関数 (閉じる確認が要る条件など)
+          rules.test.ts                 条件ごとの真偽
         infrastructure/
-          __feature__.endpoint.ts                   API の呼び出し。パスとメソッドはここだけ
-          __feature__.endpoint.test.ts              パス・メソッド・本文
-          __feature__.dto.ts                        要求・応答の型 (API 仕様の写し。型だけ)
-          __feature__.mapper.ts                     dto ⇄ model の変換
-          __feature__.mapper.test.ts                欠け・未知の値・往復
+          endpoint.ts                   API の呼び出し。パスとメソッドはここだけ
+          endpoint.test.ts              パス・メソッド・本文
+          dto.ts                        要求・応答の型 (API 仕様の写し。型だけ)
+          mapper.ts                     dto ⇄ model の変換
+          mapper.test.ts                欠け・未知の値・往復
         test-support/
           __feature__.fixtures.ts                   試験用の値 (dtoFixture・modelFixture)。試験だけが import する
     shared/                                         共通機能と部品の既定の置き場。feature と app を知らない
@@ -85,33 +85,33 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
         bind-field.ts                               Polaris 入力欄の確定の購読 (bindField と、購読を 1 回だけにする useBindField)
         bind-field.test.ts                          確定で 1 回だけ呼ぶ
         ui/                                         意味を知らない部品
-          LoadingView.tsx                           読み込み中
-          LoadingView.test.tsx                      文言を出す
-          ErrorView.tsx                             エラーとやり直し
-          ErrorView.test.tsx                        再試行を呼び出し元へ返す
-          EmptyState.tsx                            空の状態
-          EmptyState.test.tsx                       見出しと操作
-          ConfirmDialog.tsx                         確認ダイアログ
-          ConfirmDialog.test.tsx                    確定は true・やめる・外側・閉じるは false
-          DateField.tsx                             日付欄
-          DateField.test.tsx                        値と onChange
-          FormErrorBanner.tsx                       入力の誤りを送らずに止めた知らせ
-          FormErrorBanner.test.tsx                  項目を並べる
-          SaveErrorBanner.tsx                       保存失敗とやり直し
-          SaveErrorBanner.test.tsx                  details と再試行
-          StatusBadge.tsx                           状態の印 (語は引数)
-          StatusBadge.test.tsx                      tone ごとの出し方
-          CountLabel.tsx                            件数の表示 (打ち切られたときだけ `n+`)
-          CountLabel.test.tsx                       0・100 件で打ち切りなし/あり・単位
+          state/LoadingView.tsx                     読み込み中
+          state/LoadingView.test.tsx                文言を出す
+          state/ErrorView.tsx                       エラーとやり直し
+          state/ErrorView.test.tsx                  再試行を呼び出し元へ返す
+          state/EmptyState.tsx                      空の状態
+          state/EmptyState.test.tsx                 見出しと操作
+          state/FormErrorBanner.tsx                 入力の誤りを送らずに止めた知らせ
+          state/FormErrorBanner.test.tsx            項目を並べる
+          state/SaveErrorBanner.tsx                 保存失敗とやり直し
+          state/SaveErrorBanner.test.tsx            details と再試行
+          control/ConfirmDialog.tsx                 確認ダイアログ
+          control/ConfirmDialog.test.tsx            確定は true・やめる・外側・閉じるは false
+          control/DateField.tsx                     日付欄
+          control/DateField.test.tsx                値と onChange
+          label/StatusBadge.tsx                     状態の印 (語は引数)
+          label/StatusBadge.test.tsx                tone ごとの出し方
+          label/CountLabel.tsx                      件数の表示 (打ち切られたときだけ `n+`)
+          label/CountLabel.test.tsx                 0・100 件で打ち切りなし/あり・単位
       application/
-        use-api.tsx                                 ApiProvider と useApi
-        use-api.test.tsx                            Provider の外では投げる
-        use-resource.ts                             取得の状態 (読み込み中・成功・失敗・再取得)
-        use-resource.test.ts                        重なった要求は最後だけ使う
-        use-mutation-flow.ts                        書き込みの共通の流れ (確認 → 送信中 → 二重送信の防止 → 通知 → 再取得)。feature は手順を渡す
-        use-mutation-flow.test.tsx                  やめる・busy・失敗は再取得しない・dismiss
-        use-navigate.ts                             画面内の移動の hook
-        use-navigate.test.ts                        履歴と search の引き継ぎ
+        hooks/api.tsx                                 ApiProvider と useApi
+        hooks/api.test.tsx                            Provider の外では投げる
+        hooks/resource.ts                             取得の状態 (読み込み中・成功・失敗・再取得)
+        hooks/resource.test.ts                        重なった要求は最後だけ使う
+        hooks/mutation-flow.ts                        書き込みの共通の流れ (確認 → 送信中 → 二重送信の防止 → 通知 → 再取得)。feature は手順を渡す
+        hooks/mutation-flow.test.tsx                  やめる・busy・失敗は再取得しない・dismiss
+        hooks/navigate.ts                             画面内の移動の hook
+        hooks/navigate.test.ts                        履歴と search の引き継ぎ
       domain/                                       値と形だけ
         api.ts                                      Api・ApiResult・ApiError の型 (型だけ)
         api-error.ts                                ApiError の読み取り (validationFields = VALIDATION_FAILED の項目名)

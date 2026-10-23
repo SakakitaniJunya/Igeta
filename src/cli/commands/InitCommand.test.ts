@@ -279,7 +279,7 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
     for (const word of ['git fetch origin', 'origin/', '人へ渡す']) assert.ok(approval.includes(word), `「人の承認」の節に無い: ${word}`);
   });
 
-  it('[TST-106] scripts: package.json に I10 の 4 つの script があり、標準出力に次の手順の 3 行がある', async () => {
+  it('[TST-106] scripts: package.json に I10 の 3 つの script があり、標準出力に次の手順の 3 行がある', async () => {
     const root = makeRoot();
     const { code, stdout } = await runInit(root, ['--owner', OWNER]);
     assert.equal(code, ExitCode.Ok);
@@ -289,7 +289,6 @@ describe('init: 置くもの (I1〜I4・I10)', () => {
       'docs:graph': 'igeta docs-graph',
       'docs:check': 'igeta docs-check',
       'docs:template-check': 'igeta template-check --require-kind --require-human-review',
-      scaffold: 'igeta scaffold',
     });
     const next = stdout.split('\n').filter((line) => line.startsWith('NEXT'));
     assert.equal(next.length, 3, stdout);

@@ -299,4 +299,23 @@ describe('DomainDiagramDriftCheck', () => {
     const report = runCheck(root, { allowMissingCode: true });
     assert.equal(report.exitCode, ExitCode.Ok, report.format());
   });
+
+  it('[TST-109] 新しい構成: --docs を省くと docs/ai/specs/*/domain/ の全部のまとまりを順に見る', () => {
+    const modelDiagram = (context: string, classNames: readonly string[]): string =>
+      diagram(`apps/api/src/modules/${context}`, classNames).replace('canonical: true', 'kind: domain-model');
+    writeFile(root, 'docs/person/design/shared/00-map.md', '---\nkind: map\n---\n# 地図\n');
+    writeFile(root, 'docs/ai/specs/booking/domain/01-reservation.md', modelDiagram('booking', ['Reservation', 'Ghost']));
+    writeFile(root, 'docs/ai/specs/billing/domain/01-invoice.md', modelDiagram('billing', ['Invoice', 'Phantom']));
+    writeFile(root, 'apps/api/src/modules/booking/domain/reservation.ts', 'export class Reservation {}\n');
+    writeFile(root, 'apps/api/src/modules/billing/domain/invoice.ts', 'export class Invoice {}\n');
+
+    const violations = new DomainDiagramDriftCheck({}).run({ targetRoot: root, igetaRoot: IGETA_ROOT });
+    assert.deepEqual(
+      violations.map((violation) => [violation.severity, violation.file, violation.message.replace(/ \(期待:.*$/, '')]),
+      [
+        ['violation', 'docs/ai/specs/billing/domain/01-invoice.md', '図にあるが実装に無い: Phantom'],
+        ['violation', 'docs/ai/specs/booking/domain/01-reservation.md', '図にあるが実装に無い: Ghost'],
+      ],
+    );
+  });
 });

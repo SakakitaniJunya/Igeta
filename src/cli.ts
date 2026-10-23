@@ -4,6 +4,7 @@ import { Cli } from './cli/Cli.js';
 import { AgreementApproveCommand, AgreementCheckCommand } from './cli/commands/AgreementCommands.js';
 import { AnalyzeCommand } from './cli/commands/AnalyzeCommand.js';
 import { CheckTemplatesCommand } from './cli/commands/CheckTemplatesCommand.js';
+import { CheckTemplatesLayoutCommand } from './cli/commands/CheckTemplatesLayoutCommand.js';
 import { ContextBoundaryCheckCommand, ContextFilesCommand, ContextSizeCommand } from './cli/commands/ContextCommands.js';
 import { DiscrepancyAddCommand, DiscrepancyReportCommand } from './cli/commands/DiscrepancyCommands.js';
 import { DoctorCommand } from './cli/commands/DoctorCommand.js';
@@ -22,7 +23,6 @@ import {
   SourceCoverageCommand,
 } from './cli/commands/ProvenanceCommands.js';
 import { ReviewSheetCommand } from './cli/commands/ReviewSheetCommand.js';
-import { ScaffoldCommand } from './cli/commands/ScaffoldCommand.js';
 import {
   DocsCheckCommand,
   DocsGraphCommand,
@@ -55,9 +55,9 @@ const cli = new Cli()
   .register(new DiscrepancyAddCommand())
   .register(new DiscrepancyReportCommand())
   .register(new MermaidCheckCommand())
-  .register(new ScaffoldCommand())
   .register(new ExpandCommand())
   .register(new CheckTemplatesCommand())
+  .register(new CheckTemplatesLayoutCommand())
   .register(new ExportCommand())
   .register(new ReviewSheetCommand())
   .register(new AnalyzeCommand())

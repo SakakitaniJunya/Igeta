@@ -1,6 +1,6 @@
 {
   "name": "@igeta/eslint-config",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Igeta のコーディング規約のうち、機械で落とせる規則を載せた ESLint 9 flat config",
   "license": "MIT",
   "type": "module",
@@ -22,7 +22,7 @@
   },
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
-    "lint": "eslint --max-warnings 0 test/fixtures/clean"
+    "lint": "eslint --max-warnings 0 test/fixtures/clean check-layout.js"
   },
   "peerDependencies": {
     "eslint": "^9.39.0",

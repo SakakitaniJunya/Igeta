@@ -74,7 +74,7 @@ relates_to: [test-persistence-library]
 | 今の写し (hono・nestjs) | 後の形 |
 |---|---|
 | `shared/domain/result.ts`・`app-error.ts`・`transaction-*.ts`・`doc-id.ts` | `@igeta/persistence` から import。`assertDocumentId` は `invalid` を投げ、`InvalidDocIdSegment` は消える |
-| `shared/infrastructure/firestore.ts` (+ spec)・`modules/__context__/infrastructure/firestore-*.ts` | createFirestore・FirestoreRepository・FirestoreTransactionRunner の import。雛形に残るのは Mapper 1 つ。firestore-scope は消える |
+| `shared/infrastructure/firestore.ts` (+ spec)・`modules/__context__/infrastructure/firestore/*.ts` (旧 `firestore-*.ts`) | createFirestore・FirestoreRepository・FirestoreTransactionRunner の import。雛形に残るのは Mapper 1 つ。firestore/scope.ts は消える |
 | `domain/ports/__aggregate__.repository.port.ts` | `Repository<Entity, Id, Filter>` を使う 1 行の型 (domain に SDK は出ない) |
 | `shared/test-support/emulator.ts`・契約テストの写し | `@igeta/persistence/testing` の helper と describeRepositoryContract の呼び出し 1 つ |
 | `application/list-__aggregates__.usecase.ts` | `limit + 1` を外す。repository が `isTruncated` を返す |

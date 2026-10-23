@@ -13,7 +13,7 @@ relates_to: [domain-model, module-spec, test-plan]
 
 # 実装順序と Definition of Done
 
-> **When to use**: `scaffold:module` で最初のコンテキストを展開する前に読む。コンテキストは**上流から**着手し、1 コンテキスト内は **contract → domain → application → infrastructure → presentation → web** を必ず直列で回す。
+> **When to use**: `igeta expand` で最初のコンテキストを展開する前に読む。コンテキストは**上流から**着手し、1 コンテキスト内は **contract → domain → application → infrastructure → presentation → web** を必ず直列で回す。
 > - 各ステップの DoD は「動いた」ではなく **テストの種別 + `check:domain-drift` 緑 + `check:deps` 緑**で定義する (§2)
 > - 手戻りの規則を先に決める: **契約の過不足に気付いたら必ず Step 1 に戻る**。controller 側で辻褄を合わせない (§3)
 > - 並列化は**コンテキスト単位のみ**。同一コンテキスト内の並列は禁止 (§4)
@@ -23,7 +23,7 @@ relates_to: [domain-model, module-spec, test-plan]
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
 | 上流 (depends_on) | ドメイン総論 (`docs/ai/specs/shared/09-domain-overview.md`) のコンテキストマップ | — |
-| 下流 | `templates/api-module` / `scripts/scaffold-module.mjs` / 各コンテキストの実装 | class 名 |
+| 下流 | `node_modules/igeta/templates/backend/<変種>/src/modules/__context__` (`igeta expand` の 1 単位) / 各コンテキストの実装 | class 名 |
 
 ## 1. コンテキストの着手順 — 図から機械的に決める
 
@@ -43,7 +43,7 @@ relates_to: [domain-model, module-spec, test-plan]
 
 | # | ステップ | 主な成果物 | Definition of Done |
 |---|---|---|---|
-| 0 | 基盤 | `apps/api` / `packages/api-contract` / 共有カーネル | `scaffold:module … --include-kernel` 実行済 / CI から `--allow-missing-code` を**外した** / `check:deps` が緑 |
+| 0 | 基盤 | `apps/api` / `packages/api-contract` / 共有カーネル | 土台 (`node_modules/igeta/templates/backend/<変種>/` の印の無いファイル) を手でコピー済 / CI から `--allow-missing-code` を**外した** / `check:deps` が緑 |
 | 1 | **契約** | `packages/api-contract` の OpenAPI 3.1 + 型/クライアント生成 | OpenAPI が lint 緑 / 生成物がコミットされている / **この時点で実装コードは 1 行も無い** |
 | 2 | **domain** | VO → entity → aggregate → domain event → port の順で作る + クラス図 | 単体テスト (不変条件・状態遷移の**否定ケース必須**) / カバレッジ 80% / `check:domain-drift` 緑 / `check:deps` 緑 |
 | 3 | **application** | use case / application service + DTO | port の手書きスタブだけで通る単体テスト (DB を立てない) / 異常系が `AppError` の `statusCode` で検証されている / カバレッジ 80% |
@@ -79,10 +79,10 @@ relates_to: [domain-model, module-spec, test-plan]
 ## 5. 各ステップで叩くコマンド
 
 ```bash
-npm run scaffold:module -- --context <context> --aggregate <Aggregate>   # Step 2 の雛形展開
+npx igeta expand node_modules/igeta/templates/backend/<変種>/src/modules/__context__ --app <app> --context <context> --aggregate <aggregate>   # Step 2 の雛形展開 (名前は全部 kebab-case)
 npm run check:domain-drift                                              # 図 ↔ 実装 (exit 2 = 検査不能)
 npm run check:deps                                                      # レイヤ・境界違反
 npm run test:scripts                                                    # scripts/ 自体の自己テスト
 ```
 
-雛形の中身とプレースホルダは `templates/`、レイヤと境界の規約は `templates/api-shared-kernel/.dependency-cruiser.cjs`。
+雛形の中身とプレースホルダは `node_modules/igeta/templates/`、レイヤと境界の規約は `node_modules/igeta/templates/backend/<変種>/` の dependency-cruiser の設定。

@@ -25,8 +25,8 @@
 |---|---|
 | **設計書テンプレート** (`templates/docs/`) | 要件定義・基本設計・詳細設計・テスト・運用・ADR など **45 種** |
 | **検査スクリプト** (`src/`) | 必須節・ID 形式・上流下流の参照・索引の鮮度・図 ↔ 実装のズレを CI で落とす |
-| **コード雛形** (`templates/api-*` / `web-feature` / `backend` / `frontend`) | 図と実装を契約でつなぐ参考実装 (NestJS + Prisma + Next.js)。`backend` は Firestore の 4 層モジュラーモノリスで Hono / NestJS / Rust の 3 変種、`frontend` は React + Vite の管理画面 (4 層) |
-| **ストアスクショの型** (`templates/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
+| **コード雛形** (`templates/backend` / `frontend`) | 図と実装を契約でつなぐ参考実装。`backend` は Firestore の 4 層モジュラーモノリスで Hono / NestJS / Rust の 3 変種、`frontend` は React + Vite の管理画面 (4 層) |
+| **ストアスクショの型** (`tools/store-screenshots/`) | iOS/Android アプリの提出用スクリーンショットを「状態注入で撮る → ブラウザで額装」で自動化するパイプライン |
 
 ## 名前の由来
 
@@ -239,14 +239,14 @@ Node.js 22 以上が必要。**検査の実体と手引きはコピーしない*
 
 | 置くもの | 中身 |
 |---|---|
-| 検査の配線 | `.igeta-version`・npm scripts (`docs:graph`・`docs:check`・`docs:template-check`・`scaffold`)・markdownlint の設定 |
+| 検査の配線 | `.igeta-version`・npm scripts (`docs:graph`・`docs:check`・`docs:template-check`)・markdownlint の設定 |
 | docs の骨格 | `docs/README.md` (入口の 3 行と索引)・全体の地図・要件定義書・決定台帳 (どれも `docs/person/` の下) |
 | AI の入口 | `AGENTS.md` (読む順・人の承認・手引きの場所・検査) |
 | 承認の割り当て | `.github/CODEOWNERS` (人の承認が要るパスを、`--owner` の持ち主に割り当てる) |
 
 ```bash
 # 1. 置く (既存のファイルは上書きしない)。--owner は、人の承認が要るパスの持ち主 (@user・@org/team・メールアドレス)
-npx github:SakakitaniJunya/Igeta#v0.5.0 init --owner @your-name
+npx github:SakakitaniJunya/Igeta#v0.6.0 init --owner @your-name
 npm install
 
 # 2. 検査する (置いた直後は違反 0 件)
@@ -257,6 +257,8 @@ npm run docs:template-check
 cp node_modules/igeta/templates/docs/person/design/shared/01-function-list.md docs/person/design/shared/
 npm run docs:graph
 ```
+
+`v0.6.0` の tag は、版を publish した後に存在する (それまでは `#main` か commit を指す)。
 
 置いた後に、GitHub で既定ブランチの保護を設定し、`npx igeta doctor` で確かめる (上の「変更から承認まで」)。
 
@@ -294,8 +296,8 @@ npm run docs:graph
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |
 | `npm run secret-scan` | 機密混入 | ローカル絶対パス / メール / トークン形式 / 禁止語リストへの一致。`--internal-ids` を付けた時だけ社内制約 ID (`C-` + 3 桁) も |
-| `npm run scaffold` | (生成) | NestJS + Prisma の `api-*` / `web-feature` 雛形を `apps/` へ展開。既存ファイルは上書きしない |
 | `npm run expand -- <templates の 1 単位の path> --app <name> --context … --aggregate …` | (生成) | `templates/backend/<変種>/` と `templates/frontend/admin/` の 1 単位 (印の付いたフォルダ) を、鏡の path (`apps/<app>/backend/`・`apps/<app>/frontend/admin/`) へ展開する。書く前に全部検査し、既存・置換後の同名・印の残りは 1 ファイルも書かず exit 1、名前の不足は exit 2。`--dry-run` あり |
+| `npm run check:templates-layout` | `templates/` の木 (Igeta 自身の repo だけ) | 第 1・第 2 階層の登録外・実体なし・9 個目・`check-templates` の変種との食い違い、と、変種ごとの雛形の中の置き場 (`igeta-check-layout`。rust は `--ext rs`)。全変種の違反を 1 回で出す |
 | `npm run check:templates -- [--variant hono\|nestjs\|rust\|frontend] [--require-emulator]` | 雛形の自己検査 | 変種ごとに一時 dir へ展開・登録し、`npm ci` → 型 → テスト → 層の規則 → build (rust は `cargo build/test --locked`、cargo が無ければ Docker) を通す。落ちた手順は 1 件 = exit 1、Java・cargo と Docker など前提の道具が無ければ exit 2。CI は `templates.yml` で、必須チェックにはしない (報告だけ) |
 | `npm run export -- <deliverable.json>` | (生成) | 章 Markdown を先方提出用 PDF 1 冊にまとめる ([詳細](docs/ai/handbook/explanation/06-export-deliverable.md))。`forbid` 一致 / Mermaid 描画失敗は非 0 終了 |
 | `npm run docs:review-sheet -- <doc-id>/REQ-nnn...` | (生成) | 指定した修飾 ID の要件文・受入条件・関連 DEC/OPEN・下流の設計書を 1 枚の Markdown に展開。`--pr-body <file>` で PR 本文から ID を抜き出せる。`--diff <base>..<head>` は変更ファイル→タスク→FN→REQ を辿り、申告に無いが影響する REQ があるときだけ落ちる。**`--diff` は `docs/ai/specs/tasks/` のタスク行の `path` 記載に依存する**。`kind: tasks` の文書が無いか、変更ファイルが 1 件もタスクに一致しないと exit 2 (検査不能、0 件を緑にしない) |
@@ -322,6 +324,8 @@ npm run docs:graph
 `secret-scan` は `.git` / `node_modules` / `dist` / `coverage` 配下と、パッケージマネージャの lock ファイル
 (`package-lock.json` `npm-shrinkwrap.json` `pnpm-lock.yaml` `yarn.lock` `bun.lockb` `Cargo.lock` `poetry.lock` `Pipfile.lock` `composer.lock` `Gemfile.lock` `go.sum`) を走査しない。
 
+**0.6.0 の破壊的変更**: `igeta scaffold` と、`igeta init` が書いていた npm script `scaffold` を削除した。`templates/api-module`・`api-shared-kernel`・`web-feature` も退役した。コード雛形の展開は `igeta expand` に一本化している (手順は `templates/README.md`)。`scaffold` の script を持つ既存の repo は、その行を消すか、`.igeta-version` で旧版に固定する。
+
 ## ディレクトリ構成
 
 ```text
@@ -329,15 +333,16 @@ Igeta/
 ├── templates/              雛形置き場。パッケージに同梱され、使う人は `node_modules/igeta/templates/` から取る
 │   ├── docs/               設計書の雛形 45 種。置き先 (your-repo/docs/) と同じフォルダ構成にしてある (person・ai・client)
 │   ├── .github/            使う人の .github/ にコピーする雛形 (PR テンプレ)
-│   ├── api-module/         バックエンド 1 コンテキスト分 (domain / application / infrastructure / presentation)
-│   ├── api-shared-kernel/  バックエンド共通部品 (Result・TenantId・DomainEvent・レイヤ依存ルール)
-│   └── web-feature/        フロントエンド 1 機能分 (ページ・3 状態・文言カタログ)
+│   ├── backend/            バックエンド。Firestore の 4 層モジュラーモノリス (hono・nestjs・rust の 3 変種)
+│   ├── frontend/           フロントエンド (admin)。React + Vite の管理画面 (4 層)
+│   └── mobile/             モバイル (`ios/`。xcodegen + SwiftUI)
+├── tools/                  雛形でなく道具。パッケージに同梱する (`store-screenshots/`)
 ├── docs/                   【Igeta 自身の背景】採用した外部標準と、採らなかった理由の解説
 ├── src/                    CLI 本体 (TypeScript、実行時依存ゼロ)
 │   ├── core/               Check ・ Violation ・ Report ・ 版比較の共通型
 │   ├── checks/             検査。Check を実装し Violation を返すだけで、exit も print もしない
 │   ├── gate/               人の承認が要る変更かの見分け (approval-scope) と、GitHub の保護の点検 (doctor)
-│   ├── generators/         コード雛形の展開 (`ScaffoldModule`・`TemplateExpandModule`)・索引とレビューシートの生成・init が置くファイルの作り手
+│   ├── generators/         コード雛形の展開 (`TemplateExpandModule`)・索引とレビューシートの生成・init が置くファイルの作り手
 │   ├── export/             先方提出用 PDF の書き出し
 │   └── cli/                コマンド定義。出力と終了コードはここだけが決める
 ├── assets/                 ロゴ

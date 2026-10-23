@@ -3,4 +3,4 @@
 
 export { __Feature__Screen } from '@/features/__feature__/presentation/screen/__Feature__Screen';
 export { use__Feature__ } from '@/features/__feature__/application/use-__feature__';
-export type { __Feature__ListModel, __Feature__Model } from '@/features/__feature__/domain/__feature__.model';
+export type { __Feature__ListModel, __Feature__Model } from '@/features/__feature__/domain/model';

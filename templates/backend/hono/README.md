@@ -44,10 +44,10 @@ templates/backend/hono/                             = apps/<app>/backend/
         to-response.ts                              HttpResponse → Hono の Response
         to-response.spec.ts                         status・header・本文なし (204)
       __entry__/                                    1 単位
-        __entry__.routes.ts                         経路の表。verify middleware → 本文を unknown で module へ
-        __entry__.routes.spec.ts                    401・413・不正な JSON は 400・値の受け渡し (verify と module は偽物)
-        verify-__entry__.middleware.ts              トークン・署名の検証 → claims (本文は読まない)
-        verify-__entry__.middleware.spec.ts         通る・落ちて 401・ヘッダと URL だけ渡す
+        routes.ts                                   経路の表。verify middleware → 本文を unknown で module へ
+        routes.spec.ts                              401・413・不正な JSON は 400・値の受け渡し (verify と module は偽物)
+        verify.middleware.ts                        トークン・署名の検証 → claims (本文は読まない)
+        verify.middleware.spec.ts                   通る・落ちて 401・ヘッダと URL だけ渡す
     modules/
       __context__/                                  1 単位
         index.ts                                    公開面と組み立て (入口と他の module はここだけ通す)
@@ -76,12 +76,12 @@ templates/backend/hono/                             = apps/<app>/backend/
           ports/
             __aggregate__.repository.port.ts        保存の口 (型だけ)
         infrastructure/                             firestore repository
-          firestore-__aggregate__.repository.ts     Firestore の読み書き
-          firestore-__aggregate__.repository.emulator.spec.ts  契約テストを Firestore で呼ぶ + doc id の行
-          firestore-scope.ts                        TransactionScope ⇔ Firestore Transaction の変換
-          firestore-scope.spec.ts                   往復で同じ物
-          firestore-transaction-runner.ts           1 usecase = 1 Tx
-          firestore-transaction-runner.emulator.spec.ts  失敗で巻き戻る
+          firestore/__aggregate__.repository.ts     Firestore の読み書き
+          firestore/__aggregate__.repository.emulator.spec.ts  契約テストを Firestore で呼ぶ + doc id の行
+          firestore/scope.ts                        TransactionScope ⇔ Firestore Transaction の変換
+          firestore/scope.spec.ts                   往復で同じ物
+          firestore/transaction-runner.ts           1 usecase = 1 Tx
+          firestore/transaction-runner.emulator.spec.ts  失敗で巻き戻る
         test-support/
           __aggregate__-repository.contract.ts      repository の契約テスト (表 C1〜C9)。実装ごとに呼ぶ
     shared/

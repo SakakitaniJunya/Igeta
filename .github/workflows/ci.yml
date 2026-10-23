@@ -32,3 +32,5 @@ jobs:
         run: npm run docs:check
       - name: テンプレ適合
         run: npm run docs:template-check
+      - name: templates の木と置き場 (登録制と igeta-check-layout)
+        run: npm run check:templates-layout

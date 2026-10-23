@@ -8,8 +8,8 @@ import type { HttpResponse } from '@/shared/presentation/response.js';
 import { Close__Aggregate__UseCase } from './application/close-__aggregate__.usecase.js';
 import { Create__Aggregate__UseCase } from './application/create-__aggregate__.usecase.js';
 import { LIST_LIMIT, List__Aggregate__ItemsUseCase } from './application/list-__aggregates__.usecase.js';
-import { Firestore__Aggregate__Repository } from './infrastructure/firestore-__aggregate__.repository.js';
-import { FirestoreTransactionRunner } from './infrastructure/firestore-transaction-runner.js';
+import { Firestore__Aggregate__Repository } from './infrastructure/firestore/__aggregate__.repository.js';
+import { FirestoreTransactionRunner } from './infrastructure/firestore/transaction-runner.js';
 import { handleClose__Aggregate__, handleCreate__Aggregate__, handleList__Aggregate__Items } from './presentation/__aggregate__.controller.js';
 
 /**

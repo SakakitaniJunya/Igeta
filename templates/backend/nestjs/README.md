@@ -56,12 +56,12 @@ templates/backend/nestjs/                           = apps/<app>/backend/
         database.module.ts                          FIRESTORE トークンを出す @Global な module
         database.module.spec.ts                     env を渡して provider が解決できる
       __entry__/                                    1 単位
-        __entry__.controller.ts                     経路の表。Guard → 本文 `unknown` を module の公開面へ
-        __entry__.controller.spec.ts                401・不正な JSON は 400・値の受け渡し (verify と module は偽物)
-        __entry__.guard.ts                          VERIFIER で検証し claims を request に載せる (本文は読まない)
-        __entry__.guard.spec.ts                     通る・落ちて 401・ヘッダと URL だけ渡す
-        __entry__.entry.module.ts                   動的 module (`register({ verify })`)。controller・guard・`VERIFIER`・module の公開面を作る provider を束ねる
-        __entry__.entry.module.spec.ts              verify が `register` で渡り、公開面が注入される
+        controller.ts                               経路の表。Guard → 本文 `unknown` を module の公開面へ
+        controller.spec.ts                          401・不正な JSON は 400・値の受け渡し (verify と module は偽物)
+        guard.ts                                    VERIFIER で検証し claims を request に載せる (本文は読まない)
+        guard.spec.ts                               通る・落ちて 401・ヘッダと URL だけ渡す
+        entry.module.ts                             動的 module (`register({ verify })`)。controller・guard・`VERIFIER`・module の公開面を作る provider を束ねる
+        entry.module.spec.ts                        verify が `register` で渡り、公開面が注入される
     modules/
       __context__/                                  1 単位 (Hono 版とファイル単位で同一)
         index.ts                                    公開面と組み立て
@@ -87,12 +87,12 @@ templates/backend/nestjs/                           = apps/<app>/backend/
           errors/__aggregate__-already-closed.error.spec.ts  kind と message
           ports/__aggregate__.repository.port.ts    保存の口 (型だけ)
         infrastructure/
-          firestore-__aggregate__.repository.ts     Firestore の読み書き
-          firestore-__aggregate__.repository.emulator.spec.ts  契約テストを Firestore で呼ぶ + doc id の行
-          firestore-scope.ts                        TransactionScope ⇔ Transaction の変換
-          firestore-scope.spec.ts                   往復で同じ物
-          firestore-transaction-runner.ts           1 usecase = 1 Tx
-          firestore-transaction-runner.emulator.spec.ts  失敗で巻き戻る
+          firestore/__aggregate__.repository.ts     Firestore の読み書き
+          firestore/__aggregate__.repository.emulator.spec.ts  契約テストを Firestore で呼ぶ + doc id の行
+          firestore/scope.ts                        TransactionScope ⇔ Transaction の変換
+          firestore/scope.spec.ts                   往復で同じ物
+          firestore/transaction-runner.ts           1 usecase = 1 Tx
+          firestore/transaction-runner.emulator.spec.ts  失敗で巻き戻る
         test-support/
           __aggregate__-repository.contract.ts      repository の契約テスト (表 C1〜C9)。実装ごとに呼ぶ
     shared/                                         Hono 版とファイル単位で同一 (`diff -r` で差分 0)

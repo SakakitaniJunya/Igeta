@@ -1,6 +1,6 @@
 {
   "name": "igeta",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "日本の設計書を、Markdown で。基本設計・詳細設計を arc42 に載せ CI で検査する設計書テンプレート集",
   "license": "MIT",
   "repository": {
@@ -15,6 +15,8 @@
   "files": [
     "dist",
     "templates",
+    "tools",
+    "library/eslint-config/check-layout.js",
     ".markdownlint.yaml",
     ".markdownlint-cli2.yaml"
   ],
@@ -34,9 +36,9 @@
     "docs:analyze": "node dist/cli.js analyze",
     "docs:fix-ids": "node dist/cli.js fix-ids",
     "docs:migrate": "node dist/cli.js docs-migrate",
-    "scaffold": "node dist/cli.js scaffold",
     "expand": "node dist/cli.js expand",
     "check:templates": "node dist/cli.js check-templates",
+    "check:templates-layout": "node dist/cli.js check-templates-layout",
     "secret-scan": "node dist/cli.js secret-scan --internal-ids",
     "test": "npm run test:scripts && npm run test:library",
     "test:scripts": "tsc && node --test \"dist/**/*.test.js\"",

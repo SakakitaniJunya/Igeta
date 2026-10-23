@@ -248,7 +248,7 @@ describe('TemplatesCheck: ハイフン入りの固定名と上限', () => {
     await check(['hono', 'rust'], new FakeRunner(allGood), { work });
     const hono = readFileSync(join(appDirOf(work, 'hono'), 'src/modules/stock-item/index.ts'), 'utf8');
     assert.match(hono, /createStockItemModule/);
-    assert.match(readFileSync(join(appDirOf(work, 'hono'), 'src/entries/admin-api/admin-api.routes.ts'), 'utf8'), /stockItem: StockItemModule|stockItem/);
+    assert.match(readFileSync(join(appDirOf(work, 'hono'), 'src/entries/admin-api/routes.ts'), 'utf8'), /stockItem: StockItemModule|stockItem/);
     const rust = join(appDirOf(work, 'rust'), 'src');
     assert.ok(existsSync(join(rust, 'modules/stock_item/domain/order_line.rs')));
     assert.match(readFileSync(join(rust, 'entries/admin_api/routes.rs'), 'utf8'), /\.route\("\/order-lines\/\{id\}\/close"/);

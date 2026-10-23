@@ -3,6 +3,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { listFiles } from '../core/FileTree.js';
 import { toCamel, toPascal, toSnake } from '../core/Naming.js';
 import type { Violation } from '../core/Report.js';
+import { violation } from '../core/Report.js';
 
 /**
  * templates/ の「1 単位」(印の付いたフォルダ 3 つ) を apps/<app>/ の鏡の path へ展開する。
@@ -88,9 +89,6 @@ const MARK_GROUP: ReadonlyMap<string, NameKey> = new Map<string, NameKey>(Object
 const NAME_KEYS: readonly NameKey[] = ['context', 'aggregate', 'entry', 'feature'];
 
 const found = (text: string): string[] => [...text.matchAll(MARK_RE)].map((m) => m[0]).filter((m) => !NOT_MARKS.has(m));
-
-const violation = (message: string, file?: string): Violation =>
-  file === undefined ? { severity: 'violation', message } : { severity: 'violation', message, file };
 
 const toPosix = (path: string): string => path.split(sep).join('/');
 

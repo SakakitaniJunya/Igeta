@@ -60,7 +60,7 @@ export function registrationFor(
       add('src/index.ts', 'module', [`const ${toCamel(context)} = create${toPascal(context)}Module(db);`]);
     }
     if (unit === 'entry' && entry !== undefined && context !== undefined) {
-      add('src/index.ts', 'import', [`import { create${toPascal(entry)}Routes } from '@/entries/${entry}/${entry}.routes.js';`]);
+      add('src/index.ts', 'import', [`import { create${toPascal(entry)}Routes } from '@/entries/${entry}/routes.js';`]);
       if (withVerify) {
         add('src/index.ts', 'import', ["import { ok } from '@/shared/domain/result.js';"]);
         add('src/index.ts', 'verify', [`const verify = async () => ok({ subject: '${entry}' });`]);
@@ -70,7 +70,7 @@ export function registrationFor(
   }
 
   if (variant === 'nestjs' && unit === 'entry' && entry !== undefined) {
-    add('src/app.module.ts', 'import', [`import { ${toPascal(entry)}EntryModule } from '@/entries/${entry}/${entry}.entry.module.js';`]);
+    add('src/app.module.ts', 'import', [`import { ${toPascal(entry)}EntryModule } from '@/entries/${entry}/entry.module.js';`]);
     if (withVerify) {
       add('src/app.module.ts', 'import', ["import { ok } from '@/shared/domain/result.js';"]);
       add('src/app.module.ts', 'verify', [`const verify = async () => ok({ subject: '${entry}' });`]);

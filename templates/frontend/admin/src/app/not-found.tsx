@@ -1,6 +1,6 @@
 // 見つかりません画面。どの経路にも一致しないときに出す。データは出さず、入口への案内だけ。
 
-import { useNavigate } from '@/shared/application/use-navigate';
+import { useNavigate } from '@/shared/application/hooks/navigate';
 
 export function NotFound() {
   const navigate = useNavigate();

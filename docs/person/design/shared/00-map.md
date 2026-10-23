@@ -46,7 +46,7 @@ flowchart LR
 
 ## 3. やらないこと
 
-- 実装コード本体の生成 (`igeta scaffold` が出すのは docs 骨格と検査配線まで)
+- 実装コード本体の生成 (`igeta init` が出すのは docs 骨格と検査配線まで。1 単位の雛形は `igeta expand`)
 - 全読み手への由来・網羅の強制 (レビューし切れない量を課さない。`delivery-chapter` だけに課す)
 
 ## 4. 詳細への入口

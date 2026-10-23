@@ -105,7 +105,7 @@ describe('TemplateExpandModule: 実 templates', () => {
     assert.deepEqual(feature.violations, []);
   });
 
-  it('土台のファイル・印の無いフォルダ・templates の外・scaffold 用の雛形は違反 (書かない)', () => {
+  it('土台のファイル・印の無いフォルダ・templates の外は違反 (書かない)', () => {
     const root = tmp();
     const expand = new TemplateExpandModule({ targetRoot: root, igetaRoot: IGETA_ROOT });
     for (const path of [
@@ -115,8 +115,9 @@ describe('TemplateExpandModule: 実 templates', () => {
       tpl('backend', 'hono', 'src', 'modules', '__context__', 'domain'),
       tpl('backend', 'hono'),
       tpl('backend', 'unknown', 'src', 'modules', '__context__'),
-      tpl('api-shared-kernel'),
       tpl('frontend', 'admin', 'src', 'app'),
+      tpl('mobile', 'ios'),
+      tpl('docs'),
       join(root, 'elsewhere'),
     ]) {
       const plan = expand.prepare({ templatePath: path, app: 'a', names: NAMES });

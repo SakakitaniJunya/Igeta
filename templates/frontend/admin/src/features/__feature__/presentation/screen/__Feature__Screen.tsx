@@ -5,16 +5,16 @@ import { useState } from 'react';
 import { failureText } from '@/features/__feature__/application/messages';
 import { use__Feature__ } from '@/features/__feature__/application/use-__feature__';
 import { use__Feature__Mutation } from '@/features/__feature__/application/use-__feature__-mutation';
-import { filterByName, LIST_LIMIT } from '@/features/__feature__/domain/__feature__.model';
+import { filterByName, LIST_LIMIT } from '@/features/__feature__/domain/model';
 import { __Feature__Form } from '@/features/__feature__/presentation/components/__Feature__Form';
 import { __Feature__Row } from '@/features/__feature__/presentation/components/__Feature__Row';
 import { __Feature__Toolbar } from '@/features/__feature__/presentation/components/__Feature__Toolbar';
-import { ConfirmDialog } from '@/shared/presentation/ui/ConfirmDialog';
-import { CountLabel } from '@/shared/presentation/ui/CountLabel';
-import { EmptyState } from '@/shared/presentation/ui/EmptyState';
-import { ErrorView } from '@/shared/presentation/ui/ErrorView';
-import { LoadingView } from '@/shared/presentation/ui/LoadingView';
-import { SaveErrorBanner } from '@/shared/presentation/ui/SaveErrorBanner';
+import { ConfirmDialog } from '@/shared/presentation/ui/control/ConfirmDialog';
+import { CountLabel } from '@/shared/presentation/ui/label/CountLabel';
+import { EmptyState } from '@/shared/presentation/ui/state/EmptyState';
+import { ErrorView } from '@/shared/presentation/ui/state/ErrorView';
+import { LoadingView } from '@/shared/presentation/ui/state/LoadingView';
+import { SaveErrorBanner } from '@/shared/presentation/ui/state/SaveErrorBanner';
 
 export function __Feature__Screen() {
   const resource = use__Feature__();

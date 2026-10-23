@@ -26,3 +26,9 @@ Igeta の版に固定した手引き。
 
 - `npm run docs:check` — 索引・置き場所・本数・AI の入口と、承認する人の割り当て
 - `npm run docs:template-check` — 文書の必須構造と、人の文書の型
+
+## templates/ を足す・替えるとき
+
+- `templates/` の第 1・第 2 階層は登録制 (`src/checks/TemplatesLayoutCheck.ts`、ADR-0014)。登録外の名前は `npm run check:templates-layout` が落とす。ここが主な歯止め
+- 雛形を足す・替える PR は、同じ PR で置き換わる物を退かせる。退かせる物が無いときは、PR の説明にその理由を書く。これは補助で、機械では落とせない
+- 雛形の中の置き場 (1 フォルダの本体は 7 つまで・接頭辞の共有は 2 本まで・`shared` の形) は `igeta-check-layout` が見る。変種ごとの呼び方 (rust は `--ext rs`) は `src/checks/TemplatesRegistry.ts` に書いてある
