@@ -4,7 +4,7 @@ title: ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -94,3 +94,9 @@ relates_to: [adr-0007-fingerprint-link-normalization]
 
 - Igeta 自身には提出物が無い。決定 5・6 は fixture のテストで先に確かめ、最初の実案件の移行で実測する
 - 承認済みの版を持つ repo を移行するときは、先に決定 7 の仕組みを設計し直す (安全面の評価の指摘は issue に残す)
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:4dec99aa173a3868446d62f0cbe986f97f611229137374dca0f9c6ad42dcfbec | — |

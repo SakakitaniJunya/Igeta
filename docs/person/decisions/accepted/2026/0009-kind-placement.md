@@ -4,7 +4,7 @@ title: ADR-0009 kind の置き場所の表は要件に置き、型の検査を�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-02
@@ -14,14 +14,14 @@ relates_to: [adr-0010-value-ownership, audience-directories]
 
 # ADR-0009: kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける
 
-> **TL;DR**: kind 47 種の置き場所の表は、ADR ではなく要件 ([要件定義書 02](../../requirements/02-audience-directories.md) §7) に置く。
+> **TL;DR**: kind 47 種の置き場所の表は、ADR ではなく要件 ([要件定義書 02](../../../requirements/02-audience-directories.md) §7) に置く。
 > 表は kind が増えるたびに直す「いまの決まり」で、ADR は書いた日の記録だから。表には、人の文書のうち型の検査を
 > 掛ける kind (○)・図だけ (図)・掛けない (—) の区分を持たせる。Igeta の手引き 3 本は利用 repo に写さない
 
 ## 関連
 
 - **上流 (depends_on)**: ADR-0001 (確定させる人で分ける) / ADR-0004 (まとまりと年で分ける、15 本)
-- **下流**: [要件定義書 02](../../requirements/02-audience-directories.md) §7 / `src/core/Role.ts` / 文書体系ガイド / ADR-0010
+- **下流**: [要件定義書 02](../../../requirements/02-audience-directories.md) §7 / `src/core/Role.ts` / 文書体系ガイド / ADR-0010
 
 ## Status
 
@@ -71,3 +71,9 @@ ID の行を持たない kind (地図・用語集・ADR など) が必ず落ち�
 ## 再検討トリガ
 
 - kind が足されたら、要件 02 §7 に行を足す (表に無い kind は `TaxonomyGuideSync.test.ts` が落とす)
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:c17a9d74176364190ed617394505eb86115ba264f44808192be549f9ec3d6943 | — |

@@ -1,5 +1,5 @@
 // fingerprint-rebase: 由来 sidecar と合意台帳の指紋を、今の正規化の版へ載せ替える。
-// Spec: docs/person/decisions/2026/0007-fingerprint-link-normalization.md 決定 2
+// Spec: docs/person/decisions/accepted/2026/0007-fingerprint-link-normalization.md 決定 2
 //
 // 各エントリの対象本文を保存値の版で計算し、保存値と一致したものだけ、同じ本文から今の版で計算し直す。
 // 一致しないもの・保存値の版の実装が無いものは触らない (人の確認に回る)。承認は書き換えない。

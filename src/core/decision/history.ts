@@ -43,6 +43,8 @@ export interface HistorySection {
 }
 
 const cellValue = (cell: string): string => (cell === EMPTY_CELL ? '' : cell.replace(/\\\|/g, '|'));
+/** 根拠の URL は `<…>` で囲んで書く (markdownlint の MD034 を通すため)。読むときは外す */
+const unwrapUrl = (cell: string): string => /^<https?:\/\/[^>\s]+>$/.test(cell) ? cell.slice(1, -1) : cell;
 
 function toRow(line: string, lineNumber: number): HistoryRow {
   const cells = splitTableRow(line).map(cellValue);
@@ -54,7 +56,7 @@ function toRow(line: string, lineNumber: number): HistoryRow {
     before,
     after,
     by: cells[3] ?? '',
-    evidence: cells[4] ?? '',
+    evidence: unwrapUrl(cells[4] ?? ''),
     commit: cells[5] ?? '',
     fingerprint: cells[6] ?? '',
     memo: cells[7] ?? '',
@@ -76,7 +78,8 @@ export type NewHistoryRow = Omit<HistoryRow, 'line'>;
 
 function serializeRow(row: NewHistoryRow): string {
   const escape = (text: string): string => (text === '' ? EMPTY_CELL : text.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' '));
-  const cells = [row.date, row.event, `${row.before}→${row.after}`, row.by, row.evidence, row.commit, row.fingerprint, row.memo];
+  const evidence = /^https?:\/\/\S+$/.test(row.evidence) ? `<${row.evidence}>` : row.evidence;
+  const cells = [row.date, row.event, `${row.before}→${row.after}`, row.by, evidence, row.commit, row.fingerprint, row.memo];
   return `| ${cells.map(escape).join(' | ')} |`;
 }
 

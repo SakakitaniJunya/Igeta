@@ -1,5 +1,5 @@
 // 承認の割り当てのファイル (`AGENTS.md` と `.github/CODEOWNERS`) の作り手。`init` と `docs-migrate` が、同じこの作り手で置く。
-// Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I5・I8・I9、docs/person/decisions/2026/0008-human-approval-scope.md 決定 1・5・7。
+// Spec: docs/ai/specs/shared/tests/06-init-scaffold.md の I5・I8・I9、docs/person/decisions/accepted/2026/0008-human-approval-scope.md 決定 1・5・7。
 //
 // 何も書かず、書く内容 (書いた後のファイルの全文) を返す。ほかのファイルの衝突と合わせて、書くか止めるかは呼び出し側が決める。
 //   AGENTS.md        無ければ雛形から作る。あって docs/person・docs/ai に触れていなければ、入口の節 (雛形の節) を末尾に足す

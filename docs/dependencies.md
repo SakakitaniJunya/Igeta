@@ -22,29 +22,29 @@ graph LR
   classDef design fill:#ddd6fe,stroke:#6d28d9,color:#111
   classDef map fill:#fef3c7,stroke:#78350f,color:#111
   classDef decision_log fill:#fee2e2,stroke:#7f1d1d,color:#111
-  adr-0001-document-role-directories["ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに分ける (proposed)"]
+  adr-0001-document-role-directories["ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに分ける (accepted)"]
   class adr-0001-document-role-directories adr
-  adr-0002-role-boundary-invariants["ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応 (proposed)"]
+  adr-0002-role-boundary-invariants["ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応 (accepted)"]
   class adr-0002-role-boundary-invariants adr
-  adr-0003-docs-model-migration-and-dogfooding["ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段で、1 本の PR にする (proposed)"]
+  adr-0003-docs-model-migration-and-dogfooding["ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段で、1 本の PR にする (accepted)"]
   class adr-0003-docs-model-migration-and-dogfooding adr
-  adr-0004-folder-internal-structure-and-growth["ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める (proposed)"]
+  adr-0004-folder-internal-structure-and-growth["ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める (accepted)"]
   class adr-0004-folder-internal-structure-and-growth adr
-  adr-0005-enforcement-rollout-and-canonical-sync["ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く (proposed)"]
+  adr-0005-enforcement-rollout-and-canonical-sync["ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く (accepted)"]
   class adr-0005-enforcement-rollout-and-canonical-sync adr
-  adr-0006-provenance-migration-handling["ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い (proposed)"]
+  adr-0006-provenance-migration-handling["ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い (accepted)"]
   class adr-0006-provenance-migration-handling adr
-  adr-0007-fingerprint-link-normalization["ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える (proposed)"]
+  adr-0007-fingerprint-link-normalization["ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える (accepted)"]
   class adr-0007-fingerprint-link-normalization adr
-  adr-0008-human-approval-scope["ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする (proposed)"]
+  adr-0008-human-approval-scope["ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする (accepted)"]
   class adr-0008-human-approval-scope adr
-  adr-0009-kind-placement["ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける (proposed)"]
+  adr-0009-kind-placement["ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける (accepted)"]
   class adr-0009-kind-placement adr
-  adr-0010-value-ownership["ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く (proposed)"]
+  adr-0010-value-ownership["ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く (accepted)"]
   class adr-0010-value-ownership adr
-  adr-0011-person-diagram-first["ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る (proposed)"]
+  adr-0011-person-diagram-first["ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る (accepted)"]
   class adr-0011-person-diagram-first adr
-  adr-0012-persistence-library["ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト (proposed)"]
+  adr-0012-persistence-library["ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト (accepted)"]
   class adr-0012-persistence-library adr
   adr-0013-decision-status-folders["ADR-0013 決定の状態は承認の記録だけが変える — 状態でフォルダを分け、索引に印・根拠・持ち主を出す (proposed)"]
   class adr-0013-decision-status-folders adr
@@ -88,8 +88,12 @@ graph LR
   class human-review-layer explanation
   map["地図 — Igeta が何をするか・誰が使うか・主要フロー"]
   class map map
-  person-decisions-2026-index["2026 — 索引"]
-  class person-decisions-2026-index index
+  person-decisions-accepted-2026-index["2026 — 索引"]
+  class person-decisions-accepted-2026-index index
+  person-decisions-accepted-index["accepted — 索引"]
+  class person-decisions-accepted-index index
+  person-decisions-proposed-index["proposed — 索引"]
+  class person-decisions-proposed-index index
   person-design-index["design — 索引"]
   class person-design-index index
   person-design-shared-index["shared — 索引"]
@@ -250,19 +254,19 @@ graph LR
 
 ### adr
 
-- **adr-0001-document-role-directories** _(proposed)_ — [ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに分ける](person/decisions/2026/0001-document-role-directories.md)
-- **adr-0002-role-boundary-invariants** _(proposed)_ — [ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応](person/decisions/2026/0002-role-boundary-invariants.md)
-- **adr-0003-docs-model-migration-and-dogfooding** _(proposed)_ — [ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段で、1 本の PR にする](person/decisions/2026/0003-docs-model-migration-and-dogfooding.md)
-- **adr-0004-folder-internal-structure-and-growth** _(proposed)_ — [ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める](person/decisions/2026/0004-folder-internal-structure-and-growth.md)
-- **adr-0005-enforcement-rollout-and-canonical-sync** _(proposed)_ — [ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く](person/decisions/2026/0005-enforcement-rollout-and-canonical-sync.md)
-- **adr-0006-provenance-migration-handling** _(proposed)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](person/decisions/2026/0006-provenance-migration-handling.md)
-- **adr-0007-fingerprint-link-normalization** _(proposed)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](person/decisions/2026/0007-fingerprint-link-normalization.md)
-- **adr-0008-human-approval-scope** _(proposed)_ — [ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする](person/decisions/2026/0008-human-approval-scope.md)
-- **adr-0009-kind-placement** _(proposed)_ — [ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける](person/decisions/2026/0009-kind-placement.md)
-- **adr-0010-value-ownership** _(proposed)_ — [ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く](person/decisions/2026/0010-value-ownership.md)
-- **adr-0011-person-diagram-first** _(proposed)_ — [ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る](person/decisions/2026/0011-person-diagram-first.md)
-- **adr-0012-persistence-library** _(proposed)_ — [ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト](person/decisions/2026/0012-persistence-library.md)
-- **adr-0013-decision-status-folders** _(proposed)_ — [ADR-0013 決定の状態は承認の記録だけが変える — 状態でフォルダを分け、索引に印・根拠・持ち主を出す](person/decisions/2026/0013-decision-status-folders.md)
+- **adr-0001-document-role-directories** _(accepted)_ — [ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに分ける](person/decisions/accepted/2026/0001-document-role-directories.md)
+- **adr-0002-role-boundary-invariants** _(accepted)_ — [ADR-0002 確定させる人の境界を守る不変条件と機械検査の対応](person/decisions/accepted/2026/0002-role-boundary-invariants.md)
+- **adr-0003-docs-model-migration-and-dogfooding** _(accepted)_ — [ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段で、1 本の PR にする](person/decisions/accepted/2026/0003-docs-model-migration-and-dogfooding.md)
+- **adr-0004-folder-internal-structure-and-growth** _(accepted)_ — [ADR-0004 フォルダの中はまとまりで分け、増えたときの分け方をフォルダごとに 1 つに決める](person/decisions/accepted/2026/0004-folder-internal-structure-and-growth.md)
+- **adr-0005-enforcement-rollout-and-canonical-sync** _(accepted)_ — [ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め、正典は 1 か所に置く](person/decisions/accepted/2026/0005-enforcement-rollout-and-canonical-sync.md)
+- **adr-0006-provenance-migration-handling** _(accepted)_ — [ADR-0006 由来sidecar・合意台帳・食い違いログの移行時の扱い](person/decisions/accepted/2026/0006-provenance-migration-handling.md)
+- **adr-0007-fingerprint-link-normalization** _(accepted)_ — [ADR-0007 指紋の正規化 v3 — リンクの行き先をパスではなく文書 id で数える](person/decisions/accepted/2026/0007-fingerprint-link-normalization.md)
+- **adr-0008-human-approval-scope** _(accepted)_ — [ADR-0008 人の承認が要るパスを決めて見分ける — 強制は GitHub の設定に任せ、強制の門は次の版にする](person/decisions/accepted/2026/0008-human-approval-scope.md)
+- **adr-0009-kind-placement** _(accepted)_ — [ADR-0009 kind の置き場所の表は要件に置き、型の検査を掛ける kind を分ける](person/decisions/accepted/2026/0009-kind-placement.md)
+- **adr-0010-value-ownership** _(accepted)_ — [ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行に置き、ai は ID を引く](person/decisions/accepted/2026/0010-value-ownership.md)
+- **adr-0011-person-diagram-first** _(accepted)_ — [ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種は要件の表で決め、PersonFormCheck が図種と位置を見る](person/decisions/accepted/2026/0011-person-diagram-first.md)
+- **adr-0012-persistence-library** _(accepted)_ — [ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persistence に置く — 受入条件は Firestore と Postgres の同じ契約テスト](person/decisions/accepted/2026/0012-persistence-library.md)
+- **adr-0013-decision-status-folders** _(proposed)_ — [ADR-0013 決定の状態は承認の記録だけが変える — 状態でフォルダを分け、索引に印・根拠・持ち主を出す](person/decisions/proposed/0013-decision-status-folders.md)
 
 ### design
 
@@ -307,7 +311,9 @@ graph LR
 | ai-specs-shared-tests-index | index | [`docs/ai/specs/shared/tests/README.md`](ai/specs/shared/tests/README.md) |
 | ai-specs-tasks-index | index | [`docs/ai/specs/tasks/README.md`](ai/specs/tasks/README.md) |
 | decisions-index | index | [`docs/person/decisions/README.md`](person/decisions/README.md) |
-| person-decisions-2026-index | index | [`docs/person/decisions/2026/README.md`](person/decisions/2026/README.md) |
+| person-decisions-accepted-2026-index | index | [`docs/person/decisions/accepted/2026/README.md`](person/decisions/accepted/2026/README.md) |
+| person-decisions-accepted-index | index | [`docs/person/decisions/accepted/README.md`](person/decisions/accepted/README.md) |
+| person-decisions-proposed-index | index | [`docs/person/decisions/proposed/README.md`](person/decisions/proposed/README.md) |
 | person-design-index | index | [`docs/person/design/README.md`](person/design/README.md) |
 | person-design-shared-index | index | [`docs/person/design/shared/README.md`](person/design/shared/README.md) |
 | person-index | index | [`docs/person/README.md`](person/README.md) |

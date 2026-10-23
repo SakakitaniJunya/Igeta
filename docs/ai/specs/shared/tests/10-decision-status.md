@@ -24,7 +24,7 @@ relates_to: [test-person-form, test-doc-graph, test-review-sheet, test-decision-
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ADR-0013](../../../../person/decisions/2026/0013-decision-status-folders.md) (決定 1〜10) | — |
+| 上流 (depends_on) | [ADR-0013](../../../../person/decisions/proposed/0013-decision-status-folders.md) (決定 1〜10) | — |
 | 下流 | `src/core/decision/`・`src/cli/commands/decision/` (§GitHubPort と割り方はテスト仕様 12)・`src/checks/DecisionStatusCheck.ts`・`DocGraphCheck.ts` の索引・`DocsMigrate*` の 1 段 とそのテスト | TST-* |
 
 ## 0. 規則

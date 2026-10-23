@@ -4,7 +4,7 @@ title: ADR-0002 確定させる人の境界を守る不変条件と機械検査�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -92,3 +92,9 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership, adr-0011-person-
 ## 再検討トリガ
 
 - 条件 8 の測定が済んだら値を改め、そのメジャー版で違反に上げる
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-08 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/20> | 02f3025d215d5d78ddc181064f1b1989ea58444c | sha256:11bccb7a5c209286136b2c11c6d207e1cc1443c3de2c6a73a40046ddfdb63e0a | — |

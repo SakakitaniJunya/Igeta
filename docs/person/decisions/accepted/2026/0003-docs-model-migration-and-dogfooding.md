@@ -4,7 +4,7 @@ title: ADR-0003 移行は「移す」と「人の型へ書き直す」の 2 段�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -98,3 +98,9 @@ docs/
 ## 再検討トリガ
 
 - 利用 repo への適用で書き換え漏れが見つかったら、書き換えの対象を見直す
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:95d05f15b008792bb78e9cad9ff642c4fff2bbd939ad218eb12ed2c8a1d8fc0f | — |

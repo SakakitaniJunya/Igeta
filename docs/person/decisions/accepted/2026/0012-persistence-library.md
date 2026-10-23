@@ -4,7 +4,7 @@ title: ADR-0012 DB 層は雛形の写しをやめ、ライブラリ @igeta/persi
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-20
@@ -97,3 +97,9 @@ flowchart TB
 ## 決めてほしいこと
 
 - npm 公開の時期 (CEO 判断)。未公開の間、雛形の後続 PR は依存の入れ方が決まらない。
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-22 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/26> | 43f1831fbb9eff3b24fcbfcd847adc34f77ec27a | sha256:efd739688d2c949278dc387f9dc902b0d735b700f4ba0d115baa0b888ecbbc00 | — |

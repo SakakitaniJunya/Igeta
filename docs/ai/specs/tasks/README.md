@@ -17,6 +17,6 @@ owners: [eng]
 > 階層は frontmatter `depends_on` から生成 (親 = 上流、子 = その下流)。「← 上流」は他ディレクトリの上流。上流も下流も無い文書は `docs-check` で落ちる (一覧に足すだけでは登録にならない)。
 
 - [01-v4-rollout.md](01-v4-rollout.md) — **実装タスク — 確定させる人ごとのディレクトリ (文書モデル v4)** `design` _(draft)_ — 文書モデル v4 を動く状態にするまでの分解。順序は「詳細設計 (テスト仕様) の評価が通る → 実装 → コードレビュー → 統合」 ← 上流: [audience-directories](../../../person/requirements/02-audience-directories.md)
-- [02-persistence-library.md](02-persistence-library.md) — **実装タスク — DB 層ライブラリ (@igeta/persistence)** `design` _(draft)_ — library/persistence を 0.1.0 にするまでの分解と、雛形の後の形。受入は テスト仕様 09 の表の行が全部通ること。雛形の書き換え (後続 PR) は含まない ← 上流: [adr-0012-persistence-library](../../../person/decisions/2026/0012-persistence-library.md)
+- [02-persistence-library.md](02-persistence-library.md) — **実装タスク — DB 層ライブラリ (@igeta/persistence)** `design` _(draft)_ — library/persistence を 0.1.0 にするまでの分解と、雛形の後の形。受入は テスト仕様 09 の表の行が全部通ること。雛形の書き換え (後続 PR) は含まない ← 上流: [adr-0012-persistence-library](../../../person/decisions/accepted/2026/0012-persistence-library.md)
 
 <!-- AUTOGEN:dir-index:end -->

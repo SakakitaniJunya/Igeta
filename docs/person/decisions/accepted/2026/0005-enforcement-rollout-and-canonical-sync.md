@@ -4,7 +4,7 @@ title: ADR-0005 検査の強さは構成の実在と Igeta の版だけで決め
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -96,3 +96,9 @@ CI 設定と各 repo の制約文書は書き換えない (ガイドを指す参
 ## 再検討トリガ
 
 - `TaxonomyGuideSync` がガイドの書式の変更で頻繁に壊れたら、ガイドの表を `ROLE_OF_KIND` から生成する向きに変える
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:25f4dcd4f331dbc028d55e0fc3502d1c6a6b03e47e81e969b61541fc7ab1435d | — |

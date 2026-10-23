@@ -4,7 +4,7 @@ title: ADR-0010 値の持ち主は 1 つ — 人の決める値は person の行
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-02
@@ -98,3 +98,9 @@ ai の文書に「未決」「未確定」の節を置かない (人の決めが
 ## 再検討トリガ
 
 - 書き直した実案件で、同じ値が person と ai の両方に現れたら、その値の持ち主を本表に足す
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:5a9384e5766f0682619c60e0e87f5ca5edb8550297cd9e2d35148abc3d2d9bb6 | — |

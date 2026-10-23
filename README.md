@@ -265,7 +265,7 @@ npm run docs:graph
 
 ### 既存の repo を移す
 
-旧い構成 (`docs/product`・`docs/design` など) か、v3 の構成 (`docs/common/` がある) の repo は、移す段と書き直す段の 2 段で移す。両方を 1 本の PR で済ませてから merge する ([ADR-0003](docs/person/decisions/2026/0003-docs-model-migration-and-dogfooding.md))。
+旧い構成 (`docs/product`・`docs/design` など) か、v3 の構成 (`docs/common/` がある) の repo は、移す段と書き直す段の 2 段で移す。両方を 1 本の PR で済ませてから merge する ([ADR-0003](docs/person/decisions/accepted/2026/0003-docs-model-migration-and-dogfooding.md))。
 
 1. **移す段 (機械)**: Igeta の版を上げ、作業ツリーを clean にしてから `npx igeta docs-migrate --owner <持ち主> --dry-run` を実行する。止める条件 (`STOP S<番号>`) が出たら、その行の文書や画像を直すか、`.igeta.json` の `nonDocPaths` に足してから、もう一度実行する。止まらなければ `npx igeta docs-migrate --owner <持ち主>` で適用する。commit はしない。
 2. **書き直す段 (人と AI)**: 適用の最後に出る `WORK` の行が、書き直す作業の一覧。`person/` の文書は人の型 (状態の列・図・量) へ書き直し、`person/` から `ai/`・`client/` への参照は外す。`ai/` の文書の未決の節は、人の決めが要るものを `person/` の「決めてほしいこと」に移す。`npx igeta docs-check` と `npm run docs:template-check` が通ったら、PR にする。
@@ -289,7 +289,7 @@ npm run docs:graph
 | `npx igeta provenance-check [<chapter> ...]` | 由来の鮮度 (既定 OFF) | `pending`/`stale`/`orphan`/`orphan-content`/`self-approved`/`source-missing`/`open-stated-as-final` (`needs-recompute` は既定警告、`--strict-normalization` で違反) |
 | `npx igeta provenance-coverage [<chapter> ...]` | 由来の順方向網羅 (既定 OFF) | delivery-chapter の H2 節 (「関連」除く) に由来が 1 件も無い |
 | `npx igeta source-coverage` | 由来の逆方向網羅 (既定 OFF) | 正本の行定義がどの章の由来にも現れない (`clientExempt`/`.igeta.json` の `coverageExemptions` で対象外にできる) |
-| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/person/decisions/2026/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
+| `npx igeta fingerprint-rebase [<dir>]` | (生成、[詳細](docs/person/decisions/accepted/2026/0007-fingerprint-link-normalization.md)) | 由来と合意台帳の指紋を、保存した版で今の本文と一致したものだけ今の正規化の版へ載せ替える。承認は保つ。一致しないものは触らず `KEEP` で出す |
 | `npx igeta docs-migrate --owner <持ち主> [--dry-run]` | (生成・移す段、[詳細](docs/ai/specs/shared/tests/07-docs-migrate.md)) | 旧い構成・v3 の構成の `docs/` を 3 フォルダ (`person`・`ai`・`client`) へ移し、リンクと索引と承認の割り当て (`AGENTS.md`・CODEOWNERS) を作る。作業ツリーが clean であること・kind の無い文書など止める条件 (S1〜S9) があれば何も書かず終了 2。完了条件 (C1〜C5) が欠けたら終了 1 で作業ツリーを戻す手順を出す。commit はしない。`--dry-run` は計画だけを出す |
 | `npm run docs:lint` | Markdown 記法 | markdownlint 違反 |
 | `npm run check:domain-drift` | 図 ↔ 実装 | 図のクラスが実装に無い / 実装の export が図に無い |

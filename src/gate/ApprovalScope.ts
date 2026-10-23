@@ -1,5 +1,5 @@
 // 人の承認が要るパスに、変更が触れたかを見分ける (`igeta approval-scope`)。
-// Spec: docs/ai/specs/shared/tests/01-approval-gate.md (R1〜R6)、docs/person/decisions/2026/0008-human-approval-scope.md 決定 1・3
+// Spec: docs/ai/specs/shared/tests/01-approval-gate.md (R1〜R6)、docs/person/decisions/accepted/2026/0008-human-approval-scope.md 決定 1・3
 //
 // 判定は、変わったパスだけで決める (ファイルの中身・書いた主体・変更の大きさは見ない)。次の 2 つの差分のパスの
 // 和集合を、決定 1 の表と humanPaths に当てる。1 つでも当たれば `human`、当たらなければ `ai`。

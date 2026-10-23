@@ -4,7 +4,7 @@ title: ADR-0008 人の承認が要るパスを決めて見分ける — 強制�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-02
@@ -97,3 +97,9 @@ igeta の行)。門のコード・版・設定を変更の作者が書き換え�
 ## 再検討トリガ
 
 - 保護を置ける契約と AI 用のアカウントが決まったら、強制の門を設計する (安全面の評価の指摘は issue に残す)
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:a50736fc696c58db74fe2b3eac3aa31a53763d81ce1c6fb9510fbf1bdc68760f | — |

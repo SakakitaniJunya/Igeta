@@ -7,7 +7,11 @@ import { DecisionPendingCommand } from './pending.js';
 import { DecisionAcceptCommand, DecisionAmendCommand, DecisionRejectCommand, DecisionSupersedeCommand } from './verbs.js';
 
 export type { GitHubPort } from './port.js';
-export { recordDecision } from './record.js';
+export { commitChanges, recordDecision } from './record.js';
+export type { CommitRequest } from './record.js';
+export { build, planAccept, prepare, proceed, refuse, row, yearOf } from './plan.js';
+export type { Change, Context, RecordOutcome, RecordRequest, Step } from './plan.js';
+export { createGhPort } from './gh-port.js';
 export { collectPending } from './pending.js';
 
 /** decision-* の 5 コマンド。port を渡さなければ `gh api` で読む本番の実装 */

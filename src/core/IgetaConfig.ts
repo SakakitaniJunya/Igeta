@@ -1,7 +1,7 @@
 // リポジトリ直下の `.igeta.json` を読む共通ロジック。項目の一覧は README の `.igeta.json` の節。
 // Spec: docs/ai/handbook/explanation/07-context-boundaries.md §4 (sharedKinds/contextSizeLimit)、
 // 05-coverage-and-learning.md §2 (coverageExemptions)、08-agreement-ledger.md (reagreementRules)、
-// docs/person/decisions/2026/0008-human-approval-scope.md (humanPaths)、docs/person/decisions/2026/0003-docs-model-migration-and-dogfooding.md 決定 6 (nonDocPaths)
+// docs/person/decisions/accepted/2026/0008-human-approval-scope.md (humanPaths)、docs/person/decisions/accepted/2026/0003-docs-model-migration-and-dogfooding.md 決定 6 (nonDocPaths)
 //
 // 将来足す設定もこのファイルの関数を増やさず、同じ loadIgetaConfig の戻り値に読み取りを
 // 追加していく作りにする — ファイルが 1 個なのに読み取り関数が増えると「どの設定がどこに

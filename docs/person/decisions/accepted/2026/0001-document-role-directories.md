@@ -4,7 +4,7 @@ title: ADR-0001 docs/ の第1階層を「誰が確定させるか」で 3 つに
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -21,7 +21,7 @@ relates_to: [adr-0009-kind-placement, adr-0010-value-ownership]
 
 ## 関連
 
-- **上流 (depends_on)**: [要件定義書 — 読み手別ディレクトリ](../../requirements/02-audience-directories.md)
+- **上流 (depends_on)**: [要件定義書 — 読み手別ディレクトリ](../../../requirements/02-audience-directories.md)
 - **下流**: ADR-0002〜0010
 
 ## Status
@@ -94,3 +94,9 @@ kind 47 種の置き場所は要件定義書 02 §7 (決定は ADR-0009)、型�
 ## 再検討トリガ
 
 - 最初の実案件 1 件を全部書き直した結果、まとまりの量が上限に収まらなければ、上限か分け方を見直す
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:3d605e617ff9d3978cc223640e212e1072a75dbb01bcb376d187d0bbe9c8c477 | — |

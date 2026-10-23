@@ -4,7 +4,7 @@ title: ADR-0007 指紋の正規化 v3 — リンクの行き先をパスでは�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -98,3 +98,9 @@ v3 はその同じ本文から計算するので、承認した内容と指紋�
 ## 再検討トリガ
 
 - id の無い文書へのリンクが多く、移行で止まる件数が実案件で 10 件を超えたら、id の自動付与を検討する
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:f1f54821bcd6f6c2c786920c56077daf8f6b7453ae4c96cda9cbf9e8452ec4d0 | — |

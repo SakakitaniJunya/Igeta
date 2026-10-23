@@ -22,7 +22,7 @@ relates_to: [test-persistence-library]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ADR-0012](../../../person/decisions/2026/0012-persistence-library.md) | ADR-0012 |
+| 上流 (depends_on) | [ADR-0012](../../../person/decisions/accepted/2026/0012-persistence-library.md) | ADR-0012 |
 | 下流 | [テスト仕様 09](../shared/tests/09-persistence-library.md) / 雛形の後続 PR | TST-* |
 
 ## 1. 木 (`library/persistence/`)

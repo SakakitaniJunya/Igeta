@@ -4,7 +4,7 @@ title: ADR-0011 人の文書は冒頭に kind ごとの図を置く — 図種�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-08
@@ -21,7 +21,7 @@ relates_to: []
 ## 関連
 
 - **上流 (depends_on)**: ADR-0002 (条件 6) / ADR-0009 (型の検査の区分) / ADR-0010 (値の持ち主は 1 つ)
-- **下流**: [要件定義書 02](../../requirements/02-audience-directories.md) §8 / テスト仕様 08 (ai 側) /
+- **下流**: [要件定義書 02](../../../requirements/02-audience-directories.md) §8 / テスト仕様 08 (ai 側) /
   `src/core/Role.ts`・`src/checks/{PersonFormCheck,MermaidCheck}.ts` / `templates/docs/person/**` の 16 本 /
   図の記述の 2 文書 (文書体系ガイド §4・解説 09 (ai 側) §3。`TaxonomyGuideSync.test.ts` が §8 と突き合わせる)
 
@@ -97,3 +97,9 @@ PersonFormCheck が `~~~mermaid` を数え、MermaidCheck は ` ``` ` だけを�
 - 図の中の ID が表に無い誤りが承認で 1 件見つかったら、図と表の ID の突き合わせを検査にする
 - ELK を同梱したら、雛形にレイアウトの指定を入れるか決める
 - adr に図が無いために選択肢が読み取れない指摘が 2 件出たら、adr を図が要る kind に入れる
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-20 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/24> | 6c3d73da1398070548f0514f36709d3667183945 | sha256:7fbc3f815a61b9aaf624fe69ed2a5339dab5d64e2638cbb55cb4790de37885c9 | — |

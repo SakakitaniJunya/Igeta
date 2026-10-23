@@ -23,7 +23,7 @@ relates_to: [test-decision-status]
 
 | 区分 | 文書 | 対応 ID |
 |---|---|---|
-| 上流 (depends_on) | [ADR-0013](../../../../person/decisions/2026/0013-decision-status-folders.md) (決定 9・10) | — |
+| 上流 (depends_on) | [ADR-0013](../../../../person/decisions/proposed/0013-decision-status-folders.md) (決定 9・10) | — |
 | 下流 | `src/cli/commands/decision/` (`port.ts` が口、`gh-port.ts` が本番の実装)・`src/core/decision/`・`DocsMigrate*` の 1 段 とそのテスト | TST-* |
 
 ## 1. GitHubPort (差し込み口)

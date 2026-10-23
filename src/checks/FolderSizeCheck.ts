@@ -1,5 +1,5 @@
 // 1 フォルダの文書の本数の検査。
-// Spec: docs/person/decisions/2026/0004-folder-internal-structure-and-growth.md 決定 2、ADR-0002 条件 14。
+// Spec: docs/person/decisions/accepted/2026/0004-folder-internal-structure-and-growth.md 決定 2、ADR-0002 条件 14。
 //
 // 新しい構成 (docs/person・ai・client のどれかがある) の repo で、1 フォルダの直下の文書 (.md。README.md と
 // docs/ 直下の dependencies.md は生成索引なので数えない) が MAX_DOCS_PER_FOLDER 本を超えたら違反にする。

@@ -4,7 +4,7 @@ title: ADR-0004 フォルダの中はまとまりで分け、増えたときの�
 type: adr
 kind: adr
 arc42: 9
-status: proposed
+status: accepted
 canonical: true
 owners: [eng]
 created: 2026-10-01
@@ -81,3 +81,9 @@ ADR 35 本など)。問題の無い repo は最大 10 本だった。人も AI �
 ## 再検討トリガ
 
 - `shared/` が 15 本を超え続ける repo が出たら、全体共通の文書の切り方を見直す
+
+## 承認の履歴
+
+| 日付 | 事象 | 前→後 | 決めた人 | 根拠 | 根拠 commit | 本文指紋 | メモ |
+|---|---|---|---|---|---|---|---|
+| 2026-10-05 | 承認 | proposed→accepted | 榊谷 隼也 | <https://github.com/SakakitaniJunya/Igeta/pull/19> | 31ca6a5936f5484b24478b15e2277e44698e03d9 | sha256:02d3c8f1d4ec5904bd3f35568c271fc7bf08a76d3fbb60c523d3e69b73f22124 | — |

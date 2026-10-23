@@ -23,7 +23,7 @@ owners: [eng]
       - [05-coverage-and-learning.md](05-coverage-and-learning.md) — **由来の網羅検査と、食い違いを規則へ育てる学習ループ (delivery-chapter 限定)** `explanation` — 由来・鮮度 は「由来が古いか」だけを見る。ここでは
       - [08-agreement-ledger.md](08-agreement-ledger.md) — **顧客との合意台帳の形 (提出・承認・その後の変更)** `explanation` — 提出物を出すたびに、何を見せたか (版・章の指紋・由来が指す正本の指紋) を追記のみの台帳に残す。
     - [07-context-boundaries.md](07-context-boundaries.md) — **まとまり (業務コンテキスト) の境界で読み込む量を短くする理由** `explanation` — 設計書を業務のまとまり (context) ごとに分け、人も AI も**1 つのまとまりだけ読めば
-    - [09-reader-granularity.md](09-reader-granularity.md) — **人が読んで決める文書の型と量** `explanation` — person/ の文書は、確定する前に人が全部読んで承認する。変わったら、変わった行を人が読んで承認する。 ← 上流: [adr-0011-person-diagram-first](../../../person/decisions/2026/0011-person-diagram-first.md)
+    - [09-reader-granularity.md](09-reader-granularity.md) — **人が読んで決める文書の型と量** `explanation` — person/ の文書は、確定する前に人が全部読んで承認する。変わったら、変わった行を人が読んで承認する。 ← 上流: [adr-0011-person-diagram-first](../../../person/decisions/accepted/2026/0011-person-diagram-first.md)
 - [06-export-deliverable.md](06-export-deliverable.md) — **igeta export — 提出用 PDF 出力基盤** `explanation` — igeta export は、章ごとに分けた Markdown を先方提出用の PDF 1 冊にまとめる CLI コマンド。
 - [10-folder-placement.md](10-folder-placement.md) — **どの文書をどこに置くか — 木の図と、その理由** `explanation` — 要件定義書 02 §7 (kind 47 種の置き場所) を木の形に描いた図と、なぜこう分けるかの説明。決めの正本は ← 上流: [audience-directories](../../../person/requirements/02-audience-directories.md)
 - [12-template-section-audit.md](12-template-section-audit.md) — **雛形の節の監査 — ai の雛形の全部の節に置き場所の問いを当てた表** `explanation` — ai の雛形の全部の節 (「関連」を除く) に、置き場所の問いを当てた。表 A (残した節) の「変わる」は 0 件。変わる値は person の行へ移した (表 B) ← 上流: [audience-directories](../../../person/requirements/02-audience-directories.md)
