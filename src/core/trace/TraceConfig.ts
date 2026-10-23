@@ -4,6 +4,8 @@
 import { loadIgetaConfig } from '../IgetaConfig.js';
 import type { Violation } from '../Report.js';
 
+export const DEFAULT_TRACE_BASE = 'origin/main';
+
 export const DEFAULT_TRACE_KINDS: readonly string[] = ['DEC', 'REQ', 'FN', 'SCR', 'API', 'TBL', 'TST'];
 
 /** `.igeta.json` の trace に書いてあった項目。書いてない項目は undefined */
@@ -14,6 +16,7 @@ export interface TraceSettings {
   readonly bands?: readonly string[];
   readonly strictEdges?: boolean;
   readonly tblRule?: 'warn' | 'error';
+  readonly base?: string;
 }
 
 /** 既定値を足した、検査が使う設定 */
@@ -27,6 +30,8 @@ export interface TraceConfig {
   readonly bands: readonly string[];
   readonly strictEdges: boolean;
   readonly tblRule: 'warn' | 'error';
+  /** T1(b) と基準の増加を比べる先の ref。docs-check と trace が同じ値を使う */
+  readonly base: string;
 }
 
 export type Direction = 'up' | 'down';
@@ -45,6 +50,7 @@ export function resolveTraceConfig(settings: TraceSettings): TraceConfig {
     bands: settings.bands ?? [],
     strictEdges: settings.strictEdges ?? false,
     tblRule: settings.tblRule ?? 'warn',
+    base: settings.base ?? DEFAULT_TRACE_BASE,
   };
 }
 

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { applyBaseline, fingerprint, formatBaseline, grew, parseBaseline, shrinkBaseline } from './Baseline.js';
 import type { Finding } from './model/Types.js';
 import { buildTree, render } from './Tree.js';
-import { findAll, indexOf, makeWorld } from './testing/Fixtures.test-support.js';
+import { findAll, indexOf, makeDoc, makeWorld } from './testing/Fixtures.test-support.js';
 
 const violation: Finding = { rule: 'T3', level: 'violation', id: 'REQ-101', path: 'docs/req.md', line: 9, message: 'x' };
 const warning: Finding = { ...violation, rule: 'T9', level: 'warning' };
@@ -56,6 +56,16 @@ describe('木', () => {
     assert.match(text, /△ FN-010/);
     const orphan = makeWorld({ req: [['REQ-101', 'DEC-001', '']], fn: [['FN-010', '', 'SCR-101', 'API-001']] });
     assert.match(render(buildTree(indexOf(orphan), 'REQ-101', findAll(orphan)), 'text'), /✗ T3:/);
+  });
+
+  it('ひし形が 12 段続くグラフでも、行数は節の数に比例する (展開済みの節は「上と同じ」で子を繰り返さない)', () => {
+    const id = (layer: number, side: number): string => `FN-${String(layer * 10 + side).padStart(3, '0')}`;
+    const rows = Array.from({ length: 12 }, (_, i) => i + 1).flatMap((layer) =>
+      [1, 2].map((side) => [id(layer, side), layer === 1 ? '' : `${id(layer - 1, 1)} ${id(layer - 1, 2)}`]));
+    const doc = makeDoc({ path: 'docs/fn.md', columns: ['上流 FN:up'], headers: ['ID', '上流 FN'], rows });
+    const lines = render(buildTree(indexOf([doc]), id(1, 1), []), 'text').split('\n');
+    assert.ok(lines.length < 80, `${lines.length} 行`);
+    assert.ok(lines.some((line) => line.endsWith('(上と同じ)')));
   });
 
   it('[TST-924] 定義の無い ID は roots が空 (command が終了コード 2 にする)', () => {

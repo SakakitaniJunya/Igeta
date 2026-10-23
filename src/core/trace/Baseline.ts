@@ -4,8 +4,8 @@ import type { Finding } from './model/Types.js';
 
 export const BASELINE_FILE = '.igeta-trace-baseline.json';
 
-/** 指摘の指紋。行番号は入れない (行が動いても同じ違反として扱う) */
-export const fingerprint = (finding: Finding): string => `${finding.rule}|${finding.id}|${finding.path}`;
+/** 指摘の指紋 (規則・ID・ファイル・違反の種類)。行番号は入れない (行が動いても同じ違反として扱う) */
+export const fingerprint = (finding: Finding): string => `${finding.rule}|${finding.id}|${finding.path}|${finding.detail ?? ''}`;
 
 /** 基準の中身を読む。形が違えば error */
 export function parseBaseline(text: string): { readonly fingerprints: readonly string[] } | { readonly error: string } {
@@ -44,4 +44,10 @@ export function grew(current: readonly string[], origin: readonly string[]): boo
 export function shrinkBaseline(base: readonly string[], findings: readonly Finding[]): string[] {
   const live = new Set(findings.filter((finding) => finding.level === 'violation').map(fingerprint));
   return base.filter((item) => live.has(item));
+}
+
+/** 基準に残っているが、もう出ていない違反の指紋 (--update-baseline で消せる) */
+export function staleFingerprints(base: readonly string[], findings: readonly Finding[]): string[] {
+  const live = new Set(findings.filter((finding) => finding.level === 'violation').map(fingerprint));
+  return base.filter((item) => !live.has(item));
 }

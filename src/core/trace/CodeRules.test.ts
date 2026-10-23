@@ -15,6 +15,11 @@ describe('scanTags', () => {
     assert.deepEqual(tagOf('src/a.ts', '// 在庫の単位を表す部品。 @trace SCR-101 FN-010')[0], { path: 'src/a.ts', tokens: ['SCR-101', 'FN-010'], state: 'tagged' });
   });
 
+  it('1 行目が shebang (#!) なら、2 行目の @trace を読む', () => {
+    const [tag] = scanTags([{ path: 'bin/run.ts', lines: ['#!/usr/bin/env node', '// 実行口。 @trace FN-010'] }]);
+    assert.deepEqual(tag?.tokens, ['FN-010']);
+  });
+
   it('[TST-919] @trace が 2 行目にあれば無視し、先頭行に無いファイルは absent', () => {
     const [tag] = scanTags([{ path: 'src/a.ts', lines: ['// 概要', '// @trace FN-010'] }]);
     assert.equal(tag?.state, 'absent');

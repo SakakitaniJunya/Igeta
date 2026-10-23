@@ -7,13 +7,14 @@ import type { TraceConfig } from './TraceConfig.js';
 
 const TEST_FILE = /\.(test|spec)\.[^/]+$|_test\.[^/]+$/;
 
-const finding = (rule: RuleId, level: Finding['level'], definition: Definition, message: string): Finding => ({
+const finding = (rule: RuleId, level: Finding['level'], definition: Definition, message: string, detail = ''): Finding => ({
   rule,
   level,
   id: definition.token,
   path: definition.path,
   line: definition.line,
   message,
+  detail,
 });
 
 /** T7 (TBL がコードの @trace から参照される) と T8 (TST が文書とテストのコードの両方に現れる) */
@@ -45,7 +46,8 @@ function oneSidedEdges(index: TraceIndex, config: TraceConfig): Finding[] {
     const isFunctionToScreen = up.kind === 'FN' && down.kind === 'SCR' && edge.declaredBy === 'up';
     const level = config.strictEdges || isFunctionToScreen ? 'violation' : 'warning';
     const message = `${up.token} の下流に ${down.token} と書いてあるのは ${edge.declaredBy === 'up' ? up.token : down.token} の行だけで、相手の行に逆向きの欄が無い`;
-    return [{ ...finding('T9', level, owner, message), path: edge.path, line: edge.line }];
+    const other = edge.declaredBy === 'up' ? down : up;
+    return [{ ...finding('T9', level, owner, message, `${edge.declaredBy}:${other.token}`), path: edge.path, line: edge.line }];
   });
 }
 
@@ -54,7 +56,7 @@ function unknownIds(index: TraceIndex, tags: readonly CodeTag[], config: TraceCo
   const defined = new Set(index.definitions.map((definition) => definition.token));
   const isKind = (token: string): boolean => config.kinds.includes(token.slice(0, token.lastIndexOf('-')));
   const fromColumns = index.dangling.map((entry): Finding => ({
-    rule: 'T10', level: 'violation', id: entry.token, path: entry.path, line: entry.line, message: `欄の ${entry.token} に対応する定義が無い`,
+    rule: 'T10', level: 'violation', id: entry.token, path: entry.path, line: entry.line, message: `欄の ${entry.token} に対応する定義が無い`, detail: entry.fromKey,
   }));
   const fromCode = tags.flatMap((tag): Finding[] => {
     const where = { rule: 'T10', path: tag.path, line: 1 } as const;

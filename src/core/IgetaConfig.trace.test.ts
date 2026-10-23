@@ -21,16 +21,16 @@ describe('IgetaConfig の trace', () => {
   it('trace が無ければ既定値 (空の設定)。readTraceConfig が既定の種類・warn・strictEdges なしを足す', () => {
     assert.deepEqual(loadIgetaConfig(rootWith({})), { config: DEFAULT_IGETA_CONFIG });
     const read = readTraceConfig(rootWith(undefined));
-    assert.deepEqual(read, { config: { kinds: DEFAULT_TRACE_KINDS, code: [], columns: [], bands: [], strictEdges: false, tblRule: 'warn' } });
+    assert.deepEqual(read, { config: { kinds: DEFAULT_TRACE_KINDS, code: [], columns: [], bands: [], strictEdges: false, tblRule: 'warn', base: 'origin/main' } });
   });
 
   it('trace の項目を読む', () => {
-    const read = readTraceConfig(rootWith({ trace: { kinds: ['REQ'], code: ['src/**'], strictEdges: true, tblRule: 'error', bands: ['機能要件:1'], columns: ['上流 X:up'] } }));
-    assert.deepEqual(read, { config: { kinds: ['REQ'], code: ['src/**'], columns: ['上流 X:up'], bands: ['機能要件:1'], strictEdges: true, tblRule: 'error' } });
+    const read = readTraceConfig(rootWith({ trace: { kinds: ['REQ'], code: ['src/**'], strictEdges: true, tblRule: 'error', base: 'develop', bands: ['機能要件:1'], columns: ['上流 X:up'] } }));
+    assert.deepEqual(read, { config: { kinds: ['REQ'], code: ['src/**'], columns: ['上流 X:up'], bands: ['機能要件:1'], strictEdges: true, tblRule: 'error', base: 'develop' } });
   });
 
   it('形が不正な trace は CannotCheck (黙って既定値に倒さない)', () => {
-    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }]) {
+    for (const trace of [[], { kinds: 'FN' }, { strictEdges: 'yes' }, { tblRule: 'off' }, { base: '' }]) {
       const read = readTraceConfig(rootWith({ trace }));
       assert.ok('violation' in read && read.violation.severity === 'cannot-check', JSON.stringify(trace));
     }

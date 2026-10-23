@@ -10,13 +10,14 @@ interface Context {
   readonly kindOf: (key: string) => string;
 }
 
-const violation = (rule: RuleId, definition: Definition, message: string): Finding => ({
+const violation = (rule: RuleId, definition: Definition, message: string, detail = ''): Finding => ({
   rule,
   level: 'violation',
   id: definition.token,
   path: definition.path,
   line: definition.line,
   message,
+  detail,
 });
 
 /** (a) 同じ context の中の重複。2 件目以降を指摘する */
@@ -26,19 +27,20 @@ function duplicates(index: TraceIndex): Finding[] {
   for (const definition of index.definitions) {
     const earlier = first.get(definition.key);
     if (earlier === undefined) first.set(definition.key, definition);
-    else found.push(violation('T1', definition, `${definition.token} が同じ context に 2 回定義されている (最初は ${earlier.path}:${earlier.line})`));
+    else found.push(violation('T1', definition, `${definition.token} が同じ context に 2 回定義されている (最初は ${earlier.path}:${earlier.line})`, earlier.path));
   }
   return found;
 }
 
-/** (b) 自分の差分で増えた ID が、origin/main の別の定義と衝突する */
-function collisions(index: TraceIndex, origin: TraceIndex): Finding[] {
-  const originAt = new Map(origin.docs.map((doc) => [doc.path, new Set(doc.definitions.map((definition) => definition.key))]));
+/**
+ * (b) 自分の差分で増えた ID (merge-base に無い) が、origin の先端の同じ context に既にある。
+ * 文書の移動は merge-base にも有るので足された ID に数えず、別 branch が同じ表に同じ番号を足した場合は衝突になる。
+ */
+function collisions(index: TraceIndex, origin: OriginIndexes): Finding[] {
   return index.definitions.flatMap((definition) => {
-    const isAdded = !(originAt.get(definition.path)?.has(definition.key) ?? false);
-    const earlier = origin.nodes.get(definition.key);
-    if (!isAdded || earlier === undefined) return [];
-    return [violation('T1', definition, `${definition.token} は origin に ${earlier.path}:${earlier.line} で定義済み (別 branch の採番と衝突)`)];
+    const earlier = origin.tip.nodes.get(definition.key);
+    if (origin.mergeBase.nodes.has(definition.key) || earlier === undefined) return [];
+    return [violation('T1', definition, `${definition.token} は origin に ${earlier.path}:${earlier.line} で定義済み (別 branch の採番と衝突)`, `origin:${earlier.path}`)];
   });
 }
 
@@ -74,14 +76,14 @@ function gaps(ctx: Context): Finding[] {
   for (const [key, definition] of ctx.index.nodes) {
     const upKeys = ctx.graph.up(key);
     const downKeys = ctx.graph.down(key);
-    const add = (rule: RuleId, message: string): number => found.push(violation(rule, definition, message));
+    const add = (rule: RuleId, message: string, detail = ''): void => void found.push(violation(rule, definition, message, detail));
     if (definition.kind === 'DEC' && definition.impact === '作る物' && exists('REQ', 'FN') && !hasNeighbor(ctx, downKeys, ['REQ', 'FN'])) {
-      add('T2', '作る物の決定なのに、下流の REQ か FN が無い');
+      add('T2', '作る物の決定なのに、下流の REQ か FN が無い', 'down:REQ|FN');
     }
-    if (definition.kind === 'REQ' && exists('FN') && !hasNeighbor(ctx, downKeys, ['FN'])) add('T3', '下流に FN が無い');
-    if (definition.kind === 'FN' && exists('REQ') && !hasNeighbor(ctx, upKeys, ['REQ'])) add('T4', '上流に REQ が無い');
-    if (definition.kind === 'FN' && exists('SCR', 'API') && !hasNeighbor(ctx, downKeys, ['SCR', 'API'])) add('T4', '下流に SCR か API が無い');
-    if (definition.kind === 'SCR' && exists('FN') && !hasNeighbor(ctx, upKeys, ['FN'])) add('T5', '上流に FN が無い');
+    if (definition.kind === 'REQ' && exists('FN') && !hasNeighbor(ctx, downKeys, ['FN'])) add('T3', '下流に FN が無い', 'down:FN');
+    if (definition.kind === 'FN' && exists('REQ') && !hasNeighbor(ctx, upKeys, ['REQ'])) add('T4', '上流に REQ が無い', 'up:REQ');
+    if (definition.kind === 'FN' && exists('SCR', 'API') && !hasNeighbor(ctx, downKeys, ['SCR', 'API'])) add('T4', '下流に SCR か API が無い', 'down:SCR|API');
+    if (definition.kind === 'SCR' && exists('FN') && !hasNeighbor(ctx, upKeys, ['FN'])) add('T5', '上流に FN が無い', 'up:FN');
     if (definition.kind === 'API' && exists('SCR', 'DEC') && !apiReachesScreenOrDecision(ctx, key)) {
       add('T6', '上流が画面にも決定にも届かない (SCR を持つ、上流の FN が SCR を持つ、または DEC に届くのどれか)');
     }
@@ -89,8 +91,14 @@ function gaps(ctx: Context): Finding[] {
   return found;
 }
 
-/** T1〜T6 を検査する。originIndex が無ければ T1(b) は見ない (呼び出し側が警告にする) */
-export function checkRulesA(index: TraceIndex, originIndex: TraceIndex | undefined): Finding[] {
+/** origin の先端と、自分の branch との merge-base の索引 (T1(b) の比べ先) */
+export interface OriginIndexes {
+  readonly tip: TraceIndex;
+  readonly mergeBase: TraceIndex;
+}
+
+/** T1〜T6 を検査する。origin が無ければ T1(b) は見ない (呼び出し側が cannot-check にする) */
+export function checkRulesA(index: TraceIndex, origin: OriginIndexes | undefined): Finding[] {
   const context: Context = { index, graph: buildGraph(index.edges), kindOf: (key) => index.nodes.get(key)?.kind ?? '' };
-  return [...duplicates(index), ...(originIndex === undefined ? [] : collisions(index, originIndex)), ...gaps(context)];
+  return [...duplicates(index), ...(origin === undefined ? [] : collisions(index, origin)), ...gaps(context)];
 }

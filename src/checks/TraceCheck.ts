@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
-import { applyBaseline, BASELINE_FILE, grew, parseBaseline } from '../core/trace/Baseline.js';
+import { applyBaseline, BASELINE_FILE, grew, parseBaseline, staleFingerprints } from '../core/trace/Baseline.js';
 import { scanTags } from '../core/trace/CodeTags.js';
 import type { Finding } from '../core/trace/model/Types.js';
 import { checkRulesA } from '../core/trace/RulesA.js';
@@ -14,8 +14,6 @@ import { buildIndex } from '../core/trace/TraceIndex.js';
 import type { TraceIndex } from '../core/trace/TraceIndex.js';
 import { loadCodeFiles, loadDocs } from './TraceLoad.js';
 import { readOrigin } from './TraceOrigin.js';
-
-export const DEFAULT_TRACE_BASE = 'origin/main';
 
 /** 1 回の検査の結果。fresh = 落とす対象 (警告を含む)、baselined = 基準に有る違反 */
 export interface TraceResult {
@@ -46,11 +44,11 @@ export function summarizeBaselined(baselined: readonly Finding[]): string[] {
 /** `docs-check` と `igeta trace` が使う、設計書のつながりの検査 */
 export class TraceCheck implements Check {
   readonly name = 'trace-check';
-  readonly #base: string;
+  readonly #base: string | undefined;
   #warnings: string[] = [];
 
   constructor(options: { readonly base?: string } = {}) {
-    this.#base = options.base ?? DEFAULT_TRACE_BASE;
+    this.#base = options.base;
   }
 
   /** 直近の run() の警告 (落とさない指摘)・基準に有る違反の件数 */
@@ -76,19 +74,23 @@ export class TraceCheck implements Check {
     const docs = loadDocs(root);
     const index = buildIndex(docs.inputs, config);
     if (index.definitions.length === 0) return emptyResult(index);
-    const origin = readOrigin(root, this.#base, docs.isV4);
-    const originIndex = 'origin' in origin ? buildIndex(origin.origin.inputs, config) : undefined;
+    const base = this.#base ?? config.base;
+    const origin = readOrigin(root, base, docs.isV4);
+    const originIndexes = 'origin' in origin
+      ? { tip: buildIndex(origin.origin.tip.inputs, config), mergeBase: buildIndex(origin.origin.mergeBase.inputs, config) }
+      : undefined;
     const tags = scanTags(loadCodeFiles(root, config.code));
-    const findings = [...checkRulesA(index, originIndex), ...checkRulesB(index, tags, config)];
-    const notes = [
-      ...index.notices.map((notice) => `${notice.path} ${notice.message}`),
-      ...('error' in origin ? [`T1(b) を見ていない: ${origin.error}`] : []),
-      ...(config.code.length === 0 ? ['trace.code が空なので、コードの規則 (T7・T8・先頭行の @trace) を見ていない'] : []),
-    ];
+    const findings = [...checkRulesA(index, originIndexes), ...checkRulesB(index, tags, config)];
     const baseline = this.#readBaseline(root);
     if ('problem' in baseline) return { ...emptyResult(index, [baseline.problem]), findings };
     const applied = applyBaseline(findings, baseline.fingerprints ?? []);
-    const growth = this.#checkGrowth(baseline.fingerprints, origin);
+    const stale = staleFingerprints(baseline.fingerprints ?? [], findings);
+    const notes = [
+      ...index.notices.map((notice) => `${notice.path} ${notice.message}`),
+      ...(config.code.length === 0 ? ['trace.code が空なので、コードの規則 (T7・T8・先頭行の @trace) を見ていない'] : []),
+      ...(stale.length > 0 ? [`基準に、もう出ていない違反の指紋が ${stale.length} 件残っている (igeta trace --update-baseline で消す)`] : []),
+    ];
+    const growth = this.#checkGrowth(base, baseline.fingerprints, origin);
     return { index, findings, ...applied, baseline: baseline.fingerprints, fatal: [], growth, notes };
   }
 
@@ -100,13 +102,17 @@ export class TraceCheck implements Check {
     return { fingerprints: parsed.fingerprints };
   }
 
-  /** 基準が origin より増えていないか。origin が読めなければ cannot-check、origin に基準が無ければ初めての導入として通す */
-  #checkGrowth(current: readonly string[] | undefined, origin: ReturnType<typeof readOrigin>): Violation[] {
-    if (current === undefined || current.length === 0) return [];
+  /**
+   * origin と照合できなければ cannot-check (T1(b) と基準の増加を確かめられないのに通さない)。
+   * 基準は、自分の branch との merge-base の基準と比べる (main が基準を減らしただけでは落ちない)。
+   * merge-base に基準が無ければ、初めて基準を入れる変更として通す。
+   */
+  #checkGrowth(base: string, current: readonly string[] | undefined, origin: ReturnType<typeof readOrigin>): Violation[] {
     if ('error' in origin) {
-      return [{ severity: 'cannot-check', message: `基準が増えていないか確かめられない (${this.#base} を読めない): ${origin.error}`, file: BASELINE_FILE }];
+      return [{ severity: 'cannot-check', message: `${base} と照合できない (T1(b) と基準の増加を確かめられない): ${origin.error}` }];
     }
-    if (origin.origin.baseline === undefined || !grew(current, origin.origin.baseline)) return [];
-    return [{ severity: 'violation', message: `基準が ${this.#base} より増えている。基準は減らす方向にしか動かせない (igeta trace --update-baseline)`, file: BASELINE_FILE }];
+    const before = origin.origin.mergeBase.baseline;
+    if (current === undefined || before === undefined || !grew(current, before)) return [];
+    return [{ severity: 'violation', message: `基準が ${base} との merge-base より増えている。基準は減らす方向にしか動かせない (igeta trace --update-baseline)`, file: BASELINE_FILE }];
   }
 }

@@ -119,6 +119,7 @@ function parseTraceSettings(value: unknown, path: string): { readonly settings: 
     }
   }
   if (record['strictEdges'] !== undefined && typeof record['strictEdges'] !== 'boolean') return fail('の strictEdges は true か false でなければならない');
+  if (record['base'] !== undefined && (typeof record['base'] !== 'string' || record['base'] === '')) return fail('の base は空でない文字列でなければならない');
   const tblRule = record['tblRule'];
   if (tblRule !== undefined && tblRule !== 'warn' && tblRule !== 'error') return fail('の tblRule は "warn" か "error" でなければならない');
   return { settings: record as TraceSettings };

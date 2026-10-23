@@ -61,10 +61,10 @@ export function indexOf(docs: readonly TraceDocInput[], settings: TraceSettings 
 }
 
 /** T1〜T11 をまとめて走らせる */
-export function findAll(docs: readonly TraceDocInput[], options: { settings?: TraceSettings; tags?: readonly CodeTag[]; origin?: readonly TraceDocInput[] } = {}): Finding[] {
+export function findAll(docs: readonly TraceDocInput[], options: { settings?: TraceSettings; tags?: readonly CodeTag[]; origin?: readonly TraceDocInput[]; mergeBase?: readonly TraceDocInput[] } = {}): Finding[] {
   const settings = options.settings ?? {};
   const index = indexOf(docs, settings);
-  const originIndex = options.origin === undefined ? undefined : indexOf(options.origin, settings);
+  const originIndex = options.origin === undefined ? undefined : { tip: indexOf(options.origin, settings), mergeBase: indexOf(options.mergeBase ?? options.origin, settings) };
   return [...checkRulesA(index, originIndex), ...checkRulesB(index, options.tags ?? [], config(settings))];
 }
 

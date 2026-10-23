@@ -19,7 +19,7 @@ export class TraceCommand extends Command {
     '  igeta trace [<ID>] [--root <dir>] [--base <ref>] [--mermaid] [--update-baseline]',
     '  <ID>               木を出す (○ 相互・△ 片方向・✗ 抜けか未定義)。定義が無い ID は終了コード 2',
     '  --mermaid          木を Mermaid の flowchart TB で出す',
-    '  --base <ref>       T1(b) と基準の増加を比べる先 (既定: origin/main)',
+    '  --base <ref>       T1(b) と基準の増加を比べる先 (既定: .igeta.json の trace.base、無ければ origin/main)',
     '  --update-baseline  基準ファイルを作る。あるときは、もう出ない違反を消すだけ (新しい違反は足さない)',
   ];
 

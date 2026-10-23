@@ -55,9 +55,9 @@ flowchart TB
 
 1. 定義は `core/IdDefinitions.ts` の `collectRowDefinedTokens` を import して数える。重複を残す版が要るので、同ファイルに `collectRowDefinitions` (行番号と重複を返す) を**足す**。既存の関数の挙動は変えない。参照と修飾 ID は `core/DocReferences.ts`・`core/ContextGraph.ts` を使う。
 2. 辺は「下流の行が上流の ID を書く」で宣言する。片方向は警告 (△)。例外として、FN が下流に SCR を書き、その SCR の上流に FN が無い組み合わせだけは違反にする (テスト仕様 13 の T9)。
-3. T1 は context の中の重複だけを数える。加えて、PR の差分で増えた ID が origin/main に既にあれば違反にする。CI は PR の merge 結果で回す。
+3. T1 は context の中の重複だけを数える。加えて、自分の差分で増えた ID (merge-base に無い ID) が origin の先端に既にあれば違反にする。CI は PR の merge 結果で回す。
 4. T7 (表) は、コードの `@trace` でだけ満たす。TST からの参照では満たさない。最初は警告で、基準が空になったら違反に上げる。
-5. 違反は基準ファイル `.igeta-trace-baseline.json` (repo 直下) に記録する。違反だけを記録し、警告は入れない。基準は増やせない (origin と比べる)。
+5. 違反は基準ファイル `.igeta-trace-baseline.json` (repo 直下) に記録する。違反だけを記録し、警告は入れない。指紋には違反の種類も入れる。基準は増やせない (merge-base の基準と比べる)。origin と照合できなければ cannot-check にし、警告だけで通さない。比べる先は `.igeta.json` の `trace.base` (既定 origin/main)。
 6. `igeta trace <ID>` は上流と下流の木を出す (既定は ○・△・✗、`--mermaid` で Mermaid)。既存の `DiffTraceModule` は PR の変更ファイルから FN・REQ を辿るもので、入力も目的も違う。
 
 | 判断軸 | 採用案での扱い | 理由 |

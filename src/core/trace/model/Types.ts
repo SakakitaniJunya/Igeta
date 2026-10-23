@@ -44,6 +44,8 @@ export interface Dangling {
 export interface Notice {
   readonly path: string;
   readonly message: string;
+  /** 同じ規則・ID・ファイルの別の違反を見分ける印 (欠けている向き・相手の ID・重複の相手)。基準の指紋に入る */
+  readonly detail?: string;
 }
 
 export interface Heading {
@@ -91,4 +93,6 @@ export interface Finding {
   readonly path: string;
   readonly line?: number;
   readonly message: string;
+  /** 同じ規則・ID・ファイルの別の違反を見分ける印 (欠けている向き・相手の ID・重複の相手)。基準の指紋に入る */
+  readonly detail?: string;
 }

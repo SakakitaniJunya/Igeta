@@ -65,16 +65,42 @@ describe('TraceCheck: 基準', () => {
     assert.deepEqual(violations.map((v) => [v.severity, v.file]), [['violation', BASELINE_FILE]]);
   });
 
+  it('基準は merge-base と比べる: main が基準を減らしただけなら、触っていない branch は落ちない', () => {
+    const root = makeRepo(brokenWorld());
+    const known = check.analyze(root).findings.filter((f) => f.rule === 'T3' || f.rule === 'T4').map(fingerprint);
+    write(root, BASELINE_FILE, formatBaseline(known));
+    git(root, 'add', '-A');
+    git(root, 'commit', '-qm', 'baseline');
+    git(root, 'checkout', '-q', '-b', 'feature');
+    git(root, 'checkout', '-q', 'main');
+    write(root, BASELINE_FILE, formatBaseline(known.slice(0, 1)));
+    git(root, 'commit', '-qam', 'main shrinks baseline');
+    git(root, 'checkout', '-q', 'feature');
+    assert.deepEqual(check.analyze(root).growth, []);
+  });
+
+  it('基準に、もう出ていない指紋が残っていれば警告に出す', () => {
+    const root = makeRepo(makeWorld());
+    write(root, BASELINE_FILE, formatBaseline(['T3|REQ-999|docs/gone.md|down:FN']));
+    assert.ok(check.analyze(root).notes.some((note) => note.includes('もう出ていない')));
+  });
+
+  it('同じ規則・ID・ファイルでも違反の種類が違えば、基準の指紋では別 (T4 の上流と下流)', () => {
+    const root = makeRepo(makeWorld({ req: [['REQ-101', 'DEC-001', '']], fn: [['FN-010', '', '', '']], scr: [['SCR-101', '']], api: [['API-001', '']] }));
+    const t4 = check.analyze(root).findings.filter((f) => f.rule === 'T4').map(fingerprint);
+    assert.equal(new Set(t4).size, 2);
+  });
+
   it('[TST-949][N5] origin が読めなければ、基準が増えていないか確かめられず cannot-check', () => {
     const root = makeRepo(brokenWorld());
-    write(root, BASELINE_FILE, formatBaseline(['T3|REQ-101|docs/req.md']));
+    write(root, BASELINE_FILE, formatBaseline(['T3|REQ-101|docs/req.md|down:FN']));
     const violations = new TraceCheck({ base: 'no-such-ref' }).run({ targetRoot: root, igetaRoot: root });
-    assert.ok(violations.some((v) => v.severity === 'cannot-check' && v.file === BASELINE_FILE));
+    assert.ok(violations.some((v) => v.severity === 'cannot-check'));
   });
 
   it('origin に基準ファイルが無い (初めて基準を入れる変更) なら、増加とは見ない', () => {
     const root = makeRepo(brokenWorld());
-    write(root, BASELINE_FILE, formatBaseline(['T3|REQ-101|docs/req.md']));
+    write(root, BASELINE_FILE, formatBaseline(['T3|REQ-101|docs/req.md|down:FN']));
     assert.deepEqual(check.analyze(root).growth, []);
   });
 
@@ -86,17 +112,41 @@ describe('TraceCheck: 基準', () => {
 });
 
 describe('TraceCheck: T1(b) と旧い構成', () => {
-  it('[TST-909] 自分の差分で増えた REQ-120 が origin の別文書と衝突すれば違反 (git の main と比べる)', () => {
-    const old = makeDoc({ path: 'docs/old.md', columns: ['上流 DEC:up'], headers: ['ID', '上流 DEC'], rows: [['REQ-120', '']] });
-    const root = makeRepo([...makeWorld(), old]);
-    writeDocs(root, [makeDoc({ path: 'docs/new.md', columns: ['上流 DEC:up'], headers: ['ID', '上流 DEC'], rows: [['REQ-120', '']] })]);
-    const found = check.analyze(root).findings.filter((f) => f.rule === 'T1' && f.message.includes('origin'));
-    assert.deepEqual(found.map((f) => [f.id, f.path]), [['REQ-120', 'docs/new.md']]);
+  const reqDoc = (path: string, ...ids: string[]): TraceDocInput =>
+    makeDoc({ path, columns: ['上流 DEC:up'], headers: ['ID', '上流 DEC'], rows: ids.map((id) => [id, '']) });
+
+  it('[TST-909] 別 branch が先に main へ入れた REQ-120 と、自分の branch が足した REQ-120 は衝突 (並行の追加)', () => {
+    const root = makeRepo(makeWorld());
+    git(root, 'checkout', '-q', '-b', 'feature');
+    git(root, 'checkout', '-q', 'main');
+    writeDocs(root, [reqDoc('docs/old.md', 'REQ-120')]);
+    git(root, 'add', '-A');
+    git(root, 'commit', '-qm', 'main adds');
+    git(root, 'checkout', '-q', 'feature');
+    writeDocs(root, [reqDoc('docs/new.md', 'REQ-120')]);
+    const found = check.analyze(root).findings.filter((f) => f.rule === 'T1');
+    assert.deepEqual(found.map((f) => [f.id, f.path, f.detail]), [['REQ-120', 'docs/new.md', 'origin:docs/old.md']]);
   });
 
-  it('origin が読めなければ T1(b) を見ていないと警告に出す (黙って省かない)', () => {
+  it('[TST-909] 文書の移動 (merge-base に有る ID を別の文書へ動かす) は T1(b) の違反にしない', () => {
+    const root = makeRepo([...makeWorld(), reqDoc('docs/old.md', 'REQ-120')]);
+    git(root, 'checkout', '-q', '-b', 'feature');
+    git(root, 'mv', 'docs/old.md', 'docs/moved.md');
+    assert.deepEqual(check.analyze(root).findings.filter((f) => f.rule === 'T1'), []);
+  });
+
+  it('main と照合できなければ (ref が無い)、定義が 1 件以上ある repo では cannot-check (警告だけで 0 にしない)', () => {
     const root = makeRepo(makeWorld());
-    assert.ok(new TraceCheck({ base: 'no-such-ref' }).analyze(root).notes.some((note) => note.startsWith('T1(b) を見ていない')));
+    const violations = new TraceCheck({ base: 'no-such-ref' }).run({ targetRoot: root, igetaRoot: root });
+    assert.deepEqual(violations.map((v) => v.severity), ['cannot-check']);
+  });
+
+  it('比べる先は .igeta.json の trace.base で決まる (既定は origin/main。docs-check と trace が同じ値)', () => {
+    const root = makeRepo(makeWorld());
+    const defaulted = new TraceCheck().run({ targetRoot: root, igetaRoot: root });
+    assert.deepEqual(defaulted.map((v) => v.severity), ['cannot-check']);
+    write(root, '.igeta.json', JSON.stringify({ trace: { base: 'main' } }));
+    assert.deepEqual(new TraceCheck().run({ targetRoot: root, igetaRoot: root }), []);
   });
 
   it('[TST-925] 定義が 0 件の repo は検査しない (違反も警告も 0)', () => {

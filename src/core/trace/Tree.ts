@@ -39,13 +39,17 @@ export function buildTree(index: TraceIndex, id: string, findings: readonly Find
     ...findings.filter((found) => found.id === definition.token && found.path === definition.path && /^T[2-6]$/.test(found.rule)).map((found) => `${found.rule}: ${found.message}`),
     ...index.dangling.filter((entry: Dangling) => entry.fromKey === definition.key).map((entry) => `T10: ${entry.token} は定義が無い`),
   ];
-  const walk = (key: string, direction: 'up' | 'down', seen: ReadonlySet<string>): TreeNode[] =>
+  // 1 度展開した節は子を繰り返さない (ひし形のグラフで木が指数的に膨らむのを防ぐ)。根からの向きごとに数える
+  const walk = (key: string, direction: 'up' | 'down', expanded: Set<string>): TreeNode[] =>
     (direction === 'up' ? graph.up(key) : graph.down(key)).flatMap((next) => {
       const definition = index.nodes.get(next);
-      if (definition === undefined || seen.has(next)) return [];
+      if (definition === undefined) return [];
       const pair = direction === 'up' ? `${next}|${key}` : `${key}|${next}`;
       const mark: Mark = (sides.get(pair)?.size ?? 0) > 1 ? 'ok' : 'one-way';
-      return [{ label: describeDefinition(definition), mark, gaps: gapsOf(definition), key: next, children: walk(next, direction, new Set([...seen, next])) }];
+      const label = describeDefinition(definition);
+      if (expanded.has(next)) return [{ label: `${label} (上と同じ)`, mark, gaps: [], key: next, children: [] }];
+      expanded.add(next);
+      return [{ label, mark, gaps: gapsOf(definition), key: next, children: walk(next, direction, expanded) }];
     });
   const roots = [...index.nodes.values()]
     .filter((definition) => definition.token === id)

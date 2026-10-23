@@ -54,7 +54,7 @@ describe('TraceCheck: 規則 T1〜T6', () => {
   it('[TST-909] T1(b): 自分の差分で増えた REQ-120 が、origin の別文書の定義と衝突すれば違反', () => {
     const extra = (path: string, context: string) =>
       makeDoc({ path, context, columns: ['上流 DEC:up'], headers: ['ID', '上流 DEC'], rows: [['REQ-120', '']] });
-    const found = byRule(findAll([...makeWorld(), extra('docs/new.md', 'shared')], { origin: [...makeWorld(), extra('docs/old.md', 'shared')] }), 'T1');
+    const found = byRule(findAll([...makeWorld(), extra('docs/new.md', 'shared')], { origin: [...makeWorld(), extra('docs/old.md', 'shared')], mergeBase: makeWorld() }), 'T1');
     assert.deepEqual(found.map((f) => [f.id, f.path]), [['REQ-120', 'docs/new.md']]);
   });
 

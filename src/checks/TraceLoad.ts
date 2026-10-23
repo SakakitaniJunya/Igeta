@@ -1,6 +1,6 @@
 // TraceCheck が読む入力: docs/ の設計書と、trace.code の glob に当たるコードのファイル。
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { contextOfV4 } from '../core/ContextGraph.js';
 import { readContext } from '../core/Context.js';
@@ -32,19 +32,47 @@ export function loadDocs(root: string): { readonly inputs: readonly TraceDocInpu
   return { inputs, isV4 };
 }
 
-/** trace.code の glob に当たるファイル (repo 直下からの相対パス)。node_modules・dist・点で始まるフォルダは辿らない */
+const GLOB_META = /[*?[\]{}]/;
+
+/** glob の、特殊文字を含まない先頭のフォルダ (`src/**\/*.ts` なら `src`)。全体が固定なら glob そのもの、先頭から特殊文字なら空 */
+function fixedHead(glob: string): string {
+  const segments = glob.split('/');
+  const end = segments.findIndex((segment) => GLOB_META.test(segment));
+  return (end === -1 ? segments : segments.slice(0, end)).join('/');
+}
+
+/**
+ * trace.code の glob に当たるファイル (repo 直下からの相対パス)。glob の固定の頭のフォルダから歩き、repo 全体は歩かない。
+ * node_modules・dist・点で始まるフォルダは辿らない。シンボリックリンクは先を読み、同じ実体のフォルダは 1 度しか辿らない。
+ */
 export function loadCodeFiles(root: string, globs: readonly string[]): CodeFile[] {
-  if (globs.length === 0) return [];
-  const found: CodeFile[] = [];
-  const walk = (dir: string, prefix: string): void => {
-    for (const entry of readdirSync(join(root, dir), { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
-      const path = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
-      if (entry.isDirectory() && !SKIP_DIRS.has(entry.name) && !entry.name.startsWith('.')) walk(path, path);
-      else if (entry.isFile() && globs.some((glob) => matchesGlob(path, glob))) {
-        found.push({ path, lines: readFileSync(join(root, path), 'utf8').split(/\r?\n/) });
-      }
+  const found = new Map<string, CodeFile>();
+  const visitedFolders = new Set<string>();
+  const walk = (path: string): void => {
+    const absolute = join(root, path);
+    let info;
+    try {
+      info = statSync(absolute);
+    } catch {
+      return; // 無い物・壊れたリンクは対象外
+    }
+    if (info.isFile()) {
+      if (globs.some((glob) => matchesGlob(path, glob))) found.set(path, { path, lines: readFileSync(absolute, 'utf8').split(/\r?\n/) });
+      return;
+    }
+    const real = realpathSync(absolute);
+    if (!info.isDirectory() || visitedFolders.has(real)) return;
+    visitedFolders.add(real);
+    for (const name of readdirSync(absolute).sort()) {
+      if (SKIP_DIRS.has(name) || name.startsWith('.')) continue;
+      walk(path === '' ? name : `${path}/${name}`);
     }
   };
-  walk('', '');
-  return found;
+  for (const head of new Set(globs.map(fixedHead))) walk(head);
+  return [...found.values()].sort((left, right) => left.path.localeCompare(right.path));
+}
+
+/** docs/ からの相対パスが、作業ツリー側の loadDocs と同じく対象か (点で始まるフォルダ・node_modules の下は除く) */
+export function isListedDoc(docsRel: string): boolean {
+  return docsRel.split('/').slice(0, -1).every((folder) => folder !== 'node_modules' && !folder.startsWith('.'));
 }
