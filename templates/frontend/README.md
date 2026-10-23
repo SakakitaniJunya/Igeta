@@ -85,24 +85,24 @@ templates/frontend/admin/                           = apps/<app>/frontend/admin/
         bind-field.ts                               Polaris 入力欄の確定の購読 (bindField と、購読を 1 回だけにする useBindField)
         bind-field.test.ts                          確定で 1 回だけ呼ぶ
         ui/                                         意味を知らない部品
-          state/LoadingView.tsx                           読み込み中
-          state/LoadingView.test.tsx                      文言を出す
-          state/ErrorView.tsx                             エラーとやり直し
-          state/ErrorView.test.tsx                        再試行を呼び出し元へ返す
-          state/EmptyState.tsx                            空の状態
-          state/EmptyState.test.tsx                       見出しと操作
-          control/ConfirmDialog.tsx                         確認ダイアログ
-          control/ConfirmDialog.test.tsx                    確定は true・やめる・外側・閉じるは false
-          control/DateField.tsx                             日付欄
-          control/DateField.test.tsx                        値と onChange
-          state/FormErrorBanner.tsx                       入力の誤りを送らずに止めた知らせ
-          state/FormErrorBanner.test.tsx                  項目を並べる
-          state/SaveErrorBanner.tsx                       保存失敗とやり直し
-          state/SaveErrorBanner.test.tsx                  details と再試行
-          label/StatusBadge.tsx                           状態の印 (語は引数)
-          label/StatusBadge.test.tsx                      tone ごとの出し方
-          label/CountLabel.tsx                            件数の表示 (打ち切られたときだけ `n+`)
-          label/CountLabel.test.tsx                       0・100 件で打ち切りなし/あり・単位
+          state/LoadingView.tsx                     読み込み中
+          state/LoadingView.test.tsx                文言を出す
+          state/ErrorView.tsx                       エラーとやり直し
+          state/ErrorView.test.tsx                  再試行を呼び出し元へ返す
+          state/EmptyState.tsx                      空の状態
+          state/EmptyState.test.tsx                 見出しと操作
+          state/FormErrorBanner.tsx                 入力の誤りを送らずに止めた知らせ
+          state/FormErrorBanner.test.tsx            項目を並べる
+          state/SaveErrorBanner.tsx                 保存失敗とやり直し
+          state/SaveErrorBanner.test.tsx            details と再試行
+          control/ConfirmDialog.tsx                 確認ダイアログ
+          control/ConfirmDialog.test.tsx            確定は true・やめる・外側・閉じるは false
+          control/DateField.tsx                     日付欄
+          control/DateField.test.tsx                値と onChange
+          label/StatusBadge.tsx                     状態の印 (語は引数)
+          label/StatusBadge.test.tsx                tone ごとの出し方
+          label/CountLabel.tsx                      件数の表示 (打ち切られたときだけ `n+`)
+          label/CountLabel.test.tsx                 0・100 件で打ち切りなし/あり・単位
       application/
         hooks/api.tsx                                 ApiProvider と useApi
         hooks/api.test.tsx                            Provider の外では投げる

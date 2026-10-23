@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import type { Dirent } from 'node:fs';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Check, CheckContext } from '../core/Check.js';
 import type { Violation } from '../core/Report.js';
@@ -25,11 +25,15 @@ function listEntries(dir: string): Dirent[] {
   return readdirSync(dir, { withFileTypes: true }).filter((entry) => !OS_JUNK.test(entry.name));
 }
 
+const isFolder = (path: string): boolean => existsSync(path) && statSync(path).isDirectory();
+
 const listNames = (dir: string): string[] => listEntries(dir).map((entry) => entry.name);
 
 function findRootViolations(templatesDir: string, registry: TemplatesRegistry): Violation[] {
   const registered = Object.keys(registry.root);
-  const found = listNames(templatesDir);
+  const entries = listEntries(templatesDir);
+  const found = entries.map((entry) => entry.name);
+  const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
   const violations: Violation[] = [];
   if (registered.length > MAX_ROOT_ENTRIES) {
     violations.push(violation(`templates/ の登録が ${registered.length} 個ある (上限 ${MAX_ROOT_ENTRIES})。足すなら同じ PR で退かす`));
@@ -37,7 +41,9 @@ function findRootViolations(templatesDir: string, registry: TemplatesRegistry): 
   for (const name of found.filter((item) => !registered.includes(item))) {
     violations.push(violation(`templates/${name}: 登録外。足すなら ADR-0014 の登録 (TemplatesRegistry) と同じ PR で、置き換わる物を退かす`));
   }
-  for (const name of registered.filter((item) => !found.includes(item))) {
+  // 第 2 階層を持つ登録名は、ファイルでなくフォルダであること
+  const isMissing = (name: string): boolean => (registry.root[name] === undefined ? !found.includes(name) : !folders.includes(name));
+  for (const name of registered.filter(isMissing)) {
     violations.push(violation(`templates/${name}: 登録してあるが実体が無い`));
   }
 
@@ -47,7 +53,8 @@ function findRootViolations(templatesDir: string, registry: TemplatesRegistry): 
 /** 第 2 階層は、登録したフォルダと README.md だけを許す (ファイルも数える)。 */
 function findSecondTierViolations(templatesDir: string, registry: TemplatesRegistry): Violation[] {
   return Object.entries(registry.root).flatMap(([name, children]) => {
-    if (children === undefined || !existsSync(join(templatesDir, name))) return [];
+    // フォルダでない登録名は findRootViolations が落とすので、ここでは中を読まない
+    if (children === undefined || !isFolder(join(templatesDir, name))) return [];
     const entries = listEntries(join(templatesDir, name));
     const found = entries.map((entry) => entry.name);
     const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
@@ -93,6 +100,7 @@ function findInnerViolations(igetaRoot: string, templatesDir: string, registry: 
     const result = spawnSync(process.execPath, [script, srcDir, ...extArgs], { encoding: 'utf8' });
     if (result.error !== undefined) return [cannotCheck(`[${item.variant}] igeta-check-layout を起動できない: ${result.error.message}`)];
     if (result.status === 0) return [];
+    if (result.status === null) return [cannotCheck(`[${item.variant}] igeta-check-layout が signal ${String(result.signal)} で止まった`)];
     if (result.status === 2) return [cannotCheck(`[${item.variant}] ${result.stderr.trim()}`)];
 
     const lines = result.stderr.split('\n').filter((line) => line !== '');

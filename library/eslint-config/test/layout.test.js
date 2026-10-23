@@ -99,19 +99,19 @@ describe('MD-11 置き場の検査', () => {
   });
 
   it('L5 shared は子が層と test-support、本体が index.ts だけなら落ちない', () => {
-    const root = createTree(['shared/index.ts', 'shared/domain/a.ts', 'shared/infrastructure/a.ts', 'shared/presentation/a.ts', 'shared/test-support/a.ts']);
+    const root = createTree(['src/shared/index.ts', 'src/shared/domain/a.ts', 'src/shared/infrastructure/a.ts', 'src/shared/presentation/a.ts', 'src/shared/test-support/a.ts']);
 
     assert.deepEqual(findLayoutViolations(root), []);
   });
 
   it('L5 rust の shared は mod.rs と層と test_support なら落ちない', () => {
-    const root = createTree(['shared/mod.rs', 'shared/domain/mod.rs', 'shared/test_support/mod.rs', 'shared/test_support/emulator.rs']);
+    const root = createTree(['src/shared/mod.rs', 'src/shared/domain/mod.rs', 'src/shared/test_support/mod.rs', 'src/shared/test_support/emulator.rs']);
 
     assert.deepEqual(findLayoutViolations(root, { extensions: ['rs'] }), []);
   });
 
   it('L5 shared の直下に本体を置くと落ちる', () => {
-    const root = createTree(['shared/index.ts', 'shared/helpers.ts', 'shared/domain/a.ts']);
+    const root = createTree(['src/shared/index.ts', 'src/shared/helpers.ts', 'src/shared/domain/a.ts']);
 
     const violations = findLayoutViolations(root);
 
@@ -119,13 +119,13 @@ describe('MD-11 置き場の検査', () => {
   });
 
   it('L5 shared の子に層以外の folder を置くと落ちる', () => {
-    const root = createTree(['shared/misc/a.ts']);
+    const root = createTree(['src/shared/misc/a.ts']);
 
     assert.equal(findLayoutViolations(root).filter((message) => message.includes('置けない物: misc/')).length, 1);
   });
 
   it('L5 rust の shared は mod.rs 以外の本体を直下に置くと落ちる', () => {
-    const root = createTree(['shared/mod.rs', 'shared/helpers.rs']);
+    const root = createTree(['src/shared/mod.rs', 'src/shared/helpers.rs']);
 
     const violations = findLayoutViolations(root, { extensions: ['rs'] });
 
@@ -174,7 +174,7 @@ describe('MD-11 置き場の検査', () => {
   });
 
   it('L5 shared の子の misc は 1 回だけ報告される', () => {
-    const root = createTree(['shared/misc/a.ts']);
+    const root = createTree(['src/shared/misc/a.ts']);
 
     assert.equal(findLayoutViolations(root).length, 1);
   });
@@ -207,8 +207,33 @@ describe('MD-11 置き場の検査', () => {
   });
 
   it('L5 根の shared のはぐれ物は 1 回だけ報告される (本体と子で二重にならない)', () => {
-    const root = createTree(['shared/a.ts', 'shared/b.ts', 'shared/c.ts', 'shared/d.ts', 'shared/e.ts', 'shared/f.ts', 'shared/g.ts', 'shared/h.ts']);
+    const root = createTree(['src/shared/a.ts', 'src/shared/b.ts', 'src/shared/c.ts', 'src/shared/d.ts', 'src/shared/e.ts', 'src/shared/f.ts', 'src/shared/g.ts', 'src/shared/h.ts']);
 
     assert.equal(findLayoutViolations(root).length, 1);
+  });
+
+  it('L4 CLI は --ext を繰り返しても結合し、rs の違反を見逃さない', () => {
+    const violating = createTree(['firestore_a.rs', 'firestore_b.rs', 'firestore_c.rs']);
+
+    assert.equal(spawnSync('node', [CLI, violating, '--ext', 'rs', '--ext', 'ts']).status, 1);
+    assert.equal(spawnSync('node', [CLI, violating, '--ext', 'ts,rs']).status, 1);
+  });
+
+  it('L5 shared の判定は引数の深さに依らない (<変種> と <変種>/src で同じ)', () => {
+    const root = createTree(['hono/src/shared/index.ts', 'hono/src/shared/domain/a.ts']);
+
+    assert.deepEqual(findLayoutViolations(path.join(root, 'hono')), []);
+    assert.deepEqual(findLayoutViolations(path.join(root, 'hono', 'src')), []);
+  });
+
+  it('L5 shared の許可は言語ごと: rust の木は test-support・index.ts を、ts の木は test_support を許さない', () => {
+    const rust = createTree(['src/shared/mod.rs', 'src/shared/test-support/a.rs', 'src/shared/index.ts']);
+    const typescript = createTree(['src/shared/index.ts', 'src/shared/test_support/a.ts', 'src/shared/mod.rs']);
+
+    const rustMessages = findLayoutViolations(rust, { extensions: ['rs'] });
+    const tsMessages = findLayoutViolations(typescript);
+
+    assert.equal(rustMessages.filter((message) => message.includes('置けない物: test-support/')).length, 1);
+    assert.equal(tsMessages.filter((message) => message.includes('置けない物: test_support/')).length, 1);
   });
 });

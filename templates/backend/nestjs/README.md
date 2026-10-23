@@ -56,12 +56,12 @@ templates/backend/nestjs/                           = apps/<app>/backend/
         database.module.ts                          FIRESTORE トークンを出す @Global な module
         database.module.spec.ts                     env を渡して provider が解決できる
       __entry__/                                    1 単位
-        controller.ts                     経路の表。Guard → 本文 `unknown` を module の公開面へ
-        controller.spec.ts                401・不正な JSON は 400・値の受け渡し (verify と module は偽物)
-        guard.ts                          VERIFIER で検証し claims を request に載せる (本文は読まない)
-        guard.spec.ts                     通る・落ちて 401・ヘッダと URL だけ渡す
-        entry.module.ts                   動的 module (`register({ verify })`)。controller・guard・`VERIFIER`・module の公開面を作る provider を束ねる
-        entry.module.spec.ts              verify が `register` で渡り、公開面が注入される
+        controller.ts                               経路の表。Guard → 本文 `unknown` を module の公開面へ
+        controller.spec.ts                          401・不正な JSON は 400・値の受け渡し (verify と module は偽物)
+        guard.ts                                    VERIFIER で検証し claims を request に載せる (本文は読まない)
+        guard.spec.ts                               通る・落ちて 401・ヘッダと URL だけ渡す
+        entry.module.ts                             動的 module (`register({ verify })`)。controller・guard・`VERIFIER`・module の公開面を作る provider を束ねる
+        entry.module.spec.ts                        verify が `register` で渡り、公開面が注入される
     modules/
       __context__/                                  1 単位 (Hono 版とファイル単位で同一)
         index.ts                                    公開面と組み立て

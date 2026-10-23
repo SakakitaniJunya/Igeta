@@ -35,9 +35,18 @@ const messagesOf = (templatesDir: string, registry?: TemplatesRegistry): string[
 after(() => roots.forEach((root) => rmSync(root, { recursive: true, force: true })));
 
 describe('TemplatesLayoutCheck (L1〜L3)', () => {
-  it('[TST-101〜104] 実物の templates/ は、登録も雛形の中 (変種ごとの check-layout) も違反 0', () => {
-    const real = new TemplatesLayoutCheck().run({ targetRoot: IGETA_ROOT, igetaRoot: IGETA_ROOT });
-    assert.deepEqual(real, []);
+  // 雛形の中 (変種ごとの check-layout) を実物に掛けるのは、CI の check:templates-layout の step だけ
+  it('[TST-101〜103] 実物の templates/ は、登録が違反 0', () => {
+    assert.deepEqual(messagesOf(join(IGETA_ROOT, 'templates')), []);
+  });
+
+  it('[L3] 変種の置き場は expand の templateBaseDir と一致する', () => {
+    assert.deepEqual(TEMPLATES_REGISTRY.variants.map((item) => item.folder), ['backend/hono', 'backend/nestjs', 'backend/rust', 'frontend/admin']);
+  });
+
+  it('[L1] 第 1 階層の登録名 (mobile) がファイルでも、例外でなく「実体が無い」で落ちる', () => {
+    const messages = messagesOf(makeTemplates([...VALID.filter((item) => !item.startsWith('mobile/')), 'mobile']));
+    assert.ok(messages.some((item) => item.includes('templates/mobile: 登録してあるが実体が無い')));
   });
 
   it('[TST-301][TST-309] 登録外の名前 (android-app・legacy-api) は落ちる', () => {
