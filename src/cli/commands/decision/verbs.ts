@@ -1,16 +1,17 @@
 // decision-accept・reject・supersede・amend の入口。引数を読んで recordDecision に渡すだけ (書き込みは record.ts の 1 か所)。
 
 import { resolve } from 'node:path';
+import { isoDateInTokyo } from '#decision/core';
 import { ExitCode } from '#core/ExitCode.js';
-import { ArgParseError, parseArgs } from '../../Args.js';
-import type { CommandContext } from '../../Command.js';
-import { Command } from '../../Command.js';
+import { ArgParseError, parseArgs } from '#cli/Args.js';
+import type { CommandContext } from '#cli/Command.js';
+import { Command } from '#cli/Command.js';
 import type { GitHubPort } from './port.js';
 import type { DecisionVerb } from './record.js';
 import { recordDecision } from './record.js';
 
 const COMMON_USAGE = ['  --dry-run      計画を MOVE・APPEND・REWRITE・SET の行で出し、何も書かない', '  --root <dir>   対象リポジトリ (既定: カレントディレクトリ)'];
-const todayOf = (): string => new Date().toISOString().slice(0, 10);
+const todayOf = (): string => isoDateInTokyo(new Date());
 
 abstract class DecisionVerbCommand extends Command {
   protected abstract readonly verb: DecisionVerb;

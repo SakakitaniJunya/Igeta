@@ -125,7 +125,7 @@ const INDEX_PASSES = 2;
 const NEXT_STEPS: readonly string[] = [
   'npm install && npm run docs:check',
   'GitHub の保護の設定 (PR 必須・持ち主のレビュー必須など) と、`igeta doctor` での確認',
-  '決定 (ADR) を承認できる人を、`.igeta.json` の `decisions.approvers` (`{ name, github }` の配列) に書く',
+  '決定 (ADR) を承認できる人を、`.igeta.json` の `decisions.approvers` (`{ name, github }` の配列) に書く (`--owner` が `@user` なら init が 1 件置いた。name を表示名に直す)',
   'AI への指示や実行に効くほかのファイル (`.mcp.json` など) を使うなら、`.igeta.json` の `humanPaths` に足す',
 ];
 
@@ -193,6 +193,16 @@ function withoutAbsentRefs(lines: readonly string[], bodyStart: number, placedId
       .filter((ref) => ref !== '' && (ref.startsWith('external:') || placedIds.has(ref)));
     return `${matched[1] ?? ''}: [${refs.join(', ')}]`;
   });
+}
+
+/**
+ * `.igeta.json` に decisions.approvers を 1 件置く (init 直後に decision-accept が使えるように)。`--owner` が `@user` の形のときだけ
+ * (github 名にできるのはユーザーだけ)。`.igeta.json` が既にあれば触らない。
+ */
+function approversFile(targetRoot: string, owner: string): readonly PlannedFile[] {
+  const github = /^@([A-Za-z0-9][A-Za-z0-9-]*)$/.exec(owner)?.[1];
+  if (github === undefined || existsSync(join(targetRoot, '.igeta.json'))) return [];
+  return [{ relPath: '.igeta.json', content: `${JSON.stringify({ decisions: { approvers: [{ name: owner, github }] } }, null, 2)}\n` }];
 }
 
 /** 人の文書 3 本と decisions/README.md を、雛形から作る (I3) */
@@ -287,6 +297,7 @@ export class InitCommand extends Command {
 
     const files: readonly PlannedFile[] = [
       { relPath: IGETA_VERSION_FILE, content: `${version.toString()}\n` },
+      ...approversFile(targetRoot, owner),
       { relPath: join('docs', 'README.md'), content: DOCS_README },
       ...templateDocs(ctx.igetaRoot),
       { relPath: '.markdownlint.yaml', content: MARKDOWNLINT },

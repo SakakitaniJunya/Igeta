@@ -2,7 +2,7 @@
 // PR の commit のどれかに今の本文の ADR があること。gh は GitHubPort 越しにだけ読む。
 
 import type { DecisionDoc } from '#decision/core';
-import { createGitCommitReader, decisionFingerprint, parseEvidenceUrl } from '#decision/core';
+import { checkIntroducedBy, createGitCommitReader, decisionFingerprint, parseEvidenceUrl } from '#decision/core';
 import type { Context, Step } from './types.js';
 import { cannotCheck, proceed, refuse } from './types.js';
 
@@ -46,11 +46,17 @@ function findCommitWithBody(context: Context, doc: DecisionDoc, candidates: read
     const reasons: string[] = [];
     for (const commit of candidates) {
       const found = reader.fingerprintAt(commit, doc.id);
-      if (found.status === 'found' && found.fingerprint === fingerprint) return proceed({ commit, fingerprint });
+      if (found.status === 'found' && found.fingerprint === fingerprint) {
+        const introduced = checkIntroducedBy(reader, commit, doc.id, fingerprint);
+        if (introduced.status === 'introduced') return proceed({ commit, fingerprint });
+        if (introduced.status === 'unverifiable') return cannotCheck(introduced.reason);
+        reasons.push(introduced.reason);
+        continue;
+      }
       reasons.push(found.status === 'found' ? `${commit.slice(0, 12)}: 本文の指紋が今の本文と違う` : found.reason);
       if (found.status === 'unverifiable') return cannotCheck(found.reason);
     }
-    return refuse(`PR の commit に、今の本文の ${doc.id} が無い (${reasons.join(' / ')})`);
+    return refuse(`PR の commit が今の本文の ${doc.id} を追加・変更していない (${reasons.join(' / ')})`);
   } finally {
     reader.dispose();
   }

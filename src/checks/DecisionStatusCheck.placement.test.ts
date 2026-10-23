@@ -41,7 +41,7 @@ describe('DecisionStatusCheck: 置き場所と証跡の形', () => {
     assert.ok(result.warnings.some((w) => w.startsWith('DS11')));
   });
 
-  it('[TST-301] 手書きの accepted (履歴の行なし) は DS3 の違反', () => {
+  it('[TST-301][TST-503] 手書きの accepted (履歴の行なし。旧 accepted を根拠なしのまま accepted/ に置く) は DS3 の違反', () => {
     const repo = makeRepo();
     proposed(repo, '0002', 'b');
     repo.write(`${DECISIONS}/accepted/2026/0001-a.md`, adrText({ number: '0001', slug: 'a', status: 'accepted' }));
@@ -55,6 +55,16 @@ describe('DecisionStatusCheck: 置き場所と証跡の形', () => {
     repo.write(`${DECISIONS}/accepted/2026/0001-a.md`, adrText({ number: '0001', slug: 'a', status: 'accepted', rows: [fake] }));
     repo.commit('fake');
     assert.ok(hasRule(run(repo).messages, 'DS5'));
+  });
+
+  it('[TST-304] 根拠 commit が ADR を追加・変更していない後続の commit なら DS5 の違反', () => {
+    const repo = makeRepo();
+    const info = landAccepted(repo, { number: '0001', slug: 'a' });
+    repo.write('docs/other.md', '# 他\n');
+    const later = repo.commit('無関係な PR');
+    repo.write(info.path, repo.read(info.path).replace(info.evidenceCommit, later));
+    repo.commit('根拠を後続の commit に差し替える');
+    assert.ok(run(repo).messages.some((m) => m.includes('[DS5]') && m.includes('追加・変更していない')));
   });
 
   it('[TST-324] 別 repo の PR の URL は DS4 の違反', () => {

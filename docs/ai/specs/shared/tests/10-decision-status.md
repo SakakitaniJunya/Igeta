@@ -40,7 +40,7 @@ id で数えられない相対リンク (画像・コード・docs/ の外) は�
 | DS2 | 一意: 同じ id か同じ番号が、フォルダをまたいで 2 本以上あれば違反 (既存の番号重複の検査を `decisions/` の全体へ広げる) |
 | DS3 | 履歴と状態: `status` が履歴の最後の「後」と違えば違反 (行が 0 本なら proposed のはず)。proposed でない ADR は行を 1 本以上持つ |
 | DS4 | 証跡の形: 承認・改訂の行は、決めた人が `approvers` の名前、根拠が `https://github.com/<owner>/<repo>/` の後に `pull/<n>` か `commit/<sha>`、根拠 commit が 40 桁の 16 進で、全部が埋まる。却下の行は根拠 commit を空にでき、根拠は PR か Issue の URL (DS5 の対象外)。置換の行の根拠は置いた ADR の id。owner と repo は `origin` と同じ |
-| DS5 | 証跡の実在 (承認・改訂の行。git がある時): 根拠 commit が HEAD の履歴にあり、その commit の中に同じ id の ADR があり、その本文指紋が行の本文指紋と同じ。確かめられない clone (浅い・git 無し) は、この規則だけ検査不能 (2) |
+| DS5 | 証跡の実在 (承認・改訂の行。git がある時): 根拠 commit が HEAD の履歴にあり、その commit の中に同じ id の ADR があり、その本文指紋が行の本文指紋と同じ。さらに、その commit がこの ADR を追加または変更している (第 1 親の木に同じ id の ADR が無いか、指紋が違う。ADR が既に同じ本文で main にある後続の、無関係な PR は根拠にできない)。確かめられない clone (浅い・git 無し) は、この規則だけ検査不能 (2) |
 | DS6 | 承認後に本文を変えない: accepted・amended・rejected の ADR の現在の本文指紋が、最後の承認・改訂・却下の行の本文指紋と同じ。違えば違反 (直し方は `amend`)。最後の行が事象 `移行前` なら対象外 (DS9) |
 | DS7 | 追記のみ: `--base <ref>` (CI は PR の対象 branch) の履歴の行が、1 行も消えず・変わらず・順が同じで、新しい行は末尾だけ。base と `status` が違うのに行が増えていなければ違反。base を読めなければ警告 |
 | DS8 | 覆す: `supersedes: [a]` を持つ X と `superseded_by: X` を持つ a は対。X が accepted・amended で a が accepted のまま、a が retired なのに X が proposed、循環、片側だけ、は違反 |
@@ -88,7 +88,7 @@ id で数えられない相対リンク (画像・コード・docs/ の外) は�
 | TST-301 | 手書きの accepted | `status: accepted` にして履歴を足さない | DS3 の違反 |
 | TST-302 | 行も手書き | 履歴に行を書き、根拠 commit を作り話の 40 桁にする | DS5 の違反 |
 | TST-303 | 根拠の偽装 1 | 根拠が blog・PR の `/files` URL・承認の根拠としての Issue | accept は拒否 (1)。履歴に手書きなら DS4 |
-| TST-304 | 根拠の偽装 2 | 実在する PR だが、この ADR を含まない | 拒否 (1)。手書きなら DS5 |
+| TST-304 | 根拠の偽装 2 | 実在する PR だが、この ADR を含まない / ADR が既に main にある後続の、無関係な merge 済み PR | 拒否 (1)。手書きなら DS5 |
 | TST-324 | 別 repo | 他の repo の merge 済み PR の URL | 拒否 (1) (`origin` と違う)。手書きなら DS4 |
 | TST-325 | 本文が違う commit | merge 済みで ADR を含むが、今の本文と指紋が違う commit | 拒否 (1)。手書きなら DS5 |
 | TST-326 | 却下の根拠 | 却下の行に根拠 commit が無く、根拠が Issue の URL | DS4・DS5 を通る。承認の行で commit が空なら DS4 の違反 |

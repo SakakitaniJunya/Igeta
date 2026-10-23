@@ -31,7 +31,7 @@ relates_to: [adr-0009-kind-placement, test-doc-graph]
 
 | # | 規則 |
 |---|---|
-| I1 | `igeta init --owner <持ち主>` が置くもの: `.igeta-version` / `docs/README.md` (入口の 3 行と索引の区間) / `docs/person/design/shared/00-map.md` / `docs/person/requirements/01-requirements.md` / `docs/person/decisions/01-decisions.md` / `docs/person/decisions/README.md` / `AGENTS.md` / `.github/CODEOWNERS` / markdownlint の設定 2 本 / `package.json` の scripts と依存。索引は `init` が生成する |
+| I1 | `igeta init --owner <持ち主>` が置くもの: `.igeta-version` / `docs/README.md` (入口の 3 行と索引の区間) / `docs/person/design/shared/00-map.md` / `docs/person/requirements/01-requirements.md` / `docs/person/decisions/01-decisions.md` / `docs/person/decisions/README.md` / `AGENTS.md` / `.github/CODEOWNERS` / `.igeta.json` (`--owner` が `@user` の形で、ファイルが無いときだけ。I15) / markdownlint の設定 2 本 / `package.json` の scripts と依存。索引は `init` が生成する |
 | I2 | 置いた直後の repo で、`docs-check` と `template-check --require-kind --require-human-review` が違反 0 件・警告 0 件 |
 | I3 | 人の文書 3 本は雛形から作る (節の構成は雛形のまま)。記入例の行は置かず、要件に最初の業務要件の行 (番号 001) を 1 行だけ、状態 `未決` で置く (決定台帳の一覧に 1 件出る)。地図の入口は要件と決定台帳を指す。雛形の `depends_on`・`relates_to` のうち、置いていない文書を指すものは外す。実装順序の文書は置かない (上流の文書がまだ無い。設計を始めるときに雛形から作る) |
 | I4 | 新しい構成では、決定台帳 (kind: decision-log) は DEC・OPEN の行が 0 件でも違反にしない (旧い構成の検査は変えない) |
@@ -39,12 +39,13 @@ relates_to: [adr-0009-kind-placement, test-doc-graph]
 | I6 | docs/ の下に README.md 以外の文書 (`.md`) が 1 本でもある repo では、何も書かずに、移行の案内を出して終わる (I7 より先に見る)。案内の文は「旧い docs がある repo は、新しい構成にしてから使う。`igeta docs-migrate` を実行する」 |
 | I7 | 既にあるファイルは上書きしない。`AGENTS.md` と `.github/CODEOWNERS` は I8 のとおり足りない分だけ足し、`package.json` は足りない項目だけ足す。ほかのファイルが 1 つでも重なれば、何も書かずに終わる |
 | I8 | 承認の割り当てのファイル (`AGENTS.md` と CODEOWNERS) は、`init` と `docs-migrate` が同じ作り手 (`ApprovalFilesModule`) で置く。`AGENTS.md`: 無ければ雛形から作る。あって `docs/person`・`docs/ai` に触れていなければ、入口の節を末尾に足す。`.github/CODEOWNERS`: 無ければ下の内容で作る。あれば、ADR-0008 決定 1 のパスのうち持ち主が付かないものの行だけを**先頭に**足す (後ろの行が勝つので、既にある割り当てを変えない)。足した後も持ち主が付かないパスが残るなら、何も書かずに終わる。repo 直下か `docs/` に CODEOWNERS があるときも、何も書かずに終わる (`.github/` に作ると、GitHub はそちらだけを読み、既にあるファイルが読まれなくなる) |
-| I9 | `AGENTS.md` の雛形の節は 4 つで、見出しは「読む順」「人の承認」「手引きの場所」「検査」。読む順: `docs/person/` が上流、`docs/ai/` が持ち場、`docs/client/` は提出物。人の承認: 変更を取り込む前に、`git fetch origin` の後で `igeta approval-scope --base origin/<宛先のブランチ>` で確かめ、`human` か検査不能なら AI は取り込まずに人へ渡す。`person/` の新しい決まりは状態 `仮` で起案する。手引きの場所: `node_modules/igeta/templates/docs/ai/handbook/how-to/` の `01-document-taxonomy.md`・`03-human-review.md`・`04-provenance-workflow.md` を、リンクではなくコードスパンで書く |
-| I10 | npm scripts は `docs:graph`・`docs:check`・`docs:template-check` (`igeta template-check --require-kind --require-human-review`)・`scaffold`。終わりに次の手順を 3 行出す: `npm install && npm run docs:check` / GitHub の保護の設定と `igeta doctor` / AI への指示や実行に効くほかのファイル (`.mcp.json` など) を使うなら `.igeta.json` の `humanPaths` に足す |
+| I9 | `AGENTS.md` の雛形の節は 5 つで、見出しは「読む順」「人の承認」「決定の記録」「手引きの場所」「検査」。読む順: `docs/person/` が上流、`docs/ai/` が持ち場、`docs/client/` は提出物。人の承認: 変更を取り込む前に、`git fetch origin` の後で `igeta approval-scope --base origin/<宛先のブランチ>` で確かめ、`human` か検査不能なら AI は取り込まずに人へ渡す。`person/` の新しい決まりは状態 `仮` で起案する。決定の記録: PR を merge したら `igeta decision-pending` を実行し、承認された ADR は `igeta decision-accept` で記録する PR を出す。記録の PR は人がもう一度 merge する (独立した小さな塊)。手引きの場所: `node_modules/igeta/templates/docs/ai/handbook/how-to/` の `01-document-taxonomy.md`・`03-human-review.md`・`04-provenance-workflow.md` を、リンクではなくコードスパンで書く |
+| I10 | npm scripts は `docs:graph`・`docs:check`・`docs:template-check` (`igeta template-check --require-kind --require-human-review`)・`scaffold`。終わりに次の手順を 4 行出す: `npm install && npm run docs:check` / GitHub の保護の設定と `igeta doctor` / 決定 (ADR) を承認できる人を `.igeta.json` の `decisions.approvers` に書く / AI への指示や実行に効くほかのファイル (`.mcp.json` など) を使うなら `.igeta.json` の `humanPaths` に足す |
 | I11 | 入口の 3 行の正本は `AUDIENCE_ENTRANCE` の 1 か所 (下の文)。`init` の docs/README.md と `templates/docs/README.md` は同じ文言 |
 | I12 | 文書体系の手引きの「kind の置き場所」の表は、要件定義書 02 §7 の表と 1 行ずつ同じ。`TaxonomyGuideSync.test.ts` が §7・手引き・`Role.ts` の 3 つを突き合わせる |
 | I13 | 新しい構成では、`scaffold --kind api` の次の手順の案内は `docs/ai/specs/<まとまり>/domain/` を指す。`domain-drift` は、`--docs` を省くと `docs/ai/specs/*/domain/` の全部を順に見る (旧い構成ではいままでのまま) |
 | I14 | `AgentsEntrypointCheck` が持ち主を確かめる対象を ADR-0008 決定 1 に合わせる: `package.json` を外し、`.igeta-version`・`CLAUDE.md`・`.claude/`・下位の `AGENTS.md`・直下と `docs/` の CODEOWNERS を足す。`humanPaths` に当たる、いまあるファイルにも持ち主が付くことを見る |
+| I15 | `--owner` が `@user` の形なら、`.igeta.json` が無いときに `{ "decisions": { "approvers": [{ "name": "<owner>", "github": "<@ を外した値>" }] } }` を置く (init 直後から `decision-accept` が使える)。`@org/team`・メールアドレスは github 名にできないので置かず、次の手順で書くよう促す。`.igeta.json` が既にあれば触らない |
 
 ```text
 入口の 3 行 (I11)
@@ -73,11 +74,12 @@ CLAUDE.md <持ち主>
 | TST-102 | 結合 | init | TST-101 の後 | 決定台帳を読む | 生成区間に、要件の最初の行が `未決` で 1 行ある。DEC・OPEN の表は見出しだけ | I3・I4 |
 | TST-103 | 結合 | CODEOWNERS | TST-101 の後 | `AgentsEntrypointCheck` を当てる | 決定 1 の代表のパスの全部に `@lead` が付く (下位の `docs/ai/AGENTS.md` を含む) | I8・I14 |
 | TST-104 | 結合 | 足りない分 | `AGENTS.md` (docs に触れない) と、`/docs/person/design/x/ @other` の 1 行だけの CODEOWNERS がある空の repo | `init --owner @lead` | `AGENTS.md` の末尾に入口の節が足される。CODEOWNERS の先頭に足りない行が足され、`docs/person/design/x/a.md` の持ち主は `@other` のまま | I7・I8 |
-| TST-105 | 単体 | AGENTS.md | `init` が置いた `AGENTS.md` | 見出しとコードスパンを読む | I9 の 4 つの見出しと、手引き 3 本のパスがコードスパンである。リンクは無い。「人の承認」の節に `git fetch origin`・`origin/`・「人へ渡す」がある | I9 |
-| TST-106 | 結合 | scripts | TST-101 の後 | `package.json` と標準出力を読む | I10 の 4 つの script と、次の手順の 3 行 | I10 |
+| TST-105 | 単体 | AGENTS.md | `init` が置いた `AGENTS.md` | 見出しとコードスパンを読む | I9 の 5 つの見出しと、手引き 3 本のパスがコードスパンである。リンクは無い。「人の承認」の節に `git fetch origin`・`origin/`・「人へ渡す」がある。「決定の記録」の節に `igeta decision-pending`・`igeta decision-accept`・「記録の PR」がある | I9 |
+| TST-106 | 結合 | scripts | TST-101 の後 | `package.json` と標準出力を読む | I10 の 4 つの script と、次の手順の 4 行 | I10 |
 | TST-107 | 単体 | 入口 | `AUDIENCE_ENTRANCE`・`init` の docs/README.md・`templates/docs/README.md` | 3 行を比べる | 1 字も違わない | I11 |
 | TST-108 | 単体 | 手引き | 要件定義書 02 §7・文書体系の手引き・`Role.ts` | 47 kind の行を突き合わせる | 置き場所と型の検査の区分が全部同じ | I12 |
 | TST-109 | 結合 | scaffold | 新しい構成の repo (まとまり 2 つに domain の文書) | `scaffold --kind api --context booking --aggregate Reservation` / `domain-drift` (`--docs` なし) | 案内が `docs/ai/specs/booking/domain/` を指す。`domain-drift` が 2 つのまとまりの文書を見る | I13 |
+| TST-110 | 結合 | approvers | 空のフォルダ / `.igeta.json` が既にあるフォルダ / `--owner @org/team` | `init --owner @lead` | 1 つ目は `.igeta.json` に `decisions.approvers: [{ name: "@lead", github: "lead" }]` が 1 件ある。2 つ目は `.igeta.json` を変えない。3 つ目は `.igeta.json` を置かない | I15 |
 
 ## 2. 否定テスト (必須)
 

@@ -3,7 +3,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { Result } from '#decision/core';
-import { fail, succeed } from '#decision/core';
+import { fail, isoDateInTokyo, succeed } from '#decision/core';
 import type { GitHubPort, IssueInfo, PullInfo } from './port.js';
 
 const run = promisify(execFile);
@@ -22,6 +22,8 @@ async function api(path: string, extra: readonly string[] = []): Promise<Result<
 type Json = Record<string, unknown>;
 const record = (value: unknown): Json => (typeof value === 'object' && value !== null ? (value as Json) : {});
 const text = (value: unknown): string | undefined => (typeof value === 'string' && value !== '' ? value : undefined);
+/** GitHub の UTC の時刻を、履歴の日付 (Asia/Tokyo の YYYY-MM-DD) にする */
+const dateOf = (value: string | undefined): string | undefined => (value === undefined ? undefined : isoDateInTokyo(new Date(value)));
 const loginOf = (value: unknown): string | undefined => text(record(value)['login']);
 
 async function readJson(path: string): Promise<Result<Json>> {
@@ -46,7 +48,7 @@ async function pull(repo: string, number: number): Promise<Result<PullInfo>> {
     mergedBy: loginOf(pr.value['merged_by']),
     closedBy: loginOf(issue.value['closed_by']),
     mergeCommit: text(pr.value['merge_commit_sha']),
-    mergedAt: text(pr.value['merged_at'])?.slice(0, 10),
+    mergedAt: dateOf(text(pr.value['merged_at'])),
     headRepo: text(record(record(pr.value['head'])['repo'])['full_name']),
   });
 }

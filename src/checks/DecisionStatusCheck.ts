@@ -17,6 +17,7 @@ import {
   checkSupersession,
   checkUnique,
   createGitCommitReader,
+  isoDateInTokyo,
   loadDecisions,
   originSlug,
   parseDecision,
@@ -76,7 +77,7 @@ export class DecisionStatusCheck implements Check {
       this.#warnings.push(`DS12 状態のフォルダ (${STATE_DIRS.join('・')}) が無く、<年>/ に ADR が ${docs.length} 本ある。igeta docs-migrate で状態のフォルダへ移す`);
     }
     const base = this.#readBase(ctx.targetRoot);
-    const today = this.#now().toISOString().slice(0, 10);
+    const today = isoDateInTokyo(this.#now());
     const reader = createGitCommitReader(ctx.targetRoot);
     const { approvers, staleDays } = loaded.config.decisions;
     const env: DocumentEnvironment = { root: ctx.targetRoot, isStrict, today, approverNames: approvers.map((a) => a.name), staleDays, slug: originSlug(ctx.targetRoot), reader };

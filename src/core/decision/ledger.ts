@@ -55,7 +55,9 @@ function stateProblems(row: LedgerRow, kind: string): string[] {
   return MARK_OF_WORD[word] === mark ? [] : [`状態の印 "${mark}" が語 "${word}" と合わない (${MARK_OF_WORD[word] ?? ''} ${word})`];
 }
 
-function contentProblems(row: LedgerRow, kind: string, context: LedgerContext, markAllowed: boolean): { problems: string[]; marks: number } {
+function contentProblems(row: LedgerRow, kind: string, context: LedgerContext): { problems: string[]; marks: number } {
+  // 移行の印は、対象 branch に既にある行 (base が無ければ全行) にだけ許す
+  const markAllowed = context.baseIds === undefined || context.baseIds.has(row.id);
   const cell = (name: string): string => row.cells[name] ?? '';
   const word = cell('状態').split(/\s+/)[1] ?? '';
   const problems: string[] = [];
@@ -86,8 +88,7 @@ export function checkLedgerRows(ledger: Ledger, context: LedgerContext): { reado
   const warnings: string[] = [];
   for (const row of ledger.rows) {
     const kind = row.id.startsWith('DEC') ? 'DEC' : 'OPEN';
-    const markAllowed = context.baseIds === undefined || context.baseIds.has(row.id);
-    const content = contentProblems(row, kind, context, markAllowed);
+    const content = contentProblems(row, kind, context);
     for (const message of [...stateProblems(row, kind), ...content.problems]) findings.push({ rule: 'DS13', line: row.line, message: `${row.id}: ${message}` });
     if (content.marks > 0) warnings.push(`DS13 ${row.id}: 移行の印が残っている (値は人が直す)`);
     const due = row.cells['期限'] ?? '';

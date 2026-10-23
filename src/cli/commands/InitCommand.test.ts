@@ -381,3 +381,20 @@ describe('init: 何も書かずに終わる (I5〜I8)', () => {
     }
   });
 });
+
+describe('init: decisions.approvers (I15)', () => {
+  it('[TST-110] --owner @lead は .igeta.json に approvers を 1 件置く。既にある .igeta.json は変えず、@org/team には置かない', async () => {
+    const fresh = makeRoot();
+    assert.equal((await runInit(fresh, ['--owner', OWNER])).code, ExitCode.Ok);
+    assert.deepEqual(JSON.parse(read(fresh, '.igeta.json')), { decisions: { approvers: [{ name: '@lead', github: 'lead' }] } });
+
+    const existing = makeRoot();
+    write(existing, '.igeta.json', '{ "humanPaths": [] }\n');
+    assert.equal((await runInit(existing, ['--owner', OWNER])).code, ExitCode.Ok);
+    assert.equal(read(existing, '.igeta.json'), '{ "humanPaths": [] }\n');
+
+    const team = makeRoot();
+    assert.equal((await runInit(team, ['--owner', '@org/team'])).code, ExitCode.Ok);
+    assert.equal(existsSync(join(team, '.igeta.json')), false);
+  });
+});

@@ -31,6 +31,19 @@ export interface DocumentResult {
 
 const SEALING_EVENTS: readonly string[] = ['承認', '改訂', '却下'];
 
+/**
+ * 根拠 commit がその ADR を追加または変更した commit か。第 1 親の木に同じ id の ADR が無いか、指紋が違えば introduced。
+ * 同じ本文で既に main にあれば preexisting (承認と無関係な、後続の merge 済み PR を根拠にできない)。親を辿れなければ unverifiable。
+ */
+export function checkIntroducedBy(reader: CommitReader, commit: string, id: string, fingerprint: string): { status: 'introduced' } | { status: 'preexisting' | 'unverifiable'; reason: string } {
+  const before = reader.fingerprintAt(`${commit}^`, id);
+  if (before.status === 'unverifiable') return { status: 'unverifiable', reason: before.reason };
+  if (before.status === 'found' && before.fingerprint === fingerprint) {
+    return { status: 'preexisting', reason: `根拠 commit ${commit.slice(0, 12)} より前から同じ本文で ${id} がある (この PR は ADR を追加・変更していない)` };
+  }
+  return { status: 'introduced' };
+}
+
 /** DS5: 承認・改訂の行の根拠 commit が HEAD の履歴にあり、そこに同じ本文指紋の ADR がある */
 function checkEvidenceExists(doc: DecisionDoc, reader: CommitReader): { findings: Finding[]; unverifiable: Finding[] } {
   const findings: Finding[] = [];
@@ -39,8 +52,12 @@ function checkEvidenceExists(doc: DecisionDoc, reader: CommitReader): { findings
   for (const row of rows) {
     const found = reader.fingerprintAt(row.commit, doc.id);
     if (found.status === 'found') {
-      if (found.fingerprint === row.fingerprint) continue;
-      findings.push({ rule: 'DS5', line: row.line, message: `根拠 commit の本文指紋が行の指紋と違う (commit ${found.fingerprint.slice(0, 19)}… / 行 ${row.fingerprint.slice(0, 19)}…)` });
+      if (found.fingerprint !== row.fingerprint) {
+        findings.push({ rule: 'DS5', line: row.line, message: `根拠 commit の本文指紋が行の指紋と違う (commit ${found.fingerprint.slice(0, 19)}… / 行 ${row.fingerprint.slice(0, 19)}…)` });
+        continue;
+      }
+      const introduced = checkIntroducedBy(reader, row.commit, doc.id, row.fingerprint);
+      if (introduced.status !== 'introduced') (introduced.status === 'unverifiable' ? unverifiable : findings).push({ rule: 'DS5', line: row.line, message: introduced.reason });
     } else {
       (found.status === 'unverifiable' ? unverifiable : findings).push({ rule: 'DS5', line: row.line, message: found.reason });
     }

@@ -21,9 +21,12 @@ describe('Igeta 自身の 12 本 (MG1)', () => {
     const slugOf = (number: string): string => `adr${number}`;
     const prFor = (number: string): number => (Number(number) <= 10 ? 19 : number === '0011' ? 20 : 26);
     const landed = new Map<number, string>();
-    for (const number of [...numbers.slice(0, 10), '0011', '0012']) {
-      repo.write(legacyPath(number, slugOf(number)), adrText({ number, slug: slugOf(number), body: `${number} の決定。`.repeat(8) }));
-      landed.set(prFor(number), repo.commit(`ADR-${number} (#${prFor(number)})`));
+    // 1 つの PR (squash merge) は 1 commit で ADR を追加する。#19 は 10 本を 1 commit で入れる
+    for (const pr of [19, 20, 26]) {
+      for (const number of numbers.slice(0, 12).filter((candidate) => prFor(candidate) === pr)) {
+        repo.write(legacyPath(number, slugOf(number)), adrText({ number, slug: slugOf(number), body: `${number} の決定。`.repeat(8) }));
+      }
+      landed.set(pr, repo.commit(`ADR を追加 (#${pr})`));
     }
     repo.write(legacyPath('0013', slugOf('0013')), adrText({ number: '0013', slug: slugOf('0013'), extra: { awaiting: APPROVER.name }, body: '0013 は承認待ち。'.repeat(8) }));
     repo.commit('ADR-0013 を提案');

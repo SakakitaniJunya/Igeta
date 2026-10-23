@@ -42,7 +42,7 @@ relates_to: [test-decision-status]
 
 | 規則 | 内容 |
 |---|---|
-| MG1 | Igeta 自身の 12 本: 下の表の根拠で `decision-accept`。根拠の PR の本文の指紋と今の本文が違えば、後の PR を根拠にするか `amend` (accept は拒否)。記録の PR では 0013 自身も `proposed/` へ移す。docs-check は PR の終わりに 1 回だけ見る (1 本ずつ accept する途中の状態は検査しない) |
+| MG1 | Igeta 自身の 12 本: 下の表の根拠で `decision-accept`。根拠の PR は、その ADR を追加または変更した PR (第 1 親の木に同じ本文が無い。DS5)。根拠の PR の本文の指紋と今の本文が違えば、後の PR を根拠にするか `amend` (accept は拒否)。記録の PR では 0013 自身も `proposed/` へ移す。docs-check は PR の終わりに 1 回だけ見る (1 本ずつ accept する途中の状態は検査しない) |
 | MG2 | 利用側の `docs-migrate` の 1 段: `<年>/` の ADR を状態でフォルダへ移す。根拠の表 (id・名前・URL) がある ADR だけ accept。無い旧 accepted・旧 rejected は事象 `差戻し` で `proposed/` に置き、メモに旧い状態と日付、`awaiting` に `approvers` の先頭の名前を入れる。旧 superseded・deprecated は事象 `移行前` の履歴を 1 行起こして `retired/` に置く |
 | MG3 | 利用側の DEC・OPEN: 列を足す。DEC は状態 `決定`、根拠 `移行前 (未記入)`。OPEN は状態 `未決` (暫定値の列が埋まっていれば `暫定`)、持ち主に `approvers` の先頭の名前、期限 `未定`、根拠 `移行前 (未記入)`。値は移行の PR で人が直す (人の承認のパス)。直るまで DS13 は警告として数え、違反にしない |
 | MG4 | 移行の印は、移行前に在った行だけ。新しい行に書けば DS13 の違反 (DS13 に書いた比べ方) |
@@ -72,7 +72,7 @@ relates_to: [test-decision-status]
 | ID | 観点 (手口・境界) | ケース | 期待結果 |
 |---|---|---|---|
 | TST-501 | 印の悪用 | 移行後に新しい DEC 行へ `移行前 (未記入)` を書く | DS13 の違反 (MG4) |
-| TST-502 | 根拠の取り違え | 根拠の表の URL が、その ADR を含まない PR | その 1 本だけ拒否 (1)。他は進まず全部戻す (MG1) |
+| TST-502 | 根拠の取り違え | 根拠の表の URL が、その ADR を含まない PR / ADR が既に main にある後続の無関係な PR | その 1 本だけ拒否 (1)。他は進まず全部戻す (MG1) |
 | TST-503 | 手置き | 旧 accepted を根拠なしのまま `accepted/` に手で置く | DS3 の違反 (MG2) |
 | TST-504 | 人の取り違え | 根拠の表の名前が `approvers` に無い | その 1 本を拒否 (1) (MG1) |
 | TST-505 | 本文が変わった | #19 の後に本文が変わった ADR | accept は拒否 (1)。後の PR を根拠にするか `amend` (MG1) |
@@ -110,3 +110,4 @@ MD-11 のフォルダ分け (本体は 1 フォルダ 7 本まで、1 ファイ�
 
 - `ADR_STATUSES` (旧い構成) は変えず、`amended` は `ADR_STATUSES_V4` だけが持つ。新しい規則は新しい構成の repo だけに当たる
 - `.igeta-version` で版を固定した repo は、固定を上げるまで DS1〜DS14 と `decision-*` を使えない。出力は、固定した版が新しい規則を持たないことを 1 行で知らせる
+- 利用 repo の移行の順序: 版を上げ、`docs-migrate` を 2 回かける。1 回目は構成 (`person`・`ai`・`client`)、commit したあと、`.igeta.json` に `decisions.approvers` (`{ name, github }`) を先に足してから 2 回目 (決定の段: `<年>/` の ADR と台帳の列。根拠の表は `--decisions-evidence`)。`decisions.approvers` が無い repo では 2 回目は案内だけを出して何も変えない。状態のフォルダが 1 つでもある repo から、DS1・3・5・6・11 が違反として効く (README の「既存の repo を移す」にも書く)

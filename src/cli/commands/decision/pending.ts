@@ -3,12 +3,12 @@
 
 import { resolve } from 'node:path';
 import type { DecisionDoc } from '#decision/core';
-import { daysBetween, firstSeen, loadDecisions, originSlug } from '#decision/core';
+import { daysBetween, isoDateInTokyo, firstSeen, loadDecisions, originSlug } from '#decision/core';
 import { ExitCode } from '#core/ExitCode.js';
 import { loadIgetaConfig } from '#core/IgetaConfig.js';
-import { parseArgs } from '../../Args.js';
-import type { CommandContext } from '../../Command.js';
-import { Command } from '../../Command.js';
+import { parseArgs } from '#cli/Args.js';
+import type { CommandContext } from '#cli/Command.js';
+import { Command } from '#cli/Command.js';
 
 /** 出力の末尾に必ず出す、機械で確かめられない限界 (ADR-0013 の残余リスク) */
 export const PENDING_LIMIT_NOTE = 'merge した人が人かは確かめられない (AI と同じ GitHub アカウントの場合)。記録の PR は人が読んで merge する';
@@ -74,7 +74,7 @@ function lineOf(entry: PendingEntry): string {
   return `${staleMark}${entry.number} ${entry.title} | 持ち主 ${entry.awaiting || '—'} | 期限 ${entry.due || '—'} | ${entry.waitedDays} 日待ち${since} | PR ${entry.pull || '—'} | ${entry.candidate}`;
 }
 
-const todayOf = (): string => new Date().toISOString().slice(0, 10);
+const todayOf = (): string => isoDateInTokyo(new Date());
 
 export class DecisionPendingCommand extends Command {
   readonly name = 'decision-pending';

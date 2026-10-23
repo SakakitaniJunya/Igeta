@@ -47,6 +47,18 @@ describe('decision-accept: 拒否 (終了 1) と検査不能 (終了 2)', () => 
     assert.equal(existsSync(join(repo.root, seeded.path)), true);
   });
 
+  it('[TST-502] 同じ repo の無関係な merge 済み PR (ADR が既に main にある後続の PR) を根拠にしても拒否', async () => {
+    const repo = newRepo();
+    const seeded = seedProposed(repo);
+    repo.write('docs/other.md', '# 他\n');
+    const later = repo.commit('無関係な PR (#9)');
+    const port = fixturePort({ pulls: { 9: { state: 'merged', author: 'ai', mergedBy: APPROVER.github, mergeCommit: later } }, commits: { 9: [later] } });
+    const outcome = await recordDecision(request(repo, port, { evidence: pullUrl(9) }));
+    assert.equal(outcome.exitCode, ExitCode.Violation, outcome.lines.join('\n'));
+    assert.match(outcome.lines.join('\n'), /追加・変更していない/);
+    assert.equal(existsSync(join(repo.root, seeded.path)), true);
+  });
+
   it('[TST-324] 別 repo の PR の URL は拒否', async () => {
     await refused(() => ({ evidence: 'https://github.com/other/repo/pull/7' }));
   });

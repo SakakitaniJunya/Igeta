@@ -1,6 +1,6 @@
 // 決定の状態を変える・洗い出すコマンドの公開口 (`#decision/cli`)。登録は checkCommands.ts が 1 行で行う。
 
-import type { Command } from '../../Command.js';
+import type { Command } from '#cli/Command.js';
 import { createGhPort } from './gh-port.js';
 import type { GitHubPort } from './port.js';
 import { DecisionPendingCommand } from './pending.js';
